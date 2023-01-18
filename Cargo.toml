@@ -1,0 +1,21 @@
+[package]
+name = "sophus-rs"
+version = "0.1.0"
+edition = "2021"
+links = "sophus-rs"
+
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# Cargo.toml
+
+[dependencies]
+cxx = "1.0"
+image = { git = "https://github.com/image-rs/image", branch = "master" }
+paste = "1.0"
+strum = "0.24"
+strum_macros = "0.24"
+proptest = "1.0"
+
+[build-dependencies]
+cxx-build = "1.0"
