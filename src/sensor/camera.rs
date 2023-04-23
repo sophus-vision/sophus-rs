@@ -77,7 +77,7 @@ impl<
         self.params = params.clone();
     }
 
-    pub fn try_set_dyn_params(
+    pub fn try_set_params(
         &mut self,
         params: &nalgebra::DVector<f64>,
     ) -> Result<(), WrongParamsDim> {
@@ -122,92 +122,186 @@ type OrthoCamera = Camera<0, 4, AffineDistortionImpl, ProjectionZ1>;
 type KannalaBrandtCamera = Camera<4, 8, KannalaBrandtDistortionImpl, ProjectionZ1>;
 
 #[derive(Debug, Clone)]
-pub enum CameraType {
+pub enum PerspectiveCameraType {
     Pinhole(PinholeCamera),
-    Ortho(OrthoCamera),
     KannalaBrandt(KannalaBrandtCamera),
 }
 
 #[derive(Debug, Clone)]
-pub struct DynCamera {
+pub enum AnyProjCameraType {
+    Perspective(PerspectiveCameraType),
+    Ortho(OrthoCamera),
+}
+
+impl AnyProjCameraType {
+    fn new_perspective(model: PerspectiveCameraType) -> Self {
+        Self::Perspective(model)
+    }
+}
+
+pub trait CameraEnum {
+    fn new_pinhole(params: &V<4>, image_size: ImageSize) -> Self;
+    fn new_kannala_brandt(params: &V<8>, image_size: ImageSize) -> Self;
+
+    fn cam_proj(&self, point_in_camera: &V<3>) -> V<2>;
+    fn cam_unproj_with_z(&self, point_in_camera: &V<2>, z: f64) -> V<3>;
+    fn distort(&self, point_in_camera: &V<2>) -> V<2>;
+    fn undistort(&self, point_in_camera: &V<2>) -> V<2>;
+
+    fn try_set_params(&mut self, params: &nalgebra::DVector<f64>) -> Result<(), WrongParamsDim>;
+}
+
+impl CameraEnum for PerspectiveCameraType {
+    fn new_pinhole(params: &V<4>, image_size: ImageSize) -> Self {
+        Self::Pinhole(PinholeCamera::from_params_and_size(params, image_size))
+    }
+
+    fn new_kannala_brandt(params: &V<8>, image_size: ImageSize) -> Self {
+        Self::KannalaBrandt(KannalaBrandtCamera::from_params_and_size(
+            params, image_size,
+        ))
+    }
+
+    fn cam_proj(&self, point_in_camera: &V<3>) -> V<2> {
+        match self {
+            PerspectiveCameraType::Pinhole(camera) => camera.cam_proj(point_in_camera),
+            PerspectiveCameraType::KannalaBrandt(camera) => camera.cam_proj(point_in_camera),
+        }
+    }
+
+    fn cam_unproj_with_z(&self, point_in_camera: &V<2>, z: f64) -> V<3> {
+        match self {
+            PerspectiveCameraType::Pinhole(camera) => camera.cam_unproj_with_z(point_in_camera, z),
+            PerspectiveCameraType::KannalaBrandt(camera) => {
+                camera.cam_unproj_with_z(point_in_camera, z)
+            }
+        }
+    }
+
+    fn distort(&self, point_in_camera: &V<2>) -> V<2> {
+        match self {
+            PerspectiveCameraType::Pinhole(camera) => camera.distort(point_in_camera),
+            PerspectiveCameraType::KannalaBrandt(camera) => camera.distort(point_in_camera),
+        }
+    }
+
+    fn undistort(&self, point_in_camera: &V<2>) -> V<2> {
+        match self {
+            PerspectiveCameraType::Pinhole(camera) => camera.undistort(point_in_camera),
+            PerspectiveCameraType::KannalaBrandt(camera) => camera.undistort(point_in_camera),
+        }
+    }
+
+    fn try_set_params(&mut self, params: &nalgebra::DVector<f64>) -> Result<(), WrongParamsDim> {
+        match self {
+            PerspectiveCameraType::Pinhole(camera) => camera.try_set_params(params),
+            PerspectiveCameraType::KannalaBrandt(camera) => camera.try_set_params(params),
+        }
+    }
+}
+
+impl CameraEnum for AnyProjCameraType {
+    fn new_pinhole(params: &V<4>, image_size: ImageSize) -> Self {
+        Self::Perspective(PerspectiveCameraType::new_pinhole(params, image_size))
+    }
+
+    fn new_kannala_brandt(params: &V<8>, image_size: ImageSize) -> Self {
+        Self::Perspective(PerspectiveCameraType::new_kannala_brandt(
+            params, image_size,
+        ))
+    }
+
+    fn cam_proj(&self, point_in_camera: &V<3>) -> V<2> {
+        match self {
+            AnyProjCameraType::Perspective(camera) => camera.cam_proj(point_in_camera),
+            AnyProjCameraType::Ortho(camera) => camera.cam_proj(point_in_camera),
+        }
+    }
+
+    fn cam_unproj_with_z(&self, point_in_camera: &V<2>, z: f64) -> V<3> {
+        match self {
+            AnyProjCameraType::Perspective(camera) => camera.cam_unproj_with_z(point_in_camera, z),
+            AnyProjCameraType::Ortho(camera) => camera.cam_unproj_with_z(point_in_camera, z),
+        }
+    }
+
+    fn distort(&self, point_in_camera: &V<2>) -> V<2> {
+        match self {
+            AnyProjCameraType::Perspective(camera) => camera.distort(point_in_camera),
+            AnyProjCameraType::Ortho(camera) => camera.distort(point_in_camera),
+        }
+    }
+
+    fn undistort(&self, point_in_camera: &V<2>) -> V<2> {
+        match self {
+            AnyProjCameraType::Perspective(camera) => camera.undistort(point_in_camera),
+            AnyProjCameraType::Ortho(camera) => camera.undistort(point_in_camera),
+        }
+    }
+
+    fn try_set_params(&mut self, params: &nalgebra::DVector<f64>) -> Result<(), WrongParamsDim> {
+        match self {
+            AnyProjCameraType::Perspective(camera) => camera.try_set_params(params),
+            AnyProjCameraType::Ortho(camera) => camera.try_set_params(params),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DynCameraFacade<CameraType: CameraEnum> {
     camera_type: CameraType,
 }
 
-impl DynCamera {
+type DynAnyProjCamera = DynCameraFacade<AnyProjCameraType>;
+type DynCamera = DynCameraFacade<PerspectiveCameraType>;
+
+impl<CameraType: CameraEnum> DynCameraFacade<CameraType> {
     pub fn from_model(camera_type: CameraType) -> Self {
         Self { camera_type }
     }
 
     pub fn new_pinhole(params: &V<4>, image_size: ImageSize) -> Self {
-        Self {
-            camera_type: CameraType::Pinhole(PinholeCamera::new(params, image_size)),
-        }
-    }
-
-    pub fn new_ortho(params: &V<4>, image_size: ImageSize) -> Self {
-        Self {
-            camera_type: CameraType::Ortho(OrthoCamera::new(params, image_size)),
-        }
+        Self::from_model(CameraType::new_pinhole(params, image_size))
     }
 
     pub fn new_kannala_brandt(params: &V<8>, image_size: ImageSize) -> Self {
-        Self {
-            camera_type: CameraType::KannalaBrandt(KannalaBrandtCamera::new(params, image_size)),
-        }
+        Self::from_model(CameraType::new_kannala_brandt(params, image_size))
     }
 
     pub fn cam_proj(&self, point_in_camera: &V<3>) -> V<2> {
-        match &self.camera_type {
-            CameraType::Pinhole(model) => model.cam_proj(point_in_camera),
-            CameraType::Ortho(model) => model.cam_proj(point_in_camera),
-            CameraType::KannalaBrandt(model) => model.cam_proj(point_in_camera),
-        }
+        self.camera_type.cam_proj(point_in_camera)
     }
 
     pub fn cam_unproj(&self, point_in_camera: &V<2>) -> V<3> {
-        match &self.camera_type {
-            CameraType::Pinhole(model) => model.cam_unproj(point_in_camera),
-            CameraType::Ortho(model) => model.cam_unproj(point_in_camera),
-            CameraType::KannalaBrandt(model) => model.cam_unproj(point_in_camera),
-        }
+        self.cam_unproj_with_z(point_in_camera, 1.0)
     }
 
     pub fn cam_unproj_with_z(&self, point_in_camera: &V<2>, z: f64) -> V<3> {
-        match &self.camera_type {
-            CameraType::Pinhole(model) => model.cam_unproj_with_z(point_in_camera, z),
-            CameraType::Ortho(model) => model.cam_unproj_with_z(point_in_camera, z),
-            CameraType::KannalaBrandt(model) => model.cam_unproj_with_z(point_in_camera, z),
-        }
+        self.camera_type.cam_unproj_with_z(point_in_camera, z)
     }
 
     pub fn distort(&self, point_in_camera: &V<2>) -> V<2> {
-        match &self.camera_type {
-            CameraType::Pinhole(model) => model.distort(point_in_camera),
-            CameraType::Ortho(model) => model.distort(point_in_camera),
-            CameraType::KannalaBrandt(model) => model.distort(point_in_camera),
-        }
+        self.camera_type.distort(point_in_camera)
     }
 
     pub fn undistort(&self, point_in_camera: &V<2>) -> V<2> {
-        match &self.camera_type {
-            CameraType::Pinhole(model) => model.undistort(point_in_camera),
-            CameraType::Ortho(model) => model.undistort(point_in_camera),
-            CameraType::KannalaBrandt(model) => model.undistort(point_in_camera),
-        }
+        self.camera_type.undistort(point_in_camera)
     }
 
     pub fn try_set_params(
         &mut self,
         params: &nalgebra::DVector<f64>,
     ) -> Result<(), WrongParamsDim> {
-        match &mut self.camera_type {
-            CameraType::Pinhole(model) => model.try_set_dyn_params(params),
-            CameraType::Ortho(model) => model.try_set_dyn_params(params),
-            CameraType::KannalaBrandt(model) => model.try_set_dyn_params(params),
-        }
+        self.camera_type.try_set_params(params)
     }
+}
 
-    pub fn test_suite() {
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn camera_prop_tests() {
         let mut cameras: Vec<DynCamera> = vec![];
         cameras.push(DynCamera::new_pinhole(
             &V::<4>::new(600.0, 600.0, 319.5, 239.5),
@@ -243,15 +337,5 @@ impl DynCamera {
                 assert_relative_eq!(pixel_in_image3, pixel, epsilon = 1e-6);
             }
         }
-    }
-}
-
-mod tests {
-
-    use super::*;
-
-    #[test]
-    fn camera_prop_tests() {
-        DynCamera::test_suite();
     }
 }
