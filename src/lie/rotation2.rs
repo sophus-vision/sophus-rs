@@ -1,12 +1,13 @@
 use nalgebra::{SMatrix, SVector};
+type V<const N: usize> = SVector<f64, N>;
+type M<const N: usize, const O: usize> = SMatrix<f64, N, O>;
 
 use crate::{
     calculus, lie,
     manifold::{self},
 };
 
-type V<const N: usize> = SVector<f64, N>;
-type M<const N: usize, const O: usize> = SMatrix<f64, N, O>;
+
 
 #[derive(Debug, Copy, Clone)]
 pub struct Rotation2Impl;

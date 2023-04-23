@@ -33,6 +33,10 @@ impl ImageSizeTrait for ImageSize {
 }
 
 impl ImageSize {
+    pub fn new(width: usize, height: usize) -> Self {
+        ImageSize::from_width_and_height(width, height)
+    }
+
     pub fn from_width_and_height(width: usize, height: usize) -> Self {
         ImageSize { width, height }
     }
