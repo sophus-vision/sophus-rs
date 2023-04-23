@@ -2,20 +2,27 @@
 name = "sophus-rs"
 version = "0.1.0"
 edition = "2021"
-links = "sophus-rs"
-
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-# Cargo.toml
-
 [dependencies]
-cxx = "1.0"
-image = { git = "https://github.com/image-rs/image", branch = "master" }
-paste = "1.0"
-strum = "0.24"
-strum_macros = "0.24"
-proptest = "1.0"
+assertables = "7.0.1"
+num-traits = "0.2.15"
+nalgebra = "0.32"
+approx = "0.5.1"
+ndarray = "0.15.4"
+notan =  { version = "0.9", features = ["egui"] }
+egui = "0.21" 
+tuple_list = "0.1.3"
+linked-hash-map = "0.5.4"
+enum_dispatch = "0.3.6"
 
-[build-dependencies]
-cxx-build = "1.0"
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+pyo3 = { version = "0.18.0", features = ["extension-module"] }
+numpy = "0.18"
+
+
+[dev-dependencies.proptest]
+version =  "1.1.0"
+default-features = false
+features = ["std"]

@@ -1,16 +1,85 @@
-fn main() {
-    let _str = "https://www.wwf.org.uk/sites/default/files/styles/gallery_image/public/2019-09/pangolin_with_tongue_out.jpg".to_owned();
-    let image_size = sophus_rs::image::ImageSize {
-        width: 640,
-        height: 480,
-    };
-    let pixel_format = sophus_rs::image::PixelFormat {
-        is_floating_point: false,
-        num_channels: 1,
-        num_bytes_per_pixel_channel: 1,
-    };
-    let _image = sophus_rs::glue::ffi::FfiIntensityImage::from_size_and_pixel_format(
-        image_size,
-        pixel_format,
+use sophus_rs::opt::nlls::CostArgTuple;
+use sophus_rs::opt::nlls::{
+    apply, CostFnArg, CostTerm, CostTermArg, CostTermSignature, ResidualFn,
+};
+use tuple_list::{tuple_list, tuple_list_type, Tuple};
+
+#[derive(Copy, Clone)]
+struct StereoBaCostTermSignature {
+    c: nalgebra::Vector2<f64>,
+    entity_indices: tuple_list_type!(usize, usize),
+}
+
+impl CostTermSignature<2> for StereoBaCostTermSignature {
+    type EntityIndexTuple = tuple_list_type!(usize, usize);
+    type Constants = nalgebra::Vector2<f64>;
+
+    fn c_ref(&self) -> &Self::Constants {
+        &self.c
+    }
+
+    fn idx_ref(&self) -> &Self::EntityIndexTuple {
+        &self.entity_indices
+    }
+
+    const DOF_TUPLE: [i64; 2] = [3, 6];
+}
+
+#[derive(Copy, Clone)]
+struct StereoBa<const E1: char, const E2: char> {}
+
+impl<const E1: char, const E2: char> ResidualFn<9, 2> for StereoBa<E1, E2> {
+    type Args = tuple_list_type!(
+        CostTermArg<nalgebra::Vector6::<f64>,E1>,
+        CostTermArg<nalgebra::Vector3::<f64>,E2>
     );
+
+    type Constants = nalgebra::Vector2<f64>;
+
+    fn cost(args: &Self::Args, _constants: &Self::Constants) -> CostTerm<9, 2> {
+        let cost = CostTerm::new(Self::Args::get_dims());
+
+        println!("{:?}", args);
+        println!("{} {}", E1, E2);
+
+        if E1 == 'v' {
+            cost.hessian.block(0);
+        }
+        if E2 == 'v' {
+            cost.hessian.block(1);
+        }
+
+        //constants.clone()
+
+        cost
+    }
+}
+
+fn main() {
+    let poses = vec![
+        nalgebra::Vector6::repeat(0.0),
+        nalgebra::Vector6::repeat(1.0),
+    ];
+
+    let points = vec![
+        nalgebra::Vector3::repeat(0.0),
+        nalgebra::Vector3::repeat(1.0),
+    ];
+
+    let families = (CostFnArg::var(&poses), CostFnArg::cond(&points));
+    let families2 = (CostFnArg::var(&poses), CostFnArg::var(&points));
+
+    let cost_terms = vec![StereoBaCostTermSignature {
+        c: nalgebra::Vector2::repeat(1.0),
+        entity_indices: tuple_list!(1, 0),
+    }];
+
+    //  (0, 0), tuple_list!(1, 0), tuple_list!(2, 0)];
+
+    apply(StereoBa {}, &cost_terms, &families.into_tuple_list());
+    apply(StereoBa {}, &cost_terms, &families2.into_tuple_list());
+
+    // let h2 = hlist![ Vec{v:42f32}, true, "hello" ];
+
+    // foo(h2);
 }
