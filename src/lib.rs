@@ -4,3 +4,4 @@ pub mod lie;
 pub mod manifold;
 pub mod minipango;
 pub mod opt;
+pub mod sensor;
