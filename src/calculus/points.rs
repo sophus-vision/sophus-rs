@@ -1,6 +1,5 @@
-use nalgebra::{SVector};
+use nalgebra::SVector;
 type V<const N: usize> = SVector<f64, N>;
-
 
 pub fn example_points<const POINT: usize>() -> Vec<V<POINT>> {
     let points4 = vec![

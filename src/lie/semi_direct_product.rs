@@ -2,7 +2,10 @@ use std::vec;
 
 use nalgebra::{SMatrix, SVector};
 
-use crate::{calculus::{self, points::example_points}, lie, manifold};
+use crate::{
+    calculus::{self, points::example_points},
+    lie, manifold,
+};
 
 use super::traits::LieSubgroupImplTrait;
 
@@ -99,7 +102,6 @@ impl<
         }
         examples
     }
-
 
     fn invalid_params_examples() -> Vec<V<PARAMS>> {
         vec![Self::params_from(
