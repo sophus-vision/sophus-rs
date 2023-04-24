@@ -41,12 +41,12 @@ impl CameraDistortionImpl<0, 4> for AffineDistortionImpl {
         )
     }
 
-    fn dx_distort_x(_params: &V<4>, proj_point_in_camera_z1_plane: &V<2>) -> M<2, 2> {
+    fn dx_distort_x(params: &V<4>, proj_point_in_camera_z1_plane: &V<2>) -> M<2, 2> {
         M::<2, 2>::new(
-            proj_point_in_camera_z1_plane[0],
+            params[0],
             0.0,
             0.0,
-            proj_point_in_camera_z1_plane[1],
+            params[1],
         )
     }
 }

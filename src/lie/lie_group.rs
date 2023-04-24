@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 use approx::assert_relative_eq;
 use assertables::assert_le_as_result;
 
-use crate::calculus::points::example_points;
+use crate::calculus::{numeric_diff::VectorField, points::example_points};
 
 use super::traits::LieGroupImpl;
 
@@ -157,13 +157,18 @@ impl<
                 let lie_bracket_a_b =
                     Self::vee(&(&Self::hat(a) * &Self::hat(b) - &Self::hat(b) * &Self::hat(a)));
                 assert_relative_eq!(ad_a_b, lie_bracket_a_b, epsilon = 0.0001);
-                // if G::kDof > 0 {
-                //     let num_diff_ad_a = vector_field_num_diff(
-                //         |x| Self::vee(&Self::hat(a) * &Self::hat(x) - &Self::hat(x) * &Self::hat(a)),
-                //         *b,
-                //     );
-                //     assert_relative_eq!(ad_a, num_diff_ad_a, epsilon = 0.0001);
-                // }
+                if DOF > 0 {
+                    let num_diff_ad_a = VectorField::numeric_diff(
+                        |x| {
+                            Self::vee(
+                                &(&Self::hat(a) * &Self::hat(x) - &Self::hat(x) * &Self::hat(a)),
+                            )
+                        },
+                        *b,
+                        0.0001,
+                    );
+                    assert_relative_eq!(ad_a, num_diff_ad_a, epsilon = 0.0001);
+                }
             }
         }
     }

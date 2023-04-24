@@ -148,6 +148,8 @@ pub trait CameraEnum {
     fn distort(&self, point_in_camera: &V<2>) -> V<2>;
     fn undistort(&self, point_in_camera: &V<2>) -> V<2>;
 
+    fn dx_distort_x(&self, point_in_camera: &V<2>) -> M<2, 2>;
+
     fn try_set_params(&mut self, params: &nalgebra::DVector<f64>) -> Result<(), WrongParamsDim>;
 }
 
@@ -189,6 +191,13 @@ impl CameraEnum for PerspectiveCameraType {
         match self {
             PerspectiveCameraType::Pinhole(camera) => camera.undistort(point_in_camera),
             PerspectiveCameraType::KannalaBrandt(camera) => camera.undistort(point_in_camera),
+        }
+    }
+
+    fn dx_distort_x(&self, point_in_camera: &V<2>) ->M<2, 2>{
+        match self {
+            PerspectiveCameraType::Pinhole(camera) => camera.dx_distort_x(point_in_camera),
+            PerspectiveCameraType::KannalaBrandt(camera) => camera.dx_distort_x(point_in_camera),
         }
     }
 
@@ -245,6 +254,13 @@ impl CameraEnum for AnyProjCameraType {
             AnyProjCameraType::Ortho(camera) => camera.try_set_params(params),
         }
     }
+
+    fn dx_distort_x(&self, point_in_camera: &V<2>) -> M<2, 2> {
+        match self {
+            AnyProjCameraType::Perspective(camera) => camera.dx_distort_x(point_in_camera),
+            AnyProjCameraType::Ortho(camera) => camera.dx_distort_x(point_in_camera),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -288,6 +304,10 @@ impl<CameraType: CameraEnum> DynCameraFacade<CameraType> {
         self.camera_type.undistort(point_in_camera)
     }
 
+    pub fn dx_distort_x(&self, point_in_camera: &V<2>) -> M<2, 2> {
+        self.camera_type.dx_distort_x(point_in_camera)
+    }
+
     pub fn try_set_params(
         &mut self,
         params: &nalgebra::DVector<f64>,
@@ -297,6 +317,8 @@ impl<CameraType: CameraEnum> DynCameraFacade<CameraType> {
 }
 
 mod tests {
+
+    use crate::calculus::numeric_diff::VectorField;
 
     use super::*;
 
@@ -335,7 +357,18 @@ mod tests {
 
                 let pixel_in_image3 = camera.distort(&ab_in_z1plane);
                 assert_relative_eq!(pixel_in_image3, pixel, epsilon = 1e-6);
+
+
+                let dx = camera.dx_distort_x(&pixel);
+                let numeric_dx = VectorField::numeric_diff(
+                    |x: &V<2>| camera.distort(x),
+                    pixel,
+                    1e-6,
+                );
+
+                assert_relative_eq!(dx, numeric_dx, epsilon = 1e-4);
             }
         }
+
     }
 }

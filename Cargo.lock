@@ -1075,6 +1075,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fed44880c466736ef9a5c5b5facefb5ed0785676d0c02d612db14e54f0d84286"
 
 [[package]]
+name = "hyperdual"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dec88bd0c74952320284bdd77898acc4cc30a681a400878120021dc89d53b700"
+dependencies = [
+ "nalgebra",
+ "num-traits",
+]
+
+[[package]]
 name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2461,6 +2471,7 @@ dependencies = [
  "assertables",
  "egui 0.21.0",
  "enum_dispatch",
+ "hyperdual",
  "linked-hash-map",
  "nalgebra",
  "ndarray",

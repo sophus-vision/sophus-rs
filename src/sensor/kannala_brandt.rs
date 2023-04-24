@@ -1,5 +1,5 @@
-use nalgebra::{SMatrix, SVector};
-use notan::{log::{debug, warn, trace}};
+use nalgebra::{RowVector2, SMatrix, SVector};
+use notan::log::{debug, trace, warn};
 
 use crate::calculus;
 
@@ -113,7 +113,8 @@ impl CameraDistortionImpl<4, 8> for KannalaBrandtDistortionImpl {
             if iters > HIGH_ITERS {
                 trace!(
                     "undistort: did not converge in {} iterations, step: {}",
-                    iters, step
+                    iters,
+                    step
                 );
             }
 
@@ -135,7 +136,51 @@ impl CameraDistortionImpl<4, 8> for KannalaBrandtDistortionImpl {
         }
     }
 
-    fn dx_distort_x(_params: &V<8>, proj_point_in_camera_z1_plane: &V<2>) -> M<2, 2> {
-        unimplemented!("dx_distort_x")
+    fn dx_distort_x(params: &V<8>, proj_point_in_camera_z1_plane: &V<2>) -> M<2, 2> {
+        let a = proj_point_in_camera_z1_plane[0];
+        let b = proj_point_in_camera_z1_plane[1];
+        let fx = params[0];
+        let fy = params[1];
+
+        let k = params.fixed_rows::<4>(4).into_owned();
+
+        let radius_sq = a * a + b * b;
+
+        if radius_sq < 1e-8 {
+            return M::<2, 2>::from_diagonal(&V::<2>::new(fx, fy));
+        }
+
+        let c0 = a.powi(2);
+        let c1 = b.powi(2);
+        let c2 = c0 + c1;
+        let c3 = c2.powf(5.0 / 2.0);
+        let c4 = c2 + 1.0;
+        let c5 = c2.sqrt().atan();
+        let c6 = c5.powi(2);
+        let c7 = c6 * k[0];
+        let c8 = c5.powi(4);
+        let c9 = c8 * k[1];
+        let c10 = c5.powi(6);
+        let c11 = c10 * k[2];
+        let c12 = c5.powi(8) * k[3];
+        let c13 = 1.0 * c4 * c5 * (c11 + c12 + c7 + c9 + 1.0);
+        let c14 = c13 * c3;
+        let c15 = c2.powf(3.0 / 2.0);
+        let c16 = c13 * c15;
+        let c17 = 1.0 * c11
+            + 1.0 * c12
+            + 2.0 * c6 * (4.0 * c10 * k[3] + 2.0 * c6 * k[1] + 3.0 * c8 * k[2] + k[0])
+            + 1.0 * c7
+            + 1.0 * c9
+            + 1.0;
+        let c18 = c17 * c2.powi(2);
+        let c19 = 1.0 / c4;
+        let c20 = c19 / c2.powi(3);
+        let c21 = a * b * c19 * (-c13 * c2 + c15 * c17) / c3;
+
+        M::<2, 2>::from_rows(&[
+            RowVector2::new(c20 * fx * (-c0 * c16 + c0 * c18 + c14), c21 * fx),
+            RowVector2::new(c21 * fy, c20 * fy * (-c1 * c16 + c1 * c18 + c14)),
+        ])
     }
 }

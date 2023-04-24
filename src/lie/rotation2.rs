@@ -7,8 +7,6 @@ use crate::{
     manifold::{self},
 };
 
-
-
 #[derive(Debug, Copy, Clone)]
 pub struct Rotation2Impl;
 
