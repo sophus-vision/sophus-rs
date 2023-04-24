@@ -4,67 +4,67 @@ use super::{
     dyn_view::{DynImageView, DynImageViewTrait},
     layout::{ImageLayout, ImageLayoutTrait, ImageSize, ImageSizeTrait},
     mut_image::MutImage,
-    pixel::{Pixel, PixelFormat, PixelTrait, RawDataChunk},
+    pixel::{P, PixelFormat, PixelTrait, RawDataChunk, ScalarTrait},
     view::{ImageView, ImageViewTrait},
 };
 
 #[derive(Debug, Clone)]
-pub struct ArcImage<T: PixelTrait> {
+pub struct ArcImage<const NUM: usize, Scalar: ScalarTrait+'static> {
     pub buffer: Arc<std::vec::Vec<RawDataChunk>>,
     pub layout: ImageLayout,
-    phantom: PhantomData<T>,
+    phantom: PhantomData<Scalar>,
 }
 
-impl<T: PixelTrait> ImageSizeTrait for ArcImage<T> {
+impl<const NUM: usize, Scalar: ScalarTrait+'static> ImageSizeTrait for ArcImage<NUM, Scalar> {
     fn size(&self) -> ImageSize {
         self.view().size()
     }
 }
 
-impl<T: PixelTrait> ImageLayoutTrait for ArcImage<T> {
+impl<const NUM: usize, Scalar: ScalarTrait+'static> ImageLayoutTrait for ArcImage<NUM, Scalar> {
     fn layout(&self) -> ImageLayout {
         self.view().layout()
     }
 }
 
-pub trait ImageTrait<T: PixelTrait> {
+pub trait ImageTrait<const NUM: usize, Scalar: ScalarTrait+'static> {
     fn buffer(&self) -> Arc<std::vec::Vec<RawDataChunk>>;
 }
 
-impl<T: PixelTrait> ImageTrait<T> for ArcImage<T> {
+impl<const NUM: usize, Scalar: ScalarTrait+'static> ImageTrait<NUM, Scalar> for ArcImage<NUM, Scalar> {
     fn buffer(&self) -> Arc<std::vec::Vec<RawDataChunk>> {
         self.buffer.clone()
     }
 }
 
-impl<T: PixelTrait> ArcImage<T> {
-    pub fn from_mut_image(image: MutImage<T>) -> Self {
+impl<const NUM: usize, Scalar: ScalarTrait+'static> ArcImage<NUM, Scalar> {
+    pub fn from_mut_image(image: MutImage<NUM, Scalar>) -> Self {
         let layout = image.layout();
 
         Self {
             buffer: Arc::new(image.buffer),
             layout,
-            phantom: PhantomData::<T> {},
+            phantom: PhantomData::<Scalar> {},
         }
     }
 
-    pub fn with_size_and_val(size: ImageSize, val: T) -> Self {
+    pub fn with_size_and_val(size: ImageSize, val: P::<NUM, Scalar>) -> Self {
         Self::from_mut_image(MutImage::with_size_and_val(size, val))
     }
 }
 
-impl<'a, T: PixelTrait + 'a> ImageViewTrait<'a, T> for ArcImage<T> {
-    fn view(&self) -> ImageView<T> {
+impl<'a, const NUM: usize, Scalar: ScalarTrait + 'static> ImageViewTrait<'a, NUM, Scalar> for ArcImage<NUM, Scalar> {
+    fn view(&self) -> ImageView<NUM, Scalar> {
         let slice;
         unsafe {
             slice =
-                std::slice::from_raw_parts(T::cast(self.buffer.as_ptr()), self.layout.padded_area())
+                std::slice::from_raw_parts(P::<NUM,Scalar>::cast_from_raw(self.buffer.as_ptr()), self.layout.padded_area())
         }
         let scalar_slice;
         unsafe {
             scalar_slice = std::slice::from_raw_parts(
-                T::scalar_cast(self.buffer.as_ptr()),
-                self.layout.padded_area() * T::NUM_CHANNELS,
+                P::<NUM,Scalar>::scalar_cast(self.buffer.as_ptr()),
+                self.layout.padded_area() * NUM,
             )
         }
         ImageView {
@@ -79,12 +79,14 @@ impl<'a, T: PixelTrait + 'a> ImageViewTrait<'a, T> for ArcImage<T> {
 mod tests {
     use std::thread;
 
+    use crate::image::pixel::{P1F32, P3U16};
+
     use super::*;
 
     #[test]
     fn from_mut_image() {
         let size_6_x_4 = ImageSize::from_width_and_height(6, 4);
-        let mut_img = MutImage::with_size_and_val(size_6_x_4, 0.5f32);
+        let mut_img = MutImage::with_size_and_val(size_6_x_4, P1F32::new(0.5f32));
 
         let copy = MutImage::make_copy_from(&mut_img);
         assert_eq!(copy.size(), size_6_x_4);
@@ -101,7 +103,7 @@ mod tests {
     #[test]
     fn shared_ownership() {
         let size_6_x_4 = ImageSize::from_width_and_height(6, 4);
-        let mut_img = MutImage::with_size_and_val(size_6_x_4, 0.5f32);
+        let mut_img = MutImage::with_size_and_val(size_6_x_4, P1F32::new(0.5f32));
         let img = ArcImage::from_mut_image(mut_img);
 
         let mut img2 = img.clone();
@@ -123,7 +125,7 @@ mod tests {
     fn multi_threading() {
         let size_6_x_4 = ImageSize::from_width_and_height(6, 4);
         let mut_img =
-            MutImage::<Pixel<3, u16>>::with_size_and_val(size_6_x_4, Pixel([10, 20, 300]));
+            MutImage::<3, u16>::with_size_and_val(size_6_x_4, P3U16::new(10, 20, 300));
         let img = ArcImage::from_mut_image(mut_img);
 
         thread::scope(|s| {
@@ -139,29 +141,29 @@ mod tests {
 
 #[derive(Debug, Clone)]
 pub enum IntensityImageEnum {
-    PU8(ArcImage<u8>),
-    PU16(ArcImage<u16>),
-    PF32(ArcImage<f32>),
-    P3U8(ArcImage<Pixel<3, u8>>),
-    P3U16(ArcImage<Pixel<3, u16>>),
-    P3F32(ArcImage<Pixel<3, f32>>),
-    P4U8(ArcImage<Pixel<4, u8>>),
-    P4U16(ArcImage<Pixel<4, u16>>),
-    P4F32(ArcImage<Pixel<4, f32>>),
+    PU8(ArcImage<1,u8>),
+    PU16(ArcImage<1,u16>),
+    PF32(ArcImage<1,f32>),
+    P3U8(ArcImage<3, u8>),
+    P3U16(ArcImage<3, u16>),
+    P3F32(ArcImage<3, f32>),
+    P4U8(ArcImage<4, u8>),
+    P4U16(ArcImage<4, u16>),
+    P4F32(ArcImage<4, f32>),
 }
 
 impl IntensityImageEnum {
     fn pixel_format(&self) -> PixelFormat {
         match self {
-            IntensityImageEnum::PU8(_) => PixelFormat::new::<u8>(),
-            IntensityImageEnum::PU16(_) => PixelFormat::new::<u16>(),
-            IntensityImageEnum::PF32(_) => PixelFormat::new::<f32>(),
-            IntensityImageEnum::P3U8(_) => PixelFormat::new::<Pixel<3, u8>>(),
-            IntensityImageEnum::P3U16(_) => PixelFormat::new::<Pixel<3, u16>>(),
-            IntensityImageEnum::P3F32(_) => PixelFormat::new::<Pixel<3, f32>>(),
-            IntensityImageEnum::P4U8(_) => PixelFormat::new::<Pixel<3, u8>>(),
-            IntensityImageEnum::P4U16(_) => PixelFormat::new::<Pixel<3, u16>>(),
-            IntensityImageEnum::P4F32(_) => PixelFormat::new::<Pixel<3, f32>>(),
+            IntensityImageEnum::PU8(_) => PixelFormat::new::<1,u8>(),
+            IntensityImageEnum::PU16(_) => PixelFormat::new::<1,u16>(),
+            IntensityImageEnum::PF32(_) => PixelFormat::new::<1,f32>(),
+            IntensityImageEnum::P3U8(_) => PixelFormat::new::<3, u8>(),
+            IntensityImageEnum::P3U16(_) => PixelFormat::new::<3, u16>(),
+            IntensityImageEnum::P3F32(_) => PixelFormat::new::<3, f32>(),
+            IntensityImageEnum::P4U8(_) => PixelFormat::new::<4, u8>(),
+            IntensityImageEnum::P4U16(_) => PixelFormat::new::<4, u16>(),
+            IntensityImageEnum::P4F32(_) => PixelFormat::new::<4, f32>(),
         }
     }
 
@@ -180,59 +182,59 @@ impl IntensityImageEnum {
     }
 }
 
-pub trait IntensityImagelTrait<T: PixelTrait> {
+pub trait IntensityImagelTrait<const NUM: usize, Scalar: ScalarTrait+'static> {
     fn to_enum(&self) -> IntensityImageEnum;
 }
 
-impl IntensityImagelTrait<u8> for ArcImage<u8> {
+impl IntensityImagelTrait<1,u8> for ArcImage<1,u8> {
     fn to_enum(&self) -> IntensityImageEnum {
         IntensityImageEnum::PU8(self.clone())
     }
 }
 
-impl IntensityImagelTrait<u16> for ArcImage<u16> {
+impl IntensityImagelTrait<1,u16> for ArcImage<1,u16> {
     fn to_enum(&self) -> IntensityImageEnum {
         IntensityImageEnum::PU16(self.clone())
     }
 }
 
-impl IntensityImagelTrait<f32> for ArcImage<f32> {
+impl IntensityImagelTrait<1,f32> for ArcImage<1,f32> {
     fn to_enum(&self) -> IntensityImageEnum {
         IntensityImageEnum::PF32(self.clone())
     }
 }
 
-impl IntensityImagelTrait<Pixel<3, u8>> for ArcImage<Pixel<3, u8>> {
+impl IntensityImagelTrait<3, u8> for ArcImage<3, u8> {
     fn to_enum(&self) -> IntensityImageEnum {
         IntensityImageEnum::P3U8(self.clone())
     }
 }
 
-impl IntensityImagelTrait<Pixel<3, u16>> for ArcImage<Pixel<3, u16>> {
+impl IntensityImagelTrait<3, u16> for ArcImage<3, u16> {
     fn to_enum(&self) -> IntensityImageEnum {
         IntensityImageEnum::P3U16(self.clone())
     }
 }
 
-impl IntensityImagelTrait<Pixel<3, f32>> for ArcImage<Pixel<3, f32>> {
+impl IntensityImagelTrait<3, f32> for ArcImage<3, f32> {
     fn to_enum(&self) -> IntensityImageEnum {
         IntensityImageEnum::P3F32(self.clone())
     }
 }
 
-impl IntensityImagelTrait<Pixel<4, u8>> for ArcImage<Pixel<4, u8>> {
+impl IntensityImagelTrait<4, u8> for ArcImage<4, u8> {
     fn to_enum(&self) -> IntensityImageEnum {
         IntensityImageEnum::P4U8(self.clone())
     }
 }
 
-impl IntensityImagelTrait<Pixel<4, u16>> for ArcImage<Pixel<4, u16>> {
+impl IntensityImagelTrait<4, u16> for ArcImage<4, u16> {
     fn to_enum(&self) -> IntensityImageEnum {
         IntensityImageEnum::P4U16(self.clone())
     }
 }
 
-impl IntensityImagelTrait<Pixel<4, f32>> for ArcImage<Pixel<4, f32>> {
+impl IntensityImagelTrait<4, f32> for ArcImage<4, f32> {
     fn to_enum(&self) -> IntensityImageEnum {
         IntensityImageEnum::P4F32(self.clone())
     }

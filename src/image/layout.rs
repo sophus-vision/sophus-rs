@@ -1,4 +1,4 @@
-use super::pixel::PixelTrait;
+use super::pixel::{PixelTrait, ScalarTrait, P};
 
 #[cfg(not(target_arch = "wasm32"))]
 use pyo3::pyclass;
@@ -66,8 +66,8 @@ pub trait ImageLayoutTrait: ImageSizeTrait {
         self.layout().stride() * self.layout().height()
     }
 
-    fn num_bytes_of_padded_area<T: PixelTrait>(&self) -> usize {
-        self.padded_area() * std::mem::size_of::<T>()
+    fn num_bytes_of_padded_area<const NUM: usize, Scalar: ScalarTrait+'static>(&self) -> usize {
+        self.padded_area() * std::mem::size_of::<P::<NUM, Scalar>>()
     }
 
     fn layout(&self) -> ImageLayout;

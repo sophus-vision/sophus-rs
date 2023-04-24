@@ -9,11 +9,14 @@ use super::mut_image::MutImageTrait;
 use super::mut_image::MutIntensityImageEnum;
 use super::mut_view::MutImageViewTrait;
 use super::pixel::IntensityPixelTrait;
-use super::pixel::Pixel;
+use super::pixel::NumberCategory;
+use super::pixel::P1F32;
 use super::pixel::PixelFormat;
 use super::pixel::PixelTag;
 use super::pixel::PixelTrait;
 use super::pixel::RawDataChunk;
+use super::pixel::ScalarTrait;
+use super::pixel::P;
 use crate::image::layout::ImageLayout;
 use crate::image::layout::ImageLayoutTrait;
 use crate::image::layout::ImageSize;
@@ -79,12 +82,14 @@ impl<'a> DynMutImageViewTrait<'a> for MutAnyImage {
 }
 
 impl MutAnyImage {
-    pub fn from_mut_image<T: PixelTrait>(img: MutImage<T>) -> Self {
+    pub fn from_mut_image<const NUM: usize, Scalar: ScalarTrait+'static>(
+        img: MutImage<NUM, Scalar>,
+    ) -> Self {
         let layout = img.layout();
         let pixel_format = PixelFormat {
-            number_category: T::NUMBER_CATEGORY,
-            num_scalars: T::NUM_CHANNELS,
-            num_bytes_per_scalar: std::mem::size_of::<T::Scalar>(),
+            number_category: Scalar::NUMBER_CATEGORY,
+            num_scalars: NUM,
+            num_bytes_per_scalar: std::mem::size_of::<Scalar>(),
         };
 
         Self {
@@ -102,7 +107,7 @@ impl DynMutImageTrait for MutAnyImage {}
 #[test]
 fn from_mut_image() {
     let size_2_x_3 = ImageSize::from_width_and_height(2, 3);
-    let img_f32 = MutImage::<f32>::with_size_and_val(size_2_x_3, 0.25);
+    let img_f32 = MutImage::<1, f32>::with_size_and_val(size_2_x_3, P1F32::new(0.25));
     let _dyn_img = MutAnyImage::from_mut_image(img_f32);
 }
 
@@ -142,55 +147,55 @@ pub trait MutIntensityImagelTrait {
     fn to_enum(self) -> MutIntensityImageEnum;
 }
 
-impl MutIntensityImagelTrait for MutImage<u8> {
+impl MutIntensityImagelTrait for MutImage<1, u8> {
     fn to_enum(self) -> MutIntensityImageEnum {
         MutIntensityImageEnum::PU8(self)
     }
 }
 
-impl MutIntensityImagelTrait for MutImage<u16> {
+impl MutIntensityImagelTrait for MutImage<1, u16> {
     fn to_enum(self) -> MutIntensityImageEnum {
         MutIntensityImageEnum::PU16(self)
     }
 }
 
-impl MutIntensityImagelTrait for MutImage<f32> {
+impl MutIntensityImagelTrait for MutImage<1, f32> {
     fn to_enum(self) -> MutIntensityImageEnum {
         MutIntensityImageEnum::PF32(self)
     }
 }
 
-impl MutIntensityImagelTrait for MutImage<Pixel<3, u8>> {
+impl MutIntensityImagelTrait for MutImage<3, u8> {
     fn to_enum(self) -> MutIntensityImageEnum {
         MutIntensityImageEnum::P3U8(self)
     }
 }
 
-impl MutIntensityImagelTrait for MutImage<Pixel<3, u16>> {
+impl MutIntensityImagelTrait for MutImage<3, u16> {
     fn to_enum(self) -> MutIntensityImageEnum {
         MutIntensityImageEnum::P3U16(self)
     }
 }
 
-impl MutIntensityImagelTrait for MutImage<Pixel<3, f32>> {
+impl MutIntensityImagelTrait for MutImage<3, f32> {
     fn to_enum(self) -> MutIntensityImageEnum {
         MutIntensityImageEnum::P3F32(self)
     }
 }
 
-impl MutIntensityImagelTrait for MutImage<Pixel<4, u8>> {
+impl MutIntensityImagelTrait for MutImage<4, u8> {
     fn to_enum(self) -> MutIntensityImageEnum {
         MutIntensityImageEnum::P4U8(self)
     }
 }
 
-impl MutIntensityImagelTrait for MutImage<Pixel<4, u16>> {
+impl MutIntensityImagelTrait for MutImage<4, u16> {
     fn to_enum(self) -> MutIntensityImageEnum {
         MutIntensityImageEnum::P4U16(self)
     }
 }
 
-impl MutIntensityImagelTrait for MutImage<Pixel<4, f32>> {
+impl MutIntensityImagelTrait for MutImage<4, f32> {
     fn to_enum(self) -> MutIntensityImageEnum {
         MutIntensityImageEnum::P4F32(self)
     }
@@ -198,16 +203,17 @@ impl MutIntensityImagelTrait for MutImage<Pixel<4, f32>> {
 
 impl<'a> MutIntensityImage {
     pub fn from_mut_image<
-        T: IntensityPixelTrait + 'a,
-        I: MutImageViewTrait<'a, T> + MutIntensityImagelTrait + MutImageTrait<T>,
+        const NUM: usize,
+        Scalar: ScalarTrait+'static,
+        I: MutImageViewTrait<'a, NUM, Scalar> + MutIntensityImagelTrait + MutImageTrait<NUM, Scalar>,
     >(
         img: I,
     ) -> Self {
         let layout = img.layout();
         let pixel_format = PixelFormat {
-            number_category: T::NUMBER_CATEGORY,
-            num_scalars: T::NUM_CHANNELS,
-            num_bytes_per_scalar: std::mem::size_of::<T::Scalar>(),
+            number_category: Scalar::NUMBER_CATEGORY,
+            num_scalars: NUM,
+            num_bytes_per_scalar: std::mem::size_of::<Scalar>(),
         };
         Self {
             buffer: img.to_enum(),
@@ -220,26 +226,30 @@ impl<'a> MutIntensityImage {
 impl MutIntensityImage {
     pub fn with_size_and_tag(size: ImageSize, tag: PixelTag) -> Self {
         match tag {
-            PixelTag::PU8 => MutIntensityImage::from_mut_image(MutImage::<u8>::with_size(size)),
-            PixelTag::PU16 => MutIntensityImage::from_mut_image(MutImage::<u16>::with_size(size)),
-            PixelTag::PF32 => MutIntensityImage::from_mut_image(MutImage::<f32>::with_size(size)),
+            PixelTag::PU8 => MutIntensityImage::from_mut_image(MutImage::<1, u8>::with_size(size)),
+            PixelTag::PU16 => {
+                MutIntensityImage::from_mut_image(MutImage::<1, u16>::with_size(size))
+            }
+            PixelTag::PF32 => {
+                MutIntensityImage::from_mut_image(MutImage::<1, f32>::with_size(size))
+            }
             PixelTag::P3U8 => {
-                MutIntensityImage::from_mut_image(MutImage::<Pixel<3, u8>>::with_size(size))
+                MutIntensityImage::from_mut_image(MutImage::<3, u8>::with_size(size))
             }
             PixelTag::P3U16 => {
-                MutIntensityImage::from_mut_image(MutImage::<Pixel<3, u16>>::with_size(size))
+                MutIntensityImage::from_mut_image(MutImage::<3, u16>::with_size(size))
             }
             PixelTag::P3F32 => {
-                MutIntensityImage::from_mut_image(MutImage::<Pixel<3, f32>>::with_size(size))
+                MutIntensityImage::from_mut_image(MutImage::<3, f32>::with_size(size))
             }
             PixelTag::P4U8 => {
-                MutIntensityImage::from_mut_image(MutImage::<Pixel<4, u8>>::with_size(size))
+                MutIntensityImage::from_mut_image(MutImage::<4, u8>::with_size(size))
             }
             PixelTag::P4U16 => {
-                MutIntensityImage::from_mut_image(MutImage::<Pixel<4, u16>>::with_size(size))
+                MutIntensityImage::from_mut_image(MutImage::<4, u16>::with_size(size))
             }
             PixelTag::P4F32 => {
-                MutIntensityImage::from_mut_image(MutImage::<Pixel<4, f32>>::with_size(size))
+                MutIntensityImage::from_mut_image(MutImage::<4, f32>::with_size(size))
             }
         }
     }

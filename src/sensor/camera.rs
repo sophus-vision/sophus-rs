@@ -1,7 +1,10 @@
 use approx::assert_relative_eq;
 use nalgebra::{SMatrix, SVector};
 
-use crate::{calculus, image::layout::ImageSize};
+use crate::image::layout::ImageSize;
+use crate::image::layout::ImageSizeTrait;
+use crate::image::mut_image::MutImage;
+use crate::image::mut_view::MutImageViewTrait;
 
 use super::affine::AffineDistortionImpl;
 use super::kannala_brandt::KannalaBrandtDistortionImpl;
@@ -55,6 +58,20 @@ impl<
 
     pub fn undistort(&self, distorted_point: &V<2>) -> V<2> {
         Distort::undistort(&self.params, distorted_point)
+    }
+
+    pub fn undistort_table(&self) -> MutImage<2, f32> {
+        let mut table = MutImage::<2, f32>::with_size(self.image_size);
+        let w = self.image_size.width();
+        let h = self.image_size.height();
+        for v in 0..h {
+            let row_slice = table.mut_row_slice(v);
+            for u in 0..w {
+                let pixel = self.undistort(&V::<2>::new(u as f64, v as f64));
+                row_slice[u] = pixel.cast();
+            }
+        }
+        table
     }
 
     pub fn dx_distort_x(&self, proj_point_in_camera_z1_plane: &V<2>) -> M<2, 2> {
@@ -147,6 +164,7 @@ pub trait CameraEnum {
     fn cam_unproj_with_z(&self, point_in_camera: &V<2>, z: f64) -> V<3>;
     fn distort(&self, point_in_camera: &V<2>) -> V<2>;
     fn undistort(&self, point_in_camera: &V<2>) -> V<2>;
+    fn undistort_table(&self) -> MutImage<2, f32>;
 
     fn dx_distort_x(&self, point_in_camera: &V<2>) -> M<2, 2>;
 
@@ -194,7 +212,7 @@ impl CameraEnum for PerspectiveCameraType {
         }
     }
 
-    fn dx_distort_x(&self, point_in_camera: &V<2>) ->M<2, 2>{
+    fn dx_distort_x(&self, point_in_camera: &V<2>) -> M<2, 2> {
         match self {
             PerspectiveCameraType::Pinhole(camera) => camera.dx_distort_x(point_in_camera),
             PerspectiveCameraType::KannalaBrandt(camera) => camera.dx_distort_x(point_in_camera),
@@ -205,6 +223,13 @@ impl CameraEnum for PerspectiveCameraType {
         match self {
             PerspectiveCameraType::Pinhole(camera) => camera.try_set_params(params),
             PerspectiveCameraType::KannalaBrandt(camera) => camera.try_set_params(params),
+        }
+    }
+
+    fn undistort_table(&self) -> MutImage<2, f32> {
+        match self {
+            PerspectiveCameraType::Pinhole(camera) => camera.undistort_table(),
+            PerspectiveCameraType::KannalaBrandt(camera) => camera.undistort_table(),
         }
     }
 }
@@ -261,6 +286,13 @@ impl CameraEnum for AnyProjCameraType {
             AnyProjCameraType::Ortho(camera) => camera.dx_distort_x(point_in_camera),
         }
     }
+
+    fn undistort_table(&self) -> MutImage<2, f32> {
+        match self {
+            AnyProjCameraType::Perspective(camera) => camera.undistort_table(),
+            AnyProjCameraType::Ortho(camera) => camera.undistort_table(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -314,11 +346,15 @@ impl<CameraType: CameraEnum> DynCameraFacade<CameraType> {
     ) -> Result<(), WrongParamsDim> {
         self.camera_type.try_set_params(params)
     }
+
+    pub fn undistort_table(&self) -> MutImage<2, f32> {
+        self.camera_type.undistort_table()
+    }
 }
 
 mod tests {
 
-    use crate::calculus::numeric_diff::VectorField;
+    use crate::{calculus::numeric_diff::VectorField, image::{view::ImageViewTrait, interpolation::interpolate}};
 
     use super::*;
 
@@ -345,6 +381,8 @@ mod tests {
                 V::<2>::new(639.0, 479.0),
             ];
 
+            let table = camera.undistort_table();
+
             for pixel in pixels_in_image {
                 for d in [1.0, 0.1, 0.5, 1.1, 3.0, 15.0] {
                     let point_in_camera = camera.cam_unproj_with_z(&pixel, d);
@@ -354,21 +392,19 @@ mod tests {
                     assert_relative_eq!(pixel_in_image2, pixel, epsilon = 1e-6);
                 }
                 let ab_in_z1plane = camera.undistort(&pixel);
+                let ab_in_z1plane2_f32 =  interpolate(&table, pixel.cast());
+                let ab_in_z1plane2 = ab_in_z1plane2_f32.cast();
+                assert_relative_eq!(ab_in_z1plane, ab_in_z1plane2, epsilon = 0.000001);
 
                 let pixel_in_image3 = camera.distort(&ab_in_z1plane);
                 assert_relative_eq!(pixel_in_image3, pixel, epsilon = 1e-6);
 
-
                 let dx = camera.dx_distort_x(&pixel);
-                let numeric_dx = VectorField::numeric_diff(
-                    |x: &V<2>| camera.distort(x),
-                    pixel,
-                    1e-6,
-                );
+                let numeric_dx =
+                    VectorField::numeric_diff(|x: &V<2>| camera.distort(x), pixel, 1e-6);
 
                 assert_relative_eq!(dx, numeric_dx, epsilon = 1e-4);
             }
         }
-
     }
 }

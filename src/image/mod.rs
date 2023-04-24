@@ -8,6 +8,8 @@ pub mod mut_image;
 pub mod mut_view;
 pub mod ndarray;
 pub mod pixel;
+pub mod interpolation;
+
 #[cfg(not(target_arch = "wasm32"))]
 pub mod py;
 pub mod view;

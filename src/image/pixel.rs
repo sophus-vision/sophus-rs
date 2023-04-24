@@ -1,3 +1,6 @@
+use std::ops::{Index, Mul, IndexMut};
+
+use num_traits::NumCast;
 #[cfg(not(target_arch = "wasm32"))]
 use pyo3::pyclass;
 
@@ -28,7 +31,15 @@ impl Default for RawDataChunk {
 }
 
 pub trait ScalarTrait:
-    num_traits::Num + std::fmt::Debug + std::default::Default + std::clone::Clone + std::marker::Copy
+    num_traits::Num
+    + std::fmt::Debug
+    + std::default::Default
+    + std::clone::Clone
+    + std::marker::Copy
+    + std::cmp::PartialEq
+    + std::ops::AddAssign
+    + num_traits::Zero
+    + NumCast
 {
     const NUMBER_CATEGORY: NumberCategory;
 }
@@ -45,34 +56,30 @@ impl ScalarTrait for f32 {
     const NUMBER_CATEGORY: NumberCategory = NumberCategory::Real;
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct Pixel<const N: usize, S: ScalarTrait>(pub [S; N]);
+pub type P<const R: usize, Scalar> = nalgebra::SVector<Scalar, R>;
 
-impl<const N: usize, S: ScalarTrait> std::default::Default for Pixel<N, S> {
-    fn default() -> Self {
-        Self([S::default(); N])
-    }
-}
-
-pub trait PixelTrait: std::marker::Copy + num_traits::Zero + PartialEq {
-    type Scalar: ScalarTrait;
-    const NUM_CHANNELS: usize;
-    const NUMBER_CATEGORY: NumberCategory;
-
-    fn cast(raw: *const RawDataChunk) -> *const Self {
+pub trait PixelTrait<const CHANNELS: usize, Scalar: ScalarTrait+'static>:
+    std::marker::Copy
+    + num_traits::Zero
+    + PartialEq
+    + Index<usize, Output = Scalar>
+    + IndexMut<usize, Output = Scalar>
+    + num_traits::Zero
+{
+    fn cast_from_raw(raw: *const RawDataChunk) -> *const Self {
         raw as *const Self
     }
 
-    fn scalar_cast(raw: *const RawDataChunk) -> *const Self::Scalar {
-        raw as *const Self::Scalar
+    fn scalar_cast(raw: *const RawDataChunk) -> *const Scalar {
+        raw as *const Scalar
     }
 
     fn mut_cast(raw: *mut RawDataChunk) -> *mut Self {
         raw as *mut Self
     }
 
-    fn mut_scalar_cast(raw: *mut RawDataChunk) -> *mut Self::Scalar {
-        raw as *mut Self::Scalar
+    fn mut_scalar_cast(raw: *mut RawDataChunk) -> *mut Scalar {
+        raw as *mut Scalar
     }
 
     fn u8_cast(raw: *const Self) -> *const u8 {
@@ -82,56 +89,28 @@ pub trait PixelTrait: std::marker::Copy + num_traits::Zero + PartialEq {
     fn u8_mut_cast(raw: *mut Self) -> *mut u8 {
         raw as *mut u8
     }
-}
 
-impl<const N: usize, S: ScalarTrait> core::ops::Add for Pixel<N, S> {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        let mut output = Self::default();
-        for t in output.0.iter_mut().zip(self.0.iter().zip(rhs.0.iter())) {
-            *t.0 = *t.1 .0 + *t.1 .1;
+    fn scale(&self, factor: f32) ->  Self{
+        let mut result = *self;
+        for i in 0..CHANNELS {
+            let v:f32 = NumCast::from(self[i]).unwrap();
+            result[i] = NumCast::from(v * factor).unwrap();
         }
-        output
+        result
     }
 }
 
-impl<const N: usize, S: ScalarTrait> num_traits::Zero for Pixel<N, S> {
-    fn zero() -> Self {
-        Pixel([S::zero(); N])
-    }
+impl<const NUM: usize, S: ScalarTrait + 'static> PixelTrait<NUM, S> for P<NUM, S> {}
 
-    fn is_zero(&self) -> bool {
-        let o = Self::zero();
-        o == *self
-    }
-}
-
-impl PixelTrait for u8 {
-    type Scalar = u8;
-    const NUM_CHANNELS: usize = 1;
-    const NUMBER_CATEGORY: NumberCategory = NumberCategory::Unsigned;
-}
-
-impl PixelTrait for u16 {
-    type Scalar = u16;
-    const NUM_CHANNELS: usize = 1;
-    const NUMBER_CATEGORY: NumberCategory = NumberCategory::Unsigned;
-}
-
-impl PixelTrait for f32 {
-    type Scalar = f32;
-    const NUM_CHANNELS: usize = 1;
-    const NUMBER_CATEGORY: NumberCategory = NumberCategory::Real;
-}
-
-impl<const N: usize, S: ScalarTrait> PixelTrait for Pixel<N, S> {
-    type Scalar = S;
-
-    const NUM_CHANNELS: usize = N;
-
-    const NUMBER_CATEGORY: NumberCategory = S::NUMBER_CATEGORY;
-}
+pub type P1U8 = P<1, u8>;
+pub type P1U16 = P<1, u16>;
+pub type P1F32 = P<1, f32>;
+pub type P3U8 = P<3, u8>;
+pub type P3U16 = P<3, u16>;
+pub type P3F32 = P<3, f32>;
+pub type P4U8 = P<4, u8>;
+pub type P4U16 = P<4, u16>;
+pub type P4F32 = P<4, f32>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PixelFormat {
@@ -141,11 +120,11 @@ pub struct PixelFormat {
 }
 
 impl PixelFormat {
-    pub fn new<T: PixelTrait>() -> Self {
+    pub fn new<const N: usize, S: ScalarTrait+'static>() -> Self {
         PixelFormat {
-            number_category: T::NUMBER_CATEGORY,
-            num_scalars: T::NUM_CHANNELS,
-            num_bytes_per_scalar: std::mem::size_of::<T::Scalar>(),
+            number_category: S::NUMBER_CATEGORY,
+            num_scalars: N,
+            num_bytes_per_scalar: std::mem::size_of::<S>(),
         }
     }
 }
@@ -171,7 +150,7 @@ impl PixelFormat {
 
     pub fn from(tag: PixelTag) -> Self {
         match tag {
-            PixelTag::PU8 => PixelFormat::new::<u8>(),
+            PixelTag::PU8 => PixelFormat::new::<1, u8>(),
             PixelTag::PU16 => todo!(),
             PixelTag::PF32 => todo!(),
             PixelTag::P3U8 => todo!(),
@@ -184,14 +163,14 @@ impl PixelFormat {
     }
 }
 
-pub trait IntensityPixelTrait: PixelTrait {}
+pub trait IntensityPixelTrait<const N: usize, S: ScalarTrait+'static>: PixelTrait<N, S> {}
 
-impl IntensityPixelTrait for u8 {}
-impl IntensityPixelTrait for u16 {}
-impl IntensityPixelTrait for f32 {}
-impl IntensityPixelTrait for Pixel<3, u8> {}
-impl IntensityPixelTrait for Pixel<3, u16> {}
-impl IntensityPixelTrait for Pixel<3, f32> {}
-impl IntensityPixelTrait for Pixel<4, u8> {}
-impl IntensityPixelTrait for Pixel<4, u16> {}
-impl IntensityPixelTrait for Pixel<4, f32> {}
+impl IntensityPixelTrait<1, u8> for P<1, u8> {}
+impl IntensityPixelTrait<1, u16> for P<1, u16> {}
+impl IntensityPixelTrait<1, f32> for P<1, f32> {}
+impl IntensityPixelTrait<3, u8> for P<3, u8> {}
+impl IntensityPixelTrait<3, u16> for P<3, u16> {}
+impl IntensityPixelTrait<3, f32> for P<3, f32> {}
+impl IntensityPixelTrait<4, u8> for P<4, u8> {}
+impl IntensityPixelTrait<4, u16> for P<4, u16> {}
+impl IntensityPixelTrait<4, f32> for P<4, f32> {}

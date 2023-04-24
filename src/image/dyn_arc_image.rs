@@ -15,11 +15,13 @@ use super::pixel::IntensityPixelTrait;
 use super::pixel::PixelFormat;
 use super::pixel::PixelTrait;
 use super::pixel::RawDataChunk;
+use super::pixel::ScalarTrait;
 use super::view::ImageViewTrait;
 use crate::image::layout::ImageLayout;
 use crate::image::layout::ImageLayoutTrait;
 use crate::image::layout::ImageSize;
 use crate::image::layout::ImageSizeTrait;
+use crate::image::pixel::P1F32;
 
 #[cfg(not(target_arch = "wasm32"))]
 use pyo3::pyclass;
@@ -62,14 +64,16 @@ impl<'a> DynImageViewTrait<'a> for AnyImage {
 }
 
 impl AnyImage {
-    pub fn from_image<T: PixelTrait>(img: &ArcImage<T>) -> AnyImage {
+    pub fn from_image<const NUM: usize, Scalar: ScalarTrait+'static>(
+        img: &ArcImage<NUM, Scalar>,
+    ) -> AnyImage {
         let buffer = img.buffer.clone();
 
         let layout = img.layout();
         let pixel_format = PixelFormat {
-            number_category: T::NUMBER_CATEGORY,
-            num_scalars: T::NUM_CHANNELS,
-            num_bytes_per_scalar: std::mem::size_of::<T::Scalar>(),
+            number_category: Scalar::NUMBER_CATEGORY,
+            num_scalars: NUM,
+            num_bytes_per_scalar: std::mem::size_of::<Scalar>(),
         };
         Self {
             buffer,
@@ -82,7 +86,7 @@ impl AnyImage {
 #[test]
 fn from_mut_image() {
     let size_2_x_3 = ImageSize::from_width_and_height(2, 3);
-    let img_f32 = ArcImage::<f32>::with_size_and_val(size_2_x_3, 0.25);
+    let img_f32 = ArcImage::<1, f32>::with_size_and_val(size_2_x_3, P1F32::new(0.25));
     let dyn_img = AnyImage::from_image(&img_f32);
 
     assert_eq!(Arc::strong_count(&img_f32.buffer), 2);
@@ -133,16 +137,17 @@ impl IntensityImage {
 
 impl<'a> IntensityImage {
     pub fn from_image<
-        T: IntensityPixelTrait + 'a,
-        I: ImageViewTrait<'a, T> + IntensityImagelTrait<T> + ImageTrait<T>,
+        const NUM: usize,
+        Scalar: ScalarTrait+'static,
+        I: ImageViewTrait<'a, NUM, Scalar> + IntensityImagelTrait<NUM, Scalar> + ImageTrait<NUM, Scalar>,
     >(
         img: &I,
     ) -> IntensityImage {
         let layout = img.layout();
         let pixel_format = PixelFormat {
-            number_category: T::NUMBER_CATEGORY,
-            num_scalars: T::NUM_CHANNELS,
-            num_bytes_per_scalar: std::mem::size_of::<T::Scalar>(),
+            number_category: Scalar::NUMBER_CATEGORY,
+            num_scalars: NUM,
+            num_bytes_per_scalar: std::mem::size_of::<Scalar>(),
         };
         Self {
             buffer: img.to_enum(),
@@ -153,9 +158,9 @@ impl<'a> IntensityImage {
 }
 
 impl IntensityImage {
-    pub fn from_mut_image<T: IntensityPixelTrait>(img: MutImage<T>) -> IntensityImage
+    pub fn from_mut_image<const NUM: usize, Scalar: ScalarTrait+'static>(img: MutImage<NUM, Scalar>) -> IntensityImage
     where
-        ArcImage<T>: IntensityImagelTrait<T>,
+        ArcImage<NUM, Scalar>: IntensityImagelTrait<NUM, Scalar>,
     {
         IntensityImage::from_image(&ArcImage::from_mut_image(img))
     }
