@@ -1,3 +1,4 @@
+use super::data::DataChunkVec;
 use super::dyn_mut_view::DynMutImageView;
 use super::dyn_mut_view::DynMutImageViewTrait;
 use super::dyn_view::DynImageView;
@@ -8,25 +9,20 @@ use super::mut_image::MutImage;
 use super::mut_image::MutImageTrait;
 use super::mut_image::MutIntensityImageEnum;
 use super::mut_view::MutImageViewTrait;
-use super::pixel::IntensityPixelTrait;
-use super::pixel::NumberCategory;
-use super::pixel::P1F32;
+
 use super::pixel::PixelFormat;
 use super::pixel::PixelTag;
-use super::pixel::PixelTrait;
-use super::pixel::RawDataChunk;
+use super::pixel::P1F32;
+
 use super::pixel::ScalarTrait;
-use super::pixel::P;
+
 use crate::image::layout::ImageLayout;
 use crate::image::layout::ImageLayoutTrait;
 use crate::image::layout::ImageSize;
 use crate::image::layout::ImageSizeTrait;
 
-#[cfg(not(target_arch = "wasm32"))]
-use pyo3::pyclass;
-
 pub struct MutAnyImage {
-    pub buffer: std::vec::Vec<RawDataChunk>,
+    pub buffer: DataChunkVec,
     pub layout: ImageLayout,
     pub pixel_format: PixelFormat,
 }
@@ -45,15 +41,10 @@ impl ImageLayoutTrait for MutAnyImage {
 
 impl<'a> DynImageViewTrait<'a> for MutAnyImage {
     fn dyn_view(&self) -> DynImageView<'_> {
-        let byte_slice;
         let layout = self.layout;
         let pixel_format = self.pixel_format;
-        unsafe {
-            byte_slice = std::slice::from_raw_parts(
-                self.buffer[0].u8_ptr(),
-                layout.padded_area() * pixel_format.num_bytes(),
-            );
-        }
+        let byte_slice = self.buffer.slice::<u8>();
+
         DynImageView {
             layout,
             byte_slice,
@@ -64,15 +55,11 @@ impl<'a> DynImageViewTrait<'a> for MutAnyImage {
 
 impl<'a> DynMutImageViewTrait<'a> for MutAnyImage {
     fn dyn_mut_view(&mut self) -> DynMutImageView<'_> {
-        let mut_byte_slice;
         let layout = self.layout;
         let pixel_format = self.pixel_format;
-        unsafe {
-            mut_byte_slice = std::slice::from_raw_parts_mut(
-                self.buffer[0].mut_u8_ptr(),
-                layout.padded_area() * pixel_format.num_bytes(),
-            );
-        }
+
+        let mut_byte_slice = self.buffer.mut_slice::<u8>();
+
         DynMutImageView {
             layout,
             mut_byte_slice,
@@ -82,7 +69,7 @@ impl<'a> DynMutImageViewTrait<'a> for MutAnyImage {
 }
 
 impl MutAnyImage {
-    pub fn from_mut_image<const NUM: usize, Scalar: ScalarTrait+'static>(
+    pub fn from_mut_image<const NUM: usize, Scalar: ScalarTrait + 'static>(
         img: MutImage<NUM, Scalar>,
     ) -> Self {
         let layout = img.layout();
@@ -111,7 +98,6 @@ fn from_mut_image() {
     let _dyn_img = MutAnyImage::from_mut_image(img_f32);
 }
 
-#[cfg_attr(not(target_arch = "wasm32"), pyclass)]
 #[derive(Debug, Clone)]
 pub struct MutIntensityImage {
     pub buffer: MutIntensityImageEnum,
@@ -204,7 +190,7 @@ impl MutIntensityImagelTrait for MutImage<4, f32> {
 impl<'a> MutIntensityImage {
     pub fn from_mut_image<
         const NUM: usize,
-        Scalar: ScalarTrait+'static,
+        Scalar: ScalarTrait + 'static,
         I: MutImageViewTrait<'a, NUM, Scalar> + MutIntensityImagelTrait + MutImageTrait<NUM, Scalar>,
     >(
         img: I,
@@ -233,18 +219,14 @@ impl MutIntensityImage {
             PixelTag::PF32 => {
                 MutIntensityImage::from_mut_image(MutImage::<1, f32>::with_size(size))
             }
-            PixelTag::P3U8 => {
-                MutIntensityImage::from_mut_image(MutImage::<3, u8>::with_size(size))
-            }
+            PixelTag::P3U8 => MutIntensityImage::from_mut_image(MutImage::<3, u8>::with_size(size)),
             PixelTag::P3U16 => {
                 MutIntensityImage::from_mut_image(MutImage::<3, u16>::with_size(size))
             }
             PixelTag::P3F32 => {
                 MutIntensityImage::from_mut_image(MutImage::<3, f32>::with_size(size))
             }
-            PixelTag::P4U8 => {
-                MutIntensityImage::from_mut_image(MutImage::<4, u8>::with_size(size))
-            }
+            PixelTag::P4U8 => MutIntensityImage::from_mut_image(MutImage::<4, u8>::with_size(size)),
             PixelTag::P4U16 => {
                 MutIntensityImage::from_mut_image(MutImage::<4, u16>::with_size(size))
             }

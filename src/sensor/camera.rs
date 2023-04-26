@@ -1,4 +1,3 @@
-use approx::assert_relative_eq;
 use nalgebra::{SMatrix, SVector};
 
 use crate::image::layout::ImageSize;
@@ -151,7 +150,7 @@ pub enum AnyProjCameraType {
 }
 
 impl AnyProjCameraType {
-    fn new_perspective(model: PerspectiveCameraType) -> Self {
+    pub fn new_perspective(model: PerspectiveCameraType) -> Self {
         Self::Perspective(model)
     }
 }
@@ -300,8 +299,8 @@ pub struct DynCameraFacade<CameraType: CameraEnum> {
     camera_type: CameraType,
 }
 
-type DynAnyProjCamera = DynCameraFacade<AnyProjCameraType>;
-type DynCamera = DynCameraFacade<PerspectiveCameraType>;
+pub type DynAnyProjCamera = DynCameraFacade<AnyProjCameraType>;
+pub type DynCamera = DynCameraFacade<PerspectiveCameraType>;
 
 impl<CameraType: CameraEnum> DynCameraFacade<CameraType> {
     pub fn from_model(camera_type: CameraType) -> Self {
@@ -353,10 +352,14 @@ impl<CameraType: CameraEnum> DynCameraFacade<CameraType> {
 }
 
 mod tests {
+    use approx::assert_relative_eq;
 
-    use crate::{calculus::numeric_diff::VectorField, image::{view::ImageViewTrait, interpolation::interpolate}};
+    use crate::{
+        calculus::numeric_diff::VectorField,
+        image::{interpolation::interpolate, layout::ImageSize},
+    };
 
-    use super::*;
+    use super::{DynCamera, V};
 
     #[test]
     fn camera_prop_tests() {
@@ -392,7 +395,7 @@ mod tests {
                     assert_relative_eq!(pixel_in_image2, pixel, epsilon = 1e-6);
                 }
                 let ab_in_z1plane = camera.undistort(&pixel);
-                let ab_in_z1plane2_f32 =  interpolate(&table, pixel.cast());
+                let ab_in_z1plane2_f32 = interpolate(&table, pixel.cast());
                 let ab_in_z1plane2 = ab_in_z1plane2_f32.cast();
                 assert_relative_eq!(ab_in_z1plane, ab_in_z1plane2, epsilon = 0.000001);
 

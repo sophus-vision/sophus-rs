@@ -1,4 +1,3 @@
-
 use crate::lie::traits::LieGroupImpl;
 use nalgebra::{SMatrix, SVector};
 
@@ -214,8 +213,7 @@ pub type Isometry3Impl =
 pub type Isometry3 = lie::lie_group::LieGroup<6, 7, 3, 4, Isometry3Impl>;
 
 mod tests {
-
-    use super::*;
+    use super::{Isometry3, Rotation3};
 
     #[test]
     fn rotation3_prop_tests() {

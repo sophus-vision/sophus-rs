@@ -7,14 +7,12 @@ use super::arc_image::ImageTrait;
 use super::arc_image::IntensityImageEnum;
 
 use super::arc_image::IntensityImagelTrait;
+use super::data::DataChunkVec;
 use super::dyn_mut_image::MutIntensityImage;
 use super::dyn_view::DynImageView;
 use super::dyn_view::DynImageViewTrait;
 use super::mut_image::MutImage;
-use super::pixel::IntensityPixelTrait;
 use super::pixel::PixelFormat;
-use super::pixel::PixelTrait;
-use super::pixel::RawDataChunk;
 use super::pixel::ScalarTrait;
 use super::view::ImageViewTrait;
 use crate::image::layout::ImageLayout;
@@ -23,11 +21,8 @@ use crate::image::layout::ImageSize;
 use crate::image::layout::ImageSizeTrait;
 use crate::image::pixel::P1F32;
 
-#[cfg(not(target_arch = "wasm32"))]
-use pyo3::pyclass;
-
 pub struct AnyImage {
-    pub buffer: Arc<std::vec::Vec<RawDataChunk>>,
+    pub buffer: Arc<DataChunkVec>,
     pub layout: ImageLayout,
     pub pixel_format: PixelFormat,
 }
@@ -46,15 +41,11 @@ impl ImageLayoutTrait for AnyImage {
 
 impl<'a> DynImageViewTrait<'a> for AnyImage {
     fn dyn_view(&self) -> DynImageView<'_> {
-        let byte_slice;
         let layout = self.layout;
         let pixel_format = self.pixel_format;
-        unsafe {
-            byte_slice = std::slice::from_raw_parts(
-                self.buffer[0].u8_ptr(),
-                layout.padded_area() * pixel_format.num_bytes(),
-            );
-        }
+
+        let byte_slice = self.buffer.slice::<u8>();
+
         DynImageView {
             layout,
             byte_slice,
@@ -64,7 +55,7 @@ impl<'a> DynImageViewTrait<'a> for AnyImage {
 }
 
 impl AnyImage {
-    pub fn from_image<const NUM: usize, Scalar: ScalarTrait+'static>(
+    pub fn from_image<const NUM: usize, Scalar: ScalarTrait + 'static>(
         img: &ArcImage<NUM, Scalar>,
     ) -> AnyImage {
         let buffer = img.buffer.clone();
@@ -93,7 +84,6 @@ fn from_mut_image() {
     assert_eq!(Arc::strong_count(&dyn_img.buffer), 2);
 }
 
-#[cfg_attr(not(target_arch = "wasm32"), pyclass)]
 #[derive(Debug, Clone)]
 pub struct IntensityImage {
     pub buffer: IntensityImageEnum,
@@ -138,8 +128,10 @@ impl IntensityImage {
 impl<'a> IntensityImage {
     pub fn from_image<
         const NUM: usize,
-        Scalar: ScalarTrait+'static,
-        I: ImageViewTrait<'a, NUM, Scalar> + IntensityImagelTrait<NUM, Scalar> + ImageTrait<NUM, Scalar>,
+        Scalar: ScalarTrait + 'static,
+        I: ImageViewTrait<'a, NUM, Scalar>
+            + IntensityImagelTrait<NUM, Scalar>
+            + ImageTrait<NUM, Scalar>,
     >(
         img: &I,
     ) -> IntensityImage {
@@ -158,7 +150,9 @@ impl<'a> IntensityImage {
 }
 
 impl IntensityImage {
-    pub fn from_mut_image<const NUM: usize, Scalar: ScalarTrait+'static>(img: MutImage<NUM, Scalar>) -> IntensityImage
+    pub fn from_mut_image<const NUM: usize, Scalar: ScalarTrait + 'static>(
+        img: MutImage<NUM, Scalar>,
+    ) -> IntensityImage
     where
         ArcImage<NUM, Scalar>: IntensityImagelTrait<NUM, Scalar>,
     {

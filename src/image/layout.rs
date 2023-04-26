@@ -1,9 +1,5 @@
-use super::pixel::{PixelTrait, ScalarTrait, P};
+use super::pixel::{ScalarTrait, P};
 
-#[cfg(not(target_arch = "wasm32"))]
-use pyo3::pyclass;
-
-#[cfg_attr(not(target_arch = "wasm32"), pyclass)]
 #[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
 pub struct ImageSize {
     pub width: usize,
@@ -66,8 +62,8 @@ pub trait ImageLayoutTrait: ImageSizeTrait {
         self.layout().stride() * self.layout().height()
     }
 
-    fn num_bytes_of_padded_area<const NUM: usize, Scalar: ScalarTrait+'static>(&self) -> usize {
-        self.padded_area() * std::mem::size_of::<P::<NUM, Scalar>>()
+    fn num_bytes_of_padded_area<const NUM: usize, Scalar: ScalarTrait + 'static>(&self) -> usize {
+        self.padded_area() * std::mem::size_of::<P<NUM, Scalar>>()
     }
 
     fn layout(&self) -> ImageLayout;

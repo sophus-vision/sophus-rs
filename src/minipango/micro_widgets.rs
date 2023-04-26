@@ -1,5 +1,4 @@
-use linked_hash_map::LinkedHashMap;
-use notan::egui::{self, emath::Numeric, *};
+use notan::egui::{self, emath::Numeric};
 use num_traits::Num;
 use std::{fmt::Display, sync::Arc};
 
@@ -50,7 +49,7 @@ impl MicroWidget for EnumStringRepr {
         }
     }
 
-    fn update(&self, label: &str, other: &mut Self) {
+    fn update(&self, _label: &str, other: &mut Self) {
         other.value = self.value.clone();
     }
 }
@@ -112,13 +111,13 @@ impl<T: Number> MicroWidget for Var<T> {
         &mut self,
         ui: &mut egui::Ui,
         label: String,
-        sender: &mut std::sync::mpsc::Sender<(String, MicroWidgetType)>,
+        _sender: &mut std::sync::mpsc::Sender<(String, MicroWidgetType)>,
     ) {
-        let mut changed = false;
+        let _changed = false;
         ui.label(format!("{}: {}", label, self.value));
     }
 
-    fn update(&self, label: &str, other: &mut Self) {
+    fn update(&self, _label: &str, other: &mut Self) {
         other.value = self.value.clone();
     }
 }
@@ -154,12 +153,12 @@ impl MicroWidget for Button {
         &mut self,
         ui: &mut egui::Ui,
         label: String,
-        sender: &mut std::sync::mpsc::Sender<(String, MicroWidgetType)>,
+        _sender: &mut std::sync::mpsc::Sender<(String, MicroWidgetType)>,
     ) {
-        ui.button(label);
+        let _ = ui.button(label);
     }
 
-    fn update(&self, label: &str, other: &mut Self) {}
+    fn update(&self, _label: &str, _other: &mut Self) {}
 }
 
 pub enum MicroWidgetType {
@@ -194,7 +193,7 @@ impl<T: Number> MicroWidget for RangedVar<T> {
         }
     }
 
-    fn update(&self, label: &str, other: &mut Self) {
+    fn update(&self, _label: &str, other: &mut Self) {
         other.value = self.value.clone();
     }
 }

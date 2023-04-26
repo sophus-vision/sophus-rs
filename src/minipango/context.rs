@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use crate::image::dyn_arc_image::IntensityImage;
 use crate::image::layout::ImageSize;
 use linked_hash_map::LinkedHashMap;
@@ -7,7 +5,7 @@ use notan::egui::{self, *};
 use notan::prelude::*;
 
 use super::micro_widgets::{
-    Button, EnumStringRepr, MicroWidget, MicroWidgetType, Number, RangedVar, Var, VarType,
+    Button, EnumStringRepr, MicroWidget, MicroWidgetType, Number, RangedVar, Var,
 };
 
 pub struct ContextParams {
@@ -185,8 +183,8 @@ fn draw(gfx: &mut Graphics, plugins: &mut Plugins, state: &mut State) {
             }
         });
 
-        state.update_receiver.try_iter().for_each(|widget| {
-            let mut s = state.shared_state.lock();
+        state.update_receiver.try_iter().for_each(|_widget| {
+            let _s = state.shared_state.lock();
             // w.update(label,  s.panel_widgets);
         });
         egui::CentralPanel::default().show(ctx, |ui| {

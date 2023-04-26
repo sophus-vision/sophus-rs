@@ -1,5 +1,6 @@
-use std::{marker::PhantomData, sync::Arc};
+use super::data::{DataChunk, DataChunkVec};
 use num_traits::Zero;
+use std::{marker::PhantomData, sync::Arc};
 
 use super::{
     arc_image::ArcImage,
@@ -8,20 +9,19 @@ use super::{
     layout::{ImageLayout, ImageLayoutTrait, ImageSize, ImageSizeTrait},
     mut_view::MutImageView,
     mut_view::MutImageViewTrait,
-    pixel::PixelTrait,
-    pixel::{RawDataChunk, ScalarTrait, P},
+    pixel::{ScalarTrait, P},
     view::{ImageView, ImageViewTrait},
 };
 
 #[derive(Debug, Default, Clone)]
-pub struct MutImage<const NUM: usize, Scalar: ScalarTrait+'static> {
-    pub buffer: std::vec::Vec<RawDataChunk>,
+pub struct MutImage<const NUM: usize, Scalar: ScalarTrait + 'static> {
+    pub buffer: DataChunkVec,
     pub layout: ImageLayout,
     phantom: PhantomData<Scalar>,
     // mut_flat_view: image::flat::FlatSamples<&'a mut [T::Scalar]>,
 }
 
-impl<'a, const NUM: usize, Scalar: ScalarTrait+'static> MutImage<NUM, Scalar> {
+impl<'a, const NUM: usize, Scalar: ScalarTrait + 'static> MutImage<NUM, Scalar> {
     pub fn with_size_and_val(size: ImageSize, val: P<NUM, Scalar>) -> Self {
         let layout = ImageLayout {
             size,
@@ -30,7 +30,7 @@ impl<'a, const NUM: usize, Scalar: ScalarTrait+'static> MutImage<NUM, Scalar> {
 
         let num_chunks = (layout.num_bytes_of_padded_area::<NUM, Scalar>() + 64 - 1) / 64;
         let mut buffer = Vec::with_capacity(num_chunks);
-        buffer.resize(num_chunks, RawDataChunk::default());
+        buffer.resize(num_chunks, DataChunk::default());
 
         // let samples = mut_img.try_get_flat_mut_slice::<T::Scalar>().unwrap();
 
@@ -48,7 +48,7 @@ impl<'a, const NUM: usize, Scalar: ScalarTrait+'static> MutImage<NUM, Scalar> {
         // };
 
         let mut mut_img = MutImage {
-            buffer,
+            buffer: DataChunkVec { vec: buffer },
             layout,
             phantom: PhantomData {},
         };
@@ -68,7 +68,7 @@ impl<'a, const NUM: usize, Scalar: ScalarTrait+'static> MutImage<NUM, Scalar> {
 
     pub fn make_from_transform<
         const NUM2: usize,
-        Scalar2: ScalarTrait+'static,
+        Scalar2: ScalarTrait + 'static,
         V: ImageViewTrait<'a, NUM2, Scalar2>,
         F: Fn(P<NUM2, Scalar2>) -> P<NUM, Scalar>,
     >(
@@ -81,7 +81,7 @@ impl<'a, const NUM: usize, Scalar: ScalarTrait+'static> MutImage<NUM, Scalar> {
     }
 
     pub fn from_image(mut img: ArcImage<NUM, Scalar>) -> Self {
-        let buffer: Vec<RawDataChunk> = Arc::make_mut(&mut img.buffer).clone();
+        let buffer: DataChunkVec = Arc::make_mut(&mut img.buffer).clone();
         let layout = img.layout();
         Self {
             buffer,
@@ -91,13 +91,13 @@ impl<'a, const NUM: usize, Scalar: ScalarTrait+'static> MutImage<NUM, Scalar> {
     }
 }
 
-impl<const NUM: usize, Scalar: ScalarTrait+'static> ImageSizeTrait for MutImage<NUM, Scalar> {
+impl<const NUM: usize, Scalar: ScalarTrait + 'static> ImageSizeTrait for MutImage<NUM, Scalar> {
     fn size(&self) -> ImageSize {
         self.view().size()
     }
 }
 
-impl<const NUM: usize, Scalar: ScalarTrait+'static> ImageLayoutTrait for MutImage<NUM, Scalar> {
+impl<const NUM: usize, Scalar: ScalarTrait + 'static> ImageLayoutTrait for MutImage<NUM, Scalar> {
     fn layout(&self) -> ImageLayout {
         self.view().layout()
     }
@@ -107,29 +107,12 @@ impl<'a, const NUM: usize, Scalar: ScalarTrait + 'static> ImageViewTrait<'a, NUM
     for MutImage<NUM, Scalar>
 {
     fn view(&self) -> ImageView<'_, NUM, Scalar> {
-        let slice;
-        unsafe {
-            slice = std::slice::from_raw_parts(
-                P::<NUM, Scalar>::cast_from_raw(self.buffer.as_ptr()),
-                self.layout.padded_area(),
-            );
-        }
-        let scalar_slice;
-        unsafe {
-            scalar_slice = std::slice::from_raw_parts(
-                P::<NUM, Scalar>::scalar_cast(self.buffer.as_ptr()),
-                self.layout.padded_area() * NUM,
-            );
-        }
+        let slice = self.buffer.slice::<P<NUM, Scalar>>();
+
         ImageView::<'_, NUM, Scalar> {
             layout: self.layout,
             slice,
-            scalar_slice,
         }
-    }
-
-    fn scalar_slice(&self) -> &[Scalar] {
-        self.view().scalar_slice
     }
 }
 
@@ -137,91 +120,25 @@ impl<'a, const NUM: usize, Scalar: ScalarTrait + 'static> MutImageViewTrait<'a, 
     for MutImage<NUM, Scalar>
 {
     fn mut_view(&mut self) -> MutImageView<'_, NUM, Scalar> {
-        let mut_slice;
-        unsafe {
-            mut_slice = std::slice::from_raw_parts_mut(
-                P::<NUM, Scalar>::mut_cast(self.buffer.as_mut_ptr()),
-                self.layout.padded_area(),
-            );
-        }
-        let mut_scalar_slice;
-        unsafe {
-            mut_scalar_slice = std::slice::from_raw_parts_mut(
-                P::<NUM, Scalar>::mut_scalar_cast(self.buffer.as_mut_ptr()),
-                self.layout.padded_area() * NUM,
-            );
-        }
+        let mut_slice = self.buffer.mut_slice::<P<NUM, Scalar>>();
+        //let mut_scalar_slice = self.buffer.mut_slice::<Scalar>();
         MutImageView::<'_, NUM, Scalar> {
             layout: self.layout,
             mut_slice,
-            mut_scalar_slice,
+            // mut_scalar_slice,
         }
     }
 }
 
-pub trait MutImageTrait<const NUM: usize, Scalar: ScalarTrait+'static> {
-    fn buffer(self) -> std::vec::Vec<RawDataChunk>;
+pub trait MutImageTrait<const NUM: usize, Scalar: ScalarTrait + 'static> {
+    fn buffer(self) -> DataChunkVec;
 }
 
-impl<const NUM: usize, Scalar: ScalarTrait+'static> MutImageTrait<NUM, Scalar> for MutImage<NUM, Scalar> {
-    fn buffer(self) -> std::vec::Vec<RawDataChunk> {
+impl<const NUM: usize, Scalar: ScalarTrait + 'static> MutImageTrait<NUM, Scalar>
+    for MutImage<NUM, Scalar>
+{
+    fn buffer(self) -> DataChunkVec {
         self.buffer
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-
-    use crate::image::pixel::P1F32;
-
-    use super::*;
-
-    #[test]
-    fn empty_image() {
-        let img = MutImage::<1, u8>::default();
-        assert!(img.is_empty());
-
-        let size_2_x_3 = ImageSize::from_width_and_height(2, 3);
-        let img_f32 = MutImage::<1, f32>::with_size_and_val(size_2_x_3, P1F32::zero());
-        assert!(!img_f32.is_empty());
-        assert_eq!(img_f32.size(), size_2_x_3);
-    }
-
-    #[test]
-    fn create_copy_access() {
-        // 1. create new mut image.
-        let size_2_x_3 = ImageSize::from_width_and_height(2, 3);
-
-        let mut img_f32 = MutImage::<1, f32>::with_size_and_val(size_2_x_3, P1F32::new(0.25));
-
-        // create a copy of it.
-        let img_f32_copy = MutImage::make_copy_from(&img_f32);
-
-        // test that copy contains the data expected.
-        assert_eq!(img_f32.slice(), img_f32_copy.slice());
-        img_f32.fill(P::<1,f32>::new(0.23));
-        assert_ne!(img_f32.slice(), img_f32_copy.slice());
-    }
-
-    #[test]
-    pub fn transform() {
-        let size_2_x_3 = ImageSize::from_width_and_height(2, 3);
-
-        let img_f32 = MutImage::<1, f32>::with_size_and_val(size_2_x_3,  P1F32::new(1.0));
-
-        // let op = |v: f32| {
-        //     let mut pixel = P::default();
-        //     pixel.0[0] = v;
-        //     pixel.0[1] = 0.2 * v;
-        //     pixel
-        // };
-
-        // let pattern = MutImage::make_from_transform(&img_f32, op);
-        // assert_eq!(
-        //     pattern.slice(),
-        //     MutImage::<3, f32>::with_size_and_val(size_2_x_3, op(1.0)).slice()
-        // );
     }
 }
 
@@ -234,36 +151,36 @@ pub enum MutIntensityImageEnum {
     P3U16(MutImage<3, u16>),
     P3F32(MutImage<3, f32>),
     P4U8(MutImage<4, u8>),
-    P4U16(MutImage<4,u16>),
+    P4U16(MutImage<4, u16>),
     P4F32(MutImage<4, f32>),
 }
 
 impl MutIntensityImageEnum {
     fn u8_ptr(&self) -> *const u8 {
         match self {
-            MutIntensityImageEnum::PU8(i) => i.buffer.as_ptr() as *const u8,
-            MutIntensityImageEnum::PU16(i) => i.buffer.as_ptr() as *const u8,
-            MutIntensityImageEnum::PF32(i) => i.buffer.as_ptr() as *const u8,
-            MutIntensityImageEnum::P3U8(i) => i.buffer.as_ptr() as *const u8,
-            MutIntensityImageEnum::P3U16(i) => i.buffer.as_ptr() as *const u8,
-            MutIntensityImageEnum::P3F32(i) => i.buffer.as_ptr() as *const u8,
-            MutIntensityImageEnum::P4U8(i) => i.buffer.as_ptr() as *const u8,
-            MutIntensityImageEnum::P4U16(i) => i.buffer.as_ptr() as *const u8,
-            MutIntensityImageEnum::P4F32(i) => i.buffer.as_ptr() as *const u8,
+            MutIntensityImageEnum::PU8(i) => i.buffer.vec.as_ptr() as *const u8,
+            MutIntensityImageEnum::PU16(i) => i.buffer.vec.as_ptr() as *const u8,
+            MutIntensityImageEnum::PF32(i) => i.buffer.vec.as_ptr() as *const u8,
+            MutIntensityImageEnum::P3U8(i) => i.buffer.vec.as_ptr() as *const u8,
+            MutIntensityImageEnum::P3U16(i) => i.buffer.vec.as_ptr() as *const u8,
+            MutIntensityImageEnum::P3F32(i) => i.buffer.vec.as_ptr() as *const u8,
+            MutIntensityImageEnum::P4U8(i) => i.buffer.vec.as_ptr() as *const u8,
+            MutIntensityImageEnum::P4U16(i) => i.buffer.vec.as_ptr() as *const u8,
+            MutIntensityImageEnum::P4F32(i) => i.buffer.vec.as_ptr() as *const u8,
         }
     }
 
     fn mut_u8_ptr(&mut self) -> *mut u8 {
         match self {
-            MutIntensityImageEnum::PU8(i) => i.buffer.as_mut_ptr() as *mut u8,
-            MutIntensityImageEnum::PU16(i) => i.buffer.as_mut_ptr() as *mut u8,
-            MutIntensityImageEnum::PF32(i) => i.buffer.as_mut_ptr() as *mut u8,
-            MutIntensityImageEnum::P3U8(i) => i.buffer.as_mut_ptr() as *mut u8,
-            MutIntensityImageEnum::P3U16(i) => i.buffer.as_mut_ptr() as *mut u8,
-            MutIntensityImageEnum::P3F32(i) => i.buffer.as_mut_ptr() as *mut u8,
-            MutIntensityImageEnum::P4U8(i) => i.buffer.as_mut_ptr() as *mut u8,
-            MutIntensityImageEnum::P4U16(i) => i.buffer.as_mut_ptr() as *mut u8,
-            MutIntensityImageEnum::P4F32(i) => i.buffer.as_mut_ptr() as *mut u8,
+            MutIntensityImageEnum::PU8(i) => i.buffer.vec.as_mut_ptr() as *mut u8,
+            MutIntensityImageEnum::PU16(i) => i.buffer.vec.as_mut_ptr() as *mut u8,
+            MutIntensityImageEnum::PF32(i) => i.buffer.vec.as_mut_ptr() as *mut u8,
+            MutIntensityImageEnum::P3U8(i) => i.buffer.vec.as_mut_ptr() as *mut u8,
+            MutIntensityImageEnum::P3U16(i) => i.buffer.vec.as_mut_ptr() as *mut u8,
+            MutIntensityImageEnum::P3F32(i) => i.buffer.vec.as_mut_ptr() as *mut u8,
+            MutIntensityImageEnum::P4U8(i) => i.buffer.vec.as_mut_ptr() as *mut u8,
+            MutIntensityImageEnum::P4U16(i) => i.buffer.vec.as_mut_ptr() as *mut u8,
+            MutIntensityImageEnum::P4F32(i) => i.buffer.vec.as_mut_ptr() as *mut u8,
         }
     }
 }
@@ -325,5 +242,62 @@ impl<'a> DynMutImageViewTrait<'a> for MutIntensityImageEnum {
             mut_byte_slice,
             pixel_format,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::image::pixel::{P1F32, P3F32};
+
+    use super::*;
+
+    #[test]
+    fn empty_image() {
+        let img = MutImage::<1, u8>::default();
+        assert!(img.is_empty());
+
+        let size_2_x_3 = ImageSize::from_width_and_height(2, 3);
+        let img_f32 = MutImage::<1, f32>::with_size_and_val(size_2_x_3, P1F32::zero());
+        assert!(!img_f32.is_empty());
+        assert_eq!(img_f32.size(), size_2_x_3);
+    }
+
+    #[test]
+    fn create_copy_access() {
+        // 1. create new mut image.
+        let size_2_x_3 = ImageSize::from_width_and_height(2, 3);
+
+        let mut img_f32 = MutImage::<1, f32>::with_size_and_val(size_2_x_3, P1F32::new(0.25));
+
+        // create a copy of it.
+        let img_f32_copy = MutImage::make_copy_from(&img_f32);
+
+        // test that copy contains the data expected.
+        assert_eq!(img_f32.slice(), img_f32_copy.slice());
+        img_f32.fill(P::<1, f32>::new(0.23));
+        assert_ne!(img_f32.slice(), img_f32_copy.slice());
+    }
+
+    #[test]
+    pub fn transform() {
+        let size_2_x_3 = ImageSize::from_width_and_height(2, 3);
+
+        let img_f32 = MutImage::<1, f32>::with_size_and_val(size_2_x_3, P1F32::new(1.0));
+
+        let op = |v: P1F32| {
+            let v = v[0];
+            let mut pixel = P3F32::default();
+            pixel[0] = v;
+            pixel[1] = 0.2 * v;
+            pixel[2] = 0.3 * v;
+            pixel
+        };
+
+        let pattern = MutImage::make_from_transform(&img_f32, op);
+        assert_eq!(
+            pattern.slice(),
+            MutImage::<3, f32>::with_size_and_val(size_2_x_3, op(P1F32::new(1.0))).slice()
+        );
     }
 }

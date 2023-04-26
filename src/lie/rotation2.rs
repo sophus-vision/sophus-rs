@@ -181,8 +181,9 @@ pub type Isometry2Impl =
 pub type Isometry2 = lie::lie_group::LieGroup<3, 4, 2, 3, Isometry2Impl>;
 
 mod tests {
+    use crate::lie::rotation2::V;
 
-    use super::*;
+    use super::{Isometry2, Rotation2};
 
     #[test]
     fn rotation2_prop_tests() {
@@ -192,14 +193,9 @@ mod tests {
     #[test]
     fn rotation2_unit_tests() {
         let angle_30_deg = V::<1>::new(30.0_f64.to_radians());
-        let rot_30deg = Rotation2::exp(&angle_30_deg);
-        //print!("rot_30deg: {}", rot_30deg.compact());
-
+        let _rot_30deg = Rotation2::exp(&angle_30_deg);
         let hat_30deg = Rotation2::hat(&angle_30_deg);
-        //print!("hat_30deg: {}", hat_30deg);
-
         let vee_30deg = Rotation2::vee(&hat_30deg);
-        //print!("vee_30deg: {}", vee_30deg);
 
         approx::assert_relative_eq!(angle_30_deg, vee_30deg, epsilon = 1e-6);
     }
@@ -214,16 +210,6 @@ mod tests {
         let angle_30_deg = V::<1>::new(30.0_f64.to_radians());
         let rot_30deg = Rotation2::exp(&angle_30_deg);
         let translation = V::<2>::new(1.0, 2.0);
-        let isometry = Isometry2::from_t_and_subgroup(&translation, &rot_30deg);
-
-        // print!("isometry: {}", isometry.compact());
-
-        // let hat_30deg = Isometry2::hat(&angle_30_deg);
-        // print!("hat_30deg: {}", hat_30deg);
-
-        // let vee_30deg = Isometry2::vee(&hat_30deg);
-        // print!("vee_30deg: {}", vee_30deg);
-
-        // approx::assert_relative_eq!(angle_30_deg, vee_30deg, epsilon = 1e-6);
+        let _isometry = Isometry2::from_t_and_subgroup(&translation, &rot_30deg);
     }
 }

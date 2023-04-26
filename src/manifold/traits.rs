@@ -21,8 +21,8 @@ pub trait ManifoldImpl<
         let params_examples = Self::params_examples();
         let tangent_examples = Self::tangent_examples();
 
-        for (params_id, params) in params_examples.iter().enumerate() {
-            for (tangent_id, delta) in tangent_examples.iter().enumerate() {
+        for (_params_id, params) in params_examples.iter().enumerate() {
+            for (_tangent_id, delta) in tangent_examples.iter().enumerate() {
                 let b = Self::oplus(params, delta);
                 assert!((Self::ominus(params, &b) - delta).norm() < 1e-6);
             }

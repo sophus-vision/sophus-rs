@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 use approx::assert_relative_eq;
 use assertables::assert_le_as_result;
 
-use crate::calculus::{numeric_diff::VectorField, points::example_points};
+use crate::calculus::numeric_diff::VectorField;
 
 use super::traits::LieGroupImpl;
 
