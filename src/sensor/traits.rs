@@ -1,6 +1,9 @@
 use nalgebra::{SMatrix, SVector};
 
-use crate::calculus;
+use crate::{
+    calculus,
+    image::{layout::ImageSize, mut_image::MutImage},
+};
 type V<const N: usize> = SVector<f64, N>;
 type M<const N: usize, const O: usize> = SMatrix<f64, N, O>;
 
@@ -27,4 +30,22 @@ pub trait Projection {
     fn unproj(point_in_camera: &V<2>, extension: f64) -> V<3>;
 
     fn dx_proj_x(point_in_camera: &V<3>) -> M<2, 3>;
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct WrongParamsDim;
+
+pub trait CameraEnum {
+    fn new_pinhole(params: &V<4>, image_size: ImageSize) -> Self;
+    fn new_kannala_brandt(params: &V<8>, image_size: ImageSize) -> Self;
+
+    fn cam_proj(&self, point_in_camera: &V<3>) -> V<2>;
+    fn cam_unproj_with_z(&self, point_in_camera: &V<2>, z: f64) -> V<3>;
+    fn distort(&self, point_in_camera: &V<2>) -> V<2>;
+    fn undistort(&self, point_in_camera: &V<2>) -> V<2>;
+    fn undistort_table(&self) -> MutImage<2, f32>;
+
+    fn dx_distort_x(&self, point_in_camera: &V<2>) -> M<2, 2>;
+
+    fn try_set_params(&mut self, params: &nalgebra::DVector<f64>) -> Result<(), WrongParamsDim>;
 }

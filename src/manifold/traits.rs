@@ -1,4 +1,4 @@
-use nalgebra::SVector;
+use nalgebra::{Isometry3, SVector};
 type V<const N: usize> = SVector<f64, N>;
 use crate::calculus;
 
@@ -29,3 +29,12 @@ pub trait ManifoldImpl<
         }
     }
 }
+
+pub trait Manifold<const DOF: usize>: std::fmt::Debug {}
+
+impl Manifold<1> for nalgebra::Vector1<f64> {}
+impl Manifold<2> for nalgebra::Vector2<f64> {}
+
+impl Manifold<3> for nalgebra::Vector3<f64> {}
+
+impl Manifold<6> for nalgebra::Vector6<f64> {}

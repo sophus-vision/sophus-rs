@@ -1,4 +1,5 @@
 use crate::lie::traits::LieGroupImpl;
+use crate::manifold::traits::Manifold;
 use nalgebra::{SMatrix, SVector};
 
 use crate::{
@@ -211,6 +212,9 @@ impl lie::traits::LieSubgroupImplTrait<3, 4, 3, 3> for Rotation3Impl {
 pub type Isometry3Impl =
     lie::semi_direct_product::SemiDirectProductImpl<6, 7, 3, 4, 3, 4, Rotation3Impl>;
 pub type Isometry3 = lie::lie_group::LieGroup<6, 7, 3, 4, Isometry3Impl>;
+
+impl Manifold<3> for Rotation3 {}
+impl Manifold<6> for Isometry3 {}
 
 mod tests {
     use super::{Isometry3, Rotation3};

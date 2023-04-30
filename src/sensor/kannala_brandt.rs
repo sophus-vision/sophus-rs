@@ -1,13 +1,13 @@
-use nalgebra::{RowVector2, SMatrix, SVector};
+use nalgebra::RowVector2;
 use notan::log::{debug, trace, warn};
 
 use crate::calculus;
 
 use super::{affine::AffineDistortionImpl, traits::CameraDistortionImpl};
-type V<const N: usize> = SVector<f64, N>;
-type M<const N: usize, const O: usize> = SMatrix<f64, N, O>;
+type V<const N: usize> = nalgebra::SVector<f64, N>;
+type M<const N: usize, const O: usize> = nalgebra::SMatrix<f64, N, O>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct KannalaBrandtDistortionImpl;
 
 impl calculus::traits::ParamsImpl<8> for KannalaBrandtDistortionImpl {
