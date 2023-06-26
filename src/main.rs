@@ -14,18 +14,17 @@ use tuple_list::{tuple_list, tuple_list_type, Tuple};
 #[derive(Copy, Clone)]
 struct StereoBaCostTermSignature {
     c: nalgebra::Vector2<f64>,
-    entity_indices: tuple_list_type!(usize, usize),
+    entity_indices: [usize; 2],
 }
 
 impl CostTermSignature<2> for StereoBaCostTermSignature {
-    type EntityIndexTuple = tuple_list_type!(usize, usize);
     type Constants = nalgebra::Vector2<f64>;
 
     fn c_ref(&self) -> &Self::Constants {
         &self.c
     }
 
-    fn idx_ref(&self) -> &Self::EntityIndexTuple {
+    fn idx_ref(&self) -> &[usize; 2] {
         &self.entity_indices
     }
 
@@ -92,9 +91,9 @@ fn main() {
         CostFnArg::var(&point_family),
     );
 
-    let cost_terms = vec![StereoBaCostTermSignature {
+    let mut cost_terms = vec![StereoBaCostTermSignature {
         c: nalgebra::Vector2::repeat(1.0),
-        entity_indices: tuple_list!(1, 0),
+        entity_indices: [1, 0],
     }];
 
     let pinhole_camera = PinholeCamera::from_params_and_size(
@@ -103,13 +102,9 @@ fn main() {
     );
 
     apply(
-        StereoBa { pinhole_camera },
-        &cost_terms,
-        &tracking_families.into_tuple_list(),
+        StereoBa::<'v', 'c'> { pinhole_camera },
+        &mut cost_terms,
+        &tracking_families,
     );
-    apply(
-        StereoBa { pinhole_camera },
-        &cost_terms,
-        &ba_families.into_tuple_list(),
-    );
+    apply(StereoBa { pinhole_camera }, &mut cost_terms, &ba_families);
 }

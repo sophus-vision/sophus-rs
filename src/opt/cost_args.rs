@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use crate::{lie::rotation3::Isometry3, manifold::traits::Manifold};
+use sophus_macros::create_impl;
 
 use super::tuple::SimpleTuple;
 
@@ -162,53 +163,409 @@ impl<'a, const AT: char> ManifoldV for CostFnArg<'a, 6, Isometry3, AT> {
 }
 
 pub trait ManifoldVTuple {
-    const N: usize;
-    type ArgTuple: CostArgTuple;
-    type EntityIndexTuple: SimpleTuple<usize>;
+    type Idx;
+    type Output: Debug;
+    type CatArray: Debug;
+    const CAT: Self::CatArray;
 
-    type C: SimpleTuple<char>;
-
-    //  fn get_dofs() -> Self::EntityIndexTuple;
-
-    fn get_elem(&self, idx: &Self::EntityIndexTuple) -> Self::ArgTuple;
-
-    fn get_var_at() -> Self::C;
+    fn get_elem(&self, idx: &Self::Idx) -> Self::Output;
 }
 
-// Now we have to implement trait for an empty tuple,
-// thus defining initial condition.
-impl ManifoldVTuple for () {
-    //fn plus_one(&mut self) {}
-    const N: usize = 0;
+impl<M0: ManifoldV> ManifoldVTuple for M0 {
+    type Idx = [usize; 1];
+    type Output = (M0::Arg, ());
+    type CatArray = [char; 1];
+    const CAT: Self::CatArray = [M0::CAT];
 
-    type ArgTuple = ();
-    type EntityIndexTuple = ();
-    type C = ();
-
-    //fn get_dofs() -> () {}
-
-    fn get_elem(&self, _idx: &()) {}
-
-    fn get_var_at() {}
+    fn get_elem(&self, idx: &Self::Idx) -> Self::Output {
+        (self.get_elem(idx[0]), ())
+    }
 }
 
-// Now we can implement trait for a non-empty tuple list,
-// thus defining recursion and supporting tuple lists of arbitrary length.
-impl<Head, Tail> ManifoldVTuple for (Head, Tail)
-where
-    Head: ManifoldV,
-    Tail: ManifoldVTuple,
-{
-    const N: usize = 1 + Tail::N;
-    type ArgTuple = (Head::Arg, Tail::ArgTuple);
-    type EntityIndexTuple = (usize, Tail::EntityIndexTuple);
-    type C = (char, Tail::C);
+impl<M0: ManifoldV, M1: ManifoldV> ManifoldVTuple for (M0, M1) {
+    type Idx = [usize; 2];
+    type Output = (M0::Arg, (M1::Arg, ()));
+    type CatArray = [char; 2];
+    const CAT: Self::CatArray = [M0::CAT, M1::CAT];
 
-    fn get_elem(&self, idx: &(usize, Tail::EntityIndexTuple)) -> Self::ArgTuple {
-        (self.0.get_elem(idx.0), self.1.get_elem(&idx.1))
+    fn get_elem(&self, idx: &Self::Idx) -> Self::Output {
+        (self.0.get_elem(idx[0]), (self.1.get_elem(idx[1]), ()))
+    }
+}
+
+impl<M0: ManifoldV, M1: ManifoldV, M2: ManifoldV> ManifoldVTuple for (M0, M1, M2) {
+    type Idx = [usize; 3];
+    type Output = (M0::Arg, (M1::Arg, (M2::Arg, ())));
+    type CatArray = [char; 3];
+    const CAT: Self::CatArray = [M0::CAT, M1::CAT, M2::CAT];
+
+    fn get_elem(&self, idx: &Self::Idx) -> Self::Output {
+        (
+            self.0.get_elem(idx[0]),
+            (self.1.get_elem(idx[1]), (self.2.get_elem(idx[2]), ())),
+        )
+    }
+}
+
+const fn less_than<const N: usize>(
+    c: &[char],
+    lhs: [usize; N],
+    rhs: [usize; N],
+) -> std::cmp::Ordering {
+    let mut permutation: [usize; N] = [0; N];
+
+    let mut v_count = 0;
+    let mut h = 0;
+    loop {
+        if h >= N {
+            break;
+        }
+        if c[h] == 'm' {
+            permutation[h] = v_count;
+            v_count += 1;
+        }
+        h += 1;
     }
 
-    fn get_var_at() -> Self::C {
-        (Head::CAT, Tail::get_var_at())
+    let mut i = 0;
+    loop {
+        if i >= N {
+            break;
+        }
+        if c[i] == 'v' {
+            permutation[i] = v_count;
+            v_count += 1;
+        }
+        i += 1;
+    }
+    let mut j = 0;
+    loop {
+        if j >= N {
+            break;
+        }
+        if c[j] == 'c' {
+            permutation[j] = v_count;
+            v_count += 1;
+        }
+        j += 1;
+    }
+
+    let mut permuted_lhs: [usize; N] = [0; N];
+    let mut permuted_rhs: [usize; N] = [0; N];
+
+    let mut k = 0;
+    loop {
+        if k >= N {
+            break;
+        }
+        permuted_lhs[permutation[k]] = lhs[k];
+        permuted_rhs[permutation[k]] = rhs[k];
+        k += 1;
+    }
+
+    let mut l = 0;
+    loop {
+        if l >= N {
+            break;
+        }
+        if permuted_lhs[l] < permuted_rhs[l] {
+            return std::cmp::Ordering::Less;
+        } else if permuted_lhs[l] > permuted_rhs[l] {
+            return std::cmp::Ordering::Greater;
+        }
+        l += 1;
+    }
+    return std::cmp::Ordering::Equal;
+}
+
+pub struct Less<C>
+where
+    C: AsRef<[char]>,
+{
+    pub(crate) c: C,
+}
+
+impl<C> Less<C>
+where
+    C: AsRef<[char]>,
+{
+    pub fn less_than<const N: usize>(
+        &self,
+        lhs: [usize; N],
+        rhs: [usize; N],
+    ) -> std::cmp::Ordering {
+        less_than(self.c.as_ref(), lhs, rhs)
+    }
+}
+
+mod test {
+
+    use crate::opt::cost_args::Less;
+
+    use super::less_than;
+
+    #[test]
+    fn test() {
+        // Length 2
+        const vv: [char; 2] = ['v', 'v'];
+        const vc: [char; 2] = ['v', 'c'];
+        const cv: [char; 2] = ['c', 'v'];
+        const cc: [char; 2] = ['c', 'c'];
+
+        assert_eq!(less_than(&vv, [0, 0], [1, 0]), std::cmp::Ordering::Less);
+        assert_eq!(less_than(&vv, [1, 0], [0, 0]), std::cmp::Ordering::Greater);
+        assert_eq!(less_than(&vc, [0, 0], [1, 0]), std::cmp::Ordering::Less);
+        assert_eq!(less_than(&vc, [1, 0], [0, 0]), std::cmp::Ordering::Greater);
+        assert_eq!(less_than(&cv, [0, 0], [1, 0]), std::cmp::Ordering::Less);
+        assert_eq!(less_than(&cv, [1, 0], [0, 0]), std::cmp::Ordering::Greater);
+        assert_eq!(less_than(&cc, [0, 0], [0, 0]), std::cmp::Ordering::Equal);
+
+        const mv: [char; 2] = ['m', 'v'];
+        const vm: [char; 2] = ['v', 'm'];
+        const mm: [char; 2] = ['m', 'm'];
+
+        assert_eq!(less_than(&mv, [0, 0], [1, 0]), std::cmp::Ordering::Less);
+        assert_eq!(less_than(&vm, [0, 0], [1, 0]), std::cmp::Ordering::Less);
+        assert_eq!(less_than(&mm, [0, 0], [0, 0]), std::cmp::Ordering::Equal);
+
+        const vvv: [char; 3] = ['v', 'v', 'v'];
+
+        assert_eq!(
+            less_than(&vvv, [0, 0, 0], [1, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&vvv, [0, 2, 0], [1, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&vvv, [0, 1, 0], [1, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&vvv, [0, 0, 1], [1, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&vvv, [0, 1, 0], [0, 0, 1]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&vvv, [0, 0, 1], [0, 0, 2]),
+            std::cmp::Ordering::Less
+        );
+
+        const cvv: [char; 3] = ['c', 'v', 'v'];
+
+        assert_eq!(
+            less_than(&cvv, [0, 0, 0], [1, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&cvv, [0, 2, 0], [1, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&cvv, [0, 1, 0], [1, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&cvv, [0, 0, 1], [1, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&cvv, [0, 1, 0], [0, 0, 1]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&cvv, [0, 0, 1], [0, 0, 2]),
+            std::cmp::Ordering::Less
+        );
+
+        const cvc: [char; 3] = ['c', 'v', 'c'];
+        assert_eq!(
+            less_than(&cvc, [0, 0, 0], [1, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&cvc, [0, 2, 0], [1, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&cvc, [0, 1, 0], [1, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&cvc, [0, 0, 1], [1, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&cvc, [0, 1, 0], [0, 0, 1]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&cvc, [0, 0, 1], [0, 0, 2]),
+            std::cmp::Ordering::Less
+        );
+
+        const ccv: [char; 3] = ['c', 'c', 'v'];
+
+        assert_eq!(
+            less_than(&ccv, [0, 0, 0], [0, 0, 0]),
+            std::cmp::Ordering::Equal
+        );
+        assert_eq!(
+            less_than(&ccv, [0, 0, 0], [1, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&ccv, [0, 2, 0], [1, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&ccv, [0, 1, 0], [1, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&ccv, [0, 0, 1], [1, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&ccv, [0, 1, 0], [0, 0, 1]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&ccv, [0, 0, 1], [0, 0, 2]),
+            std::cmp::Ordering::Less
+        );
+
+        const cvm: [char; 3] = ['c', 'v', 'm'];
+        assert_eq!(
+            less_than(&cvm, [0, 0, 0], [1, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&cvm, [0, 2, 0], [1, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&cvm, [0, 1, 0], [1, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&cvm, [0, 0, 1], [1, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&cvm, [0, 1, 0], [0, 0, 1]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&cvm, [0, 0, 1], [0, 0, 2]),
+            std::cmp::Ordering::Less
+        );
+
+        // Length 4
+        const vvvv: [char; 4] = ['v', 'v', 'v', 'v'];
+        const cvvv: [char; 4] = ['c', 'v', 'v', 'v'];
+        const ccvv: [char; 4] = ['c', 'c', 'v', 'v'];
+        const cvcv: [char; 4] = ['c', 'v', 'c', 'v'];
+        const vvcc: [char; 4] = ['v', 'v', 'c', 'c'];
+        const ccvc: [char; 4] = ['c', 'c', 'v', 'c'];
+        const vccv: [char; 4] = ['v', 'c', 'c', 'v'];
+
+        assert_eq!(
+            less_than(&vvvv, [0, 0, 0, 0], [1, 0, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&vvvv, [1, 0, 0, 0], [0, 0, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&cvvv, [0, 0, 0, 0], [1, 0, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&cvvv, [1, 0, 0, 0], [0, 0, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&ccvv, [0, 0, 0, 0], [0, 0, 0, 0]),
+            std::cmp::Ordering::Equal
+        );
+        assert_eq!(
+            less_than(&ccvv, [0, 1, 0, 0], [0, 0, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&cvcv, [0, 0, 0, 0], [1, 0, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&cvcv, [1, 0, 0, 0], [0, 0, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&vvcc, [0, 0, 0, 0], [0, 0, 0, 0]),
+            std::cmp::Ordering::Equal
+        );
+        assert_eq!(
+            less_than(&vvcc, [0, 0, 0, 1], [0, 0, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&ccvc, [0, 0, 0, 0], [0, 1, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&ccvc, [0, 1, 0, 0], [0, 0, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&vccv, [0, 0, 0, 0], [1, 0, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&vccv, [0, 0, 1, 0], [1, 0, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+
+        const mvvm: [char; 4] = ['m', 'v', 'v', 'm'];
+        const mmvv: [char; 4] = ['m', 'm', 'v', 'v'];
+        const vmmv: [char; 4] = ['v', 'm', 'm', 'v'];
+        const mmmm: [char; 4] = ['m', 'm', 'm', 'm'];
+
+        assert_eq!(
+            less_than(&mvvm, [0, 0, 0, 0], [1, 0, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&mmvv, [0, 0, 0, 0], [1, 0, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&vmmv, [0, 0, 0, 0], [1, 0, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&mmmm, [0, 0, 0, 0], [0, 0, 0, 0]),
+            std::cmp::Ordering::Equal
+        );
+
+        let c: [char; 3] = ['v', 'v', 'c'];
+        let mut l: Vec<[usize; 3]> = vec![
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9],
+            [9, 8, 7],
+            [6, 5, 4],
+            [3, 2, 1],
+        ];
+
+        let less = Less { c };
+        l.sort_by(|a, b| less.less_than(*a, *b));
+
+        println!("{:?}", l);
     }
 }

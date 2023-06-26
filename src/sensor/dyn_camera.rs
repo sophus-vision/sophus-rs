@@ -1,16 +1,12 @@
 use crate::image::layout::ImageSize;
-use crate::image::layout::ImageSizeTrait;
 use crate::image::mut_image::MutImage;
-use crate::image::mut_view::MutImageViewTrait;
 
 type V<const N: usize> = nalgebra::SVector<f64, N>;
 type M<const N: usize, const O: usize> = nalgebra::SMatrix<f64, N, O>;
 use super::any_camera::AnyProjCameraType;
-use super::generic_camera::Camera;
 use super::perspective_camera::PerspectiveCameraType;
 use super::traits::CameraEnum;
 use super::traits::WrongParamsDim;
-use super::traits::{CameraDistortionImpl, Projection};
 
 #[derive(Debug, Clone)]
 pub struct DynCameraFacade<CameraType: CameraEnum> {

@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use super::{
     block::{BlockMatrix, BlockVector},
-    cost_args::{CostArgTuple, ManifoldVTuple},
+    cost_args::{CostArgTuple, ManifoldV, ManifoldVTuple},
     tuple::SimpleTuple,
 };
 
@@ -33,31 +33,35 @@ pub trait ResidualFn<const MAX_DIM: usize, const NUM_BLOCKS: usize>: Copy {
 
 pub trait CostTermSignature<const N: usize> {
     type Constants;
-    type EntityIndexTuple: SimpleTuple<usize>;
+    //type EntityIndexTuple: SimpleTuple<usize>;
 
     const DOF_TUPLE: [i64; N];
 
     fn c_ref(&self) -> &Self::Constants;
 
-    fn idx_ref(&self) -> &Self::EntityIndexTuple;
+    fn idx_ref(&self) -> &[usize; N];
 }
 
-pub fn apply<R, I, M, C, CC, AA: Debug, const NNN: usize, const NN: usize, const N: usize>(
+pub fn apply<R, M, C, CC, AA: Debug, const NNN: usize, const NN: usize, const N: usize>(
     res_fn: R,
-    cost_terms: &Vec<C>,
+    cost_terms: &mut Vec<C>,
     families: &M,
 ) where
     R: ResidualFn<NNN, NN, Constants = CC, Args = AA>,
-    I: SimpleTuple<usize>,
-    M: ManifoldVTuple<EntityIndexTuple = I, ArgTuple = AA>,
-    C: CostTermSignature<N, EntityIndexTuple = I, Constants = CC>,
+    M: ManifoldVTuple<Idx = [usize; N], Output = AA>,
+    C: CostTermSignature<N, Constants = CC>,
+    <M as ManifoldVTuple>::CatArray: AsRef<[char]>,
 {
-    println!("{:?}", M::get_var_at());
-    //println!("{:?}", M::get_dofs());
+    println!("{:?}", M::CAT);
+    use crate::opt::cost_args::Less;
+
+    let less = Less { c: M::CAT };
+    cost_terms.sort_by(|a, b| less.less_than(*a.idx_ref(), *b.idx_ref()));
 
     for t in cost_terms {
-        println!("{:?}", families.get_elem(t.idx_ref()));
+        let elem = families.get_elem(t.idx_ref());
+        println!("{:?}", elem);
 
-        res_fn.cost(&families.get_elem(t.idx_ref()), t.c_ref());
+        res_fn.cost(&elem, t.c_ref());
     }
 }
