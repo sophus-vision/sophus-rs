@@ -1,5 +1,7 @@
-pub mod lie_group;
+pub mod traits;
+pub mod group;
 pub mod rotation2;
 pub mod rotation3;
-pub mod semi_direct_product;
-pub mod traits;
+pub mod translation_group_product;
+pub mod isometry2;
+pub mod isometry3;

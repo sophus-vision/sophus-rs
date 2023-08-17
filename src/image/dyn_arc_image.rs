@@ -19,7 +19,6 @@ use crate::image::layout::ImageLayout;
 use crate::image::layout::ImageLayoutTrait;
 use crate::image::layout::ImageSize;
 use crate::image::layout::ImageSizeTrait;
-use crate::image::pixel::P1F32;
 
 pub struct AnyImage {
     pub buffer: Arc<DataChunkVec>,
@@ -76,6 +75,8 @@ impl AnyImage {
 
 #[test]
 fn from_mut_image() {
+    use crate::image::pixel::P1F32;
+
     let size_2_x_3 = ImageSize::from_width_and_height(2, 3);
     let img_f32 = ArcImage::<1, f32>::with_size_and_val(size_2_x_3, P1F32::new(0.25));
     let dyn_img = AnyImage::from_image(&img_f32);

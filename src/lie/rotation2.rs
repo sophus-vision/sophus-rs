@@ -1,54 +1,65 @@
-use nalgebra::{SMatrix, SVector};
-type V<const N: usize> = SVector<f64, N>;
-type M<const N: usize, const O: usize> = SMatrix<f64, N, O>;
+use dfdx::prelude::*;
 
-use crate::{
-    calculus, lie,
-    manifold::{self},
-};
+use crate::calculus::batch_types::*;
+use crate::calculus::make::*;
+use crate::calculus::params::*;
+use crate::lie::group::*;
+use crate::lie::traits::*;
+use crate::manifold::traits::*;
 
-#[derive(Debug, Copy, Clone)]
-pub struct Rotation2Impl;
+#[derive(Debug, Clone)]
+pub struct Rotation2Impl<const BATCH: usize> {
+    _phantom: std::marker::PhantomData<()>,
+}
 
-impl Rotation2Impl {}
+impl<const BATCH: usize> Rotation2Impl<BATCH> {}
 
-impl calculus::traits::ParamsImpl<2> for Rotation2Impl {
-    fn params_examples() -> Vec<V<2>> {
+impl<const BATCH: usize> ParamsTestUtils<BATCH, 2> for Rotation2Impl<BATCH> {
+    fn tutil_params_examples() -> Vec<V<BATCH, 2>> {
         let mut params = vec![];
-        for i in 0..10 {
-            let angle = i as f64 * std::f64::consts::PI / 5.0;
-            params.push(*Rotation2::exp(&V::<1>::new(angle)).params());
+        for i in 2..10 {
+            let angle = Into::into(i as f64 * std::f64::consts::PI / 5.0);
+            let dev = dfdx::tensor::Cpu::default();
+            let mut batch = dev.zeros();
+            for i in 0..BATCH {
+                batch[[i, 0]] = angle;
+            }
+            let foo = Rotation2::<BATCH>::exp(batch);
+            params.push(foo.params().clone());
         }
         params
     }
 
-    fn invalid_params_examples() -> Vec<V<2>> {
-        vec![
-            V::<2>::new(0.0, 0.0),
-            V::<2>::new(0.5, 0.5),
-            V::<2>::new(0.5, -0.5),
-        ]
-    }
-
-    fn are_params_valid(params: &V<2>) -> bool {
-        let norm = params.norm();
-        (norm - 1.0).abs() < 1e-6
+    fn tutil_invalid_params_examples() -> Vec<V<BATCH, 2>> {
+        let dev = dfdx::tensor::Cpu::default();
+        vec![dev.zeros(), dev.ones() * 0.5, dev.ones().negate() * 0.5]
     }
 }
 
-impl manifold::traits::TangentImpl<1> for Rotation2Impl {
-    fn tangent_examples() -> Vec<V<1>> {
+impl<const BATCH: usize> ParamsImpl<BATCH, 2> for Rotation2Impl<BATCH> {
+    fn are_params_valid(params: &V<BATCH, 2>) -> bool {
+        let params = params.clone();
+        let norm: Tensor<Rank1<BATCH>, _, _, _> = params.square().sum::<_, Axis<1>>();
+        let one = 1.0;
+        let eps = 1e-6;
+        (norm - one).abs().array().iter().all(|x| x <= &eps)
+    }
+}
+
+impl<const BATCH: usize> TangentTestUtil<BATCH, 1> for Rotation2Impl<BATCH> {
+    fn tutil_tangent_examples() -> Vec<V<BATCH, 1>> {
+        let dev = dfdx::tensor::Cpu::default();
         vec![
-            V::<1>::new(0.0),
-            V::<1>::new(1.0),
-            V::<1>::new(-1.0),
-            V::<1>::new(0.5),
-            V::<1>::new(-0.5),
+            dev.zeros(),
+            dev.ones(),
+            dev.ones().negate(),
+            dev.ones() * 0.5,
+            dev.ones().negate() * 0.5,
         ]
     }
 }
 
-impl lie::traits::LieGroupImpl<1, 2, 2, 2> for Rotation2Impl {
+impl<const BATCH: usize> LieGroupImplTrait<BATCH, 1, 2, 2, 2> for Rotation2Impl<BATCH> {
     const IS_ORIGIN_PRESERVING: bool = true;
     const IS_AXIS_DIRECTION_PRESERVING: bool = false;
     const IS_DIRECTION_VECTOR_PRESERVING: bool = false;
@@ -56,160 +67,145 @@ impl lie::traits::LieGroupImpl<1, 2, 2, 2> for Rotation2Impl {
     const IS_DISTANCE_PRESERVING: bool = true;
     const IS_PARALLEL_LINE_PRESERVING: bool = true;
 
-    fn identity_params() -> V<2> {
-        V::<2>::new(1.0, 0.0)
+    fn identity_params() -> V<BATCH, 2> {
+        let zero = 0.0;
+        let one = 1.0;
+        let dev = dfdx::tensor::Cpu::default();
+        dev.tensor([one, zero]).broadcast()
     }
 
-    fn adj(_params: &V<2>) -> M<1, 1> {
-        M::<1, 1>::identity()
+    fn into_group_adjoint<Tape: SophusTape>(
+        params: GenV<BATCH, 2, Tape>,
+    ) -> GenM<BATCH, 1, 1, Tape> {
+        params.device().ones().retaped()
     }
 
-    fn exp(omega: &V<1>) -> V<2> {
-        // angle to complex number
-        let angle = omega[0];
-        let cos = angle.cos();
-        let sin = angle.sin();
-        V::<2>::new(cos, sin)
+    fn exp<Tape: SophusTape>(omega: GenV<BATCH, 1, Tape>) -> GenV<BATCH, 2, Tape> {
+        (omega.clone().cos(), omega.clone().sin()).concat_along(Axis::<1>)
     }
 
-    fn log(params: &V<2>) -> V<1> {
-        // complex number to angle
-        let angle = params[1].atan2(params[0]);
-        V::<1>::new(angle)
+    fn into_log<Tape: SophusTape>(params: GenV<BATCH, 2, Tape>) -> GenV<BATCH, 1, Tape> {
+        let x = params.clone().slice((.., 0..1));
+        let y = params.slice((.., 1..2));
+        y.atan2(x).realize()
     }
 
-    fn hat(omega: &V<1>) -> M<2, 2> {
-        let angle = omega[0];
-        M::<2, 2>::new(0.0, -angle, angle, 0.0)
-    }
+    fn hat<Tape: SophusTape>(omega: GenV<BATCH, 1, Tape>) -> GenM<BATCH, 2, 2, Tape> {
+        let zero: V<BATCH, 1> = omega.device().zeros();
+        // let omega: GenS<BATCH, Tape> = omega.reshape();
 
-    fn vee(hat: &M<2, 2>) -> V<1> {
-        let angle = hat[(1, 0)];
-        V::<1>::new(angle)
-    }
-
-    fn multiply(params1: &V<2>, params2: &V<2>) -> V<2> {
-        let z = nalgebra::geometry::UnitComplex::from_cos_sin_unchecked(params1[0], params1[1])
-            * nalgebra::geometry::UnitComplex::from_cos_sin_unchecked(params2[0], params2[1]);
-        V::<2>::new(z.re, z.im)
-    }
-
-    fn inverse(params: &V<2>) -> V<2> {
-        V::<2>::new(params[0], -params[1])
-    }
-
-    fn transform(params: &V<2>, point: &V<2>) -> V<2> {
-        Self::matrix(params) * point
-    }
-
-    fn to_ambient(params: &V<2>) -> V<2> {
-        // homogeneous coordinates
-        V::<2>::new(params[0], params[1])
-    }
-
-    fn compact(params: &V<2>) -> M<2, 2> {
-        Self::matrix(params)
-    }
-
-    fn matrix(params: &V<2>) -> M<2, 2> {
-        // rotation matrix
-        let cos = params[0];
-        let sin = params[1];
-        M::<2, 2>::new(cos, -sin, sin, cos)
-    }
-
-    fn ad(_tangent: &V<1>) -> M<1, 1> {
-        M::<1, 1>::zeros()
-    }
-}
-
-pub type Rotation2 = lie::lie_group::LieGroup<1, 2, 2, 2, Rotation2Impl>;
-
-impl lie::traits::LieSubgroupImplTrait<1, 2, 2, 2> for Rotation2Impl {
-    fn mat_v(params: &V<2>, v: &V<1>) -> M<2, 2> {
-        let sin_theta_by_theta;
-        let one_minus_cos_theta_by_theta;
-        let theta = v[0];
-        let abs_theta = theta.abs();
-        if abs_theta < 1e-6 {
-            let theta_sq = theta * theta;
-            sin_theta_by_theta = 1.0 - 1.0 / 6.0 * theta_sq;
-            one_minus_cos_theta_by_theta = 0.5 * theta - 1.0 / 24.0 * theta * theta_sq;
-        } else {
-            sin_theta_by_theta = params[1] / theta;
-            one_minus_cos_theta_by_theta = (1.0 - params[0]) / theta;
-        }
-        M::<2, 2>::new(
-            sin_theta_by_theta,
-            -one_minus_cos_theta_by_theta,
-            one_minus_cos_theta_by_theta,
-            sin_theta_by_theta,
+        make_2rowblock_mat(
+            make_2colvec_mat(zero.retaped(), omega.clone().negate()),
+            make_2colvec_mat(omega, zero),
         )
     }
 
-    fn mat_v_inverse(params: &V<2>, tangent: &V<1>) -> M<2, 2> {
-        let halftheta = 0.5 * tangent[0];
-        let halftheta_by_tan_of_halftheta;
+    fn vee<Tape: SophusTape>(hat: GenM<BATCH, 2, 2, Tape>) -> GenV<BATCH, 1, Tape> {
+        let vee_mat: GenM<BATCH, 1, 1, Tape> = hat.slice((.., 1..2, 0..1)).realize();
+        vee_mat.reshape()
+    }
 
-        let real_minus_one = params[0] - 1.0;
-        let abs_real_minus_one = real_minus_one.abs();
-        if abs_real_minus_one < 1e-6 {
-            halftheta_by_tan_of_halftheta = 1.0 - 1.0 / 12.0 * tangent[0] * tangent[0];
-        } else {
-            halftheta_by_tan_of_halftheta = -(halftheta * params[1]) / real_minus_one;
-        }
-        M::<2, 2>::new(
-            halftheta_by_tan_of_halftheta,
-            halftheta,
-            -halftheta,
-            halftheta_by_tan_of_halftheta,
+    fn mul_assign<
+        LeftTape:SophusTape + Merge<RightTape>,
+        RightTape:SophusTape,
+    >(
+        lhs: GenV<BATCH, 2, LeftTape>,
+        rhs: GenV<BATCH, 2, RightTape>,
+    ) -> GenV<BATCH, 2, LeftTape> {
+        let re_lhs: GenV<BATCH, 1, _> = lhs.clone().slice((.., 0..1)).realize();
+        let im_lhs: GenV<BATCH, 1, _> = lhs.clone().slice((.., 1..2)).realize();
+        let re_rhs: GenV<BATCH, 1, _> = rhs.clone().slice((.., 0..1)).realize();
+        let im_rhs: GenV<BATCH, 1, _> = rhs.clone().slice((.., 1..2)).realize();
+
+        let re: GenV<BATCH, 1, LeftTape> =
+            re_lhs.clone() * re_rhs.clone() - im_lhs.clone() * im_rhs.clone();
+        let im: GenV<BATCH, 1, LeftTape> = re_lhs * im_rhs + im_lhs * re_rhs;
+
+        (re, im).concat_along(Axis::<1>)
+    }
+
+    fn into_inverse<Tape: SophusTape>(params: GenV<BATCH, 2, Tape>) -> GenV<BATCH, 2, Tape> {
+        let im: GenV<BATCH, 1, _> = params.clone().slice((.., 1..2)).realize();
+        let re: GenV<BATCH, 1, _> = params.slice((.., 0..1)).realize();
+
+        (re, im.negate()).concat_along(Axis::<1>)
+    }
+
+    fn point_action<
+        const NUM_POINTS: usize,
+        Tape: SophusTape + Merge<PointTape>,
+        PointTape: SophusTape,
+    >(
+        params: GenV<BATCH, 2, Tape>,
+        points: GenM<BATCH, 2, NUM_POINTS, PointTape>,
+    ) -> GenM<BATCH, 2, NUM_POINTS, Tape> {
+        Self::into_matrix(params).matmul(points)
+    }
+
+    fn into_ambient<const NUM_POINTS: usize, Tape: SophusTape>(
+        params: GenM<BATCH, 2, NUM_POINTS, Tape>,
+    ) -> GenM<BATCH, 2, NUM_POINTS, Tape> {
+        params
+    }
+
+    fn into_compact<Tape: SophusTape>(params: GenV<BATCH, 2, Tape>) -> GenM<BATCH, 2, 2, Tape> {
+        Self::into_matrix(params)
+    }
+
+    fn into_matrix<Tape: SophusTape>(params: GenV<BATCH, 2, Tape>) -> GenM<BATCH, 2, 2, Tape> {
+        let cos: Tensor<(Const<BATCH>, Const<1>), f64, _, Tape> =
+            params.clone().slice((.., 0..1)).realize();
+
+        let sin: Tensor<(Const<BATCH>, Const<1>), f64, _, Tape> =
+            params.clone().slice((.., 1..2)).realize();
+
+        make_2rowblock_mat(
+            make_2colvec_mat(cos.clone(), sin.clone().negate()),
+            make_2colvec_mat(sin, cos),
         )
     }
 
-    fn adj_of_translation(_params: &V<2>, point: &V<2>) -> SMatrix<f64, 2, 1> {
-        V::<2>::new(point[1], -point[0])
+    fn algebra_adjoint(_tangent: V<BATCH, 1>) -> M<BATCH, 1, 1> {
+        dfdx::tensor::Cpu::default().zeros()
     }
 
-    fn ad_of_translation(point: &V<2>) -> SMatrix<f64, 2, 1> {
-        V::<2>::new(point[1], -point[0])
+    fn dx_exp_x_at_0() -> M<BATCH, 2, 1> {
+        let dev = dfdx::tensor::Cpu::default();
+        let zero: V<BATCH, 1> = dev.zeros().retaped();
+        let one: V<BATCH, 1> = dev.ones().retaped();
+        [zero, one].stack().permute::<_, Axes3<1, 0, 2>>()
+    }
+
+    fn dx_exp_x_times_point_at_0(point: V<BATCH, 2>) -> M<BATCH, 2, 1> {
+        let py: Tensor<(Const<BATCH>, Const<1>), f64, _, _> =
+            point.clone().slice((.., 1..2)).realize();
+        let px: Tensor<(Const<BATCH>, Const<1>), f64, _, _> = point.slice((.., 0..1)).realize();
+        [py.negate(), px].stack().permute::<_, Axes3<1, 0, 2>>()
+    }
+
+    fn dx_self_times_exp_x_at_0(params: &V<BATCH, 2>) -> M<BATCH, 2, 1> {
+        let py: Tensor<(Const<BATCH>, Const<1>), f64, _, _> =
+            params.clone().slice((.., 1..2)).realize();
+        let px: Tensor<(Const<BATCH>, Const<1>), f64, _, _> =
+            params.clone().slice((.., 0..1)).realize();
+        [py.negate(), px].stack().permute::<_, Axes3<1, 0, 2>>()
+    }
+
+    fn dx_log_exp_x_times_self_at_0(_params: &V<BATCH, 2>) -> M<BATCH, 1, 1> {
+        dfdx::tensor::Cpu::default().ones()
     }
 }
 
-pub type Isometry2Impl =
-    lie::semi_direct_product::SemiDirectProductImpl<3, 4, 2, 3, 1, 2, Rotation2Impl>;
-
-pub type Isometry2 = lie::lie_group::LieGroup<3, 4, 2, 3, Isometry2Impl>;
+pub type Rotation2<const BATCH: usize> = LieGroup<BATCH, 1, 2, 2, 2, Rotation2Impl<BATCH>>;
 
 mod tests {
-    use crate::lie::rotation2::V;
-
-    use super::{Isometry2, Rotation2};
 
     #[test]
-    fn rotation2_prop_tests() {
-        Rotation2::test_suite();
-    }
+    fn rotation2_batch_tests() {
+        use crate::lie::rotation2::*;
 
-    #[test]
-    fn rotation2_unit_tests() {
-        let angle_30_deg = V::<1>::new(30.0_f64.to_radians());
-        let _rot_30deg = Rotation2::exp(&angle_30_deg);
-        let hat_30deg = Rotation2::hat(&angle_30_deg);
-        let vee_30deg = Rotation2::vee(&hat_30deg);
-
-        approx::assert_relative_eq!(angle_30_deg, vee_30deg, epsilon = 1e-6);
-    }
-
-    #[test]
-    fn isometry2_prop_tests() {
-        Isometry2::test_suite();
-    }
-
-    #[test]
-    fn isometry2_unit_tests() {
-        let angle_30_deg = V::<1>::new(30.0_f64.to_radians());
-        let rot_30deg = Rotation2::exp(&angle_30_deg);
-        let translation = V::<2>::new(1.0, 2.0);
-        let _isometry = Isometry2::from_t_and_subgroup(&translation, &rot_30deg);
+        Rotation2::<1>::test_suite();
+        Rotation2::<2>::test_suite();
+        Rotation2::<4>::test_suite();
     }
 }

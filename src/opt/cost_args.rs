@@ -1,9 +1,11 @@
 use std::fmt::Debug;
+use std::mem::swap;
 
-use crate::{lie::rotation3::Isometry3, manifold::traits::Manifold};
-use sophus_macros::create_impl;
-
-use super::tuple::SimpleTuple;
+use crate::calculus::batch_types::*;
+use crate::lie::isometry2::*;
+use crate::manifold::traits::*;
+use dfdx::prelude::*;
+//use sophus_macros::create_impl;
 
 #[derive(Copy, Clone, Debug)]
 pub struct CostTermArg<T, const ET: char> {
@@ -20,29 +22,24 @@ impl<const ET: char> CostArg for CostTermArg<f64, ET> {
     const DOF: usize = 1;
 }
 
-impl<const ET: char> CostArg for CostTermArg<nalgebra::Vector1<f64>, ET> {
+impl<const ET: char> CostArg for CostTermArg<V<1, 1>, ET> {
     const ENTITY_TYPE: char = ET;
     const DOF: usize = 1;
 }
 
-impl<const ET: char> CostArg for CostTermArg<nalgebra::Vector2<f64>, ET> {
+impl<const ET: char> CostArg for CostTermArg<V<1, 2>, ET> {
     const ENTITY_TYPE: char = ET;
     const DOF: usize = 2;
 }
 
-impl<const ET: char> CostArg for CostTermArg<nalgebra::Vector3<f64>, ET> {
+impl<const ET: char> CostArg for CostTermArg<V<1, 3>, ET> {
     const ENTITY_TYPE: char = ET;
     const DOF: usize = 3;
 }
 
-impl<const ET: char> CostArg for CostTermArg<nalgebra::Vector6<f64>, ET> {
+impl<const ET: char> CostArg for CostTermArg<Isometry2<1>, ET> {
     const ENTITY_TYPE: char = ET;
-    const DOF: usize = 6;
-}
-
-impl<const ET: char> CostArg for CostTermArg<Isometry3, ET> {
-    const ENTITY_TYPE: char = ET;
-    const DOF: usize = 6;
+    const DOF: usize = 3;
 }
 
 pub trait CostArgTuple: std::fmt::Debug {
@@ -92,118 +89,254 @@ where
     }
 }
 
-pub struct CostFnArg<'a, const DOF: usize, T, const AT: char> {
-    v: &'a Vec<T>,
+#[derive(Debug)]
+pub struct CostFnArg<const DOF: usize, T: Manifold<DOF>, const AT: char> {
+    pub v: Vec<T>,
 }
 
-impl<'a, const DOF: usize, T: Manifold<DOF>, const AT: char> CostFnArg<'a, DOF, T, AT> {}
+impl<const DOF: usize, T: Manifold<DOF>, const AT: char> CostFnArg<DOF, T, AT> {}
 
-impl<'a, const DOF: usize, T: Manifold<DOF>> CostFnArg<'a, DOF, T, 'v'> {
-    pub fn var(v: &'a Vec<T>) -> CostFnArg<'a, DOF, T, 'v'> {
-        CostFnArg::<'a, DOF, T, 'v'> { v }
+impl<const DOF: usize, T: Manifold<DOF>> CostFnArg<DOF, T, 'v'> {
+    pub fn var(v: Vec<T>) -> CostFnArg<DOF, T, 'v'> {
+        CostFnArg::<DOF, T, 'v'> { v }
     }
 }
 
-impl<'a, const DOF: usize, T: Manifold<DOF>> CostFnArg<'a, DOF, T, 'c'> {
-    pub fn cond(v: &'a Vec<T>) -> CostFnArg<'a, DOF, T, 'c'> {
-        CostFnArg::<'a, DOF, T, 'c'> { v }
+impl<const DOF: usize, T: Manifold<DOF>> CostFnArg<DOF, T, 'c'> {
+    pub fn cond(v: Vec<T>) -> CostFnArg<DOF, T, 'c'> {
+        CostFnArg::<DOF, T, 'c'> { v }
+    }
+}
+
+impl<const DOF: usize, T: Manifold<DOF>> CostFnArg<DOF, T, 'm'> {
+    pub fn marg(v: Vec<T>) -> CostFnArg<DOF, T, 'm'> {
+        CostFnArg::<DOF, T, 'm'> { v }
     }
 }
 
 pub trait ManifoldV {
     type Arg: CostArg;
     const CAT: char;
+    const DOF: usize;
 
     fn get_elem(&self, idx: usize) -> Self::Arg;
+
+    fn len(&self) -> usize;
+
+    fn update(&mut self, delta: &[f64]);
 }
 
-impl<'a, const AT: char> ManifoldV for CostFnArg<'a, 1, nalgebra::Vector1<f64>, AT> {
-    type Arg = CostTermArg<nalgebra::Vector1<f64>, AT>;
+impl<const AT: char> ManifoldV for CostFnArg<1, V<1, 1>, AT> {
+    type Arg = CostTermArg<V<1, 1>, AT>;
 
     fn get_elem(&self, idx: usize) -> Self::Arg {
-        CostTermArg { arg: self.v[idx] }
+        CostTermArg {
+            arg: self.v[idx].clone(),
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.v.len()
     }
 
     const CAT: char = AT;
+    const DOF: usize = 1;
+
+    fn update(&mut self, delta: &[f64]) {
+        assert!(self.v.len() * Self::DOF == delta.len());
+        let mut i = 0;
+        let dev = dfdx::tensor::Cpu::default();
+        for e in self.v.iter_mut() {
+            let u: Tensor<(Const<1>, _), _, _> = dev.tensor_from_vec(
+                delta[i * Self::DOF..(i + 1) * Self::DOF].to_vec(),
+                (Const, Self::DOF),
+            );
+            let mut c = e.clone().into_oplus(u.realize());
+            swap(e, &mut c);
+            i += 1;
+        }
+    }
 }
-impl<'a, const AT: char> ManifoldV for CostFnArg<'a, 2, nalgebra::Vector2<f64>, AT> {
-    type Arg = CostTermArg<nalgebra::Vector2<f64>, AT>;
+impl<const AT: char> ManifoldV for CostFnArg<2, V<1, 2>, AT> {
+    type Arg = CostTermArg<V<1, 2>, AT>;
 
     fn get_elem(&self, idx: usize) -> Self::Arg {
-        CostTermArg { arg: self.v[idx] }
+        CostTermArg {
+            arg: self.v[idx].clone(),
+        }
     }
+
+    fn len(&self) -> usize {
+        self.v.len()
+    }
+
     const CAT: char = AT;
+    const DOF: usize = 2;
+
+    fn update(&mut self, delta: &[f64]) {
+        assert!(self.v.len() * Self::DOF == delta.len());
+        let mut i = 0;
+        let dev = dfdx::tensor::Cpu::default();
+        for e in self.v.iter_mut() {
+            let u: Tensor<(Const<1>, _), _, _> = dev.tensor_from_vec(
+                delta[i * Self::DOF..(i + 1) * Self::DOF].to_vec(),
+                (Const, Self::DOF),
+            );
+            let mut c = e.clone().into_oplus(u.realize());
+            swap(e, &mut c);
+            i += 1;
+        }
+    }
 }
 
-impl<'a, const AT: char> ManifoldV for CostFnArg<'a, 3, nalgebra::Vector3<f64>, AT> {
-    type Arg = CostTermArg<nalgebra::Vector3<f64>, AT>;
+impl<const AT: char> ManifoldV for CostFnArg<3, V<1, 3>, AT> {
+    type Arg = CostTermArg<V<1, 3>, AT>;
 
     fn get_elem(&self, idx: usize) -> Self::Arg {
-        CostTermArg { arg: self.v[idx] }
+        CostTermArg {
+            arg: self.v[idx].clone(),
+        }
     }
+
+    fn len(&self) -> usize {
+        self.v.len()
+    }
+
     const CAT: char = AT;
+    const DOF: usize = 3;
+
+    fn update(&mut self, delta: &[f64]) {
+        assert!(self.v.len() * Self::DOF == delta.len());
+        let mut i = 0;
+        let dev = dfdx::tensor::Cpu::default();
+        for e in self.v.iter_mut() {
+            let u: Tensor<(Const<1>, _), _, _> = dev.tensor_from_vec(
+                delta[i * Self::DOF..(i + 1) * Self::DOF].to_vec(),
+                (Const, Self::DOF),
+            );
+            let mut c = e.clone().into_oplus(u.realize());
+            swap(e, &mut c);
+            i += 1;
+        }
+    }
 }
 
-impl<'a, const AT: char> ManifoldV for CostFnArg<'a, 6, nalgebra::Vector6<f64>, AT> {
-    type Arg = CostTermArg<nalgebra::Vector6<f64>, AT>;
+impl<const AT: char> ManifoldV for CostFnArg<3, Isometry2<1>, AT> {
+    type Arg = CostTermArg<Isometry2<1>, AT>;
 
     fn get_elem(&self, idx: usize) -> Self::Arg {
-        CostTermArg { arg: self.v[idx] }
+        CostTermArg {
+            arg: self.v[idx].clone(),
+        }
     }
-    const CAT: char = AT;
-}
 
-impl<'a, const AT: char> ManifoldV for CostFnArg<'a, 6, Isometry3, AT> {
-    type Arg = CostTermArg<Isometry3, AT>;
-
-    fn get_elem(&self, idx: usize) -> Self::Arg {
-        CostTermArg { arg: self.v[idx] }
+    fn len(&self) -> usize {
+        self.v.len()
     }
+
     const CAT: char = AT;
+    const DOF: usize = 3;
+
+   fn update(&mut self, delta: &[f64]) {
+        assert!(self.v.len() * Self::DOF == delta.len());
+        let mut i = 0;
+        let dev = dfdx::tensor::Cpu::default();
+        for e in self.v.iter_mut() {
+            let u: Tensor<(Const<1>, _), _, _> = dev.tensor_from_vec(
+                delta[i * Self::DOF..(i + 1) * Self::DOF].to_vec(),
+                (Const, Self::DOF),
+            );
+            let mut c = e.clone().into_oplus(u.realize());
+            swap(e, &mut c);
+            i += 1;
+        }
+    }
 }
 
 pub trait ManifoldVTuple {
     type Idx;
-    type Output: Debug;
+    type GetElemTReturn: Debug;
     type CatArray: Debug;
     const CAT: Self::CatArray;
+    type DofArray: Debug;
+    const DOF_T: Self::DofArray;
 
-    fn get_elem(&self, idx: &Self::Idx) -> Self::Output;
+    fn len_t(&self) -> Self::Idx;
+    fn get_elem_t(&self, idx: &Self::Idx) -> Self::GetElemTReturn;
+
+    fn update_t(&mut self, delta: &[f64]);
 }
 
 impl<M0: ManifoldV> ManifoldVTuple for M0 {
     type Idx = [usize; 1];
-    type Output = (M0::Arg, ());
+    type GetElemTReturn = (M0::Arg, ());
     type CatArray = [char; 1];
     const CAT: Self::CatArray = [M0::CAT];
+    type DofArray = [usize; 1];
+    const DOF_T: Self::DofArray = [M0::DOF];
 
-    fn get_elem(&self, idx: &Self::Idx) -> Self::Output {
+    fn get_elem_t(&self, idx: &Self::Idx) -> Self::GetElemTReturn {
         (self.get_elem(idx[0]), ())
+    }
+
+    fn len_t(&self) -> Self::Idx {
+        [self.len()]
+    }
+
+    fn update_t(&mut self, delta: &[f64]) {
+        self.update(delta)
     }
 }
 
 impl<M0: ManifoldV, M1: ManifoldV> ManifoldVTuple for (M0, M1) {
     type Idx = [usize; 2];
-    type Output = (M0::Arg, (M1::Arg, ()));
+    type GetElemTReturn = (M0::Arg, (M1::Arg, ()));
     type CatArray = [char; 2];
     const CAT: Self::CatArray = [M0::CAT, M1::CAT];
+    type DofArray = [usize; 2];
+    const DOF_T: Self::DofArray = [M0::DOF, M1::DOF];
 
-    fn get_elem(&self, idx: &Self::Idx) -> Self::Output {
+    fn get_elem_t(&self, idx: &Self::Idx) -> Self::GetElemTReturn {
         (self.0.get_elem(idx[0]), (self.1.get_elem(idx[1]), ()))
+    }
+
+    fn len_t(&self) -> Self::Idx {
+        [self.0.len(), self.1.len()]
+    }
+
+    fn update_t(&mut self, delta: &[f64]) {
+        let offset_1 = self.0.len() * Self::DOF_T[0];
+        self.0.update(&delta[..offset_1]);
+        self.1.update(&delta[offset_1..]);
     }
 }
 
 impl<M0: ManifoldV, M1: ManifoldV, M2: ManifoldV> ManifoldVTuple for (M0, M1, M2) {
     type Idx = [usize; 3];
-    type Output = (M0::Arg, (M1::Arg, (M2::Arg, ())));
+    type GetElemTReturn = (M0::Arg, (M1::Arg, (M2::Arg, ())));
     type CatArray = [char; 3];
     const CAT: Self::CatArray = [M0::CAT, M1::CAT, M2::CAT];
+    type DofArray = [usize; 3];
+    const DOF_T: Self::DofArray = [M0::DOF, M1::DOF, M2::DOF];
 
-    fn get_elem(&self, idx: &Self::Idx) -> Self::Output {
+    fn get_elem_t(&self, idx: &Self::Idx) -> Self::GetElemTReturn {
         (
             self.0.get_elem(idx[0]),
             (self.1.get_elem(idx[1]), (self.2.get_elem(idx[2]), ())),
         )
+    }
+
+    fn len_t(&self) -> Self::Idx {
+        [self.0.len(), self.1.len(), self.2.len()]
+    }
+
+    fn update_t(&mut self, delta: &[f64]) {
+        let offset_1 = self.0.len() * Self::DOF_T[0];
+        let offset_2 = self.1.len() * Self::DOF_T[1];
+
+        self.0.update(&delta[..offset_1]);
+        self.1.update(&delta[offset_1..offset_2]);
+        self.2.update(&delta[offset_2..]);
     }
 }
 
@@ -278,14 +411,14 @@ const fn less_than<const N: usize>(
     return std::cmp::Ordering::Equal;
 }
 
-pub struct Less<C>
+pub struct CompareIdx<C>
 where
     C: AsRef<[char]>,
 {
     pub(crate) c: C,
 }
 
-impl<C> Less<C>
+impl<C> CompareIdx<C>
 where
     C: AsRef<[char]>,
 {
@@ -296,260 +429,274 @@ where
     ) -> std::cmp::Ordering {
         less_than(self.c.as_ref(), lhs, rhs)
     }
+
+    pub fn all_var_eq(&self, lhs: &[usize], rhs: &[usize]) -> bool {
+        let mut i = 0;
+        loop {
+            if i >= lhs.len() {
+                break;
+            }
+            if self.c.as_ref()[i] == 'v' && lhs[i] != rhs[i] {
+                return false;
+            }
+            i += 1;
+        }
+        return true;
+    }
 }
 
 mod test {
 
-    use crate::opt::cost_args::Less;
+    use crate::opt::cost_args::CompareIdx;
 
     use super::less_than;
 
     #[test]
     fn test() {
         // Length 2
-        const vv: [char; 2] = ['v', 'v'];
-        const vc: [char; 2] = ['v', 'c'];
-        const cv: [char; 2] = ['c', 'v'];
-        const cc: [char; 2] = ['c', 'c'];
+        const VV: [char; 2] = ['v', 'v'];
+        const VC: [char; 2] = ['v', 'c'];
+        const CV: [char; 2] = ['c', 'v'];
+        const CC: [char; 2] = ['c', 'c'];
 
-        assert_eq!(less_than(&vv, [0, 0], [1, 0]), std::cmp::Ordering::Less);
-        assert_eq!(less_than(&vv, [1, 0], [0, 0]), std::cmp::Ordering::Greater);
-        assert_eq!(less_than(&vc, [0, 0], [1, 0]), std::cmp::Ordering::Less);
-        assert_eq!(less_than(&vc, [1, 0], [0, 0]), std::cmp::Ordering::Greater);
-        assert_eq!(less_than(&cv, [0, 0], [1, 0]), std::cmp::Ordering::Less);
-        assert_eq!(less_than(&cv, [1, 0], [0, 0]), std::cmp::Ordering::Greater);
-        assert_eq!(less_than(&cc, [0, 0], [0, 0]), std::cmp::Ordering::Equal);
+        assert_eq!(less_than(&VV, [0, 0], [1, 0]), std::cmp::Ordering::Less);
+        assert_eq!(less_than(&VV, [1, 0], [0, 0]), std::cmp::Ordering::Greater);
+        assert_eq!(less_than(&VC, [0, 0], [1, 0]), std::cmp::Ordering::Less);
+        assert_eq!(less_than(&VC, [1, 0], [0, 0]), std::cmp::Ordering::Greater);
+        assert_eq!(less_than(&CV, [0, 0], [1, 0]), std::cmp::Ordering::Less);
+        assert_eq!(less_than(&CV, [1, 0], [0, 0]), std::cmp::Ordering::Greater);
+        assert_eq!(less_than(&CC, [0, 0], [0, 0]), std::cmp::Ordering::Equal);
 
-        const mv: [char; 2] = ['m', 'v'];
-        const vm: [char; 2] = ['v', 'm'];
-        const mm: [char; 2] = ['m', 'm'];
+        const MV: [char; 2] = ['m', 'v'];
+        const VM: [char; 2] = ['v', 'm'];
+        const MM: [char; 2] = ['m', 'm'];
 
-        assert_eq!(less_than(&mv, [0, 0], [1, 0]), std::cmp::Ordering::Less);
-        assert_eq!(less_than(&vm, [0, 0], [1, 0]), std::cmp::Ordering::Less);
-        assert_eq!(less_than(&mm, [0, 0], [0, 0]), std::cmp::Ordering::Equal);
+        assert_eq!(less_than(&MV, [0, 0], [1, 0]), std::cmp::Ordering::Less);
+        assert_eq!(less_than(&VM, [0, 0], [1, 0]), std::cmp::Ordering::Less);
+        assert_eq!(less_than(&MM, [0, 0], [0, 0]), std::cmp::Ordering::Equal);
 
-        const vvv: [char; 3] = ['v', 'v', 'v'];
+        const VVV: [char; 3] = ['v', 'v', 'v'];
 
         assert_eq!(
-            less_than(&vvv, [0, 0, 0], [1, 0, 0]),
+            less_than(&VVV, [0, 0, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&vvv, [0, 2, 0], [1, 0, 0]),
+            less_than(&VVV, [0, 2, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&vvv, [0, 1, 0], [1, 0, 0]),
+            less_than(&VVV, [0, 1, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&vvv, [0, 0, 1], [1, 0, 0]),
+            less_than(&VVV, [0, 0, 1], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&vvv, [0, 1, 0], [0, 0, 1]),
+            less_than(&VVV, [0, 1, 0], [0, 0, 1]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&vvv, [0, 0, 1], [0, 0, 2]),
+            less_than(&VVV, [0, 0, 1], [0, 0, 2]),
             std::cmp::Ordering::Less
         );
 
-        const cvv: [char; 3] = ['c', 'v', 'v'];
+        const CVV: [char; 3] = ['c', 'v', 'v'];
 
         assert_eq!(
-            less_than(&cvv, [0, 0, 0], [1, 0, 0]),
+            less_than(&CVV, [0, 0, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&cvv, [0, 2, 0], [1, 0, 0]),
+            less_than(&CVV, [0, 2, 0], [1, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&cvv, [0, 1, 0], [1, 0, 0]),
+            less_than(&CVV, [0, 1, 0], [1, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&cvv, [0, 0, 1], [1, 0, 0]),
+            less_than(&CVV, [0, 0, 1], [1, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&cvv, [0, 1, 0], [0, 0, 1]),
+            less_than(&CVV, [0, 1, 0], [0, 0, 1]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&cvv, [0, 0, 1], [0, 0, 2]),
-            std::cmp::Ordering::Less
-        );
-
-        const cvc: [char; 3] = ['c', 'v', 'c'];
-        assert_eq!(
-            less_than(&cvc, [0, 0, 0], [1, 0, 0]),
-            std::cmp::Ordering::Less
-        );
-        assert_eq!(
-            less_than(&cvc, [0, 2, 0], [1, 0, 0]),
-            std::cmp::Ordering::Greater
-        );
-        assert_eq!(
-            less_than(&cvc, [0, 1, 0], [1, 0, 0]),
-            std::cmp::Ordering::Greater
-        );
-        assert_eq!(
-            less_than(&cvc, [0, 0, 1], [1, 0, 0]),
-            std::cmp::Ordering::Less
-        );
-        assert_eq!(
-            less_than(&cvc, [0, 1, 0], [0, 0, 1]),
-            std::cmp::Ordering::Greater
-        );
-        assert_eq!(
-            less_than(&cvc, [0, 0, 1], [0, 0, 2]),
+            less_than(&CVV, [0, 0, 1], [0, 0, 2]),
             std::cmp::Ordering::Less
         );
 
-        const ccv: [char; 3] = ['c', 'c', 'v'];
+        const CVC: [char; 3] = ['c', 'v', 'c'];
+        assert_eq!(
+            less_than(&CVC, [0, 0, 0], [1, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&CVC, [0, 2, 0], [1, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&CVC, [0, 1, 0], [1, 0, 0]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&CVC, [0, 0, 1], [1, 0, 0]),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            less_than(&CVC, [0, 1, 0], [0, 0, 1]),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            less_than(&CVC, [0, 0, 1], [0, 0, 2]),
+            std::cmp::Ordering::Less
+        );
+
+        const CCV: [char; 3] = ['c', 'c', 'v'];
 
         assert_eq!(
-            less_than(&ccv, [0, 0, 0], [0, 0, 0]),
+            less_than(&CCV, [0, 0, 0], [0, 0, 0]),
             std::cmp::Ordering::Equal
         );
         assert_eq!(
-            less_than(&ccv, [0, 0, 0], [1, 0, 0]),
+            less_than(&CCV, [0, 0, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&ccv, [0, 2, 0], [1, 0, 0]),
+            less_than(&CCV, [0, 2, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&ccv, [0, 1, 0], [1, 0, 0]),
+            less_than(&CCV, [0, 1, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&ccv, [0, 0, 1], [1, 0, 0]),
+            less_than(&CCV, [0, 0, 1], [1, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&ccv, [0, 1, 0], [0, 0, 1]),
+            less_than(&CCV, [0, 1, 0], [0, 0, 1]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&ccv, [0, 0, 1], [0, 0, 2]),
+            less_than(&CCV, [0, 0, 1], [0, 0, 2]),
             std::cmp::Ordering::Less
         );
 
-        const cvm: [char; 3] = ['c', 'v', 'm'];
+        const CVM: [char; 3] = ['c', 'v', 'm'];
         assert_eq!(
-            less_than(&cvm, [0, 0, 0], [1, 0, 0]),
+            less_than(&CVM, [0, 0, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&cvm, [0, 2, 0], [1, 0, 0]),
+            less_than(&CVM, [0, 2, 0], [1, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&cvm, [0, 1, 0], [1, 0, 0]),
+            less_than(&CVM, [0, 1, 0], [1, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&cvm, [0, 0, 1], [1, 0, 0]),
+            less_than(&CVM, [0, 0, 1], [1, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&cvm, [0, 1, 0], [0, 0, 1]),
+            less_than(&CVM, [0, 1, 0], [0, 0, 1]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&cvm, [0, 0, 1], [0, 0, 2]),
+            less_than(&CVM, [0, 0, 1], [0, 0, 2]),
             std::cmp::Ordering::Less
         );
 
         // Length 4
-        const vvvv: [char; 4] = ['v', 'v', 'v', 'v'];
-        const cvvv: [char; 4] = ['c', 'v', 'v', 'v'];
-        const ccvv: [char; 4] = ['c', 'c', 'v', 'v'];
-        const cvcv: [char; 4] = ['c', 'v', 'c', 'v'];
-        const vvcc: [char; 4] = ['v', 'v', 'c', 'c'];
-        const ccvc: [char; 4] = ['c', 'c', 'v', 'c'];
-        const vccv: [char; 4] = ['v', 'c', 'c', 'v'];
+        const VVVV: [char; 4] = ['v', 'v', 'v', 'v'];
+        const CVVV: [char; 4] = ['c', 'v', 'v', 'v'];
+        const CCVV: [char; 4] = ['c', 'c', 'v', 'v'];
+        const CVCV: [char; 4] = ['c', 'v', 'c', 'v'];
+        const VVCC: [char; 4] = ['v', 'v', 'c', 'c'];
+        const CCVC: [char; 4] = ['c', 'c', 'v', 'c'];
+        const VCCV: [char; 4] = ['v', 'c', 'c', 'v'];
 
         assert_eq!(
-            less_than(&vvvv, [0, 0, 0, 0], [1, 0, 0, 0]),
+            less_than(&VVVV, [0, 0, 0, 0], [1, 0, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&vvvv, [1, 0, 0, 0], [0, 0, 0, 0]),
+            less_than(&VVVV, [1, 0, 0, 0], [0, 0, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&cvvv, [0, 0, 0, 0], [1, 0, 0, 0]),
+            less_than(&CVVV, [0, 0, 0, 0], [1, 0, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&cvvv, [1, 0, 0, 0], [0, 0, 0, 0]),
+            less_than(&CVVV, [1, 0, 0, 0], [0, 0, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&ccvv, [0, 0, 0, 0], [0, 0, 0, 0]),
+            less_than(&CCVV, [0, 0, 0, 0], [0, 0, 0, 0]),
             std::cmp::Ordering::Equal
         );
         assert_eq!(
-            less_than(&ccvv, [0, 1, 0, 0], [0, 0, 0, 0]),
+            less_than(&CCVV, [0, 1, 0, 0], [0, 0, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&cvcv, [0, 0, 0, 0], [1, 0, 0, 0]),
+            less_than(&CVCV, [0, 0, 0, 0], [1, 0, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&cvcv, [1, 0, 0, 0], [0, 0, 0, 0]),
+            less_than(&CVCV, [1, 0, 0, 0], [0, 0, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&vvcc, [0, 0, 0, 0], [0, 0, 0, 0]),
+            less_than(&VVCC, [0, 0, 0, 0], [0, 0, 0, 0]),
             std::cmp::Ordering::Equal
         );
         assert_eq!(
-            less_than(&vvcc, [0, 0, 0, 1], [0, 0, 0, 0]),
+            less_than(&VVCC, [0, 0, 0, 1], [0, 0, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&ccvc, [0, 0, 0, 0], [0, 1, 0, 0]),
+            less_than(&CCVC, [0, 0, 0, 0], [0, 1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&ccvc, [0, 1, 0, 0], [0, 0, 0, 0]),
+            less_than(&CCVC, [0, 1, 0, 0], [0, 0, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&vccv, [0, 0, 0, 0], [1, 0, 0, 0]),
+            less_than(&VCCV, [0, 0, 0, 0], [1, 0, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&vccv, [0, 0, 1, 0], [1, 0, 0, 0]),
+            less_than(&VCCV, [0, 0, 1, 0], [1, 0, 0, 0]),
             std::cmp::Ordering::Less
         );
 
-        const mvvm: [char; 4] = ['m', 'v', 'v', 'm'];
-        const mmvv: [char; 4] = ['m', 'm', 'v', 'v'];
-        const vmmv: [char; 4] = ['v', 'm', 'm', 'v'];
-        const mmmm: [char; 4] = ['m', 'm', 'm', 'm'];
+        const MVVM: [char; 4] = ['m', 'v', 'v', 'm'];
+        const MMVV: [char; 4] = ['m', 'm', 'v', 'v'];
+        const VMMV: [char; 4] = ['v', 'm', 'm', 'v'];
+        const MMMM: [char; 4] = ['m', 'm', 'm', 'm'];
 
         assert_eq!(
-            less_than(&mvvm, [0, 0, 0, 0], [1, 0, 0, 0]),
+            less_than(&MVVM, [0, 0, 0, 0], [1, 0, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&mmvv, [0, 0, 0, 0], [1, 0, 0, 0]),
+            less_than(&MMVV, [0, 0, 0, 0], [1, 0, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&vmmv, [0, 0, 0, 0], [1, 0, 0, 0]),
+            less_than(&VMMV, [0, 0, 0, 0], [1, 0, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&mmmm, [0, 0, 0, 0], [0, 0, 0, 0]),
+            less_than(&MMMM, [0, 0, 0, 0], [0, 0, 0, 0]),
             std::cmp::Ordering::Equal
         );
 
@@ -563,7 +710,7 @@ mod test {
             [3, 2, 1],
         ];
 
-        let less = Less { c };
+        let less = CompareIdx { c };
         l.sort_by(|a, b| less.less_than(*a, *b));
 
         println!("{:?}", l);

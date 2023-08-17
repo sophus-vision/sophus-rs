@@ -12,7 +12,7 @@ use super::mut_view::MutImageViewTrait;
 
 use super::pixel::PixelFormat;
 use super::pixel::PixelTag;
-use super::pixel::P1F32;
+
 
 use super::pixel::ScalarTrait;
 
@@ -93,6 +93,7 @@ impl DynMutImageTrait for MutAnyImage {}
 
 #[test]
 fn from_mut_image() {
+    use super::pixel::P1F32;
     let size_2_x_3 = ImageSize::from_width_and_height(2, 3);
     let img_f32 = MutImage::<1, f32>::with_size_and_val(size_2_x_3, P1F32::new(0.25));
     let _dyn_img = MutAnyImage::from_mut_image(img_f32);

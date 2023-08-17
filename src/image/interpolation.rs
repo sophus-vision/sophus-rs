@@ -45,5 +45,5 @@ pub fn interpolate<
         + val01.scale((1.0 - frac_u) * frac_v)
         + val10.scale(frac_u * (1.0 - frac_v))
         + val11.scale(frac_u * frac_v);
-    return val;
+    val
 }

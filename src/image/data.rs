@@ -25,7 +25,7 @@ pub struct DataChunkVec {
 
 impl DataChunkVec {
     pub fn slice<T>(&self) -> &[T] {
-        if self.vec.len() == 0 {
+        if self.vec.is_empty() {
             return &[];
         }
         let slice;
@@ -39,7 +39,7 @@ impl DataChunkVec {
     }
 
     pub fn mut_slice<T>(&mut self) -> &mut [T] {
-        if self.vec.len() == 0 {
+        if self.vec.is_empty() {
             return &mut [];
         }
         let slice;
