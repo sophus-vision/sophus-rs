@@ -126,7 +126,7 @@ pub fn unit_z<const BATCH: usize>() -> V<BATCH, 3> {
     make_blockvec3(o.clone(), o, l)
 }
 
-pub fn Identity3<const BATCH: usize>() -> M<BATCH, 3,3> {
+pub fn identity3<const BATCH: usize>() -> M<BATCH, 3,3> {
 
     make_3colvec_mat(unit_x(), unit_y(), unit_z())
 

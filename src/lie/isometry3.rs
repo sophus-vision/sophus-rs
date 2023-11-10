@@ -1,6 +1,7 @@
 use dfdx_core::prelude::*;
 
 use crate::calculus::batch_types::*;
+use crate::calculus::make::make_2blockcol_mat;
 use crate::calculus::points::*;
 use crate::lie::group::*;
 use crate::lie::rotation3::*;
@@ -34,8 +35,9 @@ impl<const BATCH: usize> FactorGroupImplTrait<BATCH, 3, 4, 3, 3> for Rotation3Im
         let factor1 = is_theta_sq_small.clone().choose(small_factor1, factor1);
         let factor2 = is_theta_sq_small.choose(small_factor2, factor2);
 
-        let mat_v: GenM<BATCH, 3, 3, ParamsTape> =
-            Identity3().retaped() + factor1.broadcast() * mat_omega + factor2.broadcast() * mat_omega_sq;
+        let mat_v: GenM<BATCH, 3, 3, ParamsTape> = identity3().retaped()
+            + factor1.broadcast() * mat_omega
+            + factor2.broadcast() * mat_omega_sq;
 
         mat_v
     }
@@ -67,8 +69,9 @@ impl<const BATCH: usize> FactorGroupImplTrait<BATCH, 3, 4, 3, 3> for Rotation3Im
         let factor1 = is_theta_sq_small.clone().choose(small_factor1, factor1);
         let factor2 = is_theta_sq_small.choose(small_factor2, factor2);
 
-        let inv_mat_v: GenM<BATCH, 3, 3, ParamsTape> =
-            Identity3().retaped() - factor1.broadcast() * mat_omega + factor2.broadcast() * mat_omega_sq;
+        let inv_mat_v: GenM<BATCH, 3, 3, ParamsTape> = identity3().retaped()
+            - factor1.broadcast() * mat_omega
+            + factor2.broadcast() * mat_omega_sq;
 
         inv_mat_v
     }
@@ -77,35 +80,16 @@ impl<const BATCH: usize> FactorGroupImplTrait<BATCH, 3, 4, 3, 3> for Rotation3Im
         ParamsTape: SophusTape + std::fmt::Debug + Merge<Tape>,
         Tape: SophusTape,
     >(
-        _params: GenV<BATCH, 4, ParamsTape>,
-        _point: GenV<BATCH, 3, Tape>,
+        params: GenV<BATCH, 4, ParamsTape>,
+        point: GenV<BATCH, 3, Tape>,
     ) -> GenM<BATCH, 3, 3, ParamsTape> {
-        // let params_tape = params.split_tape().1;
-        // let (point, tape) = point.split_tape();
-        // let tape = params_tape.merge(tape);
-
-        // let (neg_px, tape) = point
-        //     .clone()
-        //     .put_tape(tape)
-        //     .negate()
-        //     .slice((.., 0..1))
-        //     .realize()
-        //     .split_tape();
-        // let py: GenV<BATCH, 1, ParamsTape> = point.put_tape(tape).slice((.., 1..2)).realize();
-        // [py, neg_px.retaped()]
-        //     .stack()
-        //     .permute::<_, Axes3<1, 0, 2>>()
-
-        todo!()
+        Rotation3Impl::<BATCH>::hat(point)
+            .retaped()
+            .matmul(Rotation3Impl::<BATCH>::into_matrix(params))
     }
 
-    fn algebra_adjoint_of_translation(_point: V<BATCH, 3>) -> M<BATCH, 3, 3> {
-        // let px: V<BATCH, 1> = point.clone().slice((.., 0..1)).realize();
-        // let py: V<BATCH, 1> = point.slice((.., 1..2)).realize();
-
-        // make_vec2::<BATCH, NoneTape>(py.reshape(), px.negate().reshape()).reshape()
-
-        todo!()
+    fn algebra_adjoint_of_translation(point: V<BATCH, 3>) -> M<BATCH, 3, 3> {
+        Rotation3Impl::<BATCH>::hat(point).retaped()
     }
 }
 
@@ -123,8 +107,6 @@ pub type Isometry3<const BATCH: usize> = GenTapedIsometry3<BATCH, NoneTape>;
 
 mod tests {
     use super::Isometry3;
-
-    
 
     #[test]
     fn isometry3_batch_tests() {

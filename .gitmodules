@@ -1,0 +1,3 @@
+[submodule "dfdx"]
+	path = dfdx
+	url = git@github.com:farm-ng/dfdx.git

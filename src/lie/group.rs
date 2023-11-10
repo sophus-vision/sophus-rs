@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::time::Instant;
+
 use dfdx_core::prelude::*;
 
 use crate::calculus::batch_types::*;
@@ -62,7 +65,6 @@ pub type LieGroup<
     G,
 > = GenTapedLieGroup<B, DOF, PARAMS, POINT, AMBIENT, NoneTape, G>;
 
-
 impl<
         const B: usize,
         const DOF: usize,
@@ -79,7 +81,8 @@ impl<
         let (params, tape) = params.split_tape();
         assert!(
             G::are_params_valid(&params.clone()),
-            "Invalid parameters for:\n{:?}", params.array(),
+            "Invalid parameters for:\n{:?}",
+            params.array(),
         );
         GenTapedLieGroup::<B, DOF, PARAMS, POINT, AMBIENT, T, G> {
             params: params.put_tape(tape),
@@ -374,24 +377,50 @@ impl<
     }
 
     pub fn test_mul_inverse() {
-        let g_vec = Self::tutil_element_examples();
-
+        let mut g_vec = Self::tutil_element_examples();
+        g_vec.truncate(10);
         let mut i = 0;
+
+        let mut map = HashMap::new();
+
         for g1 in g_vec.clone() {
             println!("g1 = {:?}", i);
             i += 1;
 
             for g2 in g_vec.clone() {
+                let before = Instant::now();
+
                 let g1_times_g2 = Self::mul(g1.clone(), g2.clone());
+                let dt = before.elapsed().as_secs_f64();
+                map.entry("g1_times_g2").or_insert(vec![dt]).push(dt);
+
                 for g3 in g_vec.clone() {
+                    let b0 = Instant::now();
                     let g2_times_g3 = Self::mul(g2.clone(), g3.clone());
+                    let dt = b0.elapsed().as_secs_f64();
+                    map.entry("g2_times_g3").or_insert(vec![dt]).push(dt);
 
-                    let left_hugging = Self::mul(g1_times_g2.clone(), (g3.clone())).compact();
+                    let b1 = Instant::now();
+                    let left_hugging = Self::mul(g1_times_g2.clone(), g3.clone()).compact();
+                    let dt = b1.elapsed().as_secs_f64();
+                    map.entry("left_hugging").or_insert(vec![dt]).push(dt);
+
+                    let b2 = Instant::now();
                     let right_hugging = Self::mul(g1.clone(), g2_times_g3).compact();
+                    let dt = b2.elapsed().as_secs_f64();
+                    map.entry("right_hugging").or_insert(vec![dt]).push(dt);
 
+
+                    let b3 = Instant::now();
                     assert_tensors_relative_eq_rank3!(left_hugging, right_hugging, 1e-3);
+                    let dt = b3.elapsed().as_secs_f64();
+                    map.entry("assert_tensors_relative_eq_rank3").or_insert(vec![dt]).push(dt);
                 }
             }
+        }
+        for pair in map {
+            let sum = pair.1.iter().sum::<f64>();
+            println!("Elapsed time: {} {}", pair.0, sum / pair.1.len() as f64);
         }
         let mut i = 0;
         for g1 in g_vec.clone() {
@@ -549,7 +578,6 @@ impl<
         // Self::test_exp_log_taped();
         // Self::test_mul_inverse_taped();
         // Self::test_point_action_taped();
-      
     }
 
     pub fn test_suite() {

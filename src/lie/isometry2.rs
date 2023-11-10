@@ -9,15 +9,12 @@ use crate::lie::translation_group_product::*;
 use crate::manifold::traits::Manifold;
 
 impl<const BATCH: usize> FactorGroupImplTrait<BATCH, 1, 2, 2, 2> for Rotation2Impl<BATCH> {
-    fn mat_v<
-        ParamsTape:SophusTape + std::fmt::Debug + Merge<Tape>,
-        Tape:SophusTape,
-    >(
+    fn mat_v<ParamsTape: SophusTape + std::fmt::Debug + Merge<Tape>, Tape: SophusTape>(
         params: GenV<BATCH, 2, ParamsTape>,
         tangent: GenV<BATCH, 1, Tape>,
     ) -> GenM<BATCH, 2, 2, ParamsTape>
     where
-        Tape:SophusTape + Merge<ParamsTape>,
+        Tape: SophusTape + Merge<ParamsTape>,
     {
         let p0: GenV<BATCH, 1, _> = params.clone().slice((.., 0..1)).realize();
         let p1: GenV<BATCH, 1, _> = params.clone().slice((.., 1..2)).realize();
@@ -71,15 +68,12 @@ impl<const BATCH: usize> FactorGroupImplTrait<BATCH, 1, 2, 2, 2> for Rotation2Im
         )
     }
 
-    fn mat_v_inverse<
-        ParamsTape:SophusTape + std::fmt::Debug + Merge<Tape>,
-        Tape,
-    >(
+    fn mat_v_inverse<ParamsTape: SophusTape + std::fmt::Debug + Merge<Tape>, Tape>(
         params: GenV<BATCH, 2, ParamsTape>,
         tangent: GenV<BATCH, 1, Tape>,
     ) -> GenM<BATCH, 2, 2, ParamsTape>
     where
-        Tape:SophusTape + Merge<ParamsTape>,
+        Tape: SophusTape + Merge<ParamsTape>,
     {
         let halftheta: GenS<BATCH, _> = (tangent.clone() * 0.5).reshape();
 
@@ -103,27 +97,17 @@ impl<const BATCH: usize> FactorGroupImplTrait<BATCH, 1, 2, 2, 2> for Rotation2Im
     }
 
     fn group_adjoint_of_translation<
-        ParamsTape:SophusTape + std::fmt::Debug + Merge<Tape>,
-        Tape:SophusTape,
+        ParamsTape: SophusTape + std::fmt::Debug + Merge<Tape>,
+        Tape: SophusTape,
     >(
-        params: GenV<BATCH, 2, ParamsTape>,
+        _params: GenV<BATCH, 2, ParamsTape>,
         point: GenV<BATCH, 2, Tape>,
     ) -> GenM<BATCH, 2, 1, ParamsTape> {
-        let params_tape = params.split_tape().1;
-        let (point, tape) = point.split_tape();
-        let tape = params_tape.merge(tape);
+        let point: GenV<BATCH, 2, ParamsTape> = point.retaped();
+        let px: GenV<BATCH, 1, ParamsTape> = point.clone().slice((.., 0..1)).realize();
+        let py: GenV<BATCH, 1, ParamsTape> = point.slice((.., 1..2)).realize();
 
-        let (neg_px, tape) = point
-            .clone()
-            .put_tape(tape)
-            .negate()
-            .slice((.., 0..1))
-            .realize()
-            .split_tape();
-        let py: GenV<BATCH, 1, ParamsTape> = point.put_tape(tape).slice((.., 1..2)).realize();
-        [py, neg_px.retaped()]
-            .stack()
-            .permute::<_, Axes3<1, 0, 2>>()
+        make_vec2::<BATCH, ParamsTape>(py.reshape(), px.negate().reshape()).reshape()
     }
 
     fn algebra_adjoint_of_translation(point: V<BATCH, 2>) -> M<BATCH, 2, 1> {

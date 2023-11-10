@@ -18,7 +18,7 @@ pub struct TranslationGroupProductImpl<
     const SPARAMS: usize,
     Factor: FactorGroupImplTrait<B, SDOF, SPARAMS, POINT, POINT>,
 > {
-    phantom: std::marker::PhantomData<(Factor)>,
+    phantom: std::marker::PhantomData<Factor>,
 }
 
 impl<
