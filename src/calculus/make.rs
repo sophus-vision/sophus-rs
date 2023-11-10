@@ -1,4 +1,4 @@
-use dfdx::{shapes::*, tensor::*, tensor_ops::*};
+use dfdx_core::{shapes::*, tensor::*, tensor_ops::*};
 
 use super::batch_types::*;
 

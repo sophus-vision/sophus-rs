@@ -1,4 +1,4 @@
-use dfdx::prelude::*;
+use dfdx_core::prelude::*;
 
 use crate::calculus::batch_types::*;
 use crate::calculus::make::*;
@@ -21,7 +21,7 @@ impl<const BATCH: usize> ParamsTestUtils<BATCH, 4> for Rotation3Impl<BATCH> {
     fn tutil_params_examples() -> Vec<V<BATCH, 4>> {
         let mut params = vec![];
 
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
 
         let o: V<BATCH, 1> = dev.ones();
         let l: V<BATCH, 1> = dev.ones();
@@ -97,7 +97,7 @@ impl<const BATCH: usize> ParamsTestUtils<BATCH, 4> for Rotation3Impl<BATCH> {
     }
 
     fn tutil_invalid_params_examples() -> Vec<V<BATCH, 4>> {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         vec![dev.zeros(), dev.ones() * 0.5, dev.ones().negate() * 0.5]
     }
 }
@@ -114,7 +114,7 @@ impl<const BATCH: usize> ParamsImpl<BATCH, 4> for Rotation3Impl<BATCH> {
 
 impl<const BATCH: usize> TangentTestUtil<BATCH, 3> for Rotation3Impl<BATCH> {
     fn tutil_tangent_examples() -> Vec<V<BATCH, 3>> {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         vec![
             dev.zeros(),
             dev.ones(),
@@ -136,7 +136,7 @@ impl<const BATCH: usize> LieGroupImplTrait<BATCH, 3, 4, 3, 3> for Rotation3Impl<
     fn identity_params() -> V<BATCH, 4> {
         let zero = 0.0;
         let one = 1.0;
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         dev.tensor([zero, zero, zero, one]).broadcast()
     }
 
@@ -185,7 +185,7 @@ impl<const BATCH: usize> LieGroupImplTrait<BATCH, 3, 4, 3, 3> for Rotation3Impl<
         let w_is_positive = w.le(1e-6);
         let mod_n = w_is_positive.clone().choose(n.clone(), n.clone().negate());
         let mod_w = w_is_positive.choose(w.clone(), w.clone().negate());
-        let atan_nbyw = mod_n.atan2(mod_w);
+        let atan_nbyw = atan2(mod_n, mod_w);
 
         let n_is_small = squared_n.le(1e-6);
 

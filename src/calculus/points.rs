@@ -1,4 +1,4 @@
-use dfdx::prelude::*;
+use dfdx_core::prelude::*;
 use num_traits::Bounded;
 
 use super::{batch_types::*, make::*};
@@ -24,13 +24,13 @@ impl<const BATCH: usize, const D: usize> PointTraits<BATCH, D> for V<BATCH, D> {
 
     fn smallest() -> Self {
         let s: f64 = f64::min_value();
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         dev.ones() * s
     }
 
     fn largest() -> Self {
         let l: f64 = f64::max_value();
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         dev.ones() * l
     }
 }
@@ -46,17 +46,17 @@ impl<const BATCH: usize, const D: usize> PointTraits<BATCH, D> for IV<BATCH, D> 
 
     fn smallest() -> Self {
         let s: i64 = i64::min_value();
-        dfdx::tensor::Cpu::default().tensor([[s; D]; BATCH])
+        dfdx_core::tensor::Cpu::default().tensor([[s; D]; BATCH])
     }
 
     fn largest() -> Self {
         let l: i64 = i64::max_value();
-        dfdx::tensor::Cpu::default().tensor([[l; D]; BATCH])
+        dfdx_core::tensor::Cpu::default().tensor([[l; D]; BATCH])
     }
 }
 
 pub fn tutil_point_examples<const BATCH: usize, const D: usize>() -> Vec<V<BATCH, D>> {
-    let dev = dfdx::tensor::Cpu::default();
+    let dev = dfdx_core::tensor::Cpu::default();
     vec![
         dev.zeros(),
         dev.ones() * 0.5,
@@ -68,7 +68,7 @@ pub fn tutil_point_examples<const BATCH: usize, const D: usize>() -> Vec<V<BATCH
 
 pub fn tutil_points_examples<const BATCH: usize, const D: usize, const NUM_POINTS: usize>(
 ) -> Vec<M<BATCH, D, NUM_POINTS>> {
-    let dev = dfdx::tensor::Cpu::default();
+    let dev = dfdx_core::tensor::Cpu::default();
     vec![
         dev.zeros(),
         dev.ones() * 0.5,
@@ -103,7 +103,7 @@ pub fn cross<const BATCH: usize, LhsTape: SophusTape + Merge<RhsTape>, RhsTape: 
 }
 
 pub fn unit_x<const BATCH: usize>() -> V<BATCH, 3> {
-    let dev = dfdx::tensor::Cpu::default();
+    let dev = dfdx_core::tensor::Cpu::default();
     let o: V<BATCH, 1> = dev.zeros();
     let l: V<BATCH, 1> = dev.ones();
 
@@ -111,7 +111,7 @@ pub fn unit_x<const BATCH: usize>() -> V<BATCH, 3> {
 }
 
 pub fn unit_y<const BATCH: usize>() -> V<BATCH, 3> {
-    let dev = dfdx::tensor::Cpu::default();
+    let dev = dfdx_core::tensor::Cpu::default();
     let o: V<BATCH, 1> = dev.zeros();
     let l: V<BATCH, 1> = dev.ones();
 
@@ -119,7 +119,7 @@ pub fn unit_y<const BATCH: usize>() -> V<BATCH, 3> {
 }
 
 pub fn unit_z<const BATCH: usize>() -> V<BATCH, 3> {
-    let dev = dfdx::tensor::Cpu::default();
+    let dev = dfdx_core::tensor::Cpu::default();
     let o: V<BATCH, 1> = dev.zeros();
     let l: V<BATCH, 1> = dev.ones();
 

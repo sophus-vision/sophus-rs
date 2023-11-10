@@ -1,4 +1,4 @@
-use dfdx::prelude::*;
+use dfdx_core::prelude::*;
 
 use crate::calculus::batch_types::*;
 use crate::calculus::params::*;

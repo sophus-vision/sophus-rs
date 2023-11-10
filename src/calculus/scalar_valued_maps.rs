@@ -1,5 +1,5 @@
 use super::batch_types::*;
-use dfdx::{shapes::*, tensor::*, tensor_ops::*};
+use dfdx_core::{shapes::*, tensor::*, tensor_ops::*};
 
 // Scalar-valued map on a vector space.
 //
@@ -177,7 +177,7 @@ mod test {
     use crate::calculus::make::*;
 
     use super::*;
-    use dfdx::tensor::Cpu;
+    use dfdx_core::tensor::Cpu;
 
     #[allow(dead_code)]
     fn test_batched_scalar_valued_map_from_vector<const BATCH: usize>() {

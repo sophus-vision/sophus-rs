@@ -4,7 +4,7 @@ use std::mem::swap;
 use crate::calculus::batch_types::*;
 use crate::lie::isometry2::*;
 use crate::manifold::traits::*;
-use dfdx::prelude::*;
+use dfdx_core::prelude::*;
 //use sophus_macros::create_impl;
 
 #[derive(Copy, Clone, Debug)]
@@ -145,7 +145,7 @@ impl<const AT: char> ManifoldV for CostFnArg<1, V<1, 1>, AT> {
     fn update(&mut self, delta: &[f64]) {
         assert!(self.v.len() * Self::DOF == delta.len());
         let mut i = 0;
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         for e in self.v.iter_mut() {
             let u: Tensor<(Const<1>, _), _, _> = dev.tensor_from_vec(
                 delta[i * Self::DOF..(i + 1) * Self::DOF].to_vec(),
@@ -176,7 +176,7 @@ impl<const AT: char> ManifoldV for CostFnArg<2, V<1, 2>, AT> {
     fn update(&mut self, delta: &[f64]) {
         assert!(self.v.len() * Self::DOF == delta.len());
         let mut i = 0;
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         for e in self.v.iter_mut() {
             let u: Tensor<(Const<1>, _), _, _> = dev.tensor_from_vec(
                 delta[i * Self::DOF..(i + 1) * Self::DOF].to_vec(),
@@ -208,7 +208,7 @@ impl<const AT: char> ManifoldV for CostFnArg<3, V<1, 3>, AT> {
     fn update(&mut self, delta: &[f64]) {
         assert!(self.v.len() * Self::DOF == delta.len());
         let mut i = 0;
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         for e in self.v.iter_mut() {
             let u: Tensor<(Const<1>, _), _, _> = dev.tensor_from_vec(
                 delta[i * Self::DOF..(i + 1) * Self::DOF].to_vec(),
@@ -240,7 +240,7 @@ impl<const AT: char> ManifoldV for CostFnArg<3, Isometry2<1>, AT> {
    fn update(&mut self, delta: &[f64]) {
         assert!(self.v.len() * Self::DOF == delta.len());
         let mut i = 0;
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         for e in self.v.iter_mut() {
             let u: Tensor<(Const<1>, _), _, _> = dev.tensor_from_vec(
                 delta[i * Self::DOF..(i + 1) * Self::DOF].to_vec(),

@@ -1,5 +1,5 @@
-use dfdx::shapes::Unit;
-use dfdx::tensor::NoneTape;
+use dfdx_core::shapes::Unit;
+use dfdx_core::tensor::NoneTape;
 
 use crate::calculus::batch_types::*;
 use crate::calculus::params::*;
@@ -14,8 +14,8 @@ pub trait ManifoldImpl<
     const PARAMS: usize,
     const POINT: usize,
     const AMBIENT_DIM: usize,
-    D: dfdx::tensor::Storage<f64>,
-    Tape: dfdx::tensor::Tape<f64, D>,
+    D: dfdx_core::tensor::Storage<f64>,
+    Tape: dfdx_core::tensor::Tape<f64, D>,
 >: ParamsImpl<B, PARAMS> + TangentTestUtil<B, DOF>
 {
     fn oplus(params: &GenV<B, PARAMS, Tape>, tangent: &GenV<B, DOF, Tape>)

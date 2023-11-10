@@ -1,4 +1,4 @@
-use dfdx::prelude::*;
+use dfdx_core::prelude::*;
 
 use crate::calculus::make::*;
 use crate::calculus::params::*;
@@ -81,7 +81,7 @@ impl<
     }
 
     fn tutil_invalid_params_examples() -> Vec<V<B, PARAMS>> {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         let mut examples = vec![];
 
         for factor_group_params in Factor::tutil_invalid_params_examples() {
@@ -220,7 +220,7 @@ impl<
     const IS_ORIGIN_PRESERVING: bool = false;
 
     fn identity_params() -> V<B, PARAMS> {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         Self::params_from(dev.zeros(), Factor::identity_params())
     }
 

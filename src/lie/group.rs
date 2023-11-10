@@ -1,4 +1,4 @@
-use dfdx::prelude::*;
+use dfdx_core::prelude::*;
 
 use crate::calculus::batch_types::*;
 use crate::calculus::matrix_valued_maps::*;
@@ -197,7 +197,7 @@ impl<
     }
 
     fn test_preservability() {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         if G::IS_ORIGIN_PRESERVING {
             for g in Self::tutil_element_examples() {
                 let o: M<B, POINT, 4> = dev.zeros();
@@ -571,7 +571,7 @@ impl<
 //     // TODO: reactivate this
 
 //     pub fn exp_jacobian_tests() {
-//         let device = dfdx::tensor::Cpu::default();
+//         let device = dfdx_core::tensor::Cpu::default();
 
 //         let dxfx = Self::dx_exp_x_at_0();
 //         for b in 0..B {

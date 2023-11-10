@@ -2,7 +2,7 @@ use super::{
     scalar_valued_maps::*,
     batch_types::*,
 };
-use dfdx::{shapes::*, tensor::*, tensor_ops::*};
+use dfdx_core::{shapes::*, tensor::*, tensor_ops::*};
 
 // Vector-valued map on a vector space.
 //
@@ -210,7 +210,7 @@ mod test {
     use crate::*;
     use crate::calculus::batch_types::*;
     use super::*;
-    use dfdx::tensor::Cpu;
+    use dfdx_core::tensor::Cpu;
 
     #[allow(dead_code)]
     fn test_batched_vector_valued_map_from_vector<const BATCH: usize>() {

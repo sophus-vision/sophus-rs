@@ -1,5 +1,5 @@
 use super::batch_types::*;
-use dfdx::prelude::*;
+use dfdx_core::prelude::*;
 // A smooth curve in ℝ.
 //
 // This is a function which takes a scalar and returns a scalar:
@@ -185,7 +185,7 @@ mod test {
         use super::ScalarValuedCurve;
         use crate::{assert_tensors_relative_eq_rank1, calculus::curves::*};
 
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
 
         const BATCH: usize = 4;
 
@@ -213,7 +213,7 @@ mod test {
         use crate::calculus::make::*;
         use crate::{assert_tensors_relative_eq_rank2, calculus::curves::*};
 
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
 
         const BATCH: usize = 4;
 
@@ -242,7 +242,7 @@ mod test {
         use crate::calculus::make::*;
         use crate::{assert_tensors_relative_eq_rank3, calculus::curves::*};
 
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
 
         const BATCH: usize = 4;
 

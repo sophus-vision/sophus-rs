@@ -1,5 +1,5 @@
 use super::{points::*, batch_types::*};
-use dfdx::{tensor::*, tensor_ops::*};
+use dfdx_core::{tensor::*, tensor_ops::*};
 
 #[derive(Debug, Clone)]
 pub struct Region<const BATCH: usize, const D: usize> {
@@ -120,7 +120,7 @@ impl<const BATCH: usize, const D: usize> RegionTraits<BATCH, D> for Region<BATCH
     }
 
     fn range(&self) -> V<BATCH, D> {
-        let mut p: V<BATCH, D> = dfdx::tensor::Cpu::default().zeros();
+        let mut p: V<BATCH, D> = dfdx_core::tensor::Cpu::default().zeros();
         if self.is_empty() {
             return p;
         }
@@ -211,7 +211,7 @@ impl<const BATCH: usize, const D: usize> RegionTraits<BATCH, D> for IRegion<BATC
     }
 
     fn range(&self) -> IV<BATCH, D> {
-        let mut p: IV<BATCH, D> = dfdx::tensor::Cpu::default().zeros();
+        let mut p: IV<BATCH, D> = dfdx_core::tensor::Cpu::default().zeros();
         if self.is_empty() {
             return p;
         }
@@ -221,7 +221,7 @@ impl<const BATCH: usize, const D: usize> RegionTraits<BATCH, D> for IRegion<BATC
     }
 
     fn mid(&self) -> IV<BATCH, D> {
-        let half_range = self.range().to_dtype() * 0.5;
+        let half_range = self.range().to_dtype::<f64>() * 0.5;
         (self.min().clone().to_dtype() + half_range).to_dtype()
     }
 
@@ -240,7 +240,7 @@ mod tests {
     use super::*;
 
     fn batched_region<const BATCH: usize>() {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
 
         let empty_f64 = Region::<BATCH, 1>::empty();
         assert!(empty_f64.is_empty());

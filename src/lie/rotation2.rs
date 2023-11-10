@@ -1,4 +1,4 @@
-use dfdx::prelude::*;
+use dfdx_core::prelude::*;
 
 use crate::calculus::batch_types::*;
 use crate::calculus::make::*;
@@ -19,7 +19,7 @@ impl<const BATCH: usize> ParamsTestUtils<BATCH, 2> for Rotation2Impl<BATCH> {
         let mut params = vec![];
         for i in 2..10 {
             let angle = Into::into(i as f64 * std::f64::consts::PI / 5.0);
-            let dev = dfdx::tensor::Cpu::default();
+            let dev = dfdx_core::tensor::Cpu::default();
             let mut batch = dev.zeros();
             for i in 0..BATCH {
                 batch[[i, 0]] = angle;
@@ -31,7 +31,7 @@ impl<const BATCH: usize> ParamsTestUtils<BATCH, 2> for Rotation2Impl<BATCH> {
     }
 
     fn tutil_invalid_params_examples() -> Vec<V<BATCH, 2>> {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         vec![dev.zeros(), dev.ones() * 0.5, dev.ones().negate() * 0.5]
     }
 }
@@ -48,7 +48,7 @@ impl<const BATCH: usize> ParamsImpl<BATCH, 2> for Rotation2Impl<BATCH> {
 
 impl<const BATCH: usize> TangentTestUtil<BATCH, 1> for Rotation2Impl<BATCH> {
     fn tutil_tangent_examples() -> Vec<V<BATCH, 1>> {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         vec![
             dev.zeros(),
             dev.ones(),
@@ -70,7 +70,7 @@ impl<const BATCH: usize> LieGroupImplTrait<BATCH, 1, 2, 2, 2> for Rotation2Impl<
     fn identity_params() -> V<BATCH, 2> {
         let zero = 0.0;
         let one = 1.0;
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         dev.tensor([one, zero]).broadcast()
     }
 
@@ -87,7 +87,7 @@ impl<const BATCH: usize> LieGroupImplTrait<BATCH, 1, 2, 2, 2> for Rotation2Impl<
     fn into_log<Tape: SophusTape>(params: GenV<BATCH, 2, Tape>) -> GenV<BATCH, 1, Tape> {
         let x = params.clone().slice((.., 0..1));
         let y = params.slice((.., 1..2));
-        y.atan2(x).realize()
+        atan2(y,x).realize()
     }
 
     fn hat<Tape: SophusTape>(omega: GenV<BATCH, 1, Tape>) -> GenM<BATCH, 2, 2, Tape> {
@@ -166,11 +166,11 @@ impl<const BATCH: usize> LieGroupImplTrait<BATCH, 1, 2, 2, 2> for Rotation2Impl<
     }
 
     fn algebra_adjoint(_tangent: V<BATCH, 1>) -> M<BATCH, 1, 1> {
-        dfdx::tensor::Cpu::default().zeros()
+        dfdx_core::tensor::Cpu::default().zeros()
     }
 
     fn dx_exp_x_at_0() -> M<BATCH, 2, 1> {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         let zero: V<BATCH, 1> = dev.zeros().retaped();
         let one: V<BATCH, 1> = dev.ones().retaped();
         [zero, one].stack().permute::<_, Axes3<1, 0, 2>>()
@@ -192,7 +192,7 @@ impl<const BATCH: usize> LieGroupImplTrait<BATCH, 1, 2, 2, 2> for Rotation2Impl<
     }
 
     fn dx_log_exp_x_times_self_at_0(_params: &V<BATCH, 2>) -> M<BATCH, 1, 1> {
-        dfdx::tensor::Cpu::default().ones()
+        dfdx_core::tensor::Cpu::default().ones()
     }
 }
 

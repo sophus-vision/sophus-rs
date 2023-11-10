@@ -1,8 +1,8 @@
-use dfdx::{shapes::*, tensor::*};
+use dfdx_core::{shapes::*, tensor::*};
 
 pub type SharedTape = std::sync::Arc<std::sync::Mutex<OwnedTape<f64, Cpu>>>;
 
-pub trait SophusTape :dfdx::tensor::Tape<f64, Cpu> + std::fmt::Debug + Clone{
+pub trait SophusTape :dfdx_core::tensor::Tape<f64, Cpu> + std::fmt::Debug + Clone{
 }
 
 impl SophusTape for NoneTape {}
@@ -51,7 +51,7 @@ pub type GenVFromM<
     const OUTROWS: usize,
     const OUTCOLS: usize,
     MaybeTape,
-> = Tensor<dfdx::shapes::Rank4<BATCH, INROWS, OUTROWS, OUTCOLS>, f64, Cpu, MaybeTape>;
+> = Tensor<dfdx_core::shapes::Rank4<BATCH, INROWS, OUTROWS, OUTCOLS>, f64, Cpu, MaybeTape>;
 // Batched vector-valued function from matrix - with generic tape: rank4 tensor
 //   f_b: rank2 -> rank1;  M_b := f(V_b)   [b in 0..BATCH]
 pub type GenFromV<
@@ -60,7 +60,7 @@ pub type GenFromV<
     const INCOLS: usize,
     const OUTROWS: usize,
     MaybeTape,
-> = Tensor<dfdx::shapes::Rank4<BATCH, INROWS, INCOLS, OUTROWS>, f64, Cpu, MaybeTape>;
+> = Tensor<dfdx_core::shapes::Rank4<BATCH, INROWS, INCOLS, OUTROWS>, f64, Cpu, MaybeTape>;
 // Batched vector-valued function from matrix - with generic tape: rank5 tensor
 //   f_b: rank2 -> rank2;  M_b := f(M_b)   [b in 0..BATCH]
 pub type GenMFromM<
@@ -70,7 +70,7 @@ pub type GenMFromM<
     const OUTROWS: usize,
     const OUTCOLS: usize,
     MaybeTape,
-> = Tensor<dfdx::shapes::Rank5<BATCH, INROWS, INCOLS, OUTROWS, OUTCOLS>, f64, Cpu, MaybeTape>;
+> = Tensor<dfdx_core::shapes::Rank5<BATCH, INROWS, INCOLS, OUTROWS, OUTCOLS>, f64, Cpu, MaybeTape>;
 
 // Batched vector-valued function from vector - with generic tape; rank3 tensor
 //   f_b: rank1 -> rank1;  V_b := f(V_b)   [b in 0..BATCH]
@@ -83,7 +83,7 @@ pub type VFromM<
     const INROWS: usize,
     const OUTROWS: usize,
     const OUTCOLS: usize,
-> = Tensor<dfdx::shapes::Rank4<BATCH, INROWS, OUTROWS, OUTCOLS>, f64, Cpu, NoneTape>;
+> = Tensor<dfdx_core::shapes::Rank4<BATCH, INROWS, OUTROWS, OUTCOLS>, f64, Cpu, NoneTape>;
 // Batched vector-valued function from matrix - with generic tape: rank4 tensor
 //   f_b: rank2 -> rank1;  M_b := f(V_b)   [b in 0..BATCH]
 pub type MFromV<
@@ -91,7 +91,7 @@ pub type MFromV<
     const INROWS: usize,
     const INCOLS: usize,
     const OUTROWS: usize,
-> = Tensor<dfdx::shapes::Rank4<BATCH, INROWS, INCOLS, OUTROWS>, f64, Cpu, NoneTape>;
+> = Tensor<dfdx_core::shapes::Rank4<BATCH, INROWS, INCOLS, OUTROWS>, f64, Cpu, NoneTape>;
 // Batched vector-valued function from matrix - with generic tape: rank4 tensor
 //   f_b: rank2 -> rank2;  M_b := f(M_b)   [b in 0..BATCH]
 pub type MFromM<
@@ -100,7 +100,7 @@ pub type MFromM<
     const INCOLS: usize,
     const OUTROWS: usize,
     const OUTCOLS: usize,
-> = Tensor<dfdx::shapes::Rank5<BATCH, INROWS, INCOLS, OUTROWS, OUTCOLS>, f64, Cpu, NoneTape>;
+> = Tensor<dfdx_core::shapes::Rank5<BATCH, INROWS, INCOLS, OUTROWS, OUTCOLS>, f64, Cpu, NoneTape>;
 
 // Batched vector-valued function from vector - with tape; rank3 tensor
 //   f_b: rank1 -> rank1;  V_b := f(V_b)   [b in 0..BATCH]
@@ -118,7 +118,7 @@ pub type TapedVFromM<
     const OUTROWS: usize,
     const OUTCOLS: usize,
     MaybeTape,
-> = Tensor<dfdx::shapes::Rank4<BATCH, INROWS, OUTROWS, OUTCOLS>, f64, Cpu, MaybeTape>;
+> = Tensor<dfdx_core::shapes::Rank4<BATCH, INROWS, OUTROWS, OUTCOLS>, f64, Cpu, MaybeTape>;
 // Batched vector-valued function from matrix - with tape: rank4 tensor
 //   f_b: rank2 -> rank1;  M_b := f(V_b)   [b in 0..BATCH]
 pub type TapedFromV<
@@ -127,7 +127,7 @@ pub type TapedFromV<
     const INCOLS: usize,
     const OUTROWS: usize,
     MaybeTape,
-> = Tensor<dfdx::shapes::Rank4<BATCH, INROWS, INCOLS, OUTROWS>, f64, Cpu, MaybeTape>;
+> = Tensor<dfdx_core::shapes::Rank4<BATCH, INROWS, INCOLS, OUTROWS>, f64, Cpu, MaybeTape>;
 // Batched vector-valued function from matrix - with tape: rank5 tensor
 //   f_b: rank2 -> rank2;  M_b := f(M_b)   [b in 0..BATCH]
 pub type TapedMFromM<
@@ -137,7 +137,7 @@ pub type TapedMFromM<
     const OUTROWS: usize,
     const OUTCOLS: usize,
     MaybeTape,
-> = Tensor<dfdx::shapes::Rank5<BATCH, INROWS, INCOLS, OUTROWS, OUTCOLS>, f64, Cpu, MaybeTape>;
+> = Tensor<dfdx_core::shapes::Rank5<BATCH, INROWS, INCOLS, OUTROWS, OUTCOLS>, f64, Cpu, MaybeTape>;
 
 pub type IV<const BATCH: usize, const ROWS: usize> = Tensor<Rank2<BATCH, ROWS>, i64, Cpu>;
 

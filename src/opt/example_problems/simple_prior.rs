@@ -1,4 +1,4 @@
-use dfdx::prelude::*;
+use dfdx_core::prelude::*;
 use tuple_list::*;
 
 use crate::{
@@ -64,7 +64,7 @@ impl<const E1: char> ResidualFn<6, 1> for SimplePrior<E1> {
 
         let residual: S<3> = residual.reshape();
 
-        let zeros: V<1, 3> = dfdx::tensor::Cpu::default().zeros();
+        let zeros: V<1, 3> = dfdx_core::tensor::Cpu::default().zeros();
         let dx_res =
             VectorValuedMapFromVector::sym_diff_quotient_from_taped(dx_res_fn, zeros, 1e-5);
         let dx_res: V<3, 3> = dx_res.reshape();

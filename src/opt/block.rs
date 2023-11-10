@@ -1,4 +1,4 @@
-use dfdx::prelude::*;
+use dfdx_core::prelude::*;
 
 pub trait SophusAddAssign<Rhs = Self> {
     // Required method

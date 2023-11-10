@@ -1,4 +1,4 @@
-use dfdx::shapes::{Rank0, Rank1, Rank2, Rank3, Rank4, Rank5};
+use dfdx_core::shapes::{Rank0, Rank1, Rank2, Rank3, Rank4, Rank5};
 
 pub trait ShapeRank<const RANK: usize> {
     fn rank(&self) -> usize;
@@ -90,7 +90,7 @@ macro_rules! assert_tensors_relative_eq_rank1 {
     ($t1:expr, $t2:expr, $eps:literal) => {{
         use crate::calculus::tensor_asserts::ShapeRank;
         use approx::relative_eq;
-        use dfdx::shapes::HasShape;
+        use dfdx_core::shapes::HasShape;
         if !($t1.shape().dims() == $t2.shape().dims()) {
             panic!(
                 "assert_tensors_relative_eq_rank1 FAILED: tensor shapes are not equal: {:?} != {:?}",
@@ -127,7 +127,7 @@ macro_rules! assert_tensors_relative_eq_rank2 {
     ($t1:expr, $t2:expr, $eps:literal) => {{
         use crate::calculus::tensor_asserts::ShapeRank;
         use approx::relative_eq;
-        use dfdx::shapes::HasShape;
+        use dfdx_core::shapes::HasShape;
         if !($t1.shape().dims() == $t2.shape().dims()) {
             panic!(
                 "assert_tensors_relative_eq_rank2 FAILED: tensor shapes are not equal: {:?} != {:?}",
@@ -168,7 +168,7 @@ macro_rules! assert_tensors_relative_eq_rank3 {
     ($t1:expr, $t2:expr, $eps:literal) => {{
         use crate::calculus::tensor_asserts::ShapeRank;
         use approx::relative_eq;
-        use dfdx::shapes::HasShape;
+        use dfdx_core::shapes::HasShape;
         if !($t1.shape().dims() == $t2.shape().dims()) {
             panic!(
                 "assert_tensors_relative_eq_rank3 FAILED: tensor shapes are not equal: {:?} != {:?}",
@@ -212,7 +212,7 @@ macro_rules! assert_tensors_relative_eq_rank4 {
     ($t1:expr, $t2:expr, $eps:literal) => {{
         use crate::calculus::tensor_asserts::ShapeRank;
         use approx::relative_eq;
-        use dfdx::shapes::HasShape;
+        use dfdx_core::shapes::HasShape;
         if !($t1.shape().dims() == $t2.shape().dims()) {
             panic!(
                 "assert_tensors_relative_eq_rank4 FAILED: tensor shapes are not equal: {:?} != {:?}",
@@ -257,7 +257,7 @@ macro_rules! assert_tensors_relative_eq_rank5 {
     ($t1:expr, $t2:expr, $eps:literal) => {{
         use crate::calculus::tensor_asserts::ShapeRank;
         use approx::relative_eq;
-        use dfdx::shapes::HasShape;
+        use dfdx_core::shapes::HasShape;
         if !($t1.shape().dims() == $t2.shape().dims()) {
             panic!(
                 "assert_tensors_relative_eq_rank5 FAILED: tensor shapes are not equal: {:?} != {:?}",
@@ -304,12 +304,12 @@ macro_rules! assert_tensors_relative_eq_rank5 {
 mod tests {
     use super::*;
     use crate::assert_tensors_relative_eq_rank1;
-    use dfdx::prelude::*;
+    use dfdx_core::prelude::*;
 
     #[test]
     #[should_panic(expected = "assert_tensors_relative_eq_rank0 FAILED")]
     fn test_assert_tensors_relative_eq_rank0() {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         let t1 = dev.tensor(1.0);
         let t2 = dev.tensor(2.0);
         assert_tensors_relative_eq_rank0!(t1, t2, 0.00001);
@@ -317,7 +317,7 @@ mod tests {
 
     #[test]
     fn test_assert_tensors_relative_eq_rank0_passes() {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         let t1 = dev.tensor(1.0);
         let t2 = dev.tensor(1.0);
         assert_tensors_relative_eq_rank0!(t1, t2, 0.00001);
@@ -326,7 +326,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "assert_tensors_relative_eq_rank1 FAILED")]
     fn test_assert_tensors_relative_eq_rank1() {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         let t1 = dev.tensor([1.0, 2.0, 3.0]);
         let t2 = dev.tensor([1.0, 2.0, 4.0]);
         assert_tensors_relative_eq_rank1!(t1, t2, 0.00001);
@@ -334,7 +334,7 @@ mod tests {
 
     #[test]
     fn test_assert_tensors_relative_eq_rank1_passes() {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         let t1 = dev.tensor([1.0, 2.0, 3.0]);
         let t2 = dev.tensor([1.0, 2.0, 3.0]);
         assert_tensors_relative_eq_rank1!(t1, t2, 0.00001);
@@ -343,7 +343,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "assert_tensors_relative_eq_rank2 FAILED")]
     fn test_assert_tensors_relative_eq_rank2() {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         let t1: Tensor<Rank2<2, 3>, f64, Cpu> = dev.tensor([[1.0, 2.0, 1.0], [3.0, 4.0, 1.0]]);
         let t2: Tensor<Rank2<2, 3>, f64, Cpu> = dev.tensor([[1.0, 2.0, 1.0], [4.0, 4.0, 1.0]]);
         assert_tensors_relative_eq_rank2!(t1, t2, 0.00001);
@@ -351,7 +351,7 @@ mod tests {
 
     #[test]
     fn test_assert_tensors_relative_eq_rank2_passes() {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         let t1: Tensor<Rank2<2, 3>, f64, Cpu> = dev.tensor([[1.0, 2.0, 1.0], [3.0, 4.0, 1.0]]);
         let t2: Tensor<Rank2<2, 3>, f64, Cpu> = dev.tensor([[1.0, 2.0, 1.0], [3.0, 4.0, 1.0]]);
         assert_tensors_relative_eq_rank2!(t1, t2, 0.00001);
@@ -360,7 +360,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "assert_tensors_relative_eq_rank3 FAILED")]
     fn test_assert_tensors_relative_eq_rank3() {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         let t1: Tensor<Rank3<1, 2, 3>, f64, Cpu> = dev.tensor([[[1.0, 2.0, 1.0], [3.0, 4.0, 1.0]]]);
         let t2: Tensor<Rank3<1, 2, 3>, f64, Cpu> = dev.tensor([[[1.0, 2.0, 1.0], [4.0, 4.0, 1.0]]]);
         assert_tensors_relative_eq_rank3!(t1, t2, 0.00001);
@@ -368,7 +368,7 @@ mod tests {
 
     #[test]
     fn test_assert_tensors_relative_eq_rank3_passes() {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         let t1: Tensor<Rank3<1, 2, 3>, f64, Cpu> = dev.tensor([[[1.0, 2.0, 1.0], [3.0, 4.0, 1.0]]]);
         let t2: Tensor<Rank3<1, 2, 3>, f64, Cpu> = dev.tensor([[[1.0, 2.0, 1.0], [3.0, 4.0, 1.0]]]);
         assert_tensors_relative_eq_rank3!(t1, t2, 0.00001);
@@ -377,7 +377,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "assert_tensors_relative_eq_rank4 FAILED")]
     fn test_assert_tensors_relative_eq_rank4() {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         let t1: Tensor<Rank4<1, 2, 2, 2>, f64, Cpu> =
             dev.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]]]);
         let t2: Tensor<Rank4<1, 2, 2, 2>, f64, Cpu> =
@@ -387,7 +387,7 @@ mod tests {
 
     #[test]
     fn test_assert_tensors_relative_eq_rank4_passes() {
-        let dev = dfdx::tensor::Cpu::default();
+        let dev = dfdx_core::tensor::Cpu::default();
         let t1: Tensor<Rank4<1, 2, 2, 2>, f64, Cpu> =
             dev.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]]]);
         let t2: Tensor<Rank4<1, 2, 2, 2>, f64, Cpu> =
