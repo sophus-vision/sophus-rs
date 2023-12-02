@@ -1,14 +1,15 @@
-use nalgebra::{SMatrix, SVector};
+use nalgebra::SMatrix;
+use nalgebra::SVector;
 
-use crate::{
-    calculus,
-    image::{layout::ImageSize, mut_image::MutImage},
-};
+use crate::image::view::ImageSize;
+use crate::image::mut_image::MutImage2F32;
+use crate::manifold::traits::ParamsImpl;
+
 type V<const N: usize> = SVector<f64, N>;
 type M<const N: usize, const O: usize> = SMatrix<f64, N, O>;
 
 pub trait CameraDistortionImpl<const DISTORT: usize, const PARAMS: usize>:
-    calculus::traits::ParamsImpl<PARAMS>
+    ParamsImpl<f64, PARAMS>
 {
     fn identity_params() -> V<PARAMS> {
         let mut params = V::<PARAMS>::zeros();
@@ -43,7 +44,7 @@ pub trait CameraEnum {
     fn cam_unproj_with_z(&self, point_in_camera: &V<2>, z: f64) -> V<3>;
     fn distort(&self, point_in_camera: &V<2>) -> V<2>;
     fn undistort(&self, point_in_camera: &V<2>) -> V<2>;
-    fn undistort_table(&self) -> MutImage<2, f32>;
+    fn undistort_table(&self) -> MutImage2F32;
 
     fn dx_distort_x(&self, point_in_camera: &V<2>) -> M<2, 2>;
 

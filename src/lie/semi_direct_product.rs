@@ -1,101 +1,96 @@
 use std::vec;
 
-use nalgebra::{SMatrix, SVector};
-
-use crate::{
-    calculus::{self, points::example_points},
-    lie, manifold,
-};
-
-use super::traits::LieSubgroupImplTrait;
-
-type V<const N: usize> = SVector<f64, N>;
-type M<const N: usize, const O: usize> = SMatrix<f64, N, O>;
+use super::traits::LieFactorGroupImplTrait;
+use super::traits::LieGroupImpl;
+use crate::calculus::dual::dual_scalar::Dual;
+use crate::calculus::points::example_points;
+use crate::calculus::types::matrix::IsMatrix;
+use crate::calculus::types::scalar::IsScalar;
+use crate::calculus::types::vector::IsVector;
+use crate::calculus::types::vector::IsVectorLike;
+use crate::lie;
+use crate::manifold::traits::ParamsImpl;
+use crate::manifold::{self};
 
 #[derive(Debug, Copy, Clone)]
 pub struct SemiDirectProductImpl<
+    S: IsScalar,
     const DOF: usize,
     const PARAMS: usize,
     const POINT: usize,
     const AMBIENT: usize,
     const SDOF: usize,
     const SPARAMS: usize,
-    S: LieSubgroupImplTrait<SDOF, SPARAMS, POINT, POINT>,
+    F: LieFactorGroupImplTrait<S, SDOF, SPARAMS, POINT, POINT>,
 > {
-    phantom: std::marker::PhantomData<S>,
+    phantom: std::marker::PhantomData<(S, F)>,
 }
 
 impl<
+        S: IsScalar,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
         const SDOF: usize,
         const SPARAMS: usize,
-        S: LieSubgroupImplTrait<SDOF, SPARAMS, POINT, POINT>,
-    > SemiDirectProductImpl<DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, S>
+        F: LieFactorGroupImplTrait<S, SDOF, SPARAMS, POINT, POINT>,
+    > SemiDirectProductImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, F>
 {
-    fn translation(params: &V<PARAMS>) -> V<POINT> {
-        params.fixed_rows::<POINT>(0).into_owned()
+    fn translation(params: &S::Vector<PARAMS>) -> S::Vector<POINT> {
+        params.get_fixed_rows::<POINT>(0)
     }
 
-    fn subgroup_params(params: &V<PARAMS>) -> V<SPARAMS> {
-        params.fixed_rows::<SPARAMS>(POINT).into_owned()
+    fn subgroup_params(params: &S::Vector<PARAMS>) -> S::Vector<SPARAMS> {
+        params.get_fixed_rows::<SPARAMS>(POINT)
     }
 
-    pub fn params_from(translation: &V<POINT>, subgroup_params: &V<SPARAMS>) -> V<PARAMS> {
-        let mut params = V::<PARAMS>::zeros();
-        params
-            .fixed_view_mut::<POINT, 1>(0, 0)
-            .copy_from(&translation);
-        params
-            .fixed_view_mut::<SPARAMS, 1>(POINT, 0)
-            .copy_from(subgroup_params);
-        params
+    pub fn params_from(
+        translation: &S::Vector<POINT>,
+        subgroup_params: &S::Vector<SPARAMS>,
+    ) -> S::Vector<PARAMS> {
+        S::Vector::block_vec2(translation.clone(), subgroup_params.clone())
     }
 
-    fn translation_tangent(tangent: &V<DOF>) -> V<POINT> {
-        tangent.fixed_rows::<POINT>(0).into_owned()
+    fn translation_tangent(tangent: &S::Vector<DOF>) -> S::Vector<POINT> {
+        tangent.get_fixed_rows::<POINT>(0)
     }
 
-    fn subgroup_tangent(tangent: &V<DOF>) -> V<SDOF> {
-        tangent.fixed_rows::<SDOF>(POINT).into_owned()
+    fn subgroup_tangent(tangent: &S::Vector<DOF>) -> S::Vector<SDOF> {
+        tangent.get_fixed_rows::<SDOF>(POINT)
     }
 
-    fn tangent_from(translation: &V<POINT>, subgroup_tangent: &V<SDOF>) -> V<DOF> {
-        let mut tangent = V::<DOF>::zeros();
-        tangent
-            .fixed_view_mut::<POINT, 1>(0, 0)
-            .copy_from(&translation);
-        tangent
-            .fixed_view_mut::<SDOF, 1>(POINT, 0)
-            .copy_from(subgroup_tangent);
-        tangent
+    fn tangent_from(
+        translation: &S::Vector<POINT>,
+        subgroup_tangent: &S::Vector<SDOF>,
+    ) -> S::Vector<DOF> {
+        S::Vector::block_vec2(translation.clone(), subgroup_tangent.clone())
     }
 
-    fn translation_examples() -> Vec<V<POINT>> {
-        example_points::<POINT>()
+    fn translation_examples() -> Vec<S::Vector<POINT>> {
+        example_points()
     }
 }
 
 impl<
+        S: IsScalar,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
         const SDOF: usize,
         const SPARAMS: usize,
-        S: LieSubgroupImplTrait<SDOF, SPARAMS, POINT, POINT>,
-    > calculus::traits::ParamsImpl<PARAMS>
-    for SemiDirectProductImpl<DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, S>
+        F: LieFactorGroupImplTrait<S, SDOF, SPARAMS, POINT, POINT>,
+    > ParamsImpl<S, PARAMS>
+    for SemiDirectProductImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, F>
 {
-    fn are_params_valid(params: &V<PARAMS>) -> bool {
-        S::are_params_valid(&Self::subgroup_params(params))
+    fn are_params_valid(params: &S::Vector<PARAMS>) -> bool {
+        F::are_params_valid(&Self::subgroup_params(params))
     }
 
-    fn params_examples() -> Vec<V<PARAMS>> {
+    fn params_examples() -> Vec<S::Vector<PARAMS>> {
         let mut examples = vec![];
-        for subgroup_params in S::params_examples() {
+        for subgroup_params in F::params_examples() {
             for translation in Self::translation_examples() {
                 examples.push(Self::params_from(&translation, &subgroup_params));
             }
@@ -103,28 +98,29 @@ impl<
         examples
     }
 
-    fn invalid_params_examples() -> Vec<V<PARAMS>> {
+    fn invalid_params_examples() -> Vec<S::Vector<PARAMS>> {
         vec![Self::params_from(
-            &V::zeros(),
-            &S::invalid_params_examples()[0],
+            &S::Vector::zero(),
+            &F::invalid_params_examples()[0],
         )]
     }
 }
 
 impl<
+        S: IsScalar,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
         const SDOF: usize,
         const SPARAMS: usize,
-        S: LieSubgroupImplTrait<SDOF, SPARAMS, POINT, POINT>,
-    > manifold::traits::TangentImpl<DOF>
-    for SemiDirectProductImpl<DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, S>
+        F: LieFactorGroupImplTrait<S, SDOF, SPARAMS, POINT, POINT>,
+    > manifold::traits::TangentImpl<S, DOF>
+    for SemiDirectProductImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, F>
 {
-    fn tangent_examples() -> Vec<V<DOF>> {
+    fn tangent_examples() -> Vec<S::Vector<DOF>> {
         let mut examples = vec![];
-        for group_tangent in S::tangent_examples() {
+        for group_tangent in F::tangent_examples() {
             for translation_tangent in Self::translation_examples() {
                 examples.push(Self::tangent_from(&translation_tangent, &group_tangent));
             }
@@ -136,195 +132,202 @@ impl<
 // TODO : Port to Rust
 
 impl<
+        S: IsScalar,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
         const SDOF: usize,
         const SPARAMS: usize,
-        S: LieSubgroupImplTrait<SDOF, SPARAMS, POINT, POINT>,
-    > lie::traits::LieGroupImpl<DOF, PARAMS, POINT, AMBIENT>
-    for SemiDirectProductImpl<DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, S>
+        F: LieFactorGroupImplTrait<S, SDOF, SPARAMS, POINT, POINT>,
+    > LieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>
+    for SemiDirectProductImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, F>
 {
     const IS_ORIGIN_PRESERVING: bool = false;
-    const IS_AXIS_DIRECTION_PRESERVING: bool = S::IS_AXIS_DIRECTION_PRESERVING;
-    const IS_DIRECTION_VECTOR_PRESERVING: bool = S::IS_DIRECTION_VECTOR_PRESERVING;
-    const IS_SHAPE_PRESERVING: bool = S::IS_SHAPE_PRESERVING;
-    const IS_DISTANCE_PRESERVING: bool = S::IS_DISTANCE_PRESERVING;
+    const IS_AXIS_DIRECTION_PRESERVING: bool = F::IS_AXIS_DIRECTION_PRESERVING;
+    const IS_DIRECTION_VECTOR_PRESERVING: bool = F::IS_DIRECTION_VECTOR_PRESERVING;
+    const IS_SHAPE_PRESERVING: bool = F::IS_SHAPE_PRESERVING;
+    const IS_DISTANCE_PRESERVING: bool = F::IS_DISTANCE_PRESERVING;
     const IS_PARALLEL_LINE_PRESERVING: bool = true;
 
-    fn identity_params() -> V<PARAMS> {
-        Self::params_from(&V::zeros(), &S::identity_params())
+    fn identity_params() -> S::Vector<PARAMS> {
+        Self::params_from(&S::Vector::zero(), &F::identity_params())
     }
 
     //    Manifold / Lie Group concepts
 
-    fn adj(params: &V<PARAMS>) -> M<DOF, DOF> {
-        let mut mat_adjoint = M::<DOF, DOF>::zeros();
+    fn adj(params: &S::Vector<PARAMS>) -> S::Matrix<DOF, DOF> {
         let subgroup_params = Self::subgroup_params(params);
         let translation = Self::translation(params);
 
-        // top row
-        mat_adjoint
-            .fixed_view_mut::<POINT, POINT>(0, 0)
-            .copy_from(&S::matrix(&subgroup_params));
-        mat_adjoint
-            .fixed_view_mut::<POINT, SDOF>(0, POINT)
-            .copy_from(&S::adj_of_translation(&subgroup_params, &translation));
-
-        // bottom row
-        mat_adjoint
-            .fixed_view_mut::<SDOF, POINT>(POINT, 0)
-            .copy_from(&M::zeros());
-        mat_adjoint
-            .fixed_view_mut::<SDOF, SDOF>(POINT, POINT)
-            .copy_from(&S::adj(&subgroup_params));
-
-        mat_adjoint
+        
+        S::Matrix::block_mat2x2::<POINT, SDOF, POINT, SDOF>(
+            (
+                F::matrix(&subgroup_params),
+                F::adj_of_translation(&subgroup_params, &translation),
+            ),
+            (S::Matrix::zero(), F::adj(&subgroup_params)),
+        )
     }
 
-    fn exp(omega: &V<DOF>) -> V<PARAMS> {
+    fn exp(omega: &S::Vector<DOF>) -> S::Vector<PARAMS> {
         let translation = Self::translation_tangent(omega);
-        let subgroup_params = S::exp(&Self::subgroup_tangent(omega));
+        let subgroup_params = F::exp(&Self::subgroup_tangent(omega));
 
-        let mat_v = S::mat_v(&subgroup_params, &Self::subgroup_tangent(omega));
-        Self::params_from(&(&mat_v * &translation), &subgroup_params)
+        let mat_v = F::mat_v(&subgroup_params, &Self::subgroup_tangent(omega));
+        Self::params_from(&(mat_v * translation), &subgroup_params)
     }
 
-    fn log(params: &V<PARAMS>) -> V<DOF> {
+    fn log(params: &S::Vector<PARAMS>) -> S::Vector<DOF> {
         let translation = Self::translation(params);
+
         let subgroup_params = Self::subgroup_params(params);
 
-        let subgroup_tangent = S::log(&subgroup_params);
-        let mat_v_inv = S::mat_v_inverse(&subgroup_params, &subgroup_tangent);
-        let translation_tangent = &mat_v_inv * &translation;
+        let subgroup_tangent = F::log(&subgroup_params);
+        let mat_v_inv = F::mat_v_inverse(&subgroup_params, &subgroup_tangent);
+        let translation_tangent = mat_v_inv * translation;
 
         Self::tangent_from(&translation_tangent, &subgroup_tangent)
     }
 
-    fn hat(omega: &V<DOF>) -> M<AMBIENT, AMBIENT> {
-        let mut hat_mat = M::<AMBIENT, AMBIENT>::zeros();
-        hat_mat
-            .view_mut((0, 0), (POINT, POINT))
-            .copy_from(&S::hat(&Self::subgroup_tangent(omega)));
-        hat_mat
-            .view_mut((0, POINT), (POINT, 1))
-            .copy_from(&Self::translation_tangent(omega));
-        hat_mat
+    fn hat(omega: &S::Vector<DOF>) -> S::Matrix<AMBIENT, AMBIENT> {
+        S::Matrix::block_mat2x2::<POINT, 1, POINT, 1>(
+            (
+                F::hat(&Self::subgroup_tangent(omega)),
+                Self::translation_tangent(omega).to_mat(),
+            ),
+            (S::Matrix::zero(), S::Matrix::zero()),
+        )
     }
 
-    fn vee(hat: &M<AMBIENT, AMBIENT>) -> V<DOF> {
-        let subgroup_tangent = S::vee(&hat.fixed_view::<POINT, POINT>(0, 0).into_owned());
-        let translation_tangent = hat.fixed_view::<POINT, 1>(0, POINT).into_owned();
-        Self::tangent_from(&translation_tangent, &subgroup_tangent)
+    fn vee(hat: &S::Matrix<AMBIENT, AMBIENT>) -> S::Vector<DOF> {
+        let subgroup_tangent = F::vee(&hat.get_fixed_submat::<POINT, POINT>(0, 0));
+        let translation_tangent = hat.get_fixed_submat::<POINT, 1>(0, POINT);
+        Self::tangent_from(&translation_tangent.get_col_vec(0), &subgroup_tangent)
     }
 
     // group operations
 
-    fn multiply(params1: &V<PARAMS>, params2: &V<PARAMS>) -> V<PARAMS> {
+    fn group_mul(params1: &S::Vector<PARAMS>, params2: &S::Vector<PARAMS>) -> S::Vector<PARAMS> {
         let subgroup_params1 = Self::subgroup_params(params1);
         let subgroup_params2 = Self::subgroup_params(params2);
         let translation1 = Self::translation(params1);
         let translation2 = Self::translation(params2);
-        let subgroup_params = S::multiply(&subgroup_params1, &subgroup_params2);
-        let translation = &S::transform(&subgroup_params1, &translation2) + &translation1;
+        let subgroup_params = F::group_mul(&subgroup_params1, &subgroup_params2);
+        let f = F::transform(&subgroup_params1, &translation2);
+        let translation = f + translation1;
         Self::params_from(&translation, &subgroup_params)
     }
 
-    fn inverse(params: &V<PARAMS>) -> V<PARAMS> {
+    fn inverse(params: &S::Vector<PARAMS>) -> S::Vector<PARAMS> {
         let subgroup_params = Self::subgroup_params(params);
         let translation = Self::translation(params);
-        let subgroup_params = S::inverse(&subgroup_params);
-        let translation = -&S::transform(&subgroup_params, &translation);
+        let subgroup_params = F::inverse(&subgroup_params);
+        let translation = -F::transform(&subgroup_params, &translation);
         Self::params_from(&translation, &subgroup_params)
     }
 
-    fn transform(params: &V<PARAMS>, point: &V<POINT>) -> V<POINT> {
+    fn transform(params: &S::Vector<PARAMS>, point: &S::Vector<POINT>) -> S::Vector<POINT> {
         let subgroup_params = Self::subgroup_params(params);
         let translation = Self::translation(params);
-        &S::transform(&subgroup_params, point) + &translation
+        F::transform(&subgroup_params, point) + translation
     }
 
-    fn to_ambient(params: &V<POINT>) -> V<AMBIENT> {
-        let mut ambient = V::<AMBIENT>::zeros();
-        ambient.view_mut((0, 0), (AMBIENT, 1)).copy_from(&params);
-        ambient
+    fn to_ambient(params: &S::Vector<POINT>) -> S::Vector<AMBIENT> {
+        S::Vector::block_vec2(params.clone(), S::Vector::<1>::zero())
     }
 
-    fn compact(params: &V<PARAMS>) -> M<POINT, AMBIENT> {
-        let mut mat = M::<POINT, AMBIENT>::zeros();
-
-        mat.view_mut((0, 0), (POINT, POINT))
-            .copy_from(&S::matrix(&Self::subgroup_params(params)));
-
-        mat.view_mut((0, POINT), (POINT, 1))
-            .copy_from(&Self::translation(params));
-
-        mat
+    fn compact(params: &S::Vector<PARAMS>) -> S::Matrix<POINT, AMBIENT> {
+        S::Matrix::block_mat1x2::<POINT, 1>(
+            F::matrix(&Self::subgroup_params(params)),
+            Self::translation(params).to_mat(),
+        )
     }
 
-    fn matrix(params: &V<PARAMS>) -> M<AMBIENT, AMBIENT> {
-        let mut mat = M::<AMBIENT, AMBIENT>::identity();
-
-        mat.view_mut((0, 0), (POINT, POINT))
-            .copy_from(&S::matrix(&Self::subgroup_params(params)));
-
-        mat.view_mut((0, POINT), (POINT, 1))
-            .copy_from(&Self::translation(params));
-        mat
+    fn matrix(params: &S::Vector<PARAMS>) -> S::Matrix<AMBIENT, AMBIENT> {
+        S::Matrix::block_mat2x2::<POINT, 1, POINT, 1>(
+            (
+                F::matrix(&Self::subgroup_params(params)),
+                Self::translation(params).to_mat(),
+            ),
+            (S::Matrix::<1, POINT>::zero(), S::Matrix::<1, 1>::identity()),
+        )
     }
 
-    fn ad(tangent: &V<DOF>) -> M<DOF, DOF> {
-        let mut ad = M::<DOF, DOF>::zeros();
-        ad.fixed_view_mut::<POINT, POINT>(0, 0)
-            .copy_from(&S::hat(&Self::subgroup_tangent(tangent)));
-        ad.fixed_view_mut::<POINT, SDOF>(0, POINT)
-            .copy_from(&S::ad_of_translation(&Self::translation_tangent(tangent)));
-        ad.fixed_view_mut::<SDOF, SDOF>(POINT, POINT)
-            .copy_from(&S::ad(&Self::subgroup_tangent(tangent)));
-        ad
+    fn ad(tangent: &S::Vector<DOF>) -> S::Matrix<DOF, DOF> {
+        let o = S::Matrix::<SDOF, POINT>::zero();
+        S::Matrix::block_mat2x2::<POINT, SDOF, POINT, SDOF>(
+            (
+                F::hat(&Self::subgroup_tangent(tangent)),
+                F::ad_of_translation(&Self::translation_tangent(tangent)),
+            ),
+            (o, F::ad(&Self::subgroup_tangent(tangent))),
+        )
+    }
+
+    type GenG<S2: IsScalar> =
+        SemiDirectProductImpl<S2, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, F::GenFactorG<S2>>;
+
+    type RealG =
+        SemiDirectProductImpl<f64, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, F::GenFactorG<f64>>;
+
+    type DualG = SemiDirectProductImpl<
+        Dual,
+        DOF,
+        PARAMS,
+        POINT,
+        AMBIENT,
+        SDOF,
+        SPARAMS,
+        F::GenFactorG<Dual>,
+    >;
+
+    fn has_shortest_path_ambiguity(params: &<S as IsScalar>::Vector<PARAMS>) -> bool {
+        F::has_shortest_path_ambiguity(&Self::subgroup_params(params))
     }
 }
 
 impl<
+        S: IsScalar,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
         const SDOF: usize,
         const SPARAMS: usize,
-        S: LieSubgroupImplTrait<SDOF, SPARAMS, POINT, POINT>,
+        F: LieFactorGroupImplTrait<S, SDOF, SPARAMS, POINT, POINT>,
     >
     lie::lie_group::LieGroup<
+        S,
         DOF,
         PARAMS,
         POINT,
         AMBIENT,
-        SemiDirectProductImpl<DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, S>,
+        SemiDirectProductImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, F>,
     >
 {
     pub fn from_t_and_subgroup(
-        translation: &V<POINT>,
-        subgroup: &lie::lie_group::LieGroup<SDOF, SPARAMS, POINT, POINT, S>,
+        translation: &S::Vector<POINT>,
+        subgroup: &lie::lie_group::LieGroup<S, SDOF, SPARAMS, POINT, POINT, F>,
     ) -> Self {
         let params =
-            SemiDirectProductImpl::<DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, S>::params_from(
+            SemiDirectProductImpl::<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, F>::params_from(
                 translation,
                 subgroup.params(),
             );
         Self::from_params(&params)
     }
 
-    pub fn from_t(translation: &V<POINT>) -> Self {
+    pub fn from_t(translation: &S::Vector<POINT>) -> Self {
         Self::from_t_and_subgroup(
             translation,
-            &lie::lie_group::LieGroup::<SDOF, SPARAMS, POINT, POINT, S>::identity(),
+            &lie::lie_group::LieGroup::<S, SDOF, SPARAMS, POINT, POINT, F>::identity(),
         )
     }
 
     pub fn from_subgroup(
-        subgroup: &lie::lie_group::LieGroup<SDOF, SPARAMS, POINT, POINT, S>,
+        subgroup: &lie::lie_group::LieGroup<S, SDOF, SPARAMS, POINT, POINT, F>,
     ) -> Self {
-        Self::from_t_and_subgroup(&V::<POINT>::zeros(), subgroup)
+        Self::from_t_and_subgroup(&S::Vector::<POINT>::zero(), subgroup)
     }
 }

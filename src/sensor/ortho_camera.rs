@@ -1,6 +1,9 @@
-use super::{affine::AffineDistortionImpl, generic_camera::Camera, traits::Projection};
+use super::affine::AffineDistortionImpl;
+use super::generic_camera::Camera;
+use super::traits::Projection;
 
-use nalgebra::{SMatrix, SVector};
+use nalgebra::SMatrix;
+use nalgebra::SVector;
 type V<const N: usize> = SVector<f64, N>;
 type M<const N: usize, const O: usize> = SMatrix<f64, N, O>;
 

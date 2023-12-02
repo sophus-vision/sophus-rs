@@ -1,40 +1,46 @@
-use nalgebra::{Isometry3, SVector};
-type V<const N: usize> = SVector<f64, N>;
-use crate::calculus;
+use crate::calculus::types::scalar::IsScalar;
+use crate::calculus::types::V;
 
-pub trait TangentImpl<const DOF: usize> {
-    fn tangent_examples() -> Vec<V<DOF>>;
+pub trait TangentImpl<S: IsScalar, const DOF: usize> {
+    fn tangent_examples() -> Vec<S::Vector<DOF>>;
+}
+
+pub trait ParamsImpl<S: IsScalar, const PARAMS: usize> {
+    fn are_params_valid(params: &S::Vector<PARAMS>) -> bool;
+    fn params_examples() -> Vec<S::Vector<PARAMS>>;
+    fn invalid_params_examples() -> Vec<S::Vector<PARAMS>>;
 }
 
 pub trait ManifoldImpl<
+    S: IsScalar,
     const DOF: usize,
     const PARAMS: usize,
     const POINT: usize,
     const AMBIENT_DIM: usize,
->: calculus::traits::ParamsImpl<PARAMS> + TangentImpl<DOF>
+>: ParamsImpl<S, PARAMS> + TangentImpl<S, DOF>
 {
-    fn oplus(params: &V<PARAMS>, tangent: &V<DOF>) -> V<PARAMS>;
-
-    fn ominus(params1: &V<PARAMS>, params2: &V<PARAMS>) -> V<DOF>;
-
-    fn test_suite() {
-        let params_examples = Self::params_examples();
-        let tangent_examples = Self::tangent_examples();
-
-        for (_params_id, params) in params_examples.iter().enumerate() {
-            for (_tangent_id, delta) in tangent_examples.iter().enumerate() {
-                let b = Self::oplus(params, delta);
-                assert!((Self::ominus(params, &b) - delta).norm() < 1e-6);
-            }
-        }
-    }
+    fn oplus(params: &S::Vector<PARAMS>, tangent: &S::Vector<DOF>) -> S::Vector<PARAMS>;
+    fn ominus(params1: &S::Vector<PARAMS>, params2: &S::Vector<PARAMS>) -> S::Vector<DOF>;
 }
 
-pub trait Manifold<const DOF: usize>: std::fmt::Debug {}
+pub trait IsManifold<S: IsScalar, const PARAMS: usize, const DOF: usize>:
+    std::fmt::Debug + Clone
+{
+    fn params(&self) -> &S::Vector<PARAMS>;
+    fn oplus(&self, tangent: &S::Vector<DOF>) -> Self;
+    fn ominus(&self, rhs: &Self) -> S::Vector<DOF>;
+}
 
-impl Manifold<1> for nalgebra::Vector1<f64> {}
-impl Manifold<2> for nalgebra::Vector2<f64> {}
+impl<const N: usize> IsManifold<f64, N, N> for V<N> {
+    fn oplus(&self, tangent: &<f64 as IsScalar>::Vector<N>) -> Self {
+        self + tangent
+    }
 
-impl Manifold<3> for nalgebra::Vector3<f64> {}
+    fn ominus(&self, rhs: &Self) -> <f64 as IsScalar>::Vector<N> {
+        self - rhs
+    }
 
-impl Manifold<6> for nalgebra::Vector6<f64> {}
+    fn params(&self) -> &<f64 as IsScalar>::Vector<N> {
+        self
+    }
+}

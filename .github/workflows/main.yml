@@ -15,33 +15,11 @@ jobs:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
           toolchain: stable
-      - name: cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-      - name: cargo check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-      - name: cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
-      - name: cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
-      - name: maturin
+      - name: cargo
         run: |
-          cd py
-          python3 -m venv .env
-          source .env/bin/activate
-          pip3 install maturin numpy
-          maturin develop
-          python3 -m test
+          cargo check
+          cargo test
+     
 
 

@@ -1,10 +1,10 @@
-use crate::image::layout::ImageSize;
-use crate::image::layout::ImageSizeTrait;
-use crate::image::mut_image::MutImage;
-use crate::image::mut_view::MutImageViewTrait;
+use crate::image::view::ImageSize;
+use crate::image::mut_image::MutImage2F32;
+use crate::image::mut_view::IsMutImageView;
 
+use super::traits::CameraDistortionImpl;
+use super::traits::Projection;
 use super::traits::WrongParamsDim;
-use super::traits::{CameraDistortionImpl, Projection};
 type V<const N: usize> = nalgebra::SVector<f64, N>;
 type M<const N: usize, const O: usize> = nalgebra::SMatrix<f64, N, O>;
 
@@ -38,7 +38,7 @@ impl<
             params
         );
         Self {
-            params: params.clone(),
+            params: *params,
             phantom: std::marker::PhantomData,
             image_size: size,
         }
@@ -52,15 +52,14 @@ impl<
         Distort::undistort(&self.params, distorted_point)
     }
 
-    pub fn undistort_table(&self) -> MutImage<2, f32> {
-        let mut table = MutImage::<2, f32>::with_size(self.image_size);
-        let w = self.image_size.width();
-        let h = self.image_size.height();
+    pub fn undistort_table(&self) -> MutImage2F32 {
+        let mut table = MutImage2F32::from_image_size(self.image_size);
+        let w = self.image_size.width;
+        let h = self.image_size.height;
         for v in 0..h {
-            let row_slice = table.mut_row_slice(v);
             for u in 0..w {
                 let pixel = self.undistort(&V::<2>::new(u as f64, v as f64));
-                row_slice[u] = pixel.cast();
+                *table.mut_pixel(u, v) = pixel.cast();
             }
         }
         table
@@ -71,7 +70,7 @@ impl<
     }
 
     pub fn cam_proj(&self, point_in_camera: &V<3>) -> V<2> {
-        self.distort(&Proj::proj(&point_in_camera))
+        self.distort(&Proj::proj(point_in_camera))
     }
 
     pub fn cam_unproj(&self, point_in_camera: &V<2>) -> V<3> {
@@ -79,11 +78,11 @@ impl<
     }
 
     pub fn cam_unproj_with_z(&self, point_in_camera: &V<2>, z: f64) -> V<3> {
-        Proj::unproj(&self.undistort(&point_in_camera), z)
+        Proj::unproj(&self.undistort(point_in_camera), z)
     }
 
     pub fn set_params(&mut self, params: &V<PARAMS>) {
-        self.params = params.clone();
+        self.params = *params;
     }
 
     pub fn try_set_params(
@@ -102,7 +101,7 @@ impl<
     }
 
     pub fn is_empty(&self) -> bool {
-        self.image_size.width == 0 && self.image_size.height == 0
+        self.image_size.width == 0 || self.image_size.height == 0
     }
 
     pub fn params_examples() -> Vec<V<PARAMS>> {

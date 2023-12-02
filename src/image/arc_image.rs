@@ -1,277 +1,109 @@
-use super::data::DataChunkVec;
-use std::{marker::PhantomData, sync::Arc};
-
-use super::{
-    dyn_view::{DynImageView, DynImageViewTrait},
-    layout::{ImageLayout, ImageLayoutTrait, ImageSize, ImageSizeTrait},
-    mut_image::MutImage,
-    pixel::{PixelFormat, ScalarTrait, P},
-    view::{ImageView, ImageViewTrait},
-};
-
-#[derive(Debug, Clone)]
-pub struct ArcImage<const NUM: usize, Scalar: ScalarTrait + 'static> {
-    pub buffer: Arc<DataChunkVec>,
-    pub layout: ImageLayout,
-    phantom: PhantomData<Scalar>,
-}
-
-impl<const NUM: usize, Scalar: ScalarTrait + 'static> ImageSizeTrait for ArcImage<NUM, Scalar> {
-    fn size(&self) -> ImageSize {
-        self.view().size()
-    }
-}
-
-impl<const NUM: usize, Scalar: ScalarTrait + 'static> ImageLayoutTrait for ArcImage<NUM, Scalar> {
-    fn layout(&self) -> ImageLayout {
-        self.view().layout()
-    }
-}
-
-pub trait ImageTrait<const NUM: usize, Scalar: ScalarTrait + 'static> {
-    fn buffer(&self) -> Arc<DataChunkVec>;
-}
-
-impl<const NUM: usize, Scalar: ScalarTrait + 'static> ImageTrait<NUM, Scalar>
-    for ArcImage<NUM, Scalar>
-{
-    fn buffer(&self) -> Arc<DataChunkVec> {
-        self.buffer.clone()
-    }
-}
-
-impl<const NUM: usize, Scalar: ScalarTrait + 'static> ArcImage<NUM, Scalar> {
-    pub fn from_mut_image(image: MutImage<NUM, Scalar>) -> Self {
-        let layout = image.layout();
-
-        Self {
-            buffer: Arc::new(image.buffer),
-            layout,
-            phantom: PhantomData::<Scalar> {},
-        }
-    }
-
-    pub fn with_size_and_val(size: ImageSize, val: P<NUM, Scalar>) -> Self {
-        Self::from_mut_image(MutImage::with_size_and_val(size, val))
-    }
-}
-
-impl<'a, const NUM: usize, Scalar: ScalarTrait + 'static> ImageViewTrait<'a, NUM, Scalar>
-    for ArcImage<NUM, Scalar>
-{
-    fn view(&self) -> ImageView<NUM, Scalar> {
-        let slice = self.buffer.slice::<P<NUM, Scalar>>();
-
-        //let scalar_slice = self.buffer.slice::<Scalar>();
-        ImageView {
-            layout: self.layout,
-            slice,
-            //scalar_slice,
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::thread;
-
-    use crate::image::pixel::{P1F32, P3U16};
-
-    use super::*;
-
-    #[test]
-    fn from_mut_image() {
-        let size_6_x_4 = ImageSize::from_width_and_height(6, 4);
-        let mut_img = MutImage::with_size_and_val(size_6_x_4, P1F32::new(0.5f32));
-
-        let copy = MutImage::make_copy_from(&mut_img);
-        assert_eq!(copy.size(), size_6_x_4);
-
-        let img = ArcImage::from_mut_image(copy);
-        assert_eq!(img.size(), size_6_x_4);
-        assert_eq!(img.slice(), mut_img.slice());
-        assert_eq!(Arc::strong_count(&img.buffer), 1);
-
-        let mut_img2 = MutImage::from_image(img);
-        assert_eq!(mut_img2.slice(), mut_img.slice());
-    }
-
-    #[test]
-    fn shared_ownership() {
-        let size_6_x_4 = ImageSize::from_width_and_height(6, 4);
-        let mut_img = MutImage::with_size_and_val(size_6_x_4, P1F32::new(0.5f32));
-        let img = ArcImage::from_mut_image(mut_img);
-
-        let mut img2 = img.clone();
-        assert_eq!(Arc::strong_count(&img.buffer), 2);
-        assert_eq!(Arc::strong_count(&img2.buffer), 2);
-
-        assert_eq!(img.slice(), img2.slice());
-
-        let mut_img2 = MutImage::make_copy_from(&img2);
-        assert_eq!(Arc::strong_count(&img2.buffer), 2);
-        assert_ne!(mut_img2.slice().as_ptr(), img2.slice().as_ptr());
-
-        img2 = img.clone();
-        assert_eq!(Arc::strong_count(&img.buffer), 2);
-        assert_eq!(Arc::strong_count(&img2.buffer), 2);
-    }
-
-    #[test]
-    fn multi_threading() {
-        let size_6_x_4 = ImageSize::from_width_and_height(6, 4);
-        let mut_img = MutImage::<3, u16>::with_size_and_val(size_6_x_4, P3U16::new(10, 20, 300));
-        let img = ArcImage::from_mut_image(mut_img);
-
-        thread::scope(|s| {
-            s.spawn(|| {
-                println!("{:?}", img);
-            });
-            s.spawn(|| {
-                println!("{:?}", img);
-            });
-        });
-    }
-}
+use crate::image::view::ImageSize;
+use crate::image::view::ImageView;
+use crate::image::view::IsImageView;
+use crate::image::mut_image::MutImage;
+use crate::tensor::arc_tensor::ArcTensor;
+use crate::tensor::element::IsStaticTensor;
+use crate::tensor::element::IsTensorScalar;
+use crate::tensor::element::SVec;
+use crate::tensor::view::IsTensorLike;
 
 #[derive(Debug, Clone)]
-pub enum IntensityImageEnum {
-    PU8(ArcImage<1, u8>),
-    PU16(ArcImage<1, u16>),
-    PF32(ArcImage<1, f32>),
-    P3U8(ArcImage<3, u8>),
-    P3U16(ArcImage<3, u16>),
-    P3F32(ArcImage<3, f32>),
-    P4U8(ArcImage<4, u8>),
-    P4U16(ArcImage<4, u16>),
-    P4F32(ArcImage<4, f32>),
+pub struct ArcImage<
+    const HYPER_RANK: usize,
+    const SRANK: usize,
+    Scalar: IsTensorScalar + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, BATCHES, ROWS, COLS> + 'static,
+    const BATCHES: usize,
+    const ROWS: usize,
+    const COLS: usize,
+> {
+    pub tensor: ArcTensor<HYPER_RANK, SRANK, 2, Scalar, STensor, BATCHES, ROWS, COLS>,
 }
 
-impl IntensityImageEnum {
-    fn pixel_format(&self) -> PixelFormat {
-        match self {
-            IntensityImageEnum::PU8(_) => PixelFormat::new::<1, u8>(),
-            IntensityImageEnum::PU16(_) => PixelFormat::new::<1, u16>(),
-            IntensityImageEnum::PF32(_) => PixelFormat::new::<1, f32>(),
-            IntensityImageEnum::P3U8(_) => PixelFormat::new::<3, u8>(),
-            IntensityImageEnum::P3U16(_) => PixelFormat::new::<3, u16>(),
-            IntensityImageEnum::P3F32(_) => PixelFormat::new::<3, f32>(),
-            IntensityImageEnum::P4U8(_) => PixelFormat::new::<4, u8>(),
-            IntensityImageEnum::P4U16(_) => PixelFormat::new::<4, u16>(),
-            IntensityImageEnum::P4F32(_) => PixelFormat::new::<4, f32>(),
+pub type ArcImageT<Scalar, const ROWS: usize> =
+    ArcImage<3, 1, Scalar, SVec<Scalar, ROWS>, 1, ROWS, 1>;
+
+pub type ArcImageU8 = ArcImageT<u8, 1>;
+pub type ArcImageU16 = ArcImageT<u16, 1>;
+pub type ArcImageF32 = ArcImageT<f32, 1>;
+pub type ArcImage2U8 = ArcImageT<u8, 2>;
+pub type ArcImage2U16 = ArcImageT<u16, 2>;
+pub type ArcImage2F32 = ArcImageT<f32, 2>;
+pub type ArcImage3U8 = ArcImageT<u8, 3>;
+pub type ArcImage3U16 = ArcImageT<u16, 3>;
+pub type ArcImage3F32 = ArcImageT<f32, 3>;
+pub type ArcImage4U8 = ArcImageT<u8, 4>;
+pub type ArcImage4U16 = ArcImageT<u16, 4>;
+pub type ArcImage4F32 = ArcImageT<f32, 4>;
+
+macro_rules! arc_image {
+    ($hyper_rank:literal, $srank:literal) => {
+
+        impl<
+                Scalar: IsTensorScalar + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, BATCHES, ROWS, COLS> + 'static,
+                const BATCHES: usize,
+                const ROWS: usize,
+                const COLS: usize,
+            > ArcImage<$hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS>
+        {
+            pub fn from_mut_image(
+                image: MutImage<$hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS>,
+            ) -> Self {
+                Self {
+                    tensor: ArcTensor::<$hyper_rank, $srank, 2,Scalar, STensor, BATCHES, ROWS, COLS>
+                        ::from_mut_tensor(image.mut_tensor),
+                }
+            }
+
+            pub fn from_image_size_and_val(size: ImageSize, val: STensor) -> Self {
+                Self {
+                    tensor: ArcTensor::<$hyper_rank, $srank, 2,Scalar, STensor, BATCHES, ROWS, COLS>::from_shape_and_val(size.into(), val),
+                }
+            }
         }
-    }
 
-    fn u8_ptr(&self) -> *const u8 {
-        match self {
-            IntensityImageEnum::PU8(i) => i.buffer.vec.as_ptr() as *const u8,
-            IntensityImageEnum::PU16(i) => i.buffer.vec.as_ptr() as *const u8,
-            IntensityImageEnum::PF32(i) => i.buffer.vec.as_ptr() as *const u8,
-            IntensityImageEnum::P3U8(i) => i.buffer.vec.as_ptr() as *const u8,
-            IntensityImageEnum::P3U16(i) => i.buffer.vec.as_ptr() as *const u8,
-            IntensityImageEnum::P3F32(i) => i.buffer.vec.as_ptr() as *const u8,
-            IntensityImageEnum::P4U8(i) => i.buffer.vec.as_ptr() as *const u8,
-            IntensityImageEnum::P4U16(i) => i.buffer.vec.as_ptr() as *const u8,
-            IntensityImageEnum::P4F32(i) => i.buffer.vec.as_ptr() as *const u8,
+
+        impl<
+                'b,
+                Scalar: IsTensorScalar + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, BATCHES, ROWS, COLS> + 'static,
+                const BATCHES: usize,
+                const ROWS: usize,
+                const COLS: usize,
+            > IsImageView<'b, $hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS>
+            for ArcImage<$hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS> where
+            ndarray::Dim<[ndarray::Ix; $hyper_rank]>: ndarray::Dimension,
+        {
+            fn image_view(
+                &'b self,
+            ) -> super::view::ImageView<
+                '_,
+                $hyper_rank,
+                $srank,
+                Scalar,
+                STensor,
+                BATCHES,
+                ROWS,
+                COLS,
+            > {
+                ImageView {
+                    tensor_view: self.tensor.view(),
+                }
+            }
+
+            fn pixel(&'b self, u: usize, v: usize) -> STensor {
+                self.tensor.get([v, u])
+            }
+
+            fn image_size(&self) -> super::view::ImageSize {
+                self.image_view().image_size()
+            }
         }
-    }
+    };
 }
 
-pub trait IntensityImagelTrait<const NUM: usize, Scalar: ScalarTrait + 'static> {
-    fn to_enum(&self) -> IntensityImageEnum;
-}
-
-impl IntensityImagelTrait<1, u8> for ArcImage<1, u8> {
-    fn to_enum(&self) -> IntensityImageEnum {
-        IntensityImageEnum::PU8(self.clone())
-    }
-}
-
-impl IntensityImagelTrait<1, u16> for ArcImage<1, u16> {
-    fn to_enum(&self) -> IntensityImageEnum {
-        IntensityImageEnum::PU16(self.clone())
-    }
-}
-
-impl IntensityImagelTrait<1, f32> for ArcImage<1, f32> {
-    fn to_enum(&self) -> IntensityImageEnum {
-        IntensityImageEnum::PF32(self.clone())
-    }
-}
-
-impl IntensityImagelTrait<3, u8> for ArcImage<3, u8> {
-    fn to_enum(&self) -> IntensityImageEnum {
-        IntensityImageEnum::P3U8(self.clone())
-    }
-}
-
-impl IntensityImagelTrait<3, u16> for ArcImage<3, u16> {
-    fn to_enum(&self) -> IntensityImageEnum {
-        IntensityImageEnum::P3U16(self.clone())
-    }
-}
-
-impl IntensityImagelTrait<3, f32> for ArcImage<3, f32> {
-    fn to_enum(&self) -> IntensityImageEnum {
-        IntensityImageEnum::P3F32(self.clone())
-    }
-}
-
-impl IntensityImagelTrait<4, u8> for ArcImage<4, u8> {
-    fn to_enum(&self) -> IntensityImageEnum {
-        IntensityImageEnum::P4U8(self.clone())
-    }
-}
-
-impl IntensityImagelTrait<4, u16> for ArcImage<4, u16> {
-    fn to_enum(&self) -> IntensityImageEnum {
-        IntensityImageEnum::P4U16(self.clone())
-    }
-}
-
-impl IntensityImagelTrait<4, f32> for ArcImage<4, f32> {
-    fn to_enum(&self) -> IntensityImageEnum {
-        IntensityImageEnum::P4F32(self.clone())
-    }
-}
-
-impl ImageSizeTrait for IntensityImageEnum {
-    fn size(&self) -> ImageSize {
-        self.layout().size
-    }
-}
-
-impl ImageLayoutTrait for IntensityImageEnum {
-    fn layout(&self) -> ImageLayout {
-        match self {
-            IntensityImageEnum::PU8(i) => i.layout,
-            IntensityImageEnum::PU16(i) => i.layout,
-            IntensityImageEnum::PF32(i) => i.layout,
-            IntensityImageEnum::P3U8(i) => i.layout,
-            IntensityImageEnum::P3U16(i) => i.layout,
-            IntensityImageEnum::P3F32(i) => i.layout,
-            IntensityImageEnum::P4U8(i) => i.layout,
-            IntensityImageEnum::P4U16(i) => i.layout,
-            IntensityImageEnum::P4F32(i) => i.layout,
-        }
-    }
-}
-
-impl DynImageViewTrait<'_> for IntensityImageEnum {
-    fn dyn_view(&self) -> DynImageView<'_> {
-        let byte_slice;
-        let layout = self.layout();
-        let pixel_format = self.pixel_format();
-        unsafe {
-            byte_slice = std::slice::from_raw_parts(
-                self.u8_ptr(),
-                layout.padded_area() * pixel_format.num_bytes(),
-            );
-        }
-        DynImageView {
-            layout,
-            byte_slice,
-            pixel_format,
-        }
-    }
-}
+arc_image!(2, 0);
+arc_image!(3, 1);
+arc_image!(4, 2);

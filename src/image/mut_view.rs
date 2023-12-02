@@ -1,107 +1,126 @@
-use crate::image::layout::ImageLayout;
-use crate::image::layout::ImageLayoutTrait;
-use crate::image::layout::ImageSize;
-use crate::image::layout::ImageSizeTrait;
-use crate::image::view::ImageView;
-use crate::image::view::ImageViewTrait;
+use crate::tensor::element::IsStaticTensor;
+use crate::tensor::element::IsTensorScalar;
+use crate::tensor::mut_view::IsMutTensorLike;
+use crate::tensor::mut_view::MutTensorView;
+use crate::tensor::view::IsTensorLike;
 
-use super::pixel::ScalarTrait;
-use super::pixel::P;
+use super::view::ImageSize;
+use super::view::ImageView;
+use super::view::IsImageView;
 
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct MutImageView<'a, const NUM: usize, Scalar: ScalarTrait + 'static> {
-    pub layout: ImageLayout,
-    pub mut_slice: &'a mut [P<NUM, Scalar>],
+#[derive(Debug, PartialEq)]
+pub struct MutImageView<
+    'a,
+    const HYPER_RANK: usize,
+    const SRANK: usize,
+    Scalar: IsTensorScalar + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, BATCHES, ROWS, COLS> + 'static,
+    const BATCHES: usize,
+    const ROWS: usize,
+    const COLS: usize,
+> where
+    ndarray::Dim<[ndarray::Ix; HYPER_RANK]>: ndarray::Dimension,
+{
+    pub mut_tensor_view:
+        MutTensorView<'a, HYPER_RANK, SRANK, 2, Scalar, STensor, BATCHES, ROWS, COLS>,
 }
 
-pub trait MutImageViewTrait<'a, const NUM: usize, Scalar: ScalarTrait + 'static>:
-    ImageViewTrait<'a, NUM, Scalar>
-{
-    fn mut_view(&mut self) -> MutImageView<'_, NUM, Scalar>;
+macro_rules! mut_image_view {
+    ($hyper_rank:literal, $srank:literal) => {
+        impl<
+                'a,
+                Scalar: IsTensorScalar + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, BATCHES, ROWS, COLS> + 'static,
+                const BATCHES: usize,
+                const ROWS: usize,
+                const COLS: usize,
+            > IsImageView<'a, $hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS>
+            for MutImageView<'a, $hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS>
+        where
+            ndarray::Dim<[ndarray::Ix; $hyper_rank]>: ndarray::Dimension,
+        {
+            fn pixel(&'a self, u: usize, v: usize) -> STensor {
+                // NOTE:
+                // We are converting from Image Indexing Convention (d0 = u = col_idx, d1 = v = row_idx)
+                // to tensor (and matrix) convention (d0 = rows, d1 = cols).
+                self.mut_tensor_view.get([v, u])
+            }
 
-    fn mut_row_slice(&mut self, v: usize) -> &mut [P<NUM, Scalar>] {
-        let stride = self.stride();
-        let width = self.width();
-        self.mut_slice()
-            .get_mut(v * stride..v * stride + width)
-            .unwrap()
-    }
+            fn image_view(
+                &'a self,
+            ) -> ImageView<'a, $hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS> {
+                let view = self.mut_tensor_view.view();
+                ImageView { tensor_view: view }
+            }
 
-    fn mut_slice(&mut self) -> &mut [P<NUM, Scalar>] {
-        self.mut_view().mut_slice
-    }
-
-    fn copy_data_from<V: ImageViewTrait<'a, NUM, Scalar>>(&mut self, view: &'a V) {
-        if self.layout().stride == self.width() && view.stride() == view.width() {
-            self.mut_slice().copy_from_slice(view.slice());
-        } else {
-            for v in 0..self.height() {
-                self.mut_row_slice(v).copy_from_slice(view.row_slice(v));
+            fn image_size(&'a self) -> ImageSize {
+                self.mut_tensor_view.dims().into()
             }
         }
-    }
 
-    fn fill(&'a mut self, value: P<NUM, Scalar>) {
-        for v in 0..self.height() {
-            self.mut_row_slice(v).fill(value)
+        impl<
+                'a,
+                Scalar: IsTensorScalar + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, BATCHES, ROWS, COLS> + 'static,
+                const BATCHES: usize,
+                const ROWS: usize,
+                const COLS: usize,
+            > IsMutImageView<'a, $hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS>
+            for MutImageView<'a, $hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS>
+        where
+            MutTensorView<'a, $hyper_rank, $srank, 2, Scalar, STensor, BATCHES, ROWS, COLS>:
+                IsMutTensorLike<'a, $hyper_rank, $srank, 2, Scalar, STensor, BATCHES, ROWS, COLS>,
+            ndarray::Dim<[ndarray::Ix; $hyper_rank]>: ndarray::Dimension,
+        {
+            fn mut_image_view<'b: 'a>(
+                &'b mut self,
+            ) -> MutImageView<'a, $hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS> {
+                MutImageView {
+                    mut_tensor_view: MutTensorView::<
+                        'a,
+                        $hyper_rank,
+                        $srank,
+                        2,
+                        Scalar,
+                        STensor,
+                        BATCHES,
+                        ROWS,
+                        COLS,
+                    >::new(
+                        self.mut_tensor_view.elem_view_mut.view_mut()
+                    ),
+                }
+            }
+
+            fn mut_pixel(&'a mut self, u: usize, v: usize) -> &mut STensor {
+                // NOTE:
+                // We are converting from Image Indexing Convention (d0 = u = col_idx, d1 = v = row_idx)
+                // to tensor (and matrix) convention (d0 = rows, d1 = cols).
+                self.mut_tensor_view.get_mut([v, u])
+            }
         }
-    }
-
-    fn mut_pixel(&'a mut self, u: usize, v: usize) -> &'a mut P<NUM, Scalar> {
-        self.mut_row_slice(v).get_mut(u).unwrap()
-    }
-
-    fn transform_from<
-        'b,
-        const NUM2: usize,
-        Scalar2: ScalarTrait + 'static,
-        V: ImageViewTrait<'b, NUM2, Scalar2>,
-        F: Fn(P<NUM2, Scalar2>) -> P<NUM, Scalar>,
-    >(
-        &'a mut self,
-        view: &'b V,
-        op: F,
-    ) {
-        for (a, b) in self.mut_slice().iter_mut().zip(view.slice().iter()) {
-            *a = op(*b);
-        }
-    }
+    };
 }
 
-impl<'a, const NUM: usize, Scalar: ScalarTrait + 'static> ImageSizeTrait
-    for MutImageView<'a, NUM, Scalar>
-{
-    fn size(&self) -> ImageSize {
-        self.layout.size
-    }
-}
+mut_image_view!(2, 0);
+mut_image_view!(3, 1);
+mut_image_view!(4, 2);
 
-impl<'a, const NUM: usize, Scalar: ScalarTrait + 'static> ImageLayoutTrait
-    for MutImageView<'a, NUM, Scalar>
+pub trait IsMutImageView<
+    'a,
+    const HYPER_RANK: usize,
+    const SRANK: usize,
+    Scalar: IsTensorScalar + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, BATCHES, ROWS, COLS> + 'static,
+    const BATCHES: usize,
+    const ROWS: usize,
+    const COLS: usize,
+> where
+    ndarray::Dim<[ndarray::Ix; HYPER_RANK]>: ndarray::Dimension,
 {
-    fn layout(&self) -> ImageLayout {
-        self.layout
-    }
-}
+    fn mut_image_view<'b: 'a>(
+        &'b mut self,
+    ) -> MutImageView<'a, HYPER_RANK, SRANK, Scalar, STensor, BATCHES, ROWS, COLS>;
 
-impl<'a, const NUM: usize, Scalar: ScalarTrait + 'static> ImageViewTrait<'a, NUM, Scalar>
-    for MutImageView<'a, NUM, Scalar>
-{
-    fn view(&'a self) -> ImageView<'a, NUM, Scalar> {
-        ImageView::<NUM, Scalar> {
-            layout: self.layout(),
-            slice: self.mut_slice,
-        }
-    }
-}
-
-impl<'a, const NUM: usize, Scalar: ScalarTrait + 'static> MutImageViewTrait<'a, NUM, Scalar>
-    for MutImageView<'a, NUM, Scalar>
-{
-    fn mut_view(&mut self) -> MutImageView<'_, NUM, Scalar> {
-        MutImageView {
-            layout: self.layout,
-            mut_slice: self.mut_slice,
-        }
-    }
+    fn mut_pixel(&'a mut self, u: usize, v: usize) -> &mut STensor;
 }

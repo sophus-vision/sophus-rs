@@ -1,12 +1,5 @@
 pub mod arc_image;
-pub mod data;
-pub mod dyn_arc_image;
-pub mod dyn_mut_image;
-pub mod dyn_mut_view;
-pub mod dyn_view;
+pub mod view;
 pub mod interpolation;
-pub mod layout;
 pub mod mut_image;
 pub mod mut_view;
-pub mod pixel;
-pub mod view;

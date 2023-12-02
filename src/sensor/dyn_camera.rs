@@ -1,5 +1,5 @@
-use crate::image::layout::ImageSize;
-use crate::image::mut_image::MutImage;
+use crate::image::view::ImageSize;
+use crate::image::mut_image::MutImage2F32;
 
 type V<const N: usize> = nalgebra::SVector<f64, N>;
 type M<const N: usize, const O: usize> = nalgebra::SMatrix<f64, N, O>;
@@ -60,32 +60,40 @@ impl<CameraType: CameraEnum> DynCameraFacade<CameraType> {
         self.camera_type.try_set_params(params)
     }
 
-    pub fn undistort_table(&self) -> MutImage<2, f32> {
+    pub fn undistort_table(&self) -> MutImage2F32 {
         self.camera_type.undistort_table()
     }
 }
 
 mod tests {
-    use approx::assert_relative_eq;
-
-    use crate::{
-        calculus::numeric_diff::VectorField,
-        image::{interpolation::interpolate, layout::ImageSize},
-    };
-
-    use super::{DynCamera, V};
 
     #[test]
     fn camera_prop_tests() {
+        use approx::assert_relative_eq;
+
+        use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
+        use crate::image::view::ImageSize;
+        use crate::image::view::IsImageView;
+        use crate::image::interpolation::interpolate;
+        use crate::image::mut_image::MutImage2F32;
+
+        use super::DynCamera;
+        use super::V;
         let mut cameras: Vec<DynCamera> = vec![];
         cameras.push(DynCamera::new_pinhole(
             &V::<4>::new(600.0, 600.0, 319.5, 239.5),
-            ImageSize::from_width_and_height(640, 480),
+            ImageSize {
+                width: 640,
+                height: 480,
+            },
         ));
 
         cameras.push(DynCamera::new_kannala_brandt(
             &V::<8>::from_vec(vec![1000.0, 1000.0, 320.0, 280.0, 0.1, 0.01, 0.001, 0.0001]),
-            ImageSize::from_width_and_height(640, 480),
+            ImageSize {
+                width: 640,
+                height: 480,
+            },
         ));
 
         for camera in cameras {
@@ -98,7 +106,7 @@ mod tests {
                 V::<2>::new(639.0, 479.0),
             ];
 
-            let table = camera.undistort_table();
+            let table: MutImage2F32 = camera.undistort_table();
 
             for pixel in pixels_in_image {
                 for d in [1.0, 0.1, 0.5, 1.1, 3.0, 15.0] {
@@ -109,7 +117,7 @@ mod tests {
                     assert_relative_eq!(pixel_in_image2, pixel, epsilon = 1e-6);
                 }
                 let ab_in_z1plane = camera.undistort(&pixel);
-                let ab_in_z1plane2_f32 = interpolate(&table, pixel.cast());
+                let ab_in_z1plane2_f32 = interpolate(&table.image_view(), pixel.cast());
                 let ab_in_z1plane2 = ab_in_z1plane2_f32.cast();
                 assert_relative_eq!(ab_in_z1plane, ab_in_z1plane2, epsilon = 0.000001);
 
@@ -117,8 +125,11 @@ mod tests {
                 assert_relative_eq!(pixel_in_image3, pixel, epsilon = 1e-6);
 
                 let dx = camera.dx_distort_x(&pixel);
-                let numeric_dx =
-                    VectorField::numeric_diff(|x: &V<2>| camera.distort(x), pixel, 1e-6);
+                let numeric_dx = VectorValuedMapFromVector::static_sym_diff_quotient(
+                    |x: V<2>| camera.distort(&x),
+                    pixel,
+                    1e-6,
+                );
 
                 assert_relative_eq!(dx, numeric_dx, epsilon = 1e-4);
             }

@@ -1,13 +1,15 @@
-use crate::image::{layout::ImageSize, mut_image::MutImage};
+use crate::image::view::ImageSize;
+use crate::image::mut_image::MutImage2F32;
 
-use super::{
-    affine::AffineDistortionImpl,
-    generic_camera::Camera,
-    kannala_brandt::KannalaBrandtDistortionImpl,
-    traits::{CameraEnum, Projection, WrongParamsDim},
-};
+use super::affine::AffineDistortionImpl;
+use super::generic_camera::Camera;
+use super::kannala_brandt::KannalaBrandtDistortionImpl;
+use super::traits::CameraEnum;
+use super::traits::Projection;
+use super::traits::WrongParamsDim;
 
-use nalgebra::{SMatrix, SVector};
+use nalgebra::SMatrix;
+use nalgebra::SVector;
 
 type V<const N: usize> = SVector<f64, N>;
 type M<const N: usize, const O: usize> = SMatrix<f64, N, O>;
@@ -108,7 +110,7 @@ impl CameraEnum for PerspectiveCameraType {
         }
     }
 
-    fn undistort_table(&self) -> MutImage<2, f32> {
+    fn undistort_table(&self) -> MutImage2F32 {
         match self {
             PerspectiveCameraType::Pinhole(camera) => camera.undistort_table(),
             PerspectiveCameraType::KannalaBrandt(camera) => camera.undistort_table(),

@@ -1,18 +1,25 @@
-use nalgebra::SVector;
-type V<const N: usize> = SVector<f64, N>;
+use super::types::scalar::IsScalar;
+use super::types::vector::IsVector;
+use super::types::vector::IsVectorLike;
+use super::types::V;
 
-pub fn example_points<const POINT: usize>() -> Vec<V<POINT>> {
+pub fn example_points<S: IsScalar, Vect: IsVector<S, POINT> + IsVectorLike, const POINT: usize>(
+) -> Vec<Vect> {
     let points4 = vec![
-        SVector::<f64, 4>::new(0.0, 0.0, 0.0, 0.0),
-        SVector::<f64, 4>::new(1.0, 0.0, 1.0, 1.0),
-        SVector::<f64, 4>::new(0.0, 5.0, 0.0, -5.0),
-        SVector::<f64, 4>::new(2.0, -3.0, 1.0, 0.0),
+        V::<4>::from_array([0.1, 0.0, 0.0, 0.0]),
+        V::<4>::from_array([1.0, 0.0, 1.0, 0.5]),
+        V::<4>::from_array([0.7, 5.0, 0.1, (-5.0)]),
+        V::<4>::from_array([2.0, (-3.0), 1.0, 0.5]),
     ];
 
-    let mut out: Vec<V<POINT>> = vec![];
+    let mut out: Vec<Vect> = vec![];
     for p4 in points4 {
-        let p = SVector::<f64, POINT>::from_iterator(p4.iter().cloned());
-        out.push(p);
+        let mut v = Vect::zero();
+        for i in 0..POINT.min(4) {
+            let val = p4[i];
+            v.set_c(i, val);
+        }
+        out.push(v)
     }
     out
 }

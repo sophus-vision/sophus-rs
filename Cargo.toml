@@ -6,23 +6,26 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+as-any = "0.3.1"
+dyn-clone = "1.0.16"
 assertables = "7.0.1"
 num-traits = "0.2.15"
-nalgebra = "0.32"
-approx = "0.5.1"
-ndarray = "0.15.4"
-notan =  { version = "0.9", features = ["egui"] }
-egui = "0.22" 
-tuple_list = "0.1.3"
-linked-hash-map = "0.5.4"
+nalgebra = {version="0.32", features = ["rand"]}
+approx = {version= "0.5.1"}
+ndarray = {version="0.15.4", features = ["approx-0_5"]}
 enum_dispatch = "0.3.6"
-hyperdual = "1.2.0"
-sophus-macros = { path = "sophus-macros" }
-
+arrayref = "0.3.7"
+simba = "0.8.1"
+typenum = {version= "1.17.0", features = ["const-generics"] }
+concat-arrays = "0.1.2"
+faer-core = "0.15"
+sprs = "0.11"
+sprs-ldl = "0.10"
 
 [dev-dependencies.proptest]
 version =  "1.1.0"
 default-features = false
 features = ["std"]
+
 
 

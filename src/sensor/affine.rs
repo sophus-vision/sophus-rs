@@ -1,4 +1,4 @@
-use crate::calculus;
+use crate::manifold::traits::ParamsImpl;
 
 use super::traits::CameraDistortionImpl;
 type V<const N: usize> = nalgebra::SVector<f64, N>;
@@ -7,7 +7,7 @@ type M<const N: usize, const O: usize> = nalgebra::SMatrix<f64, N, O>;
 #[derive(Debug, Clone, Copy)]
 pub struct AffineDistortionImpl;
 
-impl calculus::traits::ParamsImpl<4> for AffineDistortionImpl {
+impl ParamsImpl<f64, 4> for AffineDistortionImpl {
     fn are_params_valid(params: &V<4>) -> bool {
         params[0] != 0.0 && params[1] != 0.0
     }

@@ -1,10 +1,10 @@
-use crate::image::{layout::ImageSize, mut_image::MutImage};
+use crate::image::view::ImageSize;
+use crate::image::mut_image::MutImage2F32;
 
-use super::{
-    ortho_camera::OrthoCamera,
-    perspective_camera::PerspectiveCameraType,
-    traits::{CameraEnum, WrongParamsDim},
-};
+use super::ortho_camera::OrthoCamera;
+use super::perspective_camera::PerspectiveCameraType;
+use super::traits::CameraEnum;
+use super::traits::WrongParamsDim;
 
 type V<const N: usize> = nalgebra::SVector<f64, N>;
 type M<const N: usize, const O: usize> = nalgebra::SMatrix<f64, N, O>;
@@ -74,7 +74,7 @@ impl CameraEnum for AnyProjCameraType {
         }
     }
 
-    fn undistort_table(&self) -> MutImage<2, f32> {
+    fn undistort_table(&self) -> MutImage2F32 {
         match self {
             AnyProjCameraType::Perspective(camera) => camera.undistort_table(),
             AnyProjCameraType::Ortho(camera) => camera.undistort_table(),

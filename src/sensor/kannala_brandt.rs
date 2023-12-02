@@ -1,16 +1,16 @@
 use nalgebra::RowVector2;
-use notan::log::{debug, trace, warn};
 
-use crate::calculus;
+use crate::manifold::traits::ParamsImpl;
 
-use super::{affine::AffineDistortionImpl, traits::CameraDistortionImpl};
+use super::affine::AffineDistortionImpl;
+use super::traits::CameraDistortionImpl;
 type V<const N: usize> = nalgebra::SVector<f64, N>;
 type M<const N: usize, const O: usize> = nalgebra::SMatrix<f64, N, O>;
 
 #[derive(Debug, Clone, Copy)]
 pub struct KannalaBrandtDistortionImpl;
 
-impl calculus::traits::ParamsImpl<8> for KannalaBrandtDistortionImpl {
+impl ParamsImpl<f64, 8> for KannalaBrandtDistortionImpl {
     fn are_params_valid(params: &V<8>) -> bool {
         params[0] != 0.0 && params[1] != 0.0
     }
@@ -104,22 +104,22 @@ impl CameraDistortionImpl<4, 8> for KannalaBrandtDistortionImpl {
             const HIGH_ITERS: usize = MAX_ITERS / 2;
 
             if iters == HIGH_ITERS {
-                debug!(
-                    "undistort: did not converge in {} iterations, step: {}",
-                    iters, step
-                );
+                // debug!(
+                //     "undistort: did not converge in {} iterations, step: {}",
+                //     iters, step
+                // );
             }
 
             if iters > HIGH_ITERS {
-                trace!(
-                    "undistort: did not converge in {} iterations, step: {}",
-                    iters,
-                    step
-                );
+                // trace!(
+                //     "undistort: did not converge in {} iterations, step: {}",
+                //     iters,
+                //     step
+                // );
             }
 
             if iters >= 20 {
-                warn!("undistort: max iters ({}) reached, step: {}", iters, step);
+                // warn!("undistort: max iters ({}) reached, step: {}", iters, step);
                 break;
             }
         }
