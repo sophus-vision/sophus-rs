@@ -3,20 +3,21 @@ use std::collections::HashMap;
 use crate::calculus::dual::dual_scalar::Dual;
 use crate::calculus::dual::dual_vector::DualV;
 use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
+use crate::calculus::types::params::HasParams;
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
 use crate::calculus::types::V;
 use crate::lie::rotation2::Isometry2;
+use crate::opt::nlls::optimize_one_cost;
+use crate::opt::nlls::Cost;
+use crate::opt::nlls::CostSignature;
+use crate::opt::nlls::EvaluatedTerm;
+use crate::opt::nlls::IsResidualFn;
+use crate::opt::nlls::IsTermSignature;
 use crate::opt::nlls::OptParams;
-use crate::opt::nlls::new_optimize_c;
-use crate::opt::nlls::GenCostSignature;
-use crate::opt::nlls::NewCostTerm;
-use crate::opt::nlls::NewCostTermSignature;
-use crate::opt::nlls::NewGenVariableFamily;
-use crate::opt::nlls::NewResidualFn;
-use crate::opt::nlls::NewVariableFamilies;
-use crate::opt::nlls::NewVariableFamilyTrait;
-use crate::opt::nlls::NewVariableKind;
+use crate::opt::nlls::VarFamily;
+use crate::opt::nlls::VarKind;
+use crate::opt::nlls::VarPoolBuilder;
 
 #[derive(Clone)]
 struct SimplePriorCostTermSignature {
@@ -24,7 +25,7 @@ struct SimplePriorCostTermSignature {
     entity_indices: [usize; 1],
 }
 
-impl NewCostTermSignature<1> for SimplePriorCostTermSignature {
+impl IsTermSignature<1> for SimplePriorCostTermSignature {
     type Constants = Isometry2<f64>;
 
     fn c_ref(&self) -> &Self::Constants {
@@ -33,10 +34,6 @@ impl NewCostTermSignature<1> for SimplePriorCostTermSignature {
 
     fn idx_ref(&self) -> &[usize; 1] {
         &self.entity_indices
-    }
-
-    fn idx_vec(&self) -> Vec<usize> {
-        vec![self.entity_indices[0]]
     }
 
     const DOF_TUPLE: [i64; 1] = [3];
@@ -52,13 +49,13 @@ fn res_fn<Scalar: IsScalar>(
 #[derive(Copy, Clone)]
 struct SimplePrior {}
 
-impl NewResidualFn<1, Isometry2<f64>, Isometry2<f64>> for SimplePrior {
-    fn cost(
+impl IsResidualFn<3, 1, Isometry2<f64>, Isometry2<f64>> for SimplePrior {
+    fn eval(
         &self,
         args: Isometry2<f64>,
-        derivatives: [NewVariableKind; 1],
+        derivatives: [VarKind; 1],
         obs: &Isometry2<f64>,
-    ) -> NewCostTerm {
+    ) -> EvaluatedTerm<3, 1> {
         let world_from_robot_pose: Isometry2<f64> = args;
 
         let residual = res_fn(world_from_robot_pose, *obs);
@@ -69,12 +66,12 @@ impl NewResidualFn<1, Isometry2<f64>, Isometry2<f64>> for SimplePrior {
 
         let zeros: V<3> = V::<3>::zeros();
         let mut maybe_dx = None;
-        if derivatives[0] != NewVariableKind::Conditioned {
+        if derivatives[0] != VarKind::Conditioned {
             let dx_res = VectorValuedMapFromVector::static_fw_autodiff(dx_res_fn, zeros);
             maybe_dx = Some(dx_res);
         }
 
-        NewCostTerm::new1(maybe_dx, residual)
+        EvaluatedTerm::new1(maybe_dx, residual)
     }
 }
 
@@ -106,23 +103,18 @@ impl SimplePriorProblem {
         }];
 
         let obs_pose_a_from_pose_b_poses =
-            GenCostSignature::<1, Isometry2<f64>, SimplePriorCostTermSignature> {
+            CostSignature::<1, Isometry2<f64>, SimplePriorCostTermSignature> {
                 family_names: ["poses".into()],
                 terms: cost_signature,
             };
 
-        let family: NewGenVariableFamily<Isometry2<f64>> = NewGenVariableFamily::new(
-            NewVariableKind::Free,
+        let family: VarFamily<Isometry2<f64>> = VarFamily::new(
+            VarKind::Free,
             vec![self.est_world_from_robot],
             HashMap::new(),
         );
 
-        let fam_box: Box<dyn NewVariableFamilyTrait> = Box::new(family);
-
-        let mut map = HashMap::new();
-        map.insert("poses".into(), fam_box);
-
-        let families = NewVariableFamilies { families: map };
+        let families = VarPoolBuilder::new().add_family("poses", family).build();
 
         approx::assert_abs_diff_ne!(
             self.true_world_from_robot.compact(),
@@ -130,16 +122,15 @@ impl SimplePriorProblem {
             epsilon = 1e-6
         );
 
-        let up_families = new_optimize_c(
+        let up_families = optimize_one_cost(
             families,
-            (obs_pose_a_from_pose_b_poses.clone(), SimplePrior {}),
-            OptParams{
-                num_iter: 1, // should converge in single iteration
+            Cost::new(obs_pose_a_from_pose_b_poses.clone(), SimplePrior {}),
+            OptParams {
+                num_iter: 1,         // should converge in single iteration
                 initial_lm_nu: 1e-6, // if lm prior param is tiny
-            }
+            },
         );
         let refined_world_from_robot = up_families.get_members::<Isometry2<f64>>("poses".into());
-
 
         approx::assert_abs_diff_eq!(
             self.true_world_from_robot.compact(),

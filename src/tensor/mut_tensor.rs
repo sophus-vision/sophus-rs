@@ -17,16 +17,48 @@ use super::view::IsTensorLike;
 use super::view::IsTensorView;
 use super::view::TensorView;
 
+/// A mutable tensor
+///
+/// There are two ways of describing the Tensor (MutTensor as well as its siblings ArcTensor,
+/// TensorView and MutTensorView):
+///
+///  1. A dynamic tensor of static tensors:
+///    * The dynamic tensor is of rank DRANK
+///      - ``self.dims()`` is used to access its dynamic dimensions of type
+///        ``[usize: DRANK]``.
+///      - an individual element (= static tensor) can be accessed with
+///        ``self.get(idx)``, where idx is f type ``[usize: DRANK]``.
+///      - Each element is of type ``STensor``.
+///    * Each static tensor is of SRANK. In particular we have.
+///      - rank 0: scalars of type ``Scalar`` (such as ``f64`` or ``u8``).
+///      - rank 1:
+///         * A batch scalar of type ``BatchScalar<Scalar, BATCH>`` with static
+///           batch size of BATCHES.
+///         * A column vector ``SVec<Scalar, ROWS>`` aka ``nalgebra::SVector<Scalar, ROWS>`` with
+///           number of ROWS.
+///      - rank 2:
+///         * A batch vector of type ``BatchVector<Scalar, BATCHES>`` with static
+///           shape (ROWS x BATCHES).
+///         * A matrix ``SMat<Scalar, ROWS, COLS>`` aka ``nalgebra::SMatrix<Scalar, ROWS, COLS>``
+///           with static shape (ROWS x COLS).
+///       - rank 3:
+///         * A batch matrix of type ``BatchMatrix<Scalar, ROWS, COLS, BATCH>`` with static
+///           shape (BATCHES x ROWS .x COLS).
+///  2. A scalar tensor of SCALAR_RANK = DRANK + SRANK.
+///    *  ``self.scalar_dims()`` is used to access its dimensions of type
+///        ``[usize: SCALAR_RANK]`` at runtime.
+///    *  - an individual element (= static tensor) can be accessed with
+///        ``self.scalar_get(idx)``, where idx is of type ``[usize: DRANK]``.
 #[derive(Default, Debug, Clone)]
 pub struct MutTensor<
-    const HYBER_RANK: usize,
-    const SRANK: usize,
+    const SCALAR_RANK: usize,
     const DRANK: usize,
+    const SRANK: usize,
     Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, BATCHES, ROWS, COLS> + 'static,
-    const BATCHES: usize,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCHES> + 'static,
     const ROWS: usize,
     const COLS: usize,
+    const BATCHES: usize,
 > where
     ndarray::Dim<[ndarray::Ix; DRANK]>: ndarray::Dimension,
 {
@@ -35,15 +67,15 @@ pub struct MutTensor<
 }
 
 pub trait InnerVecToMat<
-    const HYBER_RANK: usize,
-    const SRANK: usize,
+    const SCALAR_RANK: usize,
     const DRANK: usize,
+    const SRANK: usize,
     const HYBER_RANK_PLUS1: usize,
     const SRANK_PLUS1: usize,
     Scalar: IsTensorScalar + 'static,
     const ROWS: usize,
 > where
-    SVec<Scalar, ROWS>: IsStaticTensor<Scalar, SRANK_PLUS1, 1, ROWS, 1>,
+    SVec<Scalar, ROWS>: IsStaticTensor<Scalar, SRANK_PLUS1, ROWS, 1, 1>,
     ndarray::Dim<[ndarray::Ix; DRANK]>: ndarray::Dimension,
 {
     type Output;
@@ -52,9 +84,9 @@ pub trait InnerVecToMat<
 }
 
 pub trait InnerScalarToVec<
-    const HYBER_RANK: usize,
-    const SRANK: usize,
+    const SCALAR_RANK: usize,
     const DRANK: usize,
+    const SRANK: usize,
     const HYBER_RANK_PLUS1: usize,
     const SRANK_PLUS1: usize,
     Scalar: IsTensorScalar + 'static,
@@ -67,7 +99,7 @@ pub trait InnerScalarToVec<
 }
 
 impl<Scalar: IsTensorScalar + 'static, const ROWS: usize> InnerVecToMat<3, 1, 2, 4, 2, Scalar, ROWS>
-    for MutTensorXR<3, 1, 2, Scalar, ROWS>
+    for MutTensorXR<3, 2, 1, Scalar, ROWS>
 {
     type Output = MutTensorXRC<4, 2, 2, Scalar, ROWS, 1>;
 
@@ -82,10 +114,10 @@ impl<Scalar: IsTensorScalar + 'static, const ROWS: usize> InnerVecToMat<3, 1, 2,
 impl<Scalar: IsTensorScalar + 'static> InnerScalarToVec<2, 0, 2, 3, 1, Scalar>
     for MutTensorX<2, Scalar>
 {
-    type Output = MutTensorXR<3, 1, 2, Scalar, 1>;
+    type Output = MutTensorXR<3, 2, 1, Scalar, 1>;
 
-    fn inner_scalar_to_vec(self) -> MutTensorXR<3, 1, 2, Scalar, 1> {
-        MutTensorXR::<3, 1, 2, Scalar, 1> {
+    fn inner_scalar_to_vec(self) -> MutTensorXR<3, 2, 1, Scalar, 1> {
+        MutTensorXR::<3, 2, 1, Scalar, 1> {
             mut_array: self.mut_array.map(|x| SVec::<Scalar, 1>::new(*x)),
             phantom: PhantomData,
         }
@@ -93,51 +125,51 @@ impl<Scalar: IsTensorScalar + 'static> InnerScalarToVec<2, 0, 2, 3, 1, Scalar>
 }
 
 pub type MutTensorX<const DRANK: usize, Scalar> =
-    MutTensor<DRANK, 0, DRANK, Scalar, Scalar, 1, 1, 1>;
+    MutTensor<DRANK, DRANK, 0, Scalar, Scalar, 1, 1, 1>;
 
 pub type MutTensorXB<
-    const HYBER_RANK: usize,
-    const SRANK: usize,
+    const SCALAR_RANK: usize,
     const DRANK: usize,
+    const SRANK: usize,
     Scalar,
     const B: usize,
-> = MutTensor<HYBER_RANK, SRANK, DRANK, Scalar, BatchScalar<Scalar, B>, B, 1, 1>;
+> = MutTensor<SCALAR_RANK, DRANK, SRANK, Scalar, BatchScalar<Scalar, B>, 1, 1, B>;
 
 pub type MutTensorXR<
-    const HYBER_RANK: usize,
-    const SRANK: usize,
+    const SCALAR_RANK: usize,
     const DRANK: usize,
+    const SRANK: usize,
     Scalar,
     const R: usize,
-> = MutTensor<HYBER_RANK, SRANK, DRANK, Scalar, SVec<Scalar, R>, 1, R, 1>;
+> = MutTensor<SCALAR_RANK, DRANK, SRANK, Scalar, SVec<Scalar, R>, R, 1, 1>;
 
-pub type MutTensorXBR<
-    const HYBER_RANK: usize,
-    const SRANK: usize,
+pub type MutTensorXRB<
+    const SCALAR_RANK: usize,
     const DRANK: usize,
+    const SRANK: usize,
     Scalar,
-    const B: usize,
     const R: usize,
-> = MutTensor<HYBER_RANK, SRANK, DRANK, Scalar, BatchVec<Scalar, B, R>, B, R, 1>;
+    const B: usize,
+> = MutTensor<SCALAR_RANK, DRANK, SRANK, Scalar, BatchVec<Scalar, R, B>, R, 1, B>;
 
 pub type MutTensorXRC<
-    const HYBER_RANK: usize,
-    const SRANK: usize,
+    const SCALAR_RANK: usize,
     const DRANK: usize,
+    const SRANK: usize,
     Scalar,
     const R: usize,
     const C: usize,
-> = MutTensor<HYBER_RANK, SRANK, DRANK, Scalar, SMat<Scalar, R, C>, 1, R, C>;
+> = MutTensor<SCALAR_RANK, DRANK, SRANK, Scalar, SMat<Scalar, R, C>, R, C, 1>;
 
-pub type MutTensorXBRC<
-    const HYBER_RANK: usize,
-    const SRANK: usize,
+pub type MutTensorXRCB<
+    const SCALAR_RANK: usize,
     const DRANK: usize,
+    const SRANK: usize,
     Scalar,
-    const B: usize,
     const R: usize,
     const C: usize,
-> = MutTensor<HYBER_RANK, SRANK, DRANK, Scalar, BatchMat<Scalar, B, R, C>, B, R, C>;
+    const B: usize,
+> = MutTensor<SCALAR_RANK, DRANK, SRANK, Scalar, BatchMat<Scalar, R, C, B>, R, C, B>;
 
 // rank 1 - D0
 pub type MutTensorD<Scalar> = MutTensorX<1, Scalar>;
@@ -160,19 +192,19 @@ pub type MutTensorDDD<Scalar> = MutTensorX<3, Scalar>;
 
 // rank 3
 //  D0 x D1 x [B]
-pub type MutTensorDDB<Scalar, const B: usize> = MutTensorXB<3, 1, 2, Scalar, B>;
+pub type MutTensorDDB<Scalar, const B: usize> = MutTensorXB<3, 2, 1, Scalar, B>;
 
 // rank 3
 // D0 x D1 x [R]
-pub type MutTensorDDR<Scalar, const R: usize> = MutTensorXR<3, 1, 2, Scalar, R>;
+pub type MutTensorDDR<Scalar, const R: usize> = MutTensorXR<3, 2, 1, Scalar, R>;
 
 // rank 3
-// D0 x [B x R]
-pub type MutTensorBRD<Scalar, const B: usize, const R: usize> = MutTensorXBR<3, 2, 1, Scalar, B, R>;
+// D0 x [R, B]
+pub type MutTensorRDB<Scalar, const R: usize, const B: usize> = MutTensorXRB<3, 1, 2, Scalar, R, B>;
 
 // rank 3
 // D0 x [R x C]
-pub type MutTensorDRC<Scalar, const R: usize, const C: usize> = MutTensorXRC<3, 2, 1, Scalar, R, C>;
+pub type MutTensorDRC<Scalar, const R: usize, const C: usize> = MutTensorXRC<3, 1, 2, Scalar, R, C>;
 
 // rank 4
 // srank 0, drank 4
@@ -180,16 +212,16 @@ pub type MutTensorDDDD<Scalar> = MutTensorX<4, Scalar>;
 
 // rank 4
 // D0 x D1 x D2 x [B]
-pub type MutTensorDDDB<Scalar, const B: usize> = MutTensorXB<4, 1, 3, Scalar, B>;
+pub type MutTensorDDDB<Scalar, const B: usize> = MutTensorXB<4, 3, 1, Scalar, B>;
 
 // rank 4
 //  D0 x D1 x D2 x [R]
-pub type MutTensorDDDR<Scalar, const R: usize> = MutTensorXR<4, 1, 3, Scalar, R>;
+pub type MutTensorDDDR<Scalar, const R: usize> = MutTensorXR<4, 3, 1, Scalar, R>;
 
 // rank 4
-// D0 x D1 x [B x R]
-pub type MutTensorDDRB<Scalar, const B: usize, const R: usize> =
-    MutTensorXBR<4, 2, 2, Scalar, B, R>;
+// D0 x D1 x [R x B]
+pub type MutTensorDDRB<Scalar, const R: usize, const B: usize> =
+    MutTensorXRB<4, 2, 2, Scalar, R, B>;
 
 // rank 4
 //  D0 x D1 x [R x C]
@@ -197,23 +229,23 @@ pub type MutTensorDDRC<Scalar, const R: usize, const C: usize> =
     MutTensorXRC<4, 2, 2, Scalar, R, C>;
 
 // rank 4
-// D0 x [B x R x C]
-pub type MutTensorDRCB<Scalar, const B: usize, const R: usize, const C: usize> =
-    MutTensorXBRC<4, 3, 1, Scalar, B, R, C>;
+// D0 x [R x C x B]
+pub type MutTensorDRCB<Scalar, const R: usize, const C: usize, const B: usize> =
+    MutTensorXRCB<4, 1, 3, Scalar, R, C, B>;
 
 macro_rules! mut_tensor_is_view {
-    ($hyper_rank:literal, $srank:literal, $drank:literal) => {
+    ($scalar_rank:literal, $srank:literal, $drank:literal) => {
 
 
         impl<
         'a,
                 Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, BATCHES, ROWS, COLS> + 'static,
+                STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
                 const BATCHES: usize,
                 const ROWS: usize,
                 const COLS: usize,
-            > IsTensorLike<'a, $hyper_rank, $srank, $drank, Scalar, STensor, BATCHES, ROWS, COLS>
-            for MutTensor<$hyper_rank, $srank, $drank, Scalar, STensor, BATCHES, ROWS, COLS>
+            > IsTensorLike<'a, $scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
+            for MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
         {
             fn elem_view<'b:'a>(
                 &'b self,
@@ -231,21 +263,21 @@ macro_rules! mut_tensor_is_view {
 
             fn scalar_view<'b:'a>(
                 &'b self,
-            ) -> ndarray::ArrayView<'a, Scalar, ndarray::Dim<[ndarray::Ix; $hyper_rank]>> {
+            ) -> ndarray::ArrayView<'a, Scalar, ndarray::Dim<[ndarray::Ix; $scalar_rank]>> {
                 self.view().scalar_view
             }
 
-            fn scalar_get(&'a self, idx: [usize; $hyper_rank]) -> Scalar {
+            fn scalar_get(&'a self, idx: [usize; $scalar_rank]) -> Scalar {
                 self.view().scalar_get(idx)
             }
 
-            fn scalar_dims(&self) -> [usize; $hyper_rank] {
+            fn scalar_dims(&self) -> [usize; $scalar_rank] {
                 self.view().scalar_dims()
             }
 
             fn to_mut_image(
                 &self,
-            ) -> MutTensor<$hyper_rank, $srank, $drank, Scalar, STensor, BATCHES, ROWS, COLS> {
+            ) -> MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES> {
                 MutTensor {
                     mut_array: self.elem_view().to_owned(),
                     phantom: PhantomData::default(),
@@ -256,12 +288,17 @@ macro_rules! mut_tensor_is_view {
         impl<
         'a,
                 Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, BATCHES, ROWS, COLS> + 'static,
+                STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
                 const BATCHES: usize,
                 const ROWS: usize,
                 const COLS: usize,
-            > IsMutTensorLike<'a, $hyper_rank, $srank, $drank, Scalar, STensor, BATCHES, ROWS, COLS>
-            for MutTensor<$hyper_rank, $srank, $drank, Scalar, STensor, BATCHES, ROWS, COLS>
+            >
+            IsMutTensorLike<'a,
+                $scalar_rank, $drank, $srank,
+                Scalar, STensor,
+                ROWS, COLS, BATCHES
+            >
+            for MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         {
             fn elem_view_mut<'b:'a>(
                 &'b mut self,
@@ -274,53 +311,76 @@ macro_rules! mut_tensor_is_view {
 
             fn scalar_view_mut<'b:'a>(
                 &'b mut self,
-            ) -> ndarray::ArrayViewMut<'a, Scalar, ndarray::Dim<[ndarray::Ix; $hyper_rank]>>{
+            ) -> ndarray::ArrayViewMut<'a, Scalar, ndarray::Dim<[ndarray::Ix; $scalar_rank]>>{
                 self.mut_view().scalar_view_mut
             }
         }
 
         impl<'a,  Scalar: IsTensorScalar+ 'static,
-                STensor: IsStaticTensor<Scalar, $srank, BATCHES, ROWS, COLS> + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
                 const BATCHES: usize,
                 const ROWS: usize,
-                const COLS: usize>
-               MutTensor<$hyper_rank, $srank,$drank, Scalar, STensor, BATCHES, ROWS, COLS>
+                const COLS: usize
+        >
+            MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         {
 
          pub fn mut_view<'b: 'a>(
                 &'b mut self,
-            ) -> MutTensorView<'a,  $hyper_rank, $srank,$drank, Scalar, STensor, BATCHES, ROWS, COLS>{
-                MutTensorView::<'a,  $hyper_rank, $srank,$drank, Scalar, STensor, BATCHES, ROWS, COLS>::new(
-                    self.mut_array.view_mut())
+            ) -> MutTensorView<'a,
+                               $scalar_rank, $drank, $srank,
+                               Scalar, STensor,
+                               ROWS, COLS, BATCHES>
+            {
+                MutTensorView::<
+                    'a,
+                    $scalar_rank, $drank, $srank,
+                    Scalar, STensor, ROWS, COLS, BATCHES>::new
+                (
+                    self.mut_array.view_mut()
+                )
             }
 
-         pub    fn view<'b: 'a>(&'b self) -> TensorView<'a, $hyper_rank, $srank,$drank, Scalar, STensor, BATCHES, ROWS, COLS> {
-                TensorView::<'a,  $hyper_rank, $srank,$drank, Scalar, STensor, BATCHES, ROWS, COLS>::new(
+         pub  fn view<'b: 'a>(&'b self
+            ) -> TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor,
+                            ROWS, COLS, BATCHES> {
+                TensorView::<'a, $scalar_rank, $drank, $srank, Scalar, STensor,
+                             ROWS, COLS, BATCHES>::new(
                     self.mut_array.view())
             }
 
           pub   fn from_shape(size: [usize; $drank]) -> Self {
-                MutTensor::<$hyper_rank, $srank,$drank, Scalar, STensor, BATCHES, ROWS, COLS>::from_shape_and_val(
+                MutTensor::<$scalar_rank, $drank, $srank, Scalar, STensor,
+                            ROWS, COLS, BATCHES>::from_shape_and_val(
                     size, STensor::zero()
                 )
             }
 
-            pub fn make_copy_from(v: &TensorView<$hyper_rank, $srank,$drank, Scalar, STensor, BATCHES, ROWS, COLS>)->Self {
+            pub fn make_copy_from(
+                v: &TensorView<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+            ) -> Self
+            {
                 IsTensorLike::to_mut_image(v)
             }
 
-            pub fn to_shared(self)  ->  ArcTensor::<$hyper_rank, $srank,$drank, Scalar, STensor, BATCHES, ROWS, COLS> {
-                ArcTensor::<$hyper_rank, $srank,$drank, Scalar, STensor, BATCHES, ROWS, COLS>::from_mut_tensor(self)
+            pub fn to_shared(self)
+                -> ArcTensor::<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
+            {
+                ArcTensor::<
+                    $scalar_rank,
+                    $drank, $srank,
+                    Scalar, STensor,
+                    ROWS, COLS, BATCHES>::from_mut_tensor(self)
             }
 
 
 
-          pub   fn from_shape_and_val(
+            pub fn from_shape_and_val
+            (
                 shape: [usize; $drank],
                 val: STensor,
-            ) -> Self {
-
-
+            ) -> Self 
+            {
                 Self{
                     mut_array: ndarray::Array::<STensor, Dim<[Ix; $drank]>>::from_elem(shape, val),
                     phantom: PhantomData::default()
@@ -330,82 +390,68 @@ macro_rules! mut_tensor_is_view {
 
             pub fn from_map<
                 'b,
-                const OTHER_HRANK:usize,
-                const OTHER_SRANK:usize,
+                const OTHER_HRANK: usize, const OTHER_SRANK: usize,
                 OtherScalar: IsTensorScalar+ 'static,
-                OtherSTensor: IsStaticTensor<OtherScalar, OTHER_SRANK, OTHER_BATCHES, OTHER_ROWS, OTHER_COLS> + 'static,
-                const OTHER_BATCHES: usize,
-                const OTHER_ROWS: usize,
-                const OTHER_COLS: usize,
-                V : IsTensorView::<'b,
-                    OTHER_HRANK,
-                    OTHER_SRANK,
-                    $drank,
-                    OtherScalar,
-                    OtherSTensor,
-                    OTHER_BATCHES,
-                    OTHER_ROWS,
-                    OTHER_COLS>,
+                OtherSTensor: IsStaticTensor<
+                    OtherScalar, OTHER_SRANK, OTHER_BATCHES, 
+                    OTHER_ROWS, OTHER_COLS
+                > + 'static,
+                const OTHER_BATCHES: usize, const OTHER_ROWS: usize, const OTHER_COLS: usize,
+                V : IsTensorView::<
+                    'b,
+                    OTHER_HRANK, $drank, OTHER_SRANK,
+                    OtherScalar, OtherSTensor,
+                    OTHER_BATCHES, OTHER_ROWS, OTHER_COLS
+                >,
                 F: FnMut(&OtherSTensor)-> STensor
-            >(
+            > (
                 view:  &'b V,
                 op: F,
             )
-            ->  Self
-            where
-            ndarray::Dim<[ndarray::Ix; OTHER_HRANK]>: ndarray::Dimension,
-            ndarray::Dim<[ndarray::Ix; $drank]>: ndarray::Dimension,
+            -> Self where
+                ndarray::Dim<[ndarray::Ix; OTHER_HRANK]>: ndarray::Dimension,
+                ndarray::Dim<[ndarray::Ix; $drank]>: ndarray::Dimension,
             {
-                Self{
+                Self {
                     mut_array: view.elem_view().map(op),
                     phantom: PhantomData::default()
                 }
             }
 
             pub fn from_map2<
-            'b,
-            const OTHER_HRANK: usize,
-            const OTHER_SRANK: usize,
-            OtherScalar: IsTensorScalar + 'static,
-            OtherSTensor: IsStaticTensor<OtherScalar, OTHER_SRANK, OTHER_BATCHES, OTHER_ROWS, OTHER_COLS> + 'static,
-            const OTHER_BATCHES: usize,
-            const OTHER_ROWS: usize,
-            const OTHER_COLS: usize,
+                'b,
+                const OTHER_HRANK: usize, const OTHER_SRANK: usize,
+                OtherScalar: IsTensorScalar + 'static,
+                OtherSTensor: IsStaticTensor<
+                    OtherScalar, OTHER_SRANK, OTHER_BATCHES, OTHER_ROWS, OTHER_COLS
+                > + 'static,
+                const OTHER_BATCHES: usize, const OTHER_ROWS: usize, const OTHER_COLS: usize,
             V : IsTensorView::<'b,
-                    OTHER_HRANK,
-                    OTHER_SRANK,
-                    $drank,
-                    OtherScalar,
-                    OtherSTensor,
-                    OTHER_BATCHES,
-                    OTHER_ROWS,
-                    OTHER_COLS>,
-            const OTHER_HRANK2: usize,
-            const OTHER_SRANK2: usize,
+                OTHER_HRANK, $drank, OTHER_SRANK,
+                OtherScalar, OtherSTensor,
+                OTHER_BATCHES, OTHER_ROWS, OTHER_COLS
+            >,
+            const OTHER_HRANK2: usize, const OTHER_SRANK2: usize,
             OtherScalar2: IsTensorScalar + 'static,
-            OtherSTensor2: IsStaticTensor<OtherScalar2, OTHER_SRANK2, OTHER_BATCHES2, OTHER_ROWS2, OTHER_COLS2> + 'static,
-            const OTHER_BATCHES2: usize,
-            const OTHER_ROWS2: usize,
-            const OTHER_COLS2: usize,
+            OtherSTensor2: IsStaticTensor<
+                OtherScalar2, OTHER_SRANK2, OTHER_BATCHES2, OTHER_ROWS2, OTHER_COLS2
+            > + 'static,
+            const OTHER_BATCHES2: usize, const OTHER_ROWS2: usize, const OTHER_COLS2: usize,
             V2 : IsTensorView::<'b,
-                    OTHER_HRANK2,
-                    OTHER_SRANK2,
-                    $drank,
-                    OtherScalar2,
-                    OtherSTensor2,
-                    OTHER_BATCHES2,
-                    OTHER_ROWS2,
-                    OTHER_COLS2>,
+                OTHER_HRANK2, $drank, OTHER_SRANK2,
+                OtherScalar2, OtherSTensor2,
+                OTHER_BATCHES2, OTHER_ROWS2, OTHER_COLS2
+            >,
             F: FnMut(&OtherSTensor, &OtherSTensor2)->STensor
-        >(
-            view: &'b V,
-            view2: &'b V2,
-            mut op: F,
-        )
-        -> Self
-        where
-            ndarray::Dim<[ndarray::Ix; OTHER_HRANK]>: ndarray::Dimension,
-            ndarray::Dim<[ndarray::Ix; OTHER_HRANK2]>: ndarray::Dimension
+            >(
+                view: &'b V,
+                view2: &'b V2,
+                mut op: F,
+            )
+            -> Self
+            where
+                ndarray::Dim<[ndarray::Ix; OTHER_HRANK]>: ndarray::Dimension,
+                ndarray::Dim<[ndarray::Ix; OTHER_HRANK2]>: ndarray::Dimension
 
             {
                 let mut out  = Self::from_shape(view.dims());
@@ -439,7 +485,6 @@ mod tests {
 
     use super::*;
 
-    
     use crate::tensor::element::P3F32;
 
     #[test]

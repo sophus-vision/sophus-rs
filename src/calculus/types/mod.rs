@@ -11,3 +11,4 @@ pub type BatchM<const B: usize, const ROWS: usize, const COLS: usize> =
 pub mod matrix;
 pub mod scalar;
 pub mod vector;
+pub mod params;

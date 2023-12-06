@@ -1,22 +1,21 @@
-use crate::image::view::ImageSize;
 use crate::image::mut_image::MutImage2F32;
+use crate::image::view::ImageSize;
 
 type V<const N: usize> = nalgebra::SVector<f64, N>;
 type M<const N: usize, const O: usize> = nalgebra::SMatrix<f64, N, O>;
 use super::any_camera::AnyProjCameraType;
 use super::perspective_camera::PerspectiveCameraType;
-use super::traits::CameraEnum;
-use super::traits::WrongParamsDim;
+use super::traits::IsCameraEnum;
 
 #[derive(Debug, Clone)]
-pub struct DynCameraFacade<CameraType: CameraEnum> {
+pub struct DynCameraFacade<CameraType: IsCameraEnum> {
     camera_type: CameraType,
 }
 
 pub type DynAnyProjCamera = DynCameraFacade<AnyProjCameraType>;
 pub type DynCamera = DynCameraFacade<PerspectiveCameraType>;
 
-impl<CameraType: CameraEnum> DynCameraFacade<CameraType> {
+impl<CameraType: IsCameraEnum> DynCameraFacade<CameraType> {
     pub fn from_model(camera_type: CameraType) -> Self {
         Self { camera_type }
     }
@@ -53,13 +52,6 @@ impl<CameraType: CameraEnum> DynCameraFacade<CameraType> {
         self.camera_type.dx_distort_x(point_in_camera)
     }
 
-    pub fn try_set_params(
-        &mut self,
-        params: &nalgebra::DVector<f64>,
-    ) -> Result<(), WrongParamsDim> {
-        self.camera_type.try_set_params(params)
-    }
-
     pub fn undistort_table(&self) -> MutImage2F32 {
         self.camera_type.undistort_table()
     }
@@ -72,10 +64,10 @@ mod tests {
         use approx::assert_relative_eq;
 
         use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
-        use crate::image::view::ImageSize;
-        use crate::image::view::IsImageView;
         use crate::image::interpolation::interpolate;
         use crate::image::mut_image::MutImage2F32;
+        use crate::image::view::ImageSize;
+        use crate::image::view::IsImageView;
 
         use super::DynCamera;
         use super::V;

@@ -11,33 +11,33 @@ use super::view::IsImageView;
 #[derive(Debug, PartialEq)]
 pub struct MutImageView<
     'a,
-    const HYPER_RANK: usize,
+    const SCALAR_RANK: usize,
     const SRANK: usize,
     Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, BATCHES, ROWS, COLS> + 'static,
-    const BATCHES: usize,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCHES> + 'static,
     const ROWS: usize,
     const COLS: usize,
+    const BATCHES: usize,
 > where
-    ndarray::Dim<[ndarray::Ix; HYPER_RANK]>: ndarray::Dimension,
+    ndarray::Dim<[ndarray::Ix; SCALAR_RANK]>: ndarray::Dimension,
 {
     pub mut_tensor_view:
-        MutTensorView<'a, HYPER_RANK, SRANK, 2, Scalar, STensor, BATCHES, ROWS, COLS>,
+        MutTensorView<'a, SCALAR_RANK, 2, SRANK, Scalar, STensor, ROWS, COLS, BATCHES>,
 }
 
 macro_rules! mut_image_view {
-    ($hyper_rank:literal, $srank:literal) => {
+    ($scalar_rank:literal, $srank:literal) => {
         impl<
-                'a,
-                Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, BATCHES, ROWS, COLS> + 'static,
-                const BATCHES: usize,
-                const ROWS: usize,
-                const COLS: usize,
-            > IsImageView<'a, $hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS>
-            for MutImageView<'a, $hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS>
+            'a,
+            Scalar: IsTensorScalar + 'static,
+            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
+            const BATCHES: usize,
+            const ROWS: usize,
+            const COLS: usize,
+        > IsImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+        for MutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         where
-            ndarray::Dim<[ndarray::Ix; $hyper_rank]>: ndarray::Dimension,
+            ndarray::Dim<[ndarray::Ix; $scalar_rank]>: ndarray::Dimension,
         {
             fn pixel(&'a self, u: usize, v: usize) -> STensor {
                 // NOTE:
@@ -48,7 +48,7 @@ macro_rules! mut_image_view {
 
             fn image_view(
                 &'a self,
-            ) -> ImageView<'a, $hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS> {
+            ) -> ImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES> {
                 let view = self.mut_tensor_view.view();
                 ImageView { tensor_view: view }
             }
@@ -59,33 +59,33 @@ macro_rules! mut_image_view {
         }
 
         impl<
-                'a,
-                Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, BATCHES, ROWS, COLS> + 'static,
-                const BATCHES: usize,
-                const ROWS: usize,
-                const COLS: usize,
-            > IsMutImageView<'a, $hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS>
-            for MutImageView<'a, $hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS>
+            'a,
+            Scalar: IsTensorScalar + 'static,
+            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
+            const BATCHES: usize,
+            const ROWS: usize,
+            const COLS: usize,
+        > IsMutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+        for MutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         where
-            MutTensorView<'a, $hyper_rank, $srank, 2, Scalar, STensor, BATCHES, ROWS, COLS>:
-                IsMutTensorLike<'a, $hyper_rank, $srank, 2, Scalar, STensor, BATCHES, ROWS, COLS>,
-            ndarray::Dim<[ndarray::Ix; $hyper_rank]>: ndarray::Dimension,
+            MutTensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS, BATCHES>:
+                IsMutTensorLike<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS, BATCHES>,
+            ndarray::Dim<[ndarray::Ix; $scalar_rank]>: ndarray::Dimension,
         {
             fn mut_image_view<'b: 'a>(
                 &'b mut self,
-            ) -> MutImageView<'a, $hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS> {
+            ) -> MutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES> {
                 MutImageView {
                     mut_tensor_view: MutTensorView::<
                         'a,
-                        $hyper_rank,
-                        $srank,
+                        $scalar_rank,
                         2,
+                        $srank,
                         Scalar,
                         STensor,
-                        BATCHES,
                         ROWS,
                         COLS,
+                        BATCHES,
                     >::new(
                         self.mut_tensor_view.elem_view_mut.view_mut()
                     ),
@@ -108,19 +108,19 @@ mut_image_view!(4, 2);
 
 pub trait IsMutImageView<
     'a,
-    const HYPER_RANK: usize,
+    const SCALAR_RANK: usize,
     const SRANK: usize,
     Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, BATCHES, ROWS, COLS> + 'static,
-    const BATCHES: usize,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCHES> + 'static,
     const ROWS: usize,
     const COLS: usize,
+    const BATCHES: usize,
 > where
-    ndarray::Dim<[ndarray::Ix; HYPER_RANK]>: ndarray::Dimension,
+    ndarray::Dim<[ndarray::Ix; SCALAR_RANK]>: ndarray::Dimension,
 {
     fn mut_image_view<'b: 'a>(
         &'b mut self,
-    ) -> MutImageView<'a, HYPER_RANK, SRANK, Scalar, STensor, BATCHES, ROWS, COLS>;
+    ) -> MutImageView<'a, SCALAR_RANK, SRANK, Scalar, STensor, ROWS, COLS, BATCHES>;
 
     fn mut_pixel(&'a mut self, u: usize, v: usize) -> &mut STensor;
 }

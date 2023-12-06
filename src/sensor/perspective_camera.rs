@@ -1,12 +1,14 @@
-use crate::image::view::ImageSize;
+use crate::calculus::types::matrix::IsMatrix;
+use crate::calculus::types::scalar::IsScalar;
 use crate::image::mut_image::MutImage2F32;
+use crate::image::view::ImageSize;
 
 use super::affine::AffineDistortionImpl;
 use super::generic_camera::Camera;
 use super::kannala_brandt::KannalaBrandtDistortionImpl;
-use super::traits::CameraEnum;
-use super::traits::Projection;
-use super::traits::WrongParamsDim;
+use super::traits::IsCameraEnum;
+use super::traits::IsProjection;
+use crate::calculus::types::vector::IsVector;
 
 use nalgebra::SMatrix;
 use nalgebra::SVector;
@@ -17,45 +19,49 @@ type M<const N: usize, const O: usize> = SMatrix<f64, N, O>;
 #[derive(Debug, Clone, Copy)]
 pub struct ProjectionZ1;
 
-impl Projection for ProjectionZ1 {
-    fn proj(point_in_camera: &V<3>) -> V<2> {
-        V::<2>::new(
-            point_in_camera[0] / point_in_camera[2],
-            point_in_camera[1] / point_in_camera[2],
-        )
+impl<S: IsScalar> IsProjection<S> for ProjectionZ1 {
+    fn proj(point_in_camera: &S::Vector<3>) -> S::Vector<2> {
+        S::Vector::<2>::from_array([
+            point_in_camera.get(0) / point_in_camera.get(2),
+            point_in_camera.get(1) / point_in_camera.get(2),
+        ])
     }
 
-    fn unproj(point_in_camera: &V<2>, extension: f64) -> V<3> {
-        V::<3>::new(
-            point_in_camera[0] * extension,
-            point_in_camera[1] * extension,
+    fn unproj(point_in_camera: &S::Vector<2>, extension: S) -> S::Vector<3> {
+        S::Vector::<3>::from_array([
+            point_in_camera.get(0) * extension.clone(),
+            point_in_camera.get(1) * extension.clone(),
             extension,
-        )
+        ])
     }
 
     fn dx_proj_x(point_in_camera: &V<3>) -> M<2, 3> {
-        M::<2, 3>::new(
-            1.0 / point_in_camera[2],
-            0.0,
-            -point_in_camera[0] / (point_in_camera[2] * point_in_camera[2]),
-            0.0,
-            1.0 / point_in_camera[2],
-            -point_in_camera[1] / (point_in_camera[2] * point_in_camera[2]),
-        )
+        M::<2, 3>::from_array2([
+            [
+                1.0 / point_in_camera[2],
+                0.0,
+                -point_in_camera[0] / (point_in_camera[2] * point_in_camera[2]),
+            ],
+            [
+                0.0,
+                1.0 / point_in_camera[2],
+                -point_in_camera[1] / (point_in_camera[2] * point_in_camera[2]),
+            ],
+        ])
     }
 }
 
-pub type PinholeCamera = Camera<0, 4, AffineDistortionImpl, ProjectionZ1>;
-pub type OrthoCamera = Camera<0, 4, AffineDistortionImpl, ProjectionZ1>;
-pub type KannalaBrandtCamera = Camera<4, 8, KannalaBrandtDistortionImpl, ProjectionZ1>;
+pub type PinholeCamera<S> = Camera<S, 0, 4, AffineDistortionImpl<S>, ProjectionZ1>;
+pub type OrthoCamera<S> = Camera<S, 0, 4, AffineDistortionImpl<S>, ProjectionZ1>;
+pub type KannalaBrandtCamera<S> = Camera<S, 4, 8, KannalaBrandtDistortionImpl<S>, ProjectionZ1>;
 
 #[derive(Debug, Clone, Copy)]
 pub enum PerspectiveCameraType {
-    Pinhole(PinholeCamera),
-    KannalaBrandt(KannalaBrandtCamera),
+    Pinhole(PinholeCamera<f64>),
+    KannalaBrandt(KannalaBrandtCamera<f64>),
 }
 
-impl CameraEnum for PerspectiveCameraType {
+impl IsCameraEnum for PerspectiveCameraType {
     fn new_pinhole(params: &V<4>, image_size: ImageSize) -> Self {
         Self::Pinhole(PinholeCamera::from_params_and_size(params, image_size))
     }
@@ -103,17 +109,17 @@ impl CameraEnum for PerspectiveCameraType {
         }
     }
 
-    fn try_set_params(&mut self, params: &nalgebra::DVector<f64>) -> Result<(), WrongParamsDim> {
-        match self {
-            PerspectiveCameraType::Pinhole(camera) => camera.try_set_params(params),
-            PerspectiveCameraType::KannalaBrandt(camera) => camera.try_set_params(params),
-        }
-    }
-
     fn undistort_table(&self) -> MutImage2F32 {
         match self {
             PerspectiveCameraType::Pinhole(camera) => camera.undistort_table(),
             PerspectiveCameraType::KannalaBrandt(camera) => camera.undistort_table(),
+        }
+    }
+
+    fn image_size(&self) -> ImageSize {
+        match self {
+            PerspectiveCameraType::Pinhole(camera) => camera.image_size(),
+            PerspectiveCameraType::KannalaBrandt(camera) => camera.image_size(),
         }
     }
 }

@@ -1,45 +1,55 @@
-use crate::manifold::traits::ParamsImpl;
+use std::marker::PhantomData;
 
-use super::traits::CameraDistortionImpl;
-type V<const N: usize> = nalgebra::SVector<f64, N>;
-type M<const N: usize, const O: usize> = nalgebra::SMatrix<f64, N, O>;
+use crate::calculus::types::params::ParamsImpl;
+use crate::calculus::types::scalar::IsScalar;
+use crate::calculus::types::vector::IsVector;
+use crate::calculus::types::M;
+use crate::calculus::types::V;
+
+use super::traits::IsCameraDistortionImpl;
+use crate::calculus::types::matrix::IsMatrix;
 
 #[derive(Debug, Clone, Copy)]
-pub struct AffineDistortionImpl;
+pub struct AffineDistortionImpl<S: IsScalar> {
+    phantom: PhantomData<S>,
+}
 
-impl ParamsImpl<f64, 4> for AffineDistortionImpl {
-    fn are_params_valid(params: &V<4>) -> bool {
-        params[0] != 0.0 && params[1] != 0.0
+impl<S: IsScalar> ParamsImpl<S, 4> for AffineDistortionImpl<S> {
+    fn are_params_valid(params: &S::Vector<4>) -> bool {
+        params.real()[0] != 0.0 && params.real()[1] != 0.0
     }
 
-    fn params_examples() -> Vec<V<4>> {
-        vec![V::<4>::new(1.0, 1.0, 0.0, 0.0)]
+    fn params_examples() -> Vec<S::Vector<4>> {
+        vec![S::Vector::<4>::from_c_array([1.0, 1.0, 0.0, 0.0])]
     }
 
-    fn invalid_params_examples() -> Vec<V<4>> {
+    fn invalid_params_examples() -> Vec<S::Vector<4>> {
         vec![
-            V::<4>::new(0.0, 1.0, 0.0, 0.0),
-            V::<4>::new(1.0, 0.0, 0.0, 0.0),
+            S::Vector::<4>::from_c_array([0.0, 1.0, 0.0, 0.0]),
+            S::Vector::<4>::from_c_array([1.0, 0.0, 0.0, 0.0]),
         ]
     }
 }
 
-impl CameraDistortionImpl<0, 4> for AffineDistortionImpl {
-    fn distort(params: &V<4>, proj_point_in_camera_z1_plane: &V<2>) -> V<2> {
-        V::<2>::new(
-            proj_point_in_camera_z1_plane[0] * params[0] + params[2],
-            proj_point_in_camera_z1_plane[1] * params[1] + params[3],
-        )
+impl<S: IsScalar> IsCameraDistortionImpl<S, 0, 4> for AffineDistortionImpl<S> {
+    fn distort(
+        params: &S::Vector<4>,
+        proj_point_in_camera_z1_plane: &S::Vector<2>,
+    ) -> S::Vector<2> {
+        S::Vector::<2>::from_array([
+            proj_point_in_camera_z1_plane.get(0) * params.get(0) + params.get(2),
+            proj_point_in_camera_z1_plane.get(1) * params.get(1) + params.get(3),
+        ])
     }
 
-    fn undistort(params: &V<4>, distorted_point: &V<2>) -> V<2> {
-        V::<2>::new(
-            (distorted_point[0] - params[2]) / params[0],
-            (distorted_point[1] - params[3]) / params[1],
-        )
+    fn undistort(params: &S::Vector<4>, distorted_point: &S::Vector<2>) -> S::Vector<2> {
+        S::Vector::<2>::from_array([
+            (distorted_point.get(0) - params.get(2)) / params.get(0),
+            (distorted_point.get(1) - params.get(3)) / params.get(1),
+        ])
     }
 
     fn dx_distort_x(params: &V<4>, _proj_point_in_camera_z1_plane: &V<2>) -> M<2, 2> {
-        M::<2, 2>::new(params[0], 0.0, 0.0, params[1])
+        M::<2, 2>::from_array2([[params[0], 0.0], [0.0, params[1]]])
     }
 }

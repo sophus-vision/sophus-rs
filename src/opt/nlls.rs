@@ -1,96 +1,145 @@
 use dyn_clone::DynClone;
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::marker::PhantomData;
+use std::ops::AddAssign;
+use std::ops::Deref;
 
 use crate::calculus::types::M;
 use crate::calculus::types::V;
+use crate::calculus::types::params::HasParams;
 use crate::lie::rotation2::Isometry2;
-use crate::opt::block::SophusAddAssign;
+use crate::lie::rotation3::Isometry3;
 
+use super::block::BlockVector;
 use super::block::NewBlockMatrix;
-use super::block::NewBlockVector;
 
-pub trait NewCostTermSignature<const N: usize> {
+pub trait IsTermSignature<const N: usize> {
     type Constants;
 
     const DOF_TUPLE: [i64; N];
 
     fn c_ref(&self) -> &Self::Constants;
 
-    fn idx_vec(&self) -> Vec<usize>;
-
     fn idx_ref(&self) -> &[usize; N];
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
-pub enum NewVariableKind {
+pub enum VarKind {
     Free,
     Conditioned,
     Marginalized,
 }
 
-pub trait NewVariableTrait: Clone + Debug {
+pub trait IsVariable: Clone + Debug {
     const DOF: usize;
     type Arg;
 
     fn update(&mut self, delta: &[f64]);
 }
 
-pub trait NewVTuple<const NUM_ARGS: usize> {
+pub trait IsVarTuple<const NUM_ARGS: usize> {
     const DOF_T: [usize; NUM_ARGS];
+    type VarFamilyTupleRef<'a>;
 
-    fn from(
-        families: &NewVariableFamilies,
+    fn ref_var_family_tuple(
+        families: &VarPool,
         names: [String; NUM_ARGS],
-        ids: [usize; NUM_ARGS],
-    ) -> Self;
+    ) -> Self::VarFamilyTupleRef<'_>;
 
-    fn var_kind_array(
-        families: &NewVariableFamilies,
-        names: [String; NUM_ARGS],
-    ) -> [NewVariableKind; NUM_ARGS];
+    fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; NUM_ARGS]) -> Self;
+
+    fn var_kind_array(families: &VarPool, names: [String; NUM_ARGS]) -> [VarKind; NUM_ARGS];
 }
 
-impl<M0: NewVariableTrait + 'static> NewVTuple<1> for M0 {
+impl<M0: IsVariable + 'static> IsVarTuple<1> for M0 {
     const DOF_T: [usize; 1] = [M0::DOF];
+    type VarFamilyTupleRef<'a> = &'a VarFamily<M0>;
 
-    fn from(families: &NewVariableFamilies, names: [String; 1], ids: [usize; 1]) -> Self {
-        families
-            .get::<NewGenVariableFamily<M0>>(names[0].clone())
-            .members[ids[0]]
-            .clone()
-    }
-
-    fn var_kind_array(families: &NewVariableFamilies, names: [String; 1]) -> [NewVariableKind; 1] {
+    fn var_kind_array(families: &VarPool, names: [String; 1]) -> [VarKind; 1] {
         [families.families.get(&names[0]).unwrap().get_var_kind()]
     }
-}
 
-impl<M0: NewVariableTrait + 'static, M1: NewVariableTrait + 'static> NewVTuple<2> for (M0, M1) {
-    const DOF_T: [usize; 2] = [M0::DOF, M1::DOF];
-
-    fn from(families: &NewVariableFamilies, names: [String; 2], ids: [usize; 2]) -> Self {
-        (
-            families
-                .get::<NewGenVariableFamily<M0>>(names[0].clone())
-                .members[ids[0]]
-                .clone(),
-            families
-                .get::<NewGenVariableFamily<M1>>(names[1].clone())
-                .members[ids[1]]
-                .clone(),
-        )
+    fn ref_var_family_tuple(families: &VarPool, names: [String; 1]) -> Self::VarFamilyTupleRef<'_> {
+        families.get::<VarFamily<M0>>(names[0].clone())
     }
 
-    fn var_kind_array(families: &NewVariableFamilies, names: [String; 2]) -> [NewVariableKind; 2] {
+    fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; 1]) -> Self {
+        family_tuple.members[ids[0]].clone()
+    }
+}
+
+impl<M0: IsVariable + 'static, M1: IsVariable + 'static> IsVarTuple<2> for (M0, M1) {
+    const DOF_T: [usize; 2] = [M0::DOF, M1::DOF];
+    type VarFamilyTupleRef<'a> = (&'a VarFamily<M0>, &'a VarFamily<M1>);
+
+    fn var_kind_array(families: &VarPool, names: [String; 2]) -> [VarKind; 2] {
         [
             families.families.get(&names[0]).unwrap().get_var_kind(),
             families.families.get(&names[1]).unwrap().get_var_kind(),
         ]
     }
+
+    fn ref_var_family_tuple(families: &VarPool, names: [String; 2]) -> Self::VarFamilyTupleRef<'_> {
+        (
+            families.get::<VarFamily<M0>>(names[0].clone()),
+            families.get::<VarFamily<M1>>(names[1].clone()),
+        )
+    }
+
+    fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; 2]) -> Self {
+        (
+            family_tuple.0.members[ids[0]].clone(),
+            family_tuple.1.members[ids[1]].clone(),
+        )
+    }
 }
 
-impl NewVariableTrait for Isometry2<f64> {
+impl<M0: IsVariable + 'static, M1: IsVariable + 'static, M2: IsVariable + 'static> IsVarTuple<3>
+    for (M0, M1, M2)
+{
+    const DOF_T: [usize; 3] = [M0::DOF, M1::DOF, M2::DOF];
+    type VarFamilyTupleRef<'a> = (&'a VarFamily<M0>, &'a VarFamily<M1>, &'a VarFamily<M2>);
+
+    fn var_kind_array(families: &VarPool, names: [String; 3]) -> [VarKind; 3] {
+        [
+            families.families.get(&names[0]).unwrap().get_var_kind(),
+            families.families.get(&names[1]).unwrap().get_var_kind(),
+            families.families.get(&names[2]).unwrap().get_var_kind(),
+        ]
+    }
+
+    fn ref_var_family_tuple(families: &VarPool, names: [String; 3]) -> Self::VarFamilyTupleRef<'_> {
+        (
+            families.get::<VarFamily<M0>>(names[0].clone()),
+            families.get::<VarFamily<M1>>(names[1].clone()),
+            families.get::<VarFamily<M2>>(names[2].clone()),
+        )
+    }
+
+    fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; 3]) -> Self {
+        (
+            family_tuple.0.members[ids[0]].clone(),
+            family_tuple.1.members[ids[1]].clone(),
+            family_tuple.2.members[ids[2]].clone(),
+        )
+    }
+}
+
+impl<const N: usize> IsVariable for V<N> {
+    const DOF: usize = N;
+
+    fn update(&mut self, delta: &[f64]) {
+        for d in 0..Self::DOF {
+            self[d] += delta[d];
+        }
+    }
+
+    type Arg = V<N>;
+}
+
+impl IsVariable for Isometry2<f64> {
     const DOF: usize = 3;
 
     fn update(&mut self, delta: &[f64]) {
@@ -107,48 +156,64 @@ impl NewVariableTrait for Isometry2<f64> {
     type Arg = Isometry2<f64>;
 }
 
-#[derive(Debug, Clone)]
-pub struct NewGenVariableFamily<NV: NewVariableTrait> {
-    kind: NewVariableKind,
-    pub members: Vec<NV>,
-    constant_members: HashMap<usize, ()>,
+impl IsVariable for Isometry3<f64> {
+    const DOF: usize = 6;
+
+    fn update(&mut self, delta: &[f64]) {
+        let mut delta_vec = V::<6>::zeros();
+        for d in 0..Self::DOF {
+            delta_vec[d] = delta[d];
+        }
+        self.set_params(
+            (Isometry3::<f64>::group_mul(&Isometry3::<f64>::exp(&delta_vec), &self.clone()))
+                .params(),
+        );
+    }
+
+    type Arg = Isometry3<f64>;
 }
 
-impl<NV: NewVariableTrait> NewGenVariableFamily<NV> {
-    pub fn new(
-        kind: NewVariableKind,
-        members: Vec<NV>,
-        constant_members: HashMap<usize, ()>,
-    ) -> Self {
-        NewGenVariableFamily {
+#[derive(Debug, Clone)]
+pub struct VarFamily<Var: IsVariable> {
+    kind: VarKind,
+    pub members: Vec<Var>,
+    constant_members: HashMap<usize, ()>,
+    start_indices: Vec<i64>,
+}
+
+impl<Var: IsVariable> VarFamily<Var> {
+    pub fn new(kind: VarKind, members: Vec<Var>, constant_members: HashMap<usize, ()>) -> Self {
+        VarFamily {
             kind,
             members,
             constant_members,
+            start_indices: vec![],
         }
     }
 
-    fn c(&self) -> NewVariableKind {
+    fn c(&self) -> VarKind {
         self.kind
     }
 }
 
-pub trait NewVariableFamilyTrait: as_any::AsAny + Debug + DynClone {
+pub trait IsVarFamily: as_any::AsAny + Debug + DynClone {
     fn update(&mut self, delta: &[f64]);
     fn num_scalars(&self) -> usize;
-    fn calc_start_indices(&self) -> Vec<i64>;
+    fn calc_start_indices(&mut self, offset: &mut usize);
+    fn get_start_indices(&self) -> &Vec<i64>;
+
     fn dof(&self) -> usize;
-    fn get_var_kind(&self) -> NewVariableKind;
+    fn get_var_kind(&self) -> VarKind;
 }
 
-impl<NV: NewVariableTrait + 'static> NewVariableFamilyTrait for NewGenVariableFamily<NV> {
+impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
     fn update(&mut self, delta: &[f64]) {
-        let start_indices = self.calc_start_indices();
         let dof = self.dof();
 
-        assert_eq!(start_indices.len(), self.members.len());
+        assert_eq!(self.start_indices.len(), self.members.len());
 
-        for i in 0..start_indices.len() {
-            let start_idx = start_indices[i];
+        for i in 0..self.start_indices.len() {
+            let start_idx = self.start_indices[i];
             if start_idx == -1 {
                 continue;
             }
@@ -158,72 +223,122 @@ impl<NV: NewVariableTrait + 'static> NewVariableFamilyTrait for NewGenVariableFa
     }
 
     fn num_scalars(&self) -> usize {
-        (self.members.len() - self.constant_members.len()) * NV::DOF
+        (self.members.len() - self.constant_members.len()) * Var::DOF
     }
 
     // returns -1 if variable is not free
-    fn calc_start_indices(&self) -> Vec<i64> {
+    fn calc_start_indices(&mut self, inout_offset: &mut usize) {
+        assert_eq!(
+            self.start_indices.len(),
+            0,
+            "Ths function must ony called once"
+        );
+
         let mut indices = vec![];
-        let mut idx: usize = 0;
+        let mut idx: usize = *inout_offset;
         for i in 0..self.members.len() {
             if self.constant_members.contains_key(&i) {
                 indices.push(-1);
             } else {
                 indices.push(idx as i64);
-                idx += NV::DOF;
+                idx += Var::DOF;
             }
         }
+        *inout_offset = idx;
 
         assert_eq!(indices.len(), self.members.len());
-        indices
+        self.start_indices = indices;
     }
 
     fn dof(&self) -> usize {
-        NV::DOF
+        Var::DOF
     }
 
-    fn get_var_kind(&self) -> NewVariableKind {
+    fn get_var_kind(&self) -> VarKind {
         self.c()
     }
+
+    fn get_start_indices(&self) -> &Vec<i64> {
+        &self.start_indices
+    }
 }
 
-dyn_clone::clone_trait_object!(NewVariableFamilyTrait);
+dyn_clone::clone_trait_object!(IsVarFamily);
 
 #[derive(Debug, Clone)]
-pub struct NewVariableFamilies {
-    pub families: std::collections::HashMap<String, Box<dyn NewVariableFamilyTrait>>,
+pub struct VarPoolBuilder {
+    families: std::collections::BTreeMap<String, Box<dyn IsVarFamily>>,
+}
+
+impl VarPoolBuilder {
+    pub fn new() -> Self {
+        Self {
+            families: BTreeMap::new(),
+        }
+    }
+
+    pub fn add_family<S: Into<String>, Var: IsVariable + 'static>(
+        mut self,
+        name: S,
+        family: VarFamily<Var>,
+    ) -> Self {
+        self.families.insert(name.into(), Box::new(family));
+        self
+    }
+
+    pub fn build(self) -> VarPool {
+        VarPool::new(self)
+    }
 }
 
 #[derive(Debug, Clone)]
-pub struct GenEvalCost {
+pub struct VarPool {
+    families: std::collections::BTreeMap<String, Box<dyn IsVarFamily>>,
+}
+
+impl VarPool {
+    fn new(mut builder: VarPoolBuilder) -> Self {
+        let mut offset = 0;
+        for (_name, family) in builder.families.iter_mut() {
+            family.calc_start_indices(&mut offset);
+        }
+
+        Self {
+            families: builder.families,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct EvaluatedCost<const NUM: usize, const NUM_ARGS: usize> {
     pub family_names: Vec<String>,
-    pub terms: Vec<NewCostTerm>,
+    pub terms: Vec<EvaluatedTerm<NUM, NUM_ARGS>>,
 }
 
-impl GenEvalCost {
+impl<const NUM: usize, const NUM_ARGS: usize> EvaluatedCost<NUM, NUM_ARGS> {
     fn new(family_names: Vec<String>) -> Self {
-        GenEvalCost {
+        EvaluatedCost {
             family_names,
             terms: Vec::new(),
         }
     }
 }
 
-fn c_from_var_kind<const N: usize>(var_kind_array: &[NewVariableKind; N]) -> [char; N] {
+fn c_from_var_kind<const N: usize>(var_kind_array: &[VarKind; N]) -> [char; N] {
     let mut c_array: [char; N] = ['0'; N];
 
     for i in 0..N {
         c_array[i] = match var_kind_array[i] {
-            NewVariableKind::Free => 'f',
-            NewVariableKind::Conditioned => 'c',
-            NewVariableKind::Marginalized => 'm',
+            VarKind::Free => 'f',
+            VarKind::Conditioned => 'c',
+            VarKind::Marginalized => 'm',
         };
     }
 
     c_array
 }
 
-impl NewVariableFamilies {
+impl VarPool {
     pub fn num_free_params(&self) -> usize {
         let mut num = 0;
 
@@ -234,7 +349,7 @@ impl NewVariableFamilies {
         num
     }
 
-    fn update(&self, delta: Vec<f64>) -> NewVariableFamilies {
+    fn update(&self, delta: Vec<f64>) -> VarPool {
         let mut updated = self.clone();
         for family in updated.families.iter_mut() {
             family.1.update(&delta[..]);
@@ -242,78 +357,87 @@ impl NewVariableFamilies {
         updated
     }
 
-    pub fn get<T: NewVariableFamilyTrait>(&self, name: String) -> &T {
+    pub fn get<T: IsVarFamily>(&self, name: String) -> &T {
         as_any::Downcast::downcast_ref::<T>(self.families.get(&name).unwrap().as_ref()).unwrap()
     }
 
-    pub fn get_members<T: NewVariableTrait + 'static>(&self, name: String) -> Vec<T> {
-        as_any::Downcast::downcast_ref::<NewGenVariableFamily<T>>(
-            self.families.get(&name).unwrap().as_ref(),
-        )
-        .unwrap()
-        .members
-        .clone()
+    pub fn get_members<T: IsVariable + 'static>(&self, name: String) -> Vec<T> {
+        as_any::Downcast::downcast_ref::<VarFamily<T>>(self.families.get(&name).unwrap().as_ref())
+            .unwrap()
+            .members
+            .clone()
     }
 
     fn apply<
+        const NUM: usize,
         const NUM_ARGS: usize,
-        R,
-        CCC,
-        CTS: NewCostTermSignature<NUM_ARGS, Constants = CCC>,
-        NVT: NewVTuple<NUM_ARGS> + 'static,
+        ResidualFn,
+        Constants,
+        TermSignature: IsTermSignature<NUM_ARGS, Constants = Constants>,
+        VarTuple: IsVarTuple<NUM_ARGS> + 'static,
     >(
         &self,
-        cost: &GenCostSignature<NUM_ARGS, CCC, CTS>,
-        res_fn: R,
-    ) -> GenEvalCost
+        cost: &Cost<NUM, NUM_ARGS, Constants, TermSignature, ResidualFn, VarTuple>,
+        calc_derivatives: bool,
+    ) -> EvaluatedCost<NUM, NUM_ARGS>
     where
-        R: NewResidualFn<NUM_ARGS, NVT, CCC>,
+        ResidualFn: IsResidualFn<NUM, NUM_ARGS, VarTuple, Constants>,
     {
         use crate::opt::cost_args::CompareIdx;
-        let var_kind_array = NVT::var_kind_array(self, cost.family_names.clone());
+        let mut var_kind_array = VarTuple::var_kind_array(self, cost.signature.family_names.clone());
         let c_array = c_from_var_kind(&var_kind_array);
+
+        if !calc_derivatives {
+            var_kind_array = var_kind_array.map(|_x| VarKind::Conditioned)
+        }
         let less = CompareIdx { c: c_array };
 
-        let mut evaluated_terms = GenEvalCost::new(cost.family_names.clone().into());
+        let mut evaluated_terms = EvaluatedCost::new(cost.signature.family_names.clone().into());
 
         let mut i = 0;
 
-        while i < cost.terms.len() {
-            let t = &cost.terms[i];
+        let var_family_tuple =
+            VarTuple::ref_var_family_tuple(self, cost.signature.family_names.clone());
 
-            let outer_idx = t.idx_ref();
-
-            let mut term = res_fn.cost(
-                NVT::from(self, cost.family_names.clone(), *t.idx_ref()),
+        let eval_res = |term_signature: &TermSignature| {
+            cost.residual_fn.eval(
+                VarTuple::extract(&var_family_tuple, *term_signature.idx_ref()),
                 var_kind_array,
-                t.c_ref(),
-            );
+                term_signature.c_ref(),
+            )
+        };
 
-            term.idx.push(t.idx_vec());
+        evaluated_terms.terms.reserve(cost.signature.terms.len());
+
+        while i < cost.signature.terms.len() {
+            let term_signature = &cost.signature.terms[i];
+
+            let outer_idx = term_signature.idx_ref();
+
+            let mut evaluated_term = eval_res(term_signature);
+            evaluated_term.idx.push(*term_signature.idx_ref());
+
             i += 1;
 
             // perform reduction over conditioned variables
-            while i < cost.terms.len() {
-                let t = &cost.terms[i];
+            while i < cost.signature.terms.len() {
+                let inner_term_signature = &cost.signature.terms[i];
 
-                if !less.all_var_eq(outer_idx, t.idx_ref()) {
+                if !less.are_all_free_cars_equal(outer_idx, inner_term_signature.idx_ref()) {
+                    // end condition for reduction over conditioned variables
                     break;
                 }
 
                 i += 1;
 
-                let term2 = res_fn.cost(
-                    NVT::from(self, cost.family_names.clone(), *t.idx_ref()),
-                    var_kind_array,
-                    t.c_ref(),
-                );
+                let inner_evaluated_term = eval_res(inner_term_signature);
 
-                term.hessian.mat.add_assign(term2.hessian.mat);
-                term.gradient.vec.add_assign(term2.gradient.vec);
-                term.cost += term2.cost;
+                evaluated_term.hessian.mat += inner_evaluated_term.hessian.mat;
+                evaluated_term.gradient.vec += inner_evaluated_term.gradient.vec;
+                evaluated_term.cost += inner_evaluated_term.cost;
             }
 
-            evaluated_terms.terms.push(term);
+            evaluated_terms.terms.push(evaluated_term);
         }
 
         evaluated_terms
@@ -321,21 +445,21 @@ impl NewVariableFamilies {
 }
 
 #[derive(Debug, Clone)]
-pub struct NewCostTerm {
-    pub hessian: NewBlockMatrix,
-    pub gradient: NewBlockVector,
+pub struct EvaluatedTerm<const NUM: usize, const NUM_ARGS: usize> {
+    pub hessian: NewBlockMatrix<NUM>,
+    pub gradient: BlockVector<NUM>,
     pub cost: f64,
-    pub idx: Vec<Vec<usize>>,
+    pub idx: Vec<[usize; NUM_ARGS]>,
 }
 
-impl NewCostTerm {
+impl<const NUM: usize, const NUM_ARGS: usize> EvaluatedTerm<NUM, NUM_ARGS> {
     pub fn new1<const D0: usize, const R: usize>(
         maybe_dx0: Option<M<R, D0>>,
         residual: V<R>,
     ) -> Self {
         let dims = vec![D0];
         let mut hessian = NewBlockMatrix::new(&dims);
-        let mut gradient = NewBlockVector::new(&dims);
+        let mut gradient = BlockVector::new(&dims);
 
         if maybe_dx0.is_some() {
             let dx0: M<R, D0> = maybe_dx0.unwrap();
@@ -362,7 +486,7 @@ impl NewCostTerm {
     ) -> Self {
         let dims = vec![D0, D1];
         let mut hessian = NewBlockMatrix::new(&dims);
-        let mut gradient = NewBlockVector::new(&dims);
+        let mut gradient = BlockVector::new(&dims);
 
         if maybe_dx0.is_some() {
             let dx0: M<R, D0> = maybe_dx0.unwrap();
@@ -391,9 +515,7 @@ impl NewCostTerm {
                 let dx0_t: M<D0, R> = dx0.transpose();
 
                 let h01 = dx0_t * dx1;
-                let h10 = dx1_t * dx0;
                 hessian.set_block(0, 1, h01);
-                hessian.set_block(1, 0, h10);
             }
         }
 
@@ -406,91 +528,197 @@ impl NewCostTerm {
     }
 
     pub fn new3<const D0: usize, const D1: usize, const D2: usize, const R: usize>(
-        _maybe_dx0: Option<M<R, D0>>,
-        _maybe_dx1: Option<M<R, D1>>,
-        _maybe_dx2: Option<M<R, D2>>,
-        _residual: V<R>,
+        maybe_dx0: Option<M<R, D0>>,
+        maybe_dx1: Option<M<R, D1>>,
+        maybe_dx2: Option<M<R, D2>>,
+        residual: V<R>,
     ) -> Self {
-        todo!()
+        let dims = vec![D0, D1, D2];
+        let mut hessian = NewBlockMatrix::new(&dims);
+        let mut gradient = BlockVector::new(&dims);
+
+        if maybe_dx0.is_some() {
+            let dx0: M<R, D0> = maybe_dx0.unwrap();
+            let dx0_t: M<D0, R> = dx0.transpose();
+
+            let grad0 = dx0_t * residual;
+            gradient.set_block(0, grad0);
+            hessian.set_block(0, 0, dx0_t * dx0);
+        }
+
+        if maybe_dx1.is_some() {
+            let dx1: M<R, D1> = maybe_dx1.unwrap();
+            let dx1_t: M<D1, R> = dx1.transpose();
+
+            let grad1 = dx1_t * residual;
+            gradient.set_block(1, grad1);
+
+            let h11 = dx1_t * dx1;
+            hessian.set_block(1, 1, h11);
+
+            // off-diagonal 01
+            if maybe_dx0.is_some() {
+                let dx0: M<R, D0> = maybe_dx0.unwrap();
+                let dx0_t: M<D0, R> = dx0.transpose();
+
+                hessian.set_block(0, 1, dx0_t * dx1);
+            }
+        }
+
+        if maybe_dx2.is_some() {
+            let dx2: M<R, D2> = maybe_dx2.unwrap();
+            let dx2_t: M<D2, R> = dx2.transpose();
+
+            let grad2 = dx2_t * residual;
+            gradient.set_block(2, grad2);
+
+            hessian.set_block(2, 2, dx2_t * dx2);
+
+            // off-diagonal 02
+            if maybe_dx0.is_some() {
+                let dx0: M<R, D0> = maybe_dx0.unwrap();
+                let dx0_t: M<D0, R> = dx0.transpose();
+
+                hessian.set_block(0, 2, dx0_t * dx2);
+            }
+
+            // off-diagonal 12
+            if maybe_dx1.is_some() {
+                let dx1: M<R, D1> = maybe_dx1.unwrap();
+                let dx1_t: M<D1, R> = dx1.transpose();
+
+                hessian.set_block(1, 2, dx1_t * dx2);
+            }
+        }
+
+        Self {
+            hessian,
+            gradient,
+            cost: residual.norm(),
+            idx: Vec::new(),
+        }
     }
 }
 
-pub trait NewResidualFn<const NUM_ARGS: usize, Args: NewVTuple<NUM_ARGS>, Constants>: Copy {
-    fn cost(
+pub trait IsResidualFn<
+    const NUM: usize,
+    const NUM_ARGS: usize,
+    Args: IsVarTuple<NUM_ARGS>,
+    Constants,
+>: Copy
+{
+    fn eval(
         &self,
         args: Args,
-        derivatives: [NewVariableKind; NUM_ARGS],
+        derivatives: [VarKind; NUM_ARGS],
         constants: &Constants,
-    ) -> NewCostTerm;
+    ) -> EvaluatedTerm<NUM, NUM_ARGS>;
 }
 
 #[derive(Debug, Clone)]
-pub struct GenCostSignature<
+pub struct CostSignature<
     const NUM_ARGS: usize,
-    CCC,
-    CTS: NewCostTermSignature<NUM_ARGS, Constants = CCC>,
+    Constants,
+    TermSignature: IsTermSignature<NUM_ARGS, Constants = Constants>,
 > {
     pub family_names: [String; NUM_ARGS],
-    pub terms: Vec<CTS>,
+    pub terms: Vec<TermSignature>,
 }
 
-impl<const NUM_ARGS: usize, CCC, CTS: NewCostTermSignature<NUM_ARGS, Constants = CCC>>
-    GenCostSignature<NUM_ARGS, CCC, CTS>
+#[derive(Debug, Clone)]
+pub struct Cost<
+    const NUM: usize,
+    const NUM_ARGS: usize,
+    Constants,
+    TermSignature: IsTermSignature<NUM_ARGS, Constants = Constants>,
+    ResidualFn,
+    VarTuple: IsVarTuple<NUM_ARGS> + 'static,
+> where
+    ResidualFn: IsResidualFn<NUM, NUM_ARGS, VarTuple, Constants>,
 {
-    fn sort(&mut self, var_kind_array: &[NewVariableKind; NUM_ARGS]) {
+    signature: CostSignature<NUM_ARGS, Constants, TermSignature>,
+    residual_fn: ResidualFn,
+    phantom: PhantomData<VarTuple>,
+}
+
+impl<
+        const NUM: usize,
+        const NUM_ARGS: usize,
+        Constants,
+        TermSignature: IsTermSignature<NUM_ARGS, Constants = Constants>,
+        ResidualFn,
+        VarTuple: IsVarTuple<NUM_ARGS> + 'static,
+    > Cost<NUM, NUM_ARGS, Constants, TermSignature, ResidualFn, VarTuple>
+where
+    ResidualFn: IsResidualFn<NUM, NUM_ARGS, VarTuple, Constants>,
+{
+    pub fn new(
+        signature: CostSignature<NUM_ARGS, Constants, TermSignature>,
+        residual_fn: ResidualFn,
+    ) -> Self {
+        Self {
+            signature,
+            residual_fn,
+            phantom: PhantomData::default(),
+        }
+    }
+
+    fn sort(&mut self, variables: &VarPool) {
+        let var_kind_array =
+            &VarTuple::var_kind_array(&variables, self.signature.family_names.clone());
         use crate::opt::cost_args::CompareIdx;
 
         let c_array = c_from_var_kind(var_kind_array);
 
         let less = CompareIdx { c: c_array };
 
-        assert!(!self.terms.is_empty());
+        assert!(!self.signature.terms.is_empty());
 
-        self.terms
-            .sort_by(|a, b| less.less_than(*a.idx_ref(), *b.idx_ref()));
+        self.signature
+            .terms
+            .sort_by(|a, b| less.le_than(*a.idx_ref(), *b.idx_ref()));
 
-        for t in 0..self.terms.len() - 1 {
+        for t in 0..self.signature.terms.len() - 1 {
             assert!(
-                less.less_than(*self.terms[t].idx_ref(), *self.terms[t + 1].idx_ref())
-                    == std::cmp::Ordering::Less
+                less.le_than(
+                    *self.signature.terms[t].idx_ref(),
+                    *self.signature.terms[t + 1].idx_ref()
+                ) == std::cmp::Ordering::Less
             );
         }
     }
 }
-pub struct NewSparseNormalEquation {
+pub struct SparseNormalEquation {
     sparse_hessian: sprs::CsMat<f64>,
-    neg_gradient: Vec<f64>,
+    neg_gradient: nalgebra::DVector<f64>,
 }
 
-impl NewSparseNormalEquation {
-    fn from_families_and_cost(
-        variable_families: &NewVariableFamilies,
-        costs: Vec<GenEvalCost>,
+impl SparseNormalEquation {
+    fn from_families_and_cost<const NUM: usize, const NUM_ARGS: usize>(
+        variables: &VarPool,
+        costs: Vec<EvaluatedCost<NUM, NUM_ARGS>>,
         nu: f64,
-    ) -> NewSparseNormalEquation {
-        let num_var_params = variable_families.num_free_params();
+    ) -> SparseNormalEquation {
+        let num_var_params = variables.num_free_params();
         let mut hessian_triplet = sprs::TriMat::new((num_var_params, num_var_params));
-        let mut neg_grad = Vec::with_capacity(num_var_params);
+        let mut neg_grad = nalgebra::DVector::<f64>::zeros(num_var_params);
 
-        for _ in 0..num_var_params {
-            neg_grad.push(0.0);
-        }
+        let mut start_indices_per_arg = Vec::new();
 
+        assert_eq!(costs.len(), 1);
         for evaluated_cost in costs.iter() {
             let num_args = evaluated_cost.family_names.len();
 
-            let mut start_indices_per_arg = Vec::new();
             let mut dof_per_arg = Vec::new();
-
             for name in evaluated_cost.family_names.iter() {
-                let family = variable_families.families.get(name).unwrap();
-                start_indices_per_arg.push(family.calc_start_indices());
+                let family = variables.families.get(name).unwrap();
+                start_indices_per_arg.push(family.get_start_indices());
                 dof_per_arg.push(family.dof());
             }
 
-            for term in evaluated_cost.terms.iter() {
-                assert_eq!(term.idx.len(), 1);
-                let idx = term.idx[0].clone();
+            for evaluated_term in evaluated_cost.terms.iter() {
+                assert_eq!(evaluated_term.idx.len(), 1);
+                let idx = evaluated_term.idx[0].clone();
                 assert_eq!(idx.len(), num_args);
 
                 for arg_id_alpha in 0..num_args {
@@ -503,15 +731,15 @@ impl NewSparseNormalEquation {
                         continue;
                     }
 
-                    let grad_block = term.gradient.block(arg_id_alpha);
+                    let grad_block = evaluated_term.gradient.block(arg_id_alpha);
                     let start_idx_alpha = start_idx_alpha as usize;
                     assert_eq!(dof_alpha, grad_block.nrows());
 
-                    for r in 0..dof_alpha {
-                        neg_grad[start_idx_alpha + r] -= grad_block.read(r, 0);
-                    }
+                    neg_grad
+                        .rows_mut(start_idx_alpha, dof_alpha)
+                        .add_assign(-grad_block);
 
-                    let hessian_block = term.hessian.block(arg_id_alpha, arg_id_alpha);
+                    let hessian_block = evaluated_term.hessian.block(arg_id_alpha, arg_id_alpha);
                     assert_eq!(dof_alpha, hessian_block.nrows());
                     assert_eq!(dof_alpha, hessian_block.ncols());
 
@@ -525,7 +753,7 @@ impl NewSparseNormalEquation {
                             hessian_triplet.add_triplet(
                                 start_idx_alpha + r,
                                 start_idx_alpha + c,
-                                hessian_block.read(r, c) + d,
+                                hessian_block[(r, c)] + d,
                             );
                         }
                     }
@@ -546,9 +774,9 @@ impl NewSparseNormalEquation {
                         let start_idx_beta = start_idx_beta as usize;
 
                         let hessian_block_alpha_beta =
-                            term.hessian.block(arg_id_alpha, arg_id_beta);
+                            evaluated_term.hessian.block(arg_id_alpha, arg_id_beta);
                         let hessian_block_beta_alpha =
-                            term.hessian.block(arg_id_beta, arg_id_alpha);
+                            evaluated_term.hessian.block(arg_id_beta, arg_id_alpha);
 
                         assert_eq!(dof_alpha, hessian_block_alpha_beta.nrows());
                         assert_eq!(dof_beta, hessian_block_alpha_beta.ncols());
@@ -561,7 +789,7 @@ impl NewSparseNormalEquation {
                                 hessian_triplet.add_triplet(
                                     start_idx_alpha + r,
                                     start_idx_beta + c,
-                                    hessian_block_alpha_beta.read(r, c),
+                                    hessian_block_alpha_beta[(r, c)],
                                 );
                             }
                         }
@@ -576,18 +804,58 @@ impl NewSparseNormalEquation {
         }
     }
 
-    fn solve(&mut self) -> Vec<f64> {
-        let ldl = sprs_ldl::LdlNumeric::new(self.sparse_hessian.view()).unwrap();
+    pub fn is_symmetric<N, I, Iptr, IpStorage, IStorage, DStorage>(
+        mat: &sprs::CsMatBase<N, I, IpStorage, IStorage, DStorage, Iptr>,
+    ) -> bool
+    where
+        N: PartialEq + std::fmt::Display,
+        I: sprs::SpIndex,
+        Iptr: sprs::SpIndex,
+        IpStorage: Deref<Target = [Iptr]>,
+        IStorage: Deref<Target = [I]>,
+        DStorage: Deref<Target = [N]>,
+    {
+        if mat.rows() != mat.cols() {
+            return false;
+        }
+        for (outer_ind, vec) in mat.outer_iterator().enumerate() {
+            for (inner_ind, value) in vec.iter() {
+                match mat.get_outer_inner(inner_ind, outer_ind) {
+                    None => return false,
+                    Some(transposed_val) => {
+                        if transposed_val != value {
+                            println!("{} != {}", transposed_val, value);
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        true
+    }
 
-        ldl.solve(self.neg_gradient.clone())
+    fn solve(&mut self) -> Vec<f64> {
+        Self::is_symmetric(&self.sparse_hessian.view());
+
+        let ldl = sprs_ldl::Ldl::new().check_symmetry(sprs::SymmetryCheck::DontCheckSymmetry);
+        let ldl_num = ldl.numeric(self.sparse_hessian.view()).unwrap();
+
+        ldl_num.solve(
+            self.neg_gradient
+                .iter()
+                .map(|x: &f64| *x)
+                .collect::<Vec<f64>>(),
+        )
     }
 }
 
-fn calc_mse(cost: Vec<GenEvalCost>) -> f64 {
+fn calc_square_error<const NUM: usize, const NUM_ARGS: usize>(
+    cost: Vec<EvaluatedCost<NUM, NUM_ARGS>>,
+) -> f64 {
     let mut c = 0.0;
     for g in cost {
-        for t in g.terms {
-            c += t.cost;
+        for eval_term in g.terms {
+            c += eval_term.cost;
         }
     }
     c
@@ -611,58 +879,65 @@ impl Default for OptParams {
 // Takes a single n-nary cost function
 //
 // TODO: This needs to be generalized to take N m-ary cost functions
-pub fn new_optimize_c<
+pub fn optimize_one_cost<
+    const NUM: usize,
     const NUM_ARGS: usize,
-    NVT: NewVTuple<NUM_ARGS> + 'static,
-    CCC,
-    CTS: NewCostTermSignature<NUM_ARGS, Constants = CCC>,
-    R,
+    VarTuple: IsVarTuple<NUM_ARGS> + 'static,
+    Constants,
+    TermSignature: IsTermSignature<NUM_ARGS, Constants = Constants>,
+    ResidualFn,
 >(
-    mut variable_families: NewVariableFamilies,
-    mut cost: (GenCostSignature<NUM_ARGS, CCC, CTS>, R),
+    mut variables: VarPool,
+    mut cost: Cost<NUM, NUM_ARGS, Constants, TermSignature, ResidualFn, VarTuple>,
     params: OptParams,
-) -> NewVariableFamilies
+) -> VarPool
 where
-    R: NewResidualFn<NUM_ARGS, NVT, CCC>,
+    ResidualFn: IsResidualFn<NUM, NUM_ARGS, VarTuple, Constants>,
 {
-    cost.0.sort(&NVT::var_kind_array(
-        &variable_families,
-        cost.0.family_names.clone(),
-    ));
-    let mut init_costs: Vec<GenEvalCost> = Vec::new();
-    init_costs.push(variable_families.apply(&cost.0, cost.1));
+    cost.sort(&variables);
+    let mut init_costs: Vec<EvaluatedCost<NUM, NUM_ARGS>> = Vec::new();
+    
+    init_costs.push(variables.apply(&cost, false));
     let mut nu = params.initial_lm_nu;
 
-    let mut mse = calc_mse(init_costs);
-    println!("mse: {:?}", mse);
+    let mut mse = calc_square_error(init_costs);
+    println!("e^2: {:?}", mse);
 
     for _i in 0..params.num_iter {
+        use std::time::Instant;
+        let now = Instant::now();
         println!("nu: {:?}", nu);
 
-        let mut evaluated_costs: Vec<GenEvalCost> = Vec::new();
-        evaluated_costs.push(variable_families.apply(&cost.0, cost.1));
-        let mut normal_eq = NewSparseNormalEquation::from_families_and_cost(
-            &variable_families,
-            evaluated_costs,
-            nu,
-        );
+        let mut evaluated_costs: Vec<EvaluatedCost<NUM, NUM_ARGS>> = Vec::new();
+        evaluated_costs.push(variables.apply(&cost, true));
+        println!("evaluate costs: {:.2?}", now.elapsed());
+        let now = Instant::now();
+
+        let mut normal_eq =
+            SparseNormalEquation::from_families_and_cost(&variables, evaluated_costs, nu);
+        println!("build normal eq {:.2?}", now.elapsed());
+        let now = Instant::now();
+
         let delta = normal_eq.solve();
-        let updated_families = variable_families.update(delta);
+        println!("solve {:.2?}", now.elapsed());
+        let now = Instant::now();
+        let updated_families = variables.update(delta);
 
-        let mut new_costs: Vec<GenEvalCost> = Vec::new();
-        new_costs.push(updated_families.apply(&cost.0, cost.1));
-        let new_mse = calc_mse(new_costs);
+        let mut new_costs: Vec<EvaluatedCost<NUM, NUM_ARGS>> = Vec::new();
+        new_costs.push(updated_families.apply(&cost, false));
+        let new_mse = calc_square_error(new_costs);
+        println!("update and new cost {:.2?}", now.elapsed());
 
-        println!("new_mse: {:?}", new_mse);
+        println!("new e^2: {:?}", new_mse);
 
         if new_mse < mse {
             nu *= 0.0333;
-            variable_families = updated_families;
+            variables = updated_families;
             mse = new_mse;
         } else {
             nu *= 2.0;
         }
     }
 
-    variable_families
+    variables
 }

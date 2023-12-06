@@ -29,3 +29,5 @@ features = ["std"]
 
 
 
+[profile.release]
+debug = 1

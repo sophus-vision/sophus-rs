@@ -46,6 +46,10 @@ impl<const ROWS: usize> IsVector<f64, ROWS> for V<ROWS> {
         V::<ROWS>::from_row_slice(&vals[..])
     }
 
+    fn from_c_array(vals: [f64; ROWS]) -> Self {
+        V::<ROWS>::from_row_slice(&vals[..])
+    }
+
     fn get(&self, idx: usize) -> f64 {
         self[idx]
     }
@@ -85,10 +89,6 @@ impl<const ROWS: usize> IsVector<f64, ROWS> for V<ROWS> {
 
     fn set_c(&mut self, idx: usize, v: f64) {
         self[idx] = v;
-    }
-
-    fn from_c_array(vals: [f64; ROWS]) -> Self {
-        V::<ROWS>::from_row_slice(&vals[..])
     }
 
     fn scaled(&self, v: f64) -> Self {

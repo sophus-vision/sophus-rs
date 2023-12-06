@@ -166,8 +166,7 @@ mod test {
         mat[(1, 0)] = 1.6;
         mat[(1, 1)] = 0.6;
 
-        let finite_diff =
-            ScalarValuedMapFromMatrix::sym_diff_quotient(determinant_fn, mat, 1e-6);
+        let finite_diff = ScalarValuedMapFromMatrix::sym_diff_quotient(determinant_fn, mat, 1e-6);
         let auto_grad = ScalarValuedMapFromMatrix::fw_autodiff(determinant_fn, mat);
         approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
     }

@@ -1,14 +1,11 @@
+use crate::calculus::points::example_points;
+use crate::calculus::types::params::HasParams;
+use crate::calculus::types::params::ParamsImpl;
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::V;
 
 pub trait TangentImpl<S: IsScalar, const DOF: usize> {
     fn tangent_examples() -> Vec<S::Vector<DOF>>;
-}
-
-pub trait ParamsImpl<S: IsScalar, const PARAMS: usize> {
-    fn are_params_valid(params: &S::Vector<PARAMS>) -> bool;
-    fn params_examples() -> Vec<S::Vector<PARAMS>>;
-    fn invalid_params_examples() -> Vec<S::Vector<PARAMS>>;
 }
 
 pub trait ManifoldImpl<
@@ -24,11 +21,39 @@ pub trait ManifoldImpl<
 }
 
 pub trait IsManifold<S: IsScalar, const PARAMS: usize, const DOF: usize>:
-    std::fmt::Debug + Clone
+    HasParams<S, PARAMS> + std::fmt::Debug + Clone
 {
     fn params(&self) -> &S::Vector<PARAMS>;
     fn oplus(&self, tangent: &S::Vector<DOF>) -> Self;
     fn ominus(&self, rhs: &Self) -> S::Vector<DOF>;
+}
+
+impl<const N: usize> ParamsImpl<f64, N> for V<N> {
+    fn are_params_valid(_params: &<f64 as IsScalar>::Vector<N>) -> bool {
+        true
+    }
+
+    fn params_examples() -> Vec<<f64 as IsScalar>::Vector<N>> {
+        example_points::<f64, N>()
+    }
+
+    fn invalid_params_examples() -> Vec<<f64 as IsScalar>::Vector<N>> {
+        vec![]
+    }
+}
+
+impl<const N: usize> HasParams<f64, N> for V<N> {
+    fn from_params(params: &<f64 as IsScalar>::Vector<N>) -> Self {
+        params.clone()
+    }
+
+    fn set_params(&mut self, params: &<f64 as IsScalar>::Vector<N>) {
+        *self = *params
+    }
+
+    fn params(&self) -> &<f64 as IsScalar>::Vector<N> {
+        self
+    }
 }
 
 impl<const N: usize> IsManifold<f64, N, N> for V<N> {

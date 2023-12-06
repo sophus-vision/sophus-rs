@@ -32,53 +32,54 @@ impl From<ImageSize> for [usize; 2] {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImageView<
     'a,
-    const HYPER_RANK: usize,
+    const SCALAR_RANK: usize,
     const SRANK: usize,
     Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, BATCHES, ROWS, COLS> + 'static,
-    const BATCHES: usize,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCHES> + 'static,
     const ROWS: usize,
     const COLS: usize,
+    const BATCHES: usize,
 > where
-    ndarray::Dim<[ndarray::Ix; HYPER_RANK]>: ndarray::Dimension,
+    ndarray::Dim<[ndarray::Ix; SCALAR_RANK]>: ndarray::Dimension,
 {
-    pub tensor_view: TensorView<'a, HYPER_RANK, SRANK, 2, Scalar, STensor, BATCHES, ROWS, COLS>,
+    pub tensor_view: TensorView<'a, SCALAR_RANK, 2, SRANK, Scalar, STensor, ROWS, COLS, BATCHES>,
 }
 
 pub trait IsImageView<
     'a,
-    const HYPER_RANK: usize,
+    const SCALAR_RANK: usize,
     const SRANK: usize,
     Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, BATCHES, ROWS, COLS> + 'static,
-    const BATCHES: usize,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCHES> + 'static,
     const ROWS: usize,
     const COLS: usize,
+    const BATCHES: usize,
 > where
-    ndarray::Dim<[ndarray::Ix; HYPER_RANK]>: ndarray::Dimension,
+    ndarray::Dim<[ndarray::Ix; SCALAR_RANK]>: ndarray::Dimension,
 {
     fn image_view(
         &'a self,
-    ) -> ImageView<'a, HYPER_RANK, SRANK, Scalar, STensor, BATCHES, ROWS, COLS>;
+    ) -> ImageView<'a, SCALAR_RANK, SRANK, Scalar, STensor, ROWS, COLS, BATCHES>;
     fn pixel(&'a self, u: usize, v: usize) -> STensor;
     fn image_size(&'a self) -> ImageSize;
 }
 
 macro_rules! image_view {
-    ($hyper_rank:literal, $srank:literal) => {
+    ($scalar_rank:literal, $srank:literal) => {
         impl<
-                'a,
-                Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, BATCHES, ROWS, COLS> + 'static,
-                const BATCHES: usize,
-                const ROWS: usize,
-                const COLS: usize,
-            > IsImageView<'a, $hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS>
-            for ImageView<'a, $hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS>
+            'a,
+            Scalar: IsTensorScalar + 'static,
+            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
+            const BATCHES: usize,
+            const ROWS: usize,
+            const COLS: usize,
+        > IsImageView<
+            'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+            for ImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         where
-            TensorView<'a, $hyper_rank, $srank, 2, Scalar, STensor, BATCHES, ROWS, COLS>:
-                IsTensorView<'a, $hyper_rank, $srank, 2, Scalar, STensor, BATCHES, ROWS, COLS>,
-            ndarray::Dim<[ndarray::Ix; $hyper_rank]>: ndarray::Dimension,
+            TensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS, BATCHES>:
+            IsTensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS, BATCHES>,
+            ndarray::Dim<[ndarray::Ix; $scalar_rank]>: ndarray::Dimension,
         {
             fn pixel(&'a self, u: usize, v: usize) -> STensor {
                 // NOTE:
@@ -89,7 +90,7 @@ macro_rules! image_view {
 
             fn image_view(
                 &'a self,
-            ) -> ImageView<'a, $hyper_rank, $srank, Scalar, STensor, BATCHES, ROWS, COLS> {
+            ) -> ImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES> {
                 Self {
                     tensor_view: self.tensor_view,
                 }

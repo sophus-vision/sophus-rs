@@ -5,7 +5,7 @@ use super::view::IsImageView;
 pub fn interpolate<
     'a,
     const ROWS: usize,
-    I: IsImageView<'a, 3, 1, f32, SVec<f32, ROWS>, 1, ROWS, 1>,
+    I: IsImageView<'a, 3, 1, f32, SVec<f32, ROWS>, ROWS, 1, 1>,
 >(
     img: &'a I,
     uv: nalgebra::Vector2<f32>,

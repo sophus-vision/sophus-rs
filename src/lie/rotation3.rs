@@ -2,15 +2,18 @@ use std::marker::PhantomData;
 
 use crate::calculus::dual::dual_scalar::Dual;
 use crate::calculus::types::matrix::IsMatrix;
+use crate::calculus::types::params::HasParams;
+use crate::calculus::types::params::ParamsImpl;
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::cross;
 use crate::calculus::types::vector::IsVector;
+use crate::calculus::types::M;
 use crate::lie;
-use crate::manifold::traits::ParamsImpl;
 use crate::manifold::{self};
 
 use super::lie_group::LieGroup;
-use super::traits::LieGroupImpl;
+use super::traits::IsLieGroupImpl;
+use super::traits::IsTranslationProductGroup;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Rotation3Impl<S: IsScalar> {
@@ -71,7 +74,7 @@ impl<S: IsScalar> manifold::traits::TangentImpl<S, 3> for Rotation3Impl<S> {
     }
 }
 
-impl<S: IsScalar> LieGroupImpl<S, 3, 4, 3, 3> for Rotation3Impl<S> {
+impl<S: IsScalar> IsLieGroupImpl<S, 3, 4, 3, 3> for Rotation3Impl<S> {
     const IS_ORIGIN_PRESERVING: bool = true;
     const IS_AXIS_DIRECTION_PRESERVING: bool = false;
     const IS_DIRECTION_VECTOR_PRESERVING: bool = false;
@@ -232,7 +235,22 @@ impl<S: IsScalar> LieGroupImpl<S, 3, 4, 3, 3> for Rotation3Impl<S> {
     }
 }
 
-impl<S: IsScalar> lie::traits::LieFactorGroupImplTrait<S, 3, 4, 3, 3> for Rotation3Impl<S> {
+impl lie::traits::IsF64LieGroupImpl<3, 4, 3, 3> for Rotation3Impl<f64> {
+    fn dx_exp_x_at_0() -> M<4, 3> {
+        M::from_c_array2([
+            [0.0, 0.0, 0.0],
+            [0.5, 0.0, 0.0],
+            [0.0, 0.5, 0.0],
+            [0.0, 0.0, 0.5],
+        ])
+    }
+
+    fn dx_exp_x_times_point_at_0(point: crate::calculus::types::V<3>) -> M<3, 3> {
+        Self::hat(&-point)
+    }
+}
+
+impl<S: IsScalar> lie::traits::IsLieFactorGroupImpl<S, 3, 4, 3, 3> for Rotation3Impl<S> {
     type GenFactorG<S2: IsScalar> = Rotation3Impl<S2>;
     type RealFactorG = Rotation3Impl<f64>;
     type DualFactorG = Rotation3Impl<Dual>;
@@ -283,11 +301,43 @@ impl<S: IsScalar> lie::traits::LieFactorGroupImplTrait<S, 3, 4, 3, 3> for Rotati
 }
 
 pub type Isometry3Impl<S> =
-    lie::semi_direct_product::SemiDirectProductImpl<S, 6, 7, 3, 4, 3, 4, Rotation3Impl<S>>;
+    lie::semi_direct_product::TranslationProductGroupImpl<S, 6, 7, 3, 4, 3, 4, Rotation3Impl<S>>;
 pub type Rotation3<S> = LieGroup<S, 3, 4, 3, 3, Rotation3Impl<S>>;
 pub type Isometry3<S> = lie::lie_group::LieGroup<S, 6, 7, 3, 4, Isometry3Impl<S>>;
 
+impl<S: IsScalar> IsTranslationProductGroup<S, 6, 7, 3, 4, 3, 4, Rotation3<S>> for Isometry3<S> {
+    fn from_translation_and_factor(
+        translation: &<S as IsScalar>::Vector<3>,
+        factor: &Rotation3<S>,
+    ) -> Self {
+        Isometry3::from_params(&Self::G::params_from(&translation, factor.params()))
+    }
+    
+    fn set_translation(&mut self, translation: &<S as IsScalar>::Vector<3>) {
+        self.set_params(&Self::G::params_from(
+            &translation,
+            &self.params().get_fixed_rows(0),
+        ))
+    }
+
+    fn translation(&self) -> <S as IsScalar>::Vector<3> {
+        self.params().get_fixed_rows(4)
+    }
+
+    fn set_factor(&mut self, factor: &Rotation3<S>) {
+        self.set_params(&Self::G::params_from(
+            &self.params().get_fixed_rows(4),
+            factor.params(),
+        ))
+    }
+
+    fn factor(&self) -> Rotation3<S> {
+        Rotation3::from_params(&self.params().get_fixed_rows(0))
+    }
+}
+
 mod tests {
+
     #[test]
     fn rotation3_prop_tests() {
         use super::Rotation3;

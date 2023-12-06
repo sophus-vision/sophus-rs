@@ -233,7 +233,10 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<Dual, ROWS, COLS> for DualM<
     fn get(&self, idx: (usize, usize)) -> Dual {
         Dual {
             val: self.val[idx],
-            dij_val: self.dij_val.clone().map(|dij_val| MutTensorDD::from_map(&dij_val.view(), |v| v[idx])),
+            dij_val: self
+                .dij_val
+                .clone()
+                .map(|dij_val| MutTensorDD::from_map(&dij_val.view(), |v| v[idx])),
         }
     }
 
@@ -366,27 +369,36 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<Dual, ROWS, COLS> for DualM<
     ) -> DualM<R, C> {
         DualM {
             val: self.val.get_fixed_submat(start_r, start_c),
-            dij_val: self.dij_val.clone().map(|dij_val| MutTensorDDRC::from_map(&dij_val.view(), |v| {
-                    v.get_fixed_submat(start_r, start_c)
-                })),
+            dij_val: self.dij_val.clone().map(|dij_val| {
+                MutTensorDDRC::from_map(&dij_val.view(), |v| v.get_fixed_submat(start_r, start_c))
+            }),
         }
     }
 
     fn get_col_vec(&self, start_r: usize) -> DualV<ROWS> {
         DualV {
             val: self.val.get_col_vec(start_r),
-            dij_val: self.dij_val.clone().map(|dij_val| MutTensorDDR::from_map(&dij_val.view(), |v| {
-                    v.get_col_vec(start_r)
-                })),
+            dij_val: self
+                .dij_val
+                .clone()
+                .map(|dij_val| MutTensorDDR::from_map(&dij_val.view(), |v| v.get_col_vec(start_r))),
         }
     }
 
     fn get_row_vec(&self, c: usize) -> DualV<ROWS> {
         DualV {
             val: self.val.get_row_vec(c),
-            dij_val: self.dij_val.clone().map(|dij_val| MutTensorDDR::from_map(&dij_val.view(), |v| {
-                    v.get_row_vec(c)
-                })),
+            dij_val: self
+                .dij_val
+                .clone()
+                .map(|dij_val| MutTensorDDR::from_map(&dij_val.view(), |v| v.get_row_vec(c))),
+        }
+    }
+
+    fn from_c_array2(vals: [[f64; COLS]; ROWS]) -> Self {
+        DualM {
+            val: M::from_c_array2(vals),
+            dij_val: None,
         }
     }
 }
@@ -429,7 +441,10 @@ impl<const ROWS: usize, const COLS: usize> Neg for DualM<ROWS, COLS> {
     fn neg(self) -> Self::Output {
         DualM {
             val: -self.val,
-            dij_val: self.dij_val.clone().map(|dij_val| MutTensorDDRC::from_map(&dij_val.view(), |v| -v)),
+            dij_val: self
+                .dij_val
+                .clone()
+                .map(|dij_val| MutTensorDDRC::from_map(&dij_val.view(), |v| -v)),
         }
     }
 }
@@ -502,7 +517,6 @@ mod test {
         let m_2x4 = M::<2, 4>::new_random();
         let m_4x1 = M::<4, 1>::new_random();
 
-
         fn mat_mul_fn<S: IsScalar>(x: S::Matrix<2, 4>, y: S::Matrix<4, 1>) -> S::Matrix<2, 1> {
             x.mat_mul(y)
         }
@@ -552,13 +566,9 @@ mod test {
 
         let m_4x4 = M::<4, 4>::new_random();
 
-        let finite_diff = MatrixValuedMapFromMatrix::sym_diff_quotient(
-            mat_mul2_fn::<f64>,
-            m_4x4,
-            1e-6,
-        );
-        let auto_grad =
-            MatrixValuedMapFromMatrix::fw_autodiff(mat_mul2_fn::<Dual>, m_4x4);
+        let finite_diff =
+            MatrixValuedMapFromMatrix::sym_diff_quotient(mat_mul2_fn::<f64>, m_4x4, 1e-6);
+        let auto_grad = MatrixValuedMapFromMatrix::fw_autodiff(mat_mul2_fn::<Dual>, m_4x4);
 
         for i in 0..2 {
             for j in 0..1 {

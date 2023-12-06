@@ -1,15 +1,19 @@
 use std::fmt::Debug;
 
 use crate::calculus::dual::dual_scalar::Dual;
+use crate::calculus::types::params::HasParams;
+use crate::calculus::types::params::ParamsImpl;
 use crate::calculus::types::scalar::IsScalar;
-use crate::manifold::traits::ParamsImpl;
+use crate::calculus::types::M;
+use crate::calculus::types::V;
+use crate::manifold::traits::TangentImpl;
 use crate::manifold::{self};
 
 /// DOF: Degrees of freedom
 /// NUM_PARAMS:
 /// POINT_DIM:
 /// N: dimension ambient the dimension
-pub trait LieGroupImpl<
+pub trait IsLieGroupImpl<
     S: IsScalar,
     const DOF: usize,
     const PARAMS: usize,
@@ -17,9 +21,9 @@ pub trait LieGroupImpl<
     const AMBIENT: usize,
 >: ParamsImpl<S, PARAMS> + manifold::traits::TangentImpl<S, DOF> + Clone + Debug
 {
-    type GenG<S2: IsScalar>: LieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT>;
-    type RealG: LieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT>;
-    type DualG: LieGroupImpl<Dual, DOF, PARAMS, POINT, AMBIENT>;
+    type GenG<S2: IsScalar>: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT>;
+    type RealG: IsLieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT>;
+    type DualG: IsLieGroupImpl<Dual, DOF, PARAMS, POINT, AMBIENT>;
 
     const IS_ORIGIN_PRESERVING: bool;
     const IS_AXIS_DIRECTION_PRESERVING: bool;
@@ -35,6 +39,8 @@ pub trait LieGroupImpl<
     fn has_shortest_path_ambiguity(params: &S::Vector<PARAMS>) -> bool;
 
     fn adj(params: &S::Vector<PARAMS>) -> S::Matrix<DOF, DOF>;
+
+    fn ad(tangent: &S::Vector<DOF>) -> S::Matrix<DOF, DOF>;
 
     fn exp(omega: &S::Vector<DOF>) -> S::Vector<PARAMS>;
 
@@ -60,42 +66,31 @@ pub trait LieGroupImpl<
     fn compact(params: &S::Vector<PARAMS>) -> S::Matrix<POINT, AMBIENT>;
 
     fn matrix(params: &S::Vector<PARAMS>) -> S::Matrix<AMBIENT, AMBIENT>;
-
-    // Derivatives
-
-    fn ad(tangent: &S::Vector<DOF>) -> S::Matrix<DOF, DOF>;
 }
 
-pub trait IsLieGroup<
+pub trait IsF64LieGroupImpl<
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+>: IsLieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT>
+{
+    fn dx_exp_x_at_0() -> M<PARAMS, DOF>;
+
+    fn dx_exp_x_times_point_at_0(point: V<POINT>) -> M<POINT, DOF>;
+}
+
+pub trait IsLieFactorGroupImpl<
     S: IsScalar,
     const DOF: usize,
     const PARAMS: usize,
     const POINT: usize,
     const AMBIENT: usize,
->
+>: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>
 {
-    type GenGroup<S2: IsScalar, G2: LieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT>>: IsLieGroup<
-        S2,
-        DOF,
-        PARAMS,
-        POINT,
-        AMBIENT,
-    >;
-    type RealGroup: IsLieGroup<f64, DOF, PARAMS, POINT, AMBIENT>;
-    type DualGroup: IsLieGroup<Dual, DOF, PARAMS, POINT, AMBIENT>;
-}
-
-pub trait LieFactorGroupImplTrait<
-    S: IsScalar,
-    const DOF: usize,
-    const PARAMS: usize,
-    const POINT: usize,
-    const AMBIENT: usize,
->: LieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>
-{
-    type GenFactorG<S2: IsScalar>: LieFactorGroupImplTrait<S2, DOF, PARAMS, POINT, AMBIENT>;
-    type RealFactorG: LieFactorGroupImplTrait<f64, DOF, PARAMS, POINT, AMBIENT>;
-    type DualFactorG: LieFactorGroupImplTrait<Dual, DOF, PARAMS, POINT, AMBIENT>;
+    type GenFactorG<S2: IsScalar>: IsLieFactorGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT>;
+    type RealFactorG: IsLieFactorGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT>;
+    type DualFactorG: IsLieFactorGroupImpl<Dual, DOF, PARAMS, POINT, AMBIENT>;
 
     fn mat_v(params: &S::Vector<PARAMS>, tangent: &S::Vector<DOF>) -> S::Matrix<POINT, POINT>;
 
@@ -110,4 +105,51 @@ pub trait LieFactorGroupImplTrait<
     ) -> S::Matrix<POINT, DOF>;
 
     fn ad_of_translation(point: &S::Vector<POINT>) -> S::Matrix<POINT, DOF>;
+}
+
+pub trait IsLieGroup<
+    S: IsScalar,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+>: TangentImpl<S, DOF> + HasParams<S, PARAMS>
+{
+    type G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>;
+    type GenG<S2: IsScalar>: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT>;
+    type RealG: IsLieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT>;
+    type DualG: IsLieGroupImpl<Dual, DOF, PARAMS, POINT, AMBIENT>;
+
+    type GenGroup<S2: IsScalar, G2: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT>>: IsLieGroup<
+        S2,
+        DOF,
+        PARAMS,
+        POINT,
+        AMBIENT,
+    >;
+    type RealGroup: IsLieGroup<f64, DOF, PARAMS, POINT, AMBIENT>;
+    type DualGroup: IsLieGroup<Dual, DOF, PARAMS, POINT, AMBIENT>;
+}
+
+pub trait IsTranslationProductGroup<
+    S: IsScalar,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const SDOF: usize,
+    const SPARAMS: usize,
+    FactorGroup: IsLieGroup<S, SDOF, SPARAMS, POINT, POINT>,
+>: IsLieGroup<S, DOF, PARAMS, POINT, AMBIENT>
+{
+    fn from_translation_and_factor(
+        translation: &S::Vector<POINT>,
+        factor: &FactorGroup,
+    ) -> Self;
+
+    fn set_translation(&mut self, translation: &S::Vector<POINT>);
+    fn translation(&self) -> S::Vector<POINT>;
+
+    fn set_factor(&mut self, factor: &FactorGroup);
+    fn factor(&self) -> FactorGroup;
 }

@@ -1,4 +1,4 @@
-const fn less_than<const N: usize>(
+const fn le_than<const N: usize>(
     c: &[char],
     lhs: [usize; N],
     rhs: [usize; N],
@@ -80,15 +80,11 @@ impl<C> CompareIdx<C>
 where
     C: AsRef<[char]>,
 {
-    pub fn less_than<const N: usize>(
-        &self,
-        lhs: [usize; N],
-        rhs: [usize; N],
-    ) -> std::cmp::Ordering {
-        less_than(self.c.as_ref(), lhs, rhs)
+    pub fn le_than<const N: usize>(&self, lhs: [usize; N], rhs: [usize; N]) -> std::cmp::Ordering {
+        le_than(self.c.as_ref(), lhs, rhs)
     }
 
-    pub fn all_var_eq(&self, lhs: &[usize], rhs: &[usize]) -> bool {
+    pub fn are_all_free_cars_equal(&self, lhs: &[usize], rhs: &[usize]) -> bool {
         let mut i = 0;
         loop {
             if i >= lhs.len() {
@@ -107,7 +103,7 @@ mod test {
 
     #[test]
     fn test() {
-        use super::less_than;
+        use super::le_than;
         use crate::opt::cost_args::CompareIdx;
 
         // Length 2
@@ -116,156 +112,156 @@ mod test {
         const CV: [char; 2] = ['c', 'f'];
         const CC: [char; 2] = ['c', 'c'];
 
-        assert_eq!(less_than(&VV, [0, 0], [1, 0]), std::cmp::Ordering::Less);
-        assert_eq!(less_than(&VV, [1, 0], [0, 0]), std::cmp::Ordering::Greater);
-        assert_eq!(less_than(&VC, [0, 0], [1, 0]), std::cmp::Ordering::Less);
-        assert_eq!(less_than(&VC, [1, 0], [0, 0]), std::cmp::Ordering::Greater);
-        assert_eq!(less_than(&CV, [0, 0], [1, 0]), std::cmp::Ordering::Less);
-        assert_eq!(less_than(&CV, [1, 0], [0, 0]), std::cmp::Ordering::Greater);
-        assert_eq!(less_than(&CC, [0, 0], [0, 0]), std::cmp::Ordering::Equal);
+        assert_eq!(le_than(&VV, [0, 0], [1, 0]), std::cmp::Ordering::Less);
+        assert_eq!(le_than(&VV, [1, 0], [0, 0]), std::cmp::Ordering::Greater);
+        assert_eq!(le_than(&VC, [0, 0], [1, 0]), std::cmp::Ordering::Less);
+        assert_eq!(le_than(&VC, [1, 0], [0, 0]), std::cmp::Ordering::Greater);
+        assert_eq!(le_than(&CV, [0, 0], [1, 0]), std::cmp::Ordering::Less);
+        assert_eq!(le_than(&CV, [1, 0], [0, 0]), std::cmp::Ordering::Greater);
+        assert_eq!(le_than(&CC, [0, 0], [0, 0]), std::cmp::Ordering::Equal);
 
         const MV: [char; 2] = ['m', 'f'];
         const VM: [char; 2] = ['f', 'm'];
         const MM: [char; 2] = ['m', 'm'];
 
-        assert_eq!(less_than(&MV, [0, 0], [1, 0]), std::cmp::Ordering::Less);
-        assert_eq!(less_than(&VM, [0, 0], [1, 0]), std::cmp::Ordering::Less);
-        assert_eq!(less_than(&MM, [0, 0], [0, 0]), std::cmp::Ordering::Equal);
+        assert_eq!(le_than(&MV, [0, 0], [1, 0]), std::cmp::Ordering::Less);
+        assert_eq!(le_than(&VM, [0, 0], [1, 0]), std::cmp::Ordering::Less);
+        assert_eq!(le_than(&MM, [0, 0], [0, 0]), std::cmp::Ordering::Equal);
 
         const VVV: [char; 3] = ['f', 'f', 'f'];
 
         assert_eq!(
-            less_than(&VVV, [0, 0, 0], [1, 0, 0]),
+            le_than(&VVV, [0, 0, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&VVV, [0, 2, 0], [1, 0, 0]),
+            le_than(&VVV, [0, 2, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&VVV, [0, 1, 0], [1, 0, 0]),
+            le_than(&VVV, [0, 1, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&VVV, [0, 0, 1], [1, 0, 0]),
+            le_than(&VVV, [0, 0, 1], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&VVV, [0, 1, 0], [0, 0, 1]),
+            le_than(&VVV, [0, 1, 0], [0, 0, 1]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&VVV, [0, 0, 1], [0, 0, 2]),
+            le_than(&VVV, [0, 0, 1], [0, 0, 2]),
             std::cmp::Ordering::Less
         );
 
         const CVV: [char; 3] = ['c', 'f', 'f'];
 
         assert_eq!(
-            less_than(&CVV, [0, 0, 0], [1, 0, 0]),
+            le_than(&CVV, [0, 0, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&CVV, [0, 2, 0], [1, 0, 0]),
+            le_than(&CVV, [0, 2, 0], [1, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&CVV, [0, 1, 0], [1, 0, 0]),
+            le_than(&CVV, [0, 1, 0], [1, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&CVV, [0, 0, 1], [1, 0, 0]),
+            le_than(&CVV, [0, 0, 1], [1, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&CVV, [0, 1, 0], [0, 0, 1]),
+            le_than(&CVV, [0, 1, 0], [0, 0, 1]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&CVV, [0, 0, 1], [0, 0, 2]),
+            le_than(&CVV, [0, 0, 1], [0, 0, 2]),
             std::cmp::Ordering::Less
         );
 
         const CVC: [char; 3] = ['c', 'f', 'c'];
         assert_eq!(
-            less_than(&CVC, [0, 0, 0], [1, 0, 0]),
+            le_than(&CVC, [0, 0, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&CVC, [0, 2, 0], [1, 0, 0]),
+            le_than(&CVC, [0, 2, 0], [1, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&CVC, [0, 1, 0], [1, 0, 0]),
+            le_than(&CVC, [0, 1, 0], [1, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&CVC, [0, 0, 1], [1, 0, 0]),
+            le_than(&CVC, [0, 0, 1], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&CVC, [0, 1, 0], [0, 0, 1]),
+            le_than(&CVC, [0, 1, 0], [0, 0, 1]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&CVC, [0, 0, 1], [0, 0, 2]),
+            le_than(&CVC, [0, 0, 1], [0, 0, 2]),
             std::cmp::Ordering::Less
         );
 
         const CCV: [char; 3] = ['c', 'c', 'f'];
 
         assert_eq!(
-            less_than(&CCV, [0, 0, 0], [0, 0, 0]),
+            le_than(&CCV, [0, 0, 0], [0, 0, 0]),
             std::cmp::Ordering::Equal
         );
         assert_eq!(
-            less_than(&CCV, [0, 0, 0], [1, 0, 0]),
+            le_than(&CCV, [0, 0, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&CCV, [0, 2, 0], [1, 0, 0]),
+            le_than(&CCV, [0, 2, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&CCV, [0, 1, 0], [1, 0, 0]),
+            le_than(&CCV, [0, 1, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&CCV, [0, 0, 1], [1, 0, 0]),
+            le_than(&CCV, [0, 0, 1], [1, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&CCV, [0, 1, 0], [0, 0, 1]),
+            le_than(&CCV, [0, 1, 0], [0, 0, 1]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&CCV, [0, 0, 1], [0, 0, 2]),
+            le_than(&CCV, [0, 0, 1], [0, 0, 2]),
             std::cmp::Ordering::Less
         );
 
         const CVM: [char; 3] = ['c', 'f', 'm'];
         assert_eq!(
-            less_than(&CVM, [0, 0, 0], [1, 0, 0]),
+            le_than(&CVM, [0, 0, 0], [1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&CVM, [0, 2, 0], [1, 0, 0]),
+            le_than(&CVM, [0, 2, 0], [1, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&CVM, [0, 1, 0], [1, 0, 0]),
+            le_than(&CVM, [0, 1, 0], [1, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&CVM, [0, 0, 1], [1, 0, 0]),
+            le_than(&CVM, [0, 0, 1], [1, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&CVM, [0, 1, 0], [0, 0, 1]),
+            le_than(&CVM, [0, 1, 0], [0, 0, 1]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&CVM, [0, 0, 1], [0, 0, 2]),
+            le_than(&CVM, [0, 0, 1], [0, 0, 2]),
             std::cmp::Ordering::Less
         );
 
@@ -279,59 +275,59 @@ mod test {
         const VCCV: [char; 4] = ['f', 'c', 'c', 'f'];
 
         assert_eq!(
-            less_than(&VVVV, [0, 0, 0, 0], [1, 0, 0, 0]),
+            le_than(&VVVV, [0, 0, 0, 0], [1, 0, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&VVVV, [1, 0, 0, 0], [0, 0, 0, 0]),
+            le_than(&VVVV, [1, 0, 0, 0], [0, 0, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&CVVV, [0, 0, 0, 0], [1, 0, 0, 0]),
+            le_than(&CVVV, [0, 0, 0, 0], [1, 0, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&CVVV, [1, 0, 0, 0], [0, 0, 0, 0]),
+            le_than(&CVVV, [1, 0, 0, 0], [0, 0, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&CCVV, [0, 0, 0, 0], [0, 0, 0, 0]),
+            le_than(&CCVV, [0, 0, 0, 0], [0, 0, 0, 0]),
             std::cmp::Ordering::Equal
         );
         assert_eq!(
-            less_than(&CCVV, [0, 1, 0, 0], [0, 0, 0, 0]),
+            le_than(&CCVV, [0, 1, 0, 0], [0, 0, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&CVCV, [0, 0, 0, 0], [1, 0, 0, 0]),
+            le_than(&CVCV, [0, 0, 0, 0], [1, 0, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&CVCV, [1, 0, 0, 0], [0, 0, 0, 0]),
+            le_than(&CVCV, [1, 0, 0, 0], [0, 0, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&VVCC, [0, 0, 0, 0], [0, 0, 0, 0]),
+            le_than(&VVCC, [0, 0, 0, 0], [0, 0, 0, 0]),
             std::cmp::Ordering::Equal
         );
         assert_eq!(
-            less_than(&VVCC, [0, 0, 0, 1], [0, 0, 0, 0]),
+            le_than(&VVCC, [0, 0, 0, 1], [0, 0, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&CCVC, [0, 0, 0, 0], [0, 1, 0, 0]),
+            le_than(&CCVC, [0, 0, 0, 0], [0, 1, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&CCVC, [0, 1, 0, 0], [0, 0, 0, 0]),
+            le_than(&CCVC, [0, 1, 0, 0], [0, 0, 0, 0]),
             std::cmp::Ordering::Greater
         );
         assert_eq!(
-            less_than(&VCCV, [0, 0, 0, 0], [1, 0, 0, 0]),
+            le_than(&VCCV, [0, 0, 0, 0], [1, 0, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&VCCV, [0, 0, 1, 0], [1, 0, 0, 0]),
+            le_than(&VCCV, [0, 0, 1, 0], [1, 0, 0, 0]),
             std::cmp::Ordering::Less
         );
 
@@ -341,19 +337,19 @@ mod test {
         const MMMM: [char; 4] = ['m', 'm', 'm', 'm'];
 
         assert_eq!(
-            less_than(&MVVM, [0, 0, 0, 0], [1, 0, 0, 0]),
+            le_than(&MVVM, [0, 0, 0, 0], [1, 0, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&MMVV, [0, 0, 0, 0], [1, 0, 0, 0]),
+            le_than(&MMVV, [0, 0, 0, 0], [1, 0, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&VMMV, [0, 0, 0, 0], [1, 0, 0, 0]),
+            le_than(&VMMV, [0, 0, 0, 0], [1, 0, 0, 0]),
             std::cmp::Ordering::Less
         );
         assert_eq!(
-            less_than(&MMMM, [0, 0, 0, 0], [0, 0, 0, 0]),
+            le_than(&MMMM, [0, 0, 0, 0], [0, 0, 0, 0]),
             std::cmp::Ordering::Equal
         );
 
@@ -368,6 +364,6 @@ mod test {
         ];
 
         let less = CompareIdx { c };
-        l.sort_by(|a, b| less.less_than(*a, *b));
+        l.sort_by(|a, b| less.le_than(*a, *b));
     }
 }

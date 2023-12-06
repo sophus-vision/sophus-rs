@@ -1,12 +1,16 @@
 use crate::calculus::dual::dual_scalar::Dual;
 use crate::calculus::types::matrix::IsMatrix;
+use crate::calculus::types::params::HasParams;
+use crate::calculus::types::params::ParamsImpl;
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
 use crate::calculus::types::vector::IsVectorLike;
+use crate::calculus::types::M;
 use crate::lie;
-use crate::manifold::traits::ParamsImpl;
 use crate::manifold::{self};
 use std::marker::PhantomData;
+
+use super::traits::IsTranslationProductGroup;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Rotation2Impl<S: IsScalar> {
@@ -55,7 +59,7 @@ impl<S: IsScalar> manifold::traits::TangentImpl<S, 1> for Rotation2Impl<S> {
     }
 }
 
-impl<S: IsScalar> lie::traits::LieGroupImpl<S, 1, 2, 2, 2> for Rotation2Impl<S> {
+impl<S: IsScalar> lie::traits::IsLieGroupImpl<S, 1, 2, 2, 2> for Rotation2Impl<S> {
     type GenG<S2: IsScalar> = Rotation2Impl<S2>;
     type RealG = Rotation2Impl<f64>;
     type DualG = Rotation2Impl<Dual>;
@@ -141,9 +145,19 @@ impl<S: IsScalar> lie::traits::LieGroupImpl<S, 1, 2, 2, 2> for Rotation2Impl<S> 
     }
 }
 
+impl lie::traits::IsF64LieGroupImpl<1, 2, 2, 2> for Rotation2Impl<f64> {
+    fn dx_exp_x_at_0() -> M<2, 1> {
+        M::from_c_array2([[0.0], [1.0]])
+    }
+
+    fn dx_exp_x_times_point_at_0(point: crate::calculus::types::V<2>) -> M<2, 1> {
+        M::from_array2([[-point[1]], [point[0]]])
+    }
+}
+
 pub type Rotation2<S> = lie::lie_group::LieGroup<S, 1, 2, 2, 2, Rotation2Impl<S>>;
 
-impl<S: IsScalar> lie::traits::LieFactorGroupImplTrait<S, 1, 2, 2, 2> for Rotation2Impl<S> {
+impl<S: IsScalar> lie::traits::IsLieFactorGroupImpl<S, 1, 2, 2, 2> for Rotation2Impl<S> {
     type GenFactorG<S2: IsScalar> = Rotation2Impl<S2>;
     type RealFactorG = Rotation2Impl<f64>;
     type DualFactorG = Rotation2Impl<Dual>;
@@ -183,6 +197,7 @@ impl<S: IsScalar> lie::traits::LieFactorGroupImplTrait<S, 1, 2, 2, 2> for Rotati
         } else {
             halftheta_by_tan_of_halftheta = -(halftheta.clone() * params.get(1)) / real_minus_one;
         }
+
         S::Matrix::<2, 2>::from_array2([
             [halftheta_by_tan_of_halftheta.clone(), halftheta.clone()],
             [-halftheta, halftheta_by_tan_of_halftheta],
@@ -199,18 +214,49 @@ impl<S: IsScalar> lie::traits::LieFactorGroupImplTrait<S, 1, 2, 2, 2> for Rotati
 }
 
 pub type Isometry2Impl<S> =
-    lie::semi_direct_product::SemiDirectProductImpl<S, 3, 4, 2, 3, 1, 2, Rotation2Impl<S>>;
+    lie::semi_direct_product::TranslationProductGroupImpl<S, 3, 4, 2, 3, 1, 2, Rotation2Impl<S>>;
 
 pub type Isometry2<S> = lie::lie_group::LieGroup<S, 3, 4, 2, 3, Isometry2Impl<S>>;
 
+impl<S: IsScalar> IsTranslationProductGroup<S, 3, 4, 2, 3, 1, 2, Rotation2<S>> for Isometry2<S> {
+    fn from_translation_and_factor(
+        translation: &<S as IsScalar>::Vector<2>,
+        factor: &Rotation2<S>,
+    ) -> Self {
+        Isometry2::from_params(&Self::G::params_from(&translation, factor.params()))
+    }
+
+    fn set_translation(&mut self, translation: &<S as IsScalar>::Vector<2>) {
+        self.set_params(&Self::G::params_from(
+            &translation,
+            &self.params().get_fixed_rows(0),
+        ))
+    }
+
+    fn translation(&self) -> <S as IsScalar>::Vector<2> {
+        self.params().get_fixed_rows(2)
+    }
+
+    fn set_factor(&mut self, factor: &Rotation2<S>) {
+        self.set_params(&Self::G::params_from(
+            &self.params().get_fixed_rows(2),
+            factor.params(),
+        ))
+    }
+
+    fn factor(&self) -> Rotation2<S> {
+        Rotation2::from_params(&self.params().get_fixed_rows(0))
+    }
+}
+
 mod tests {
+
     #[test]
     fn rotation2_prop_tests() {
         use super::Rotation2;
         use crate::calculus::dual::dual_scalar::Dual;
         Rotation2::<f64>::test_suite();
         Rotation2::<Dual>::test_suite();
-
         Rotation2::<f64>::real_test_suite();
     }
 

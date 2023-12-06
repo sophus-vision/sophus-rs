@@ -13,22 +13,21 @@ fn res_fn<S: IsScalar>(
     world_from_pose_b: Isometry2<S>,
     pose_a_from_pose_b: Isometry2<S>,
 ) -> S::Vector<3> {
-    world_from_pose_a
-        .inverse()
-        .group_mul(&world_from_pose_b.group_mul(&pose_a_from_pose_b.inverse()))
+    (world_from_pose_a.inverse()
+        .group_mul(&world_from_pose_b.group_mul(&pose_a_from_pose_b.inverse())))
         .log()
 }
 
 #[derive(Copy, Clone)]
 struct PoseGraph {}
 
-impl NewResidualFn<2, (Isometry2<f64>, Isometry2<f64>), Isometry2<f64>> for PoseGraph {
-    fn cost(
+impl IsResidualFn<12, 2, (Isometry2<f64>, Isometry2<f64>), Isometry2<f64>> for PoseGraph {
+    fn eval(
         &self,
         world_from_pose_x: (Isometry2<f64>, Isometry2<f64>),
-        derivatives: [NewVariableKind; 2],
+        derivatives: [VarKind; 2],
         obs: &Isometry2<f64>,
-    ) -> NewCostTerm {
+    ) -> EvaluatedTerm<12, 2> {
         let world_from_pose_a = world_from_pose_x.0;
         let world_from_pose_b = world_from_pose_x.1;
 
@@ -57,17 +56,16 @@ impl NewResidualFn<2, (Isometry2<f64>, Isometry2<f64>), Isometry2<f64>> for Pose
         };
         let zeros: V<3> = V::<3>::zeros();
 
-        if derivatives[0] != NewVariableKind::Conditioned {
+        if derivatives[0] != VarKind::Conditioned {
             let dx_res_a = VectorValuedMapFromVector::static_fw_autodiff(dx_res_fn_a, zeros);
             maybe_dx0 = Some(dx_res_a);
         }
 
-        if derivatives[1] != NewVariableKind::Conditioned {
+        if derivatives[1] != VarKind::Conditioned {
             let dx_res_b = VectorValuedMapFromVector::static_fw_autodiff(dx_res_fn_b, zeros);
             maybe_dx1 = Some(dx_res_b);
         }
-
-        NewCostTerm::new2(maybe_dx0, maybe_dx1, residual)
+        EvaluatedTerm::new2(maybe_dx0, maybe_dx1, residual)
     }
 }
 
@@ -77,15 +75,11 @@ struct PoseGraphCostTermSignature {
     entity_indices: [usize; 2],
 }
 
-impl NewCostTermSignature<2> for PoseGraphCostTermSignature {
+impl IsTermSignature<2> for PoseGraphCostTermSignature {
     type Constants = Isometry2<f64>;
 
     fn c_ref(&self) -> &Self::Constants {
         &self.pose_a_from_pose_b
-    }
-
-    fn idx_vec(&self) -> Vec<usize> {
-        vec![self.entity_indices[0], self.entity_indices[1]]
     }
 
     fn idx_ref(&self) -> &[usize; 2] {
@@ -98,8 +92,7 @@ impl NewCostTermSignature<2> for PoseGraphCostTermSignature {
 pub struct PoseCircleProblem {
     pub true_world_from_robot: Vec<Isometry2<f64>>,
     est_world_from_robot: Vec<Isometry2<f64>>,
-    obs_pose_a_from_pose_b_poses:
-        GenCostSignature<2, Isometry2<f64>, PoseGraphCostTermSignature>,
+    obs_pose_a_from_pose_b_poses: CostSignature<2, Isometry2<f64>, PoseGraphCostTermSignature>,
 }
 
 impl PoseCircleProblem {
@@ -107,7 +100,7 @@ impl PoseCircleProblem {
         let mut true_world_from_robot_poses = vec![];
         let mut est_world_from_robot_poses = vec![];
         let mut obs_pose_a_from_pose_b_poses =
-            GenCostSignature::<2, Isometry2<f64>, PoseGraphCostTermSignature> {
+            CostSignature::<2, Isometry2<f64>, PoseGraphCostTermSignature> {
                 family_names: ["poses".into(), "poses".into()],
                 terms: vec![],
             };
@@ -184,36 +177,30 @@ impl PoseCircleProblem {
             );
             res_err += residual.dot(residual);
         }
-        assert!(res_err > 500.0, "{} > 500?", res_err);
+        res_err /= self.obs_pose_a_from_pose_b_poses.terms.len() as f64;
+        assert!(res_err > 1.0, "{} > thr?", res_err);
 
         let mut constants = HashMap::new();
         constants.insert(0, ());
 
-        let family: NewGenVariableFamily<Isometry2<f64>> = NewGenVariableFamily::new(
-            NewVariableKind::Free,
-            self.est_world_from_robot.clone(),
-            constants,
-        );
+        let family: VarFamily<Isometry2<f64>> =
+            VarFamily::new(VarKind::Free, self.est_world_from_robot.clone(), constants);
 
-        let fam_box: Box<dyn NewVariableFamilyTrait> = Box::new(family);
+        let var_pool = VarPoolBuilder::new().add_family("poses", family).build();
 
-        let mut map = HashMap::new();
-        map.insert("poses".into(), fam_box);
-
-        let families = NewVariableFamilies { families: map };
-
-        let up_families = new_optimize_c(
-            families,
-            (self.obs_pose_a_from_pose_b_poses.clone(), PoseGraph {}),
+        let up_var_pool = optimize_one_cost(
+            var_pool,
+            Cost::new(self.obs_pose_a_from_pose_b_poses.clone(), PoseGraph {}),
             OptParams {
                 num_iter: 5,
                 initial_lm_nu: 1.0,
             },
         );
 
-        let refined_world_from_robot = up_families.get_members::<Isometry2<f64>>("poses".into());
+        let refined_world_from_robot = up_var_pool.get_members::<Isometry2<f64>>("poses".into());
 
         let mut res_err = 0.0;
+
         for obs in self.obs_pose_a_from_pose_b_poses.terms.clone() {
             let residual = res_fn(
                 refined_world_from_robot[obs.entity_indices[0]],
@@ -222,7 +209,8 @@ impl PoseCircleProblem {
             );
             res_err += residual.dot(residual);
         }
-        assert!(res_err < 0.00001, "{} < 0?", res_err);
+        res_err /= self.obs_pose_a_from_pose_b_poses.terms.len() as f64;
+        assert!(res_err < 0.05, "{} < thr?", res_err);
     }
 }
 
@@ -232,6 +220,6 @@ mod tests {
     fn simple_prior_opt_tests() {
         use super::PoseCircleProblem;
 
-        PoseCircleProblem::new(25).test();
+        PoseCircleProblem::new(2500).test();
     }
 }

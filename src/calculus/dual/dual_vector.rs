@@ -349,8 +349,9 @@ mod test {
         use crate::calculus::types::scalar::IsScalar;
         use crate::calculus::types::vector::IsVector;
         use crate::calculus::types::V;
+        use crate::tensor::view::IsTensorLike;
 
-        let points: Vec<V<4>> = example_points();
+        let points: Vec<V<4>> = example_points::<f64, 4>();
 
         for p in points.clone() {
             for p1 in points.clone() {
@@ -378,22 +379,34 @@ mod test {
                     p.clone(),
                     1e-6,
                 );
-                // let auto_grad = VectorValuedMapFromVector::fw_autodiff(
-                //     |x| dot_fn::<Dual>(x, Dual::c(0.99)),
-                //     p.clone(),
-                // );
-                // approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
+                let auto_grad = VectorValuedMapFromVector::fw_autodiff(
+                    |x| dot_fn::<Dual>(x, Dual::c(0.99)),
+                    p.clone(),
+                );
+                for i in 0..finite_diff.dims()[0] {
+                    approx::assert_abs_diff_eq!(
+                        finite_diff.get([i]),
+                        auto_grad.get([i]),
+                        epsilon = 0.0001
+                    );
+                }
 
-                // let finite_diff = VectorValuedMapFromVector::sym_diff_quotient(
-                //     |x| dot_fn::<f64>(p1, x[0]),
-                //     p.clone(),
-                //     1e-6,
-                // );
-                // let auto_grad = VectorValuedMapFromVector::fw_autodiff(
-                //     |x| dot_fn::<Dual>(DualV::c(p1), x.get(0)),
-                //     p.clone(),
-                // );
-                // approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
+                let finite_diff = VectorValuedMapFromVector::sym_diff_quotient(
+                    |x| dot_fn::<f64>(p1, x[0]),
+                    p.clone(),
+                    1e-6,
+                );
+                let auto_grad = VectorValuedMapFromVector::fw_autodiff(
+                    |x| dot_fn::<Dual>(DualV::c(p1), x.get(0)),
+                    p.clone(),
+                );
+                for i in 0..finite_diff.dims()[0] {
+                    approx::assert_abs_diff_eq!(
+                        finite_diff.get([i]),
+                        auto_grad.get([i]),
+                        epsilon = 0.0001
+                    );
+                }
             }
         }
     }

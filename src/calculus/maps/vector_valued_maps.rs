@@ -38,14 +38,11 @@ impl VectorValuedMapFromVector {
 
         for r in 0..INROWS {
             let mut a_plus = a;
-
             a_plus[r] += eps;
 
             let mut a_minus = a;
-
             a_minus[r] -= eps;
-            let aa = vector_valued(a_plus);
-            let bb = vector_valued(a_minus);
+
             out.get_mut([r])
                 .copy_from(&((vector_valued(a_plus) - vector_valued(a_minus)) / (2.0 * eps)));
         }
@@ -59,13 +56,13 @@ impl VectorValuedMapFromVector {
     where
         TFn: Fn(DualV<INROWS>) -> DualV<OUTROWS>,
     {
+        let d = vector_valued(DualV::v(a)).dij_val;
+        if d.is_none() {
+            return MutTensorDR::from_shape([INROWS]);
+        }
+
         MutTensorDR {
-            mut_array: vector_valued(DualV::v(a))
-                .dij_val
-                .unwrap()
-                .mut_array
-                .into_shape([INROWS])
-                .unwrap(),
+            mut_array: d.unwrap().mut_array.into_shape([INROWS]).unwrap(),
             phantom: PhantomData,
         }
     }
@@ -196,8 +193,7 @@ mod test {
             approx::assert_abs_diff_eq!(finite_diff.get([i]), auto_grad.get([i]), epsilon = 0.0001);
         }
 
-        let sfinite_diff =
-            VectorValuedMapFromVector::static_sym_diff_quotient(proj_fn, a, 1e-6);
+        let sfinite_diff = VectorValuedMapFromVector::static_sym_diff_quotient(proj_fn, a, 1e-6);
         let sauto_grad = VectorValuedMapFromVector::static_fw_autodiff(proj_fn, a);
         approx::assert_abs_diff_eq!(sfinite_diff, sauto_grad, epsilon = 0.0001);
     }
