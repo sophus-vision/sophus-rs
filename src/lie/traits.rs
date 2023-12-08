@@ -142,6 +142,8 @@ pub trait IsTranslationProductGroup<
     FactorGroup: IsLieGroup<S, SDOF, SPARAMS, POINT, POINT>,
 >: IsLieGroup<S, DOF, PARAMS, POINT, AMBIENT>
 {
+    type Impl;
+
     fn from_translation_and_factor(
         translation: &S::Vector<POINT>,
         factor: &FactorGroup,

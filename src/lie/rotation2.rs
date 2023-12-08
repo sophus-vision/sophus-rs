@@ -218,34 +218,20 @@ pub type Isometry2Impl<S> =
 
 pub type Isometry2<S> = lie::lie_group::LieGroup<S, 3, 4, 2, 3, Isometry2Impl<S>>;
 
-impl<S: IsScalar> IsTranslationProductGroup<S, 3, 4, 2, 3, 1, 2, Rotation2<S>> for Isometry2<S> {
-    fn from_translation_and_factor(
+impl<S: IsScalar> Isometry2<S> {
+    pub fn from_translation_and_rotation(
         translation: &<S as IsScalar>::Vector<2>,
-        factor: &Rotation2<S>,
+        rotation: &Rotation2<S>,
     ) -> Self {
-        Isometry2::from_params(&Self::G::params_from(&translation, factor.params()))
+        Self::from_translation_and_factor(translation, rotation)
     }
 
-    fn set_translation(&mut self, translation: &<S as IsScalar>::Vector<2>) {
-        self.set_params(&Self::G::params_from(
-            &translation,
-            &self.params().get_fixed_rows(0),
-        ))
+    pub fn set_rotation(&mut self, rotation: &Rotation2<S>) {
+        self.set_factor(rotation)
     }
 
-    fn translation(&self) -> <S as IsScalar>::Vector<2> {
-        self.params().get_fixed_rows(2)
-    }
-
-    fn set_factor(&mut self, factor: &Rotation2<S>) {
-        self.set_params(&Self::G::params_from(
-            &self.params().get_fixed_rows(2),
-            factor.params(),
-        ))
-    }
-
-    fn factor(&self) -> Rotation2<S> {
-        Rotation2::from_params(&self.params().get_fixed_rows(0))
+    pub fn rotation(&self) -> Rotation2<S> {
+        self.factor()
     }
 }
 
@@ -255,6 +241,7 @@ mod tests {
     fn rotation2_prop_tests() {
         use super::Rotation2;
         use crate::calculus::dual::dual_scalar::Dual;
+
         Rotation2::<f64>::test_suite();
         Rotation2::<Dual>::test_suite();
         Rotation2::<f64>::real_test_suite();
@@ -264,8 +251,19 @@ mod tests {
     fn isometry2_prop_tests() {
         use super::Isometry2;
         use crate::calculus::dual::dual_scalar::Dual;
+        use crate::lie::traits::IsTranslationProductGroup;
+
         Isometry2::<f64>::test_suite();
         Isometry2::<Dual>::test_suite();
         Isometry2::<f64>::real_test_suite();
+
+        for g in Isometry2::<f64>::element_examples() {
+            let translation = g.translation();
+            let rotation = g.rotation();
+
+            let g2 = Isometry2::from_translation_and_rotation(&translation, &rotation);
+            assert_eq!(g2.translation(), translation);
+            assert_eq!(g2.rotation().matrix(), rotation.matrix());
+        }
     }
 }
