@@ -305,34 +305,20 @@ pub type Isometry3Impl<S> =
 pub type Rotation3<S> = LieGroup<S, 3, 4, 3, 3, Rotation3Impl<S>>;
 pub type Isometry3<S> = lie::lie_group::LieGroup<S, 6, 7, 3, 4, Isometry3Impl<S>>;
 
-impl<S: IsScalar> IsTranslationProductGroup<S, 6, 7, 3, 4, 3, 4, Rotation3<S>> for Isometry3<S> {
-    fn from_translation_and_factor(
+impl<S: IsScalar> Isometry3<S> {
+    pub fn from_translation_and_rotation(
         translation: &<S as IsScalar>::Vector<3>,
-        factor: &Rotation3<S>,
+        rotation: &Rotation3<S>,
     ) -> Self {
-        Isometry3::from_params(&Self::G::params_from(&translation, factor.params()))
-    }
-    
-    fn set_translation(&mut self, translation: &<S as IsScalar>::Vector<3>) {
-        self.set_params(&Self::G::params_from(
-            &translation,
-            &self.params().get_fixed_rows(0),
-        ))
+        Self::from_translation_and_factor(translation, rotation)
     }
 
-    fn translation(&self) -> <S as IsScalar>::Vector<3> {
-        self.params().get_fixed_rows(4)
+    pub fn set_rotation(&mut self, rotation: &Rotation3<S>) {
+        self.set_factor(rotation)
     }
 
-    fn set_factor(&mut self, factor: &Rotation3<S>) {
-        self.set_params(&Self::G::params_from(
-            &self.params().get_fixed_rows(4),
-            factor.params(),
-        ))
-    }
-
-    fn factor(&self) -> Rotation3<S> {
-        Rotation3::from_params(&self.params().get_fixed_rows(0))
+    pub fn rotation(&self) -> Rotation3<S> {
+        self.factor()
     }
 }
 
@@ -352,9 +338,19 @@ mod tests {
     fn isometry3_prop_tests() {
         use super::Isometry3;
         use crate::calculus::dual::dual_scalar::Dual;
+        use crate::lie::traits::IsTranslationProductGroup;
 
         Isometry3::<f64>::test_suite();
         Isometry3::<Dual>::test_suite();
         Isometry3::<f64>::real_test_suite();
+
+        for g in Isometry3::<f64>::element_examples() {
+            let translation = g.translation();
+            let rotation = g.rotation();
+
+            let g2 = Isometry3::from_translation_and_rotation(&translation, &rotation);
+            assert_eq!(g2.translation(), translation);
+            assert_eq!(g2.rotation().matrix(), rotation.matrix());
+        }
     }
 }
