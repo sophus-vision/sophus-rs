@@ -42,18 +42,18 @@ impl<
     > TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, F>
 {
     fn translation(params: &S::Vector<PARAMS>) -> S::Vector<POINT> {
-        params.get_fixed_rows::<POINT>(0)
+        params.get_fixed_rows::<POINT>(SPARAMS)
     }
 
     fn subgroup_params(params: &S::Vector<PARAMS>) -> S::Vector<SPARAMS> {
-        params.get_fixed_rows::<SPARAMS>(POINT)
+        params.get_fixed_rows::<SPARAMS>(0)
     }
 
     pub fn params_from(
         translation: &S::Vector<POINT>,
         subgroup_params: &S::Vector<SPARAMS>,
     ) -> S::Vector<PARAMS> {
-        S::Vector::block_vec2(translation.clone(), subgroup_params.clone())
+        S::Vector::block_vec2(subgroup_params.clone(), translation.clone())
     }
 
     fn translation_tangent(tangent: &S::Vector<DOF>) -> S::Vector<POINT> {
