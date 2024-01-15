@@ -147,4 +147,95 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn camera_pinhole_distort_test() {
+        use approx::assert_relative_eq;
+        use crate::image::view::ImageSize;
+
+        use super::DynCamera;
+        use super::V;
+        let camera: DynCamera = DynCamera::new_pinhole(
+            &V::<4>::new(600.0, 600.0, 319.5, 239.5),
+            ImageSize {
+                width: 640,
+                height: 480,
+            },
+        );
+
+        let pixels_in_image = vec![
+            V::<2>::new(0.0, 0.0),
+            V::<2>::new(1.0, 400.0),
+            V::<2>::new(320.0, 240.0),
+            V::<2>::new(319.5, 239.5),
+            V::<2>::new(100.0, 40.0),
+            V::<2>::new(639.0, 479.0),
+        ];
+
+        let expected_distorted_pixels = vec![
+            V::<2>::new(319.5, 239.5),
+            V::<2>::new(919.5, 240239.5),
+            V::<2>::new(192319.5, 144239.5),
+            V::<2>::new(192019.5, 143939.5),
+            V::<2>::new(60319.5, 24239.5),
+            V::<2>::new(383719.5, 287639.5),
+        ];
+
+        for (pixel, expected_distorted_pixel) in
+            pixels_in_image.iter().zip(expected_distorted_pixels.iter())
+        {
+            let distorted_pixel = camera.distort(&pixel);
+            // println!("distorted_pixel: {:?}", distorted_pixel);
+            assert_relative_eq!(distorted_pixel, *expected_distorted_pixel, epsilon = 1e-6);
+
+            let undistorted_pixel = camera.undistort(&distorted_pixel);
+            assert_relative_eq!(undistorted_pixel, *pixel, epsilon = 1e-6);
+        }
+    }
+
+    #[test]
+    fn camera_kannala_brandt_distort_test() {
+        use approx::assert_relative_eq;
+        use crate::image::view::ImageSize;
+
+        use super::DynCamera;
+        use super::V;
+        let camera: DynCamera = DynCamera::new_kannala_brandt(
+            &V::<8>::from_vec(vec![1000.0, 1000.0, 320.0, 280.0, 0.1, 0.01, 0.001, 0.0001]),
+            ImageSize {
+                width: 640,
+                height: 480,
+            },
+        );
+
+        let pixels_in_image = vec![
+            V::<2>::new(0.0, 0.0),
+            V::<2>::new(1.0, 400.0),
+            V::<2>::new(320.0, 240.0),
+            V::<2>::new(319.5, 239.5),
+            V::<2>::new(100.0, 40.0),
+            V::<2>::new(639.0, 479.0),
+        ];
+
+        let expected_distorted_pixels = vec![
+            V::<2>::new(320.0, 280.0),
+            V::<2>::new(325.1949172763466, 2357.966910538644),
+            V::<2>::new(1982.378709731326, 1526.7840322984944),
+            V::<2>::new(1982.6832644475849, 1526.3619462760455),
+            V::<2>::new(2235.6822069661744, 1046.2728827864696),
+            V::<2>::new(1984.8663275417607, 1527.9983895031353),
+        ];
+
+        for (pixel, expected_distorted_pixel) in
+            pixels_in_image.iter().zip(expected_distorted_pixels.iter())
+        {
+            let distorted_pixel = camera.distort(&pixel);
+            // println!("distorted_pixel: {:?}", distorted_pixel);
+            assert_relative_eq!(distorted_pixel, *expected_distorted_pixel, epsilon = 1e-6);
+
+            let undistorted_pixel = camera.undistort(&distorted_pixel);
+            assert_relative_eq!(undistorted_pixel, *pixel, epsilon = 1e-6);
+        }
+    }
+
 }
