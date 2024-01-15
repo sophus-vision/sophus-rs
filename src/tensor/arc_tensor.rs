@@ -149,7 +149,7 @@ macro_rules! arc_tensor_is_tensor_view {
 
         impl<
             'a,
-            Scalar: IsTensorScalar + 'static, 
+            Scalar: IsTensorScalar + 'static,
             STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
             const BATCHES: usize,
             const ROWS: usize,
@@ -197,7 +197,7 @@ macro_rules! arc_tensor_is_tensor_view {
         }
 
         impl<
-            'a, 
+            'a,
             Scalar: IsTensorScalar+ 'static,
             STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
             const BATCHES: usize,
@@ -207,7 +207,7 @@ macro_rules! arc_tensor_is_tensor_view {
             ArcTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
         {
            pub fn from_mut_tensor(
-                tensor: 
+                tensor:
                 MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>,
             ) -> Self {
                 Self {
@@ -234,9 +234,9 @@ macro_rules! arc_tensor_is_tensor_view {
                 )
             }
 
-            pub fn view<'b: 'a>(&'b self) 
+            pub fn view<'b: 'a>(&'b self)
                 -> TensorView<
-                    'a, $scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES> 
+                    'a, $scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
             {
                 TensorView::<
                     'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES
@@ -423,6 +423,7 @@ mod tests {
             let mut_img = MutTensorDR::from_shape_and_val(shape, P1F32::new(0.5f32));
             let img = ArcTensorDR::from_mut_tensor(mut_img);
 
+            
             let mut img2 = img.clone();
             // assert_eq!(Arc::strong_count(&img.buffer), 2);
             // assert_eq!(Arc::strong_count(&img2.buffer), 2);

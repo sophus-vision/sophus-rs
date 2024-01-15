@@ -67,18 +67,17 @@ pub trait IsImageView<
 macro_rules! image_view {
     ($scalar_rank:literal, $srank:literal) => {
         impl<
-            'a,
-            Scalar: IsTensorScalar + 'static,
-            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
-            const BATCHES: usize,
-            const ROWS: usize,
-            const COLS: usize,
-        > IsImageView<
-            'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+                'a,
+                Scalar: IsTensorScalar + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
+                const BATCHES: usize,
+                const ROWS: usize,
+                const COLS: usize,
+            > IsImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
             for ImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         where
             TensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS, BATCHES>:
-            IsTensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS, BATCHES>,
+                IsTensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS, BATCHES>,
             ndarray::Dim<[ndarray::Ix; $scalar_rank]>: ndarray::Dimension,
         {
             fn pixel(&'a self, u: usize, v: usize) -> STensor {

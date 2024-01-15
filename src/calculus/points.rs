@@ -3,12 +3,15 @@ use super::types::vector::IsVector;
 use super::types::vector::IsVectorLike;
 use super::types::V;
 
-pub fn example_points<S: IsScalar, const POINT: usize>(
-) -> Vec<S::Vector<POINT>> {
+pub fn example_points<S: IsScalar, const POINT: usize>() -> Vec<S::Vector<POINT>> {
     let points4 = vec![
         V::<4>::from_array([0.1, 0.0, 0.0, 0.0]),
-        V::<4>::from_array([1.0, 0.0, 1.0, 0.5]),
-        V::<4>::from_array([0.7, 5.0, 0.1, (-5.0)]),
+        V::<4>::from_array([1.0, 4.0, 1.0, 0.5]),
+        V::<4>::from_array([0.7, 5.0, 1.1, (-5.0)]),
+        V::<4>::from_array([1.0, 3.0, 1.0, 0.5]),
+        V::<4>::from_array([0.7, 5.0, 0.8, (-5.0)]),
+        V::<4>::from_array([1.0, 3.0, 1.0, 0.5]),
+        V::<4>::from_array([-0.7, 5.0, 0.1, (-5.0)]),
         V::<4>::from_array([2.0, (-3.0), 1.0, 0.5]),
     ];
 

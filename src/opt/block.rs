@@ -129,15 +129,15 @@ impl<const NUM: usize> NewBlockMatrix<NUM> {
         if ith == jth {
             assert_eq!(R, C);
 
-            let mut mut_block = self.mut_block::<R,C>(ith, jth);
+            let mut mut_block = self.mut_block::<R, C>(ith, jth);
             mut_block.copy_from(&m);
         } else {
             assert!(ith < jth);
             {
-                self.mut_block::<R,C>(ith, jth).copy_from(&m);
+                self.mut_block::<R, C>(ith, jth).copy_from(&m);
             }
             {
-                self.mut_block::<C,R>(jth, ith).copy_from(&m.transpose());
+                self.mut_block::<C, R>(jth, ith).copy_from(&m.transpose());
             }
         }
     }

@@ -335,6 +335,10 @@ impl<const ROWS: usize> IsVector<Dual, ROWS> for DualV<ROWS> {
 
         sum
     }
+
+    fn normalized(&self) -> Self {
+        self.clone().scaled(Dual::c(1.0) / self.norm())
+    }
 }
 
 mod test {
@@ -376,13 +380,11 @@ mod test {
                 }
                 let finite_diff = VectorValuedMapFromVector::sym_diff_quotient(
                     |x| dot_fn::<f64>(x, 0.99),
-                    p.clone(),
+                    p,
                     1e-6,
                 );
-                let auto_grad = VectorValuedMapFromVector::fw_autodiff(
-                    |x| dot_fn::<Dual>(x, Dual::c(0.99)),
-                    p.clone(),
-                );
+                let auto_grad =
+                    VectorValuedMapFromVector::fw_autodiff(|x| dot_fn::<Dual>(x, Dual::c(0.99)), p);
                 for i in 0..finite_diff.dims()[0] {
                     approx::assert_abs_diff_eq!(
                         finite_diff.get([i]),
@@ -393,12 +395,12 @@ mod test {
 
                 let finite_diff = VectorValuedMapFromVector::sym_diff_quotient(
                     |x| dot_fn::<f64>(p1, x[0]),
-                    p.clone(),
+                    p,
                     1e-6,
                 );
                 let auto_grad = VectorValuedMapFromVector::fw_autodiff(
                     |x| dot_fn::<Dual>(DualV::c(p1), x.get(0)),
-                    p.clone(),
+                    p,
                 );
                 for i in 0..finite_diff.dims()[0] {
                     approx::assert_abs_diff_eq!(

@@ -98,10 +98,10 @@ macro_rules! mut_view_is_view {
 
                 let ptr = elem_view_mut.as_ptr() as *mut Scalar;
                 use ndarray::ShapeBuilder;
-                assert_eq!(std::mem::size_of::<STensor>(), 
+                assert_eq!(std::mem::size_of::<STensor>(),
                     std::mem::size_of::<Scalar>() * ROWS * COLS* BATCHES
                 );
-                
+
                 let scalar_view_mut =
                     unsafe { ndarray::ArrayViewMut::from_shape_ptr(shape.strides(strides), ptr) };
 
@@ -123,10 +123,10 @@ macro_rules! mut_view_is_view {
                 const OTHER_SRANK: usize,
                 OtherScalar: IsTensorScalar + 'static,
                 OtherSTensor: IsStaticTensor<
-                    OtherScalar, 
-                    OTHER_SRANK, 
-                    OTHER_BATCHES, 
-                    OTHER_ROWS, 
+                    OtherScalar,
+                    OTHER_SRANK,
+                    OTHER_BATCHES,
+                    OTHER_ROWS,
                     OTHER_COLS
                 > + 'static,
                 const OTHER_BATCHES: usize,
@@ -167,14 +167,14 @@ macro_rules! mut_view_is_view {
                 const COLS: usize,
             > IsTensorLike<'a, $scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
             for MutTensorView<
-                'a, 
-                $scalar_rank, 
-                $drank, 
-                $srank, 
-                Scalar, 
-                STensor,  
-                ROWS, 
-                COLS, 
+                'a,
+                $scalar_rank,
+                $drank,
+                $srank,
+                Scalar,
+                STensor,
+                ROWS,
+                COLS,
                 BATCHES>
         {
             fn elem_view<'b:'a>(
@@ -222,22 +222,22 @@ macro_rules! mut_view_is_view {
                 const BATCHES: usize,
                 const ROWS: usize,
                 const COLS: usize,
-            > 
-            IsMutTensorLike<'a, 
-                $scalar_rank, 
-                $drank, $srank, 
-                Scalar, STensor,  
-                ROWS, 
-                COLS, 
+            >
+            IsMutTensorLike<'a,
+                $scalar_rank,
+                $drank, $srank,
+                Scalar, STensor,
+                ROWS,
+                COLS,
                 BATCHES
-            > 
-            for MutTensorView<'a, 
-                $scalar_rank, 
-                $drank, 
-                $srank, 
-                Scalar, 
-                STensor,  
-                ROWS, COLS, 
+            >
+            for MutTensorView<'a,
+                $scalar_rank,
+                $drank,
+                $srank,
+                Scalar,
+                STensor,
+                ROWS, COLS,
                 BATCHES
             >
         {

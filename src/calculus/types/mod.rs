@@ -9,6 +9,6 @@ pub type BatchM<const B: usize, const ROWS: usize, const COLS: usize> =
     nalgebra::SMatrix<AutoSimd<[f64; B]>, ROWS, COLS>;
 
 pub mod matrix;
+pub mod params;
 pub mod scalar;
 pub mod vector;
-pub mod params;

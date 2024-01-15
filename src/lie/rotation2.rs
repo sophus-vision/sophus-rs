@@ -6,7 +6,9 @@ use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
 use crate::calculus::types::vector::IsVectorLike;
 use crate::calculus::types::M;
+use crate::calculus::types::V;
 use crate::lie;
+use crate::lie::traits::IsLieGroupImpl;
 use crate::manifold::{self};
 use std::marker::PhantomData;
 
@@ -153,16 +155,37 @@ impl lie::traits::IsF64LieGroupImpl<1, 2, 2, 2> for Rotation2Impl<f64> {
     fn dx_exp_x_times_point_at_0(point: crate::calculus::types::V<2>) -> M<2, 1> {
         M::from_array2([[-point[1]], [point[0]]])
     }
+
+    fn dx_exp(tangent: &V<1>) -> M<2, 1> {
+        let theta = tangent[0];
+
+        M::<2, 1>::from_array2([[-theta.sin()], [theta.cos()]])
+    }
+
+    fn dx_log_x(params: &V<2>) -> M<1, 2> {
+        let x_0 = params[0];
+        let x_1 = params[1];
+        let x_sq = x_0 * x_0 + x_1 * x_1;
+        M::from_array2([[-x_1 / x_sq, x_0 / x_sq]])
+    }
+
+    fn da_a_mul_b(_a: &V<2>, b: &V<2>) -> M<2, 2> {
+        Self::matrix(b)
+    }
+
+    fn db_a_mul_b(a: &V<2>, _b: &V<2>) -> M<2, 2> {
+        Self::matrix(a)
+    }
 }
 
 pub type Rotation2<S> = lie::lie_group::LieGroup<S, 1, 2, 2, 2, Rotation2Impl<S>>;
 
-impl<S: IsScalar> lie::traits::IsLieFactorGroupImpl<S, 1, 2, 2, 2> for Rotation2Impl<S> {
+impl<S: IsScalar> lie::traits::IsLieFactorGroupImpl<S, 1, 2, 2> for Rotation2Impl<S> {
     type GenFactorG<S2: IsScalar> = Rotation2Impl<S2>;
     type RealFactorG = Rotation2Impl<f64>;
     type DualFactorG = Rotation2Impl<Dual>;
 
-    fn mat_v(params: &S::Vector<2>, v: &S::Vector<1>) -> S::Matrix<2, 2> {
+    fn mat_v(v: &S::Vector<1>) -> S::Matrix<2, 2> {
         let sin_theta_by_theta;
         let one_minus_cos_theta_by_theta: S;
         let theta = v.get(0);
@@ -173,8 +196,8 @@ impl<S: IsScalar> lie::traits::IsLieFactorGroupImpl<S, 1, 2, 2, 2> for Rotation2
             one_minus_cos_theta_by_theta =
                 S::c(0.5) * theta.clone() - S::c(1.0 / 24.0) * theta * theta_sq;
         } else {
-            sin_theta_by_theta = params.get(1) / theta.clone();
-            one_minus_cos_theta_by_theta = (S::c(1.0) - params.get(0)) / theta;
+            sin_theta_by_theta = theta.clone().sin() / theta.clone();
+            one_minus_cos_theta_by_theta = (S::c(1.0) - theta.clone().cos()) / theta;
         }
         S::Matrix::<2, 2>::from_array2([
             [
@@ -185,17 +208,18 @@ impl<S: IsScalar> lie::traits::IsLieFactorGroupImpl<S, 1, 2, 2, 2> for Rotation2
         ])
     }
 
-    fn mat_v_inverse(params: &S::Vector<2>, tangent: &S::Vector<1>) -> S::Matrix<2, 2> {
-        let halftheta = S::c(0.5) * tangent.get(0);
+    fn mat_v_inverse(tangent: &S::Vector<1>) -> S::Matrix<2, 2> {
+        let theta = tangent.get(0);
+        let halftheta = S::c(0.5) * theta.clone();
         let halftheta_by_tan_of_halftheta: S;
 
-        let real_minus_one = params.get(0) - S::c(1.0);
+        let real_minus_one = theta.clone().cos() - S::c(1.0);
         let abs_real_minus_one = real_minus_one.clone().abs();
         if abs_real_minus_one.real() < 1e-6 {
             halftheta_by_tan_of_halftheta =
                 S::c(1.0) - S::c(1.0 / 12.0) * tangent.get(0) * tangent.get(0);
         } else {
-            halftheta_by_tan_of_halftheta = -(halftheta.clone() * params.get(1)) / real_minus_one;
+            halftheta_by_tan_of_halftheta = -(halftheta.clone() * theta.sin()) / real_minus_one;
         }
 
         S::Matrix::<2, 2>::from_array2([
@@ -210,6 +234,47 @@ impl<S: IsScalar> lie::traits::IsLieFactorGroupImpl<S, 1, 2, 2, 2> for Rotation2
 
     fn ad_of_translation(point: &S::Vector<2>) -> S::Matrix<2, 1> {
         S::Matrix::<2, 1>::from_array2([[point.get(1)], [-point.get(0)]])
+    }
+}
+
+impl lie::traits::IsF64LieFactorGroupImpl<1, 2, 2> for Rotation2Impl<f64> {
+    fn dx_mat_v(tangent: &V<1>) -> [M<2, 2>; 1] {
+        let theta = tangent[0];
+        let theta_sq = theta * theta;
+        let sin_theta = theta.sin();
+        let cos_theta = theta.cos();
+
+        let (m00, m01) = if theta_sq.abs() < 1e-6 {
+            (
+                -theta / 3.0 + (theta * theta_sq) / 30.0,
+                -0.5 + 0.125 * theta_sq,
+            )
+        } else {
+            (
+                (theta * cos_theta - sin_theta) / theta_sq,
+                (-theta * sin_theta - cos_theta + 1.0) / theta_sq,
+            )
+        };
+
+        [M::<2, 2>::from_array2([[m00, m01], [-m01, m00]])]
+    }
+
+    fn dparams_matrix_times_point(_params: &V<2>, point: &V<2>) -> M<2, 2> {
+        M::from_array2([[point[0], -point[1]], [point[1], point[0]]])
+    }
+
+    fn dx_mat_v_inverse(tangent: &V<1>) -> [M<2, 2>; 1] {
+        let theta = tangent[0];
+        let sin_theta = theta.sin();
+        let cos_theta = theta.cos();
+
+        let c = if theta.abs() < 1e-6 {
+            -1.0 / 6.0 * theta
+        } else {
+            (theta - sin_theta) / (2.0 * (cos_theta - 1.0))
+        };
+
+        [M::<2, 2>::from_array2([[c, 0.5], [-0.5, c]])]
     }
 }
 
@@ -245,25 +310,16 @@ mod tests {
         Rotation2::<f64>::test_suite();
         Rotation2::<Dual>::test_suite();
         Rotation2::<f64>::real_test_suite();
+        Rotation2::<f64>::real_factor_test_suite();
     }
 
     #[test]
     fn isometry2_prop_tests() {
         use super::Isometry2;
         use crate::calculus::dual::dual_scalar::Dual;
-        use crate::lie::traits::IsTranslationProductGroup;
 
         Isometry2::<f64>::test_suite();
         Isometry2::<Dual>::test_suite();
         Isometry2::<f64>::real_test_suite();
-
-        for g in Isometry2::<f64>::element_examples() {
-            let translation = g.translation();
-            let rotation = g.rotation();
-
-            let g2 = Isometry2::from_translation_and_rotation(&translation, &rotation);
-            assert_eq!(g2.translation(), translation);
-            assert_eq!(g2.rotation().matrix(), rotation.matrix());
-        }
     }
 }

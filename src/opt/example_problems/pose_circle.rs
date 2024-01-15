@@ -1,6 +1,6 @@
 use crate::calculus::dual::dual_scalar::Dual;
 use crate::calculus::dual::dual_vector::DualV;
-use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
+
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
 use crate::calculus::types::V;
@@ -13,9 +13,10 @@ fn res_fn<S: IsScalar>(
     world_from_pose_b: Isometry2<S>,
     pose_a_from_pose_b: Isometry2<S>,
 ) -> S::Vector<3> {
-    (world_from_pose_a.inverse()
+    (world_from_pose_a
+        .inverse()
         .group_mul(&world_from_pose_b.group_mul(&pose_a_from_pose_b.inverse())))
-        .log()
+    .log()
 }
 
 #[derive(Copy, Clone)]
@@ -36,7 +37,7 @@ impl IsResidualFn<12, 2, (Isometry2<f64>, Isometry2<f64>), Isometry2<f64>> for P
         let mut maybe_dx0 = None;
         let mut maybe_dx1 = None;
 
-        let dx_res_fn_a = |x: DualV<3>| -> DualV<3> {
+        let _dx_res_fn_a = |x: DualV<3>| -> DualV<3> {
             let world_from_pose_a_bar: Isometry2<Dual> =
                 Isometry2::<Dual>::exp(&x).group_mul(&world_from_pose_a.to_dual_c());
             res_fn(
@@ -45,7 +46,7 @@ impl IsResidualFn<12, 2, (Isometry2<f64>, Isometry2<f64>), Isometry2<f64>> for P
                 obs.to_dual_c(),
             )
         };
-        let dx_res_fn_b = |x: DualV<3>| -> DualV<3> {
+        let _dx_res_fn_b = |x: DualV<3>| -> DualV<3> {
             let world_from_pose_b_bar: Isometry2<Dual> =
                 Isometry2::<Dual>::exp(&x).group_mul(&world_from_pose_b.to_dual_c());
             res_fn(
@@ -54,15 +55,21 @@ impl IsResidualFn<12, 2, (Isometry2<f64>, Isometry2<f64>), Isometry2<f64>> for P
                 obs.to_dual_c(),
             )
         };
-        let zeros: V<3> = V::<3>::zeros();
+        let _zeros: V<3> = V::<3>::zeros();
 
         if derivatives[0] != VarKind::Conditioned {
-            let dx_res_a = VectorValuedMapFromVector::static_fw_autodiff(dx_res_fn_a, zeros);
+            let dx_res_a = -Isometry2::dx_log_a_exp_x_b_at_0(
+                &world_from_pose_a.inverse(),
+                &world_from_pose_b.group_mul(&obs.inverse()),
+            );
             maybe_dx0 = Some(dx_res_a);
         }
 
         if derivatives[1] != VarKind::Conditioned {
-            let dx_res_b = VectorValuedMapFromVector::static_fw_autodiff(dx_res_fn_b, zeros);
+            let dx_res_b = Isometry2::dx_log_a_exp_x_b_at_0(
+                &world_from_pose_a.inverse(),
+                &world_from_pose_b.group_mul(&obs.inverse()),
+            );
             maybe_dx1 = Some(dx_res_b);
         }
         EvaluatedTerm::new2(maybe_dx0, maybe_dx1, residual)

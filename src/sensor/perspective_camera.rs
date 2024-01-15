@@ -6,6 +6,7 @@ use crate::image::view::ImageSize;
 use super::affine::AffineDistortionImpl;
 use super::generic_camera::Camera;
 use super::kannala_brandt::KannalaBrandtDistortionImpl;
+use super::traits::DistortTable;
 use super::traits::IsCameraEnum;
 use super::traits::IsProjection;
 use crate::calculus::types::vector::IsVector;
@@ -120,6 +121,13 @@ impl IsCameraEnum for PerspectiveCameraType {
         match self {
             PerspectiveCameraType::Pinhole(camera) => camera.image_size(),
             PerspectiveCameraType::KannalaBrandt(camera) => camera.image_size(),
+        }
+    }
+
+    fn distort_table(&self) -> DistortTable {
+        match self {
+            PerspectiveCameraType::Pinhole(camera) => camera.distort_table(),
+            PerspectiveCameraType::KannalaBrandt(camera) => camera.distort_table(),
         }
     }
 }

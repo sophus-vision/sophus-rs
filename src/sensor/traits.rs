@@ -1,12 +1,17 @@
 use nalgebra::SMatrix;
 use nalgebra::SVector;
 
+use crate::calculus::region::Region;
+use crate::calculus::region::RegionTraits;
 use crate::calculus::types::params::ParamsImpl;
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
 use crate::calculus::types::vector::IsVectorLike;
+use crate::image::arc_image::ArcImage2F32;
+use crate::image::interpolation::interpolate;
 use crate::image::mut_image::MutImage2F32;
 use crate::image::view::ImageSize;
+use crate::image::view::IsImageView;
 
 type V<const N: usize> = SVector<f64, N>;
 type M<const N: usize, const O: usize> = SMatrix<f64, N, O>;
@@ -42,6 +47,34 @@ pub trait IsProjection<S: IsScalar> {
 #[derive(Debug, Copy, Clone)]
 pub struct WrongParamsDim;
 
+#[derive(Debug, Clone)]
+pub struct DistortTable {
+    pub table: ArcImage2F32,
+    pub region: Region<2>,
+}
+
+impl DistortTable {
+    pub fn incr(&self) -> V<2> {
+        V::<2>::new(
+            self.region.range().x / ((self.table.image_size().width - 1) as f64),
+            self.region.range().y / ((self.table.image_size().height - 1) as f64),
+        )
+    }
+
+    pub fn offset(&self) -> V<2> {
+        self.region.min()
+    }
+
+    pub fn lookup(&self, point: &V<2>) -> V<2> {
+        let mut norm_point = point - self.offset();
+        norm_point.x /= self.incr().x;
+        norm_point.y /= self.incr().y;
+
+        let p2 = interpolate(&self.table, norm_point.cast());
+        V::<2>::new(p2[0] as f64, p2[1] as f64)
+    }
+}
+
 pub trait IsCameraEnum {
     fn new_pinhole(params: &V<4>, image_size: ImageSize) -> Self;
     fn new_kannala_brandt(params: &V<8>, image_size: ImageSize) -> Self;
@@ -53,6 +86,7 @@ pub trait IsCameraEnum {
     fn distort(&self, point_in_camera: &V<2>) -> V<2>;
     fn undistort(&self, point_in_camera: &V<2>) -> V<2>;
     fn undistort_table(&self) -> MutImage2F32;
+    fn distort_table(&self) -> DistortTable;
 
     fn dx_distort_x(&self, point_in_camera: &V<2>) -> M<2, 2>;
 }

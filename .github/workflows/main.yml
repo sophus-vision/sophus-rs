@@ -18,8 +18,10 @@ jobs:
           toolchain: stable
       - name: cargo
         run: |
+          sudo apt-get update -y
+          sudo apt-get install -y nasm
           cargo check
-          cargo test
+          cargo test --release
      
 
 

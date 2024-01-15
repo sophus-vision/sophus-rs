@@ -45,6 +45,10 @@ pub trait IsScalar:
     fn value(self) -> f64;
 
     fn to_vec(self) -> Self::Vector<1>;
+
+    fn fract(self) -> Self;
+
+    fn floor(&self) -> i64;
 }
 
 impl IsScalar for f64 {
@@ -101,5 +105,13 @@ impl IsScalar for f64 {
 
     fn atan(self) -> Self {
         self.atan()
+    }
+
+    fn fract(self) -> Self {
+        f64::fract(self)
+    }
+
+    fn floor(&self) -> i64 {
+        f64::floor(*self) as i64
     }
 }

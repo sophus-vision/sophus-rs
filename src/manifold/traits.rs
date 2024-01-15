@@ -44,7 +44,7 @@ impl<const N: usize> ParamsImpl<f64, N> for V<N> {
 
 impl<const N: usize> HasParams<f64, N> for V<N> {
     fn from_params(params: &<f64 as IsScalar>::Vector<N>) -> Self {
-        params.clone()
+        *params
     }
 
     fn set_params(&mut self, params: &<f64 as IsScalar>::Vector<N>) {

@@ -3,6 +3,7 @@ use crate::image::view::ImageSize;
 
 use super::ortho_camera::OrthoCamera;
 use super::perspective_camera::PerspectiveCameraType;
+use super::traits::DistortTable;
 use super::traits::IsCameraEnum;
 
 type V<const N: usize> = nalgebra::SVector<f64, N>;
@@ -77,6 +78,13 @@ impl IsCameraEnum for AnyProjCameraType {
         match self {
             AnyProjCameraType::Perspective(camera) => camera.image_size(),
             AnyProjCameraType::Ortho(camera) => camera.image_size(),
+        }
+    }
+
+    fn distort_table(&self) -> DistortTable {
+        match self {
+            AnyProjCameraType::Perspective(camera) => camera.distort_table(),
+            AnyProjCameraType::Ortho(camera) => camera.distort_table(),
         }
     }
 }
