@@ -22,7 +22,7 @@ pub struct ArcImage<
 }
 
 pub type ArcImageT<Scalar, const ROWS: usize> =
-    ArcImage<3, 1, Scalar, SVec<Scalar, ROWS>, 1, ROWS, 1>;
+    ArcImage<3, 1, Scalar, SVec<Scalar, ROWS>, ROWS, 1, 1>;
 
 pub type ArcImageU8 = ArcImageT<u8, 1>;
 pub type ArcImageU16 = ArcImageT<u16, 1>;
@@ -40,12 +40,12 @@ pub type ArcImage4F32 = ArcImageT<f32, 4>;
 macro_rules! arc_image {
     ($scalar_rank:literal, $srank:literal) => {
         impl<
-            Scalar: IsTensorScalar + 'static,
-            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
-            const BATCHES: usize,
-            const ROWS: usize,
-            const COLS: usize,
-        > ArcImage<$scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+                Scalar: IsTensorScalar + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
+                const BATCHES: usize,
+                const ROWS: usize,
+                const COLS: usize,
+            > ArcImage<$scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         {
             pub fn from_mut_image(
                 image: MutImage<$scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>,
@@ -81,14 +81,14 @@ macro_rules! arc_image {
         }
 
         impl<
-            'b,
-            Scalar: IsTensorScalar + 'static,
-            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
-            const BATCHES: usize,
-            const ROWS: usize,
-            const COLS: usize,
-        > IsImageView<'b, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
-        for ArcImage<$scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+                'b,
+                Scalar: IsTensorScalar + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
+                const BATCHES: usize,
+                const ROWS: usize,
+                const COLS: usize,
+            > IsImageView<'b, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+            for ArcImage<$scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         where
             ndarray::Dim<[ndarray::Ix; $scalar_rank]>: ndarray::Dimension,
         {

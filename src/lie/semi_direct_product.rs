@@ -1,9 +1,10 @@
 use std::vec;
 
 use super::lie_group::LieGroup;
+use super::traits::IsF64LieFactorGroupImpl;
 use super::traits::IsF64LieGroupImpl;
 use super::traits::IsLieFactorGroupImpl;
-use super::traits::IsLieGroup;
+
 use super::traits::IsLieGroupImpl;
 use super::traits::IsTranslationProductGroup;
 use crate::calculus::dual::dual_scalar::Dual;
@@ -28,7 +29,7 @@ pub struct TranslationProductGroupImpl<
     const AMBIENT: usize,
     const SDOF: usize,
     const SPARAMS: usize,
-    F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, POINT>,
+    F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT>,
 > {
     phantom: std::marker::PhantomData<(S, F)>,
 }
@@ -41,7 +42,7 @@ impl<
         const AMBIENT: usize,
         const SDOF: usize,
         const SPARAMS: usize,
-        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, POINT>,
+        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT>,
     > TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, F>
 {
     pub fn translation(params: &S::Vector<PARAMS>) -> S::Vector<POINT> {
@@ -87,7 +88,7 @@ impl<
         const AMBIENT: usize,
         const SDOF: usize,
         const SPARAMS: usize,
-        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, POINT>,
+        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT>,
     > ParamsImpl<S, PARAMS>
     for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, F>
 {
@@ -121,7 +122,7 @@ impl<
         const AMBIENT: usize,
         const SDOF: usize,
         const SPARAMS: usize,
-        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, POINT>,
+        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT>,
     > manifold::traits::TangentImpl<S, DOF>
     for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, F>
 {
@@ -146,7 +147,7 @@ impl<
         const AMBIENT: usize,
         const SDOF: usize,
         const SPARAMS: usize,
-        Factor: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, POINT>,
+        Factor: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT>,
     > IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>
     for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, Factor>
 {
@@ -180,7 +181,7 @@ impl<
         let translation = Self::translation_tangent(omega);
         let factor_params = Factor::exp(&Self::factor_tangent(omega));
 
-        let mat_v = Factor::mat_v(&factor_params, &Self::factor_tangent(omega));
+        let mat_v = Factor::mat_v(&Self::factor_tangent(omega));
         Self::params_from(&(mat_v * translation), &factor_params)
     }
 
@@ -190,7 +191,7 @@ impl<
         let factor_params = Self::factor_params(params);
 
         let factor_tangent = Factor::log(&factor_params);
-        let mat_v_inv = Factor::mat_v_inverse(&factor_params, &factor_tangent);
+        let mat_v_inv = Factor::mat_v_inverse(&factor_tangent);
         let translation_tangent = mat_v_inv * translation;
 
         Self::tangent_from(&translation_tangent, &factor_tangent)
@@ -316,8 +317,7 @@ impl<
         const AMBIENT: usize,
         const SDOF: usize,
         const SPARAMS: usize,
-        Factor: IsLieFactorGroupImpl<f64, SDOF, SPARAMS, POINT, POINT>
-            + IsF64LieGroupImpl<SDOF, SPARAMS, POINT, POINT>,
+        Factor: IsF64LieFactorGroupImpl<SDOF, SPARAMS, POINT>,
     > IsF64LieGroupImpl<DOF, PARAMS, POINT, AMBIENT>
     for TranslationProductGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, Factor>
 {
@@ -334,6 +334,78 @@ impl<
             Factor::dx_exp_x_times_point_at_0(point),
         )
     }
+
+    fn dx_exp(tangent: &V<DOF>) -> M<PARAMS, DOF> {
+        let factor_tangent = &Self::factor_tangent(tangent);
+        let trans_tangent = &Self::translation_tangent(tangent);
+
+        let dx_mat_v = Factor::dx_mat_v(factor_tangent);
+        let mut dx_mat_v_tangent = M::<POINT, SDOF>::zero();
+
+        for i in 0..SDOF {
+            dx_mat_v_tangent
+                .fixed_columns_mut::<1>(i)
+                .copy_from(&(dx_mat_v[i] * trans_tangent));
+        }
+
+        M::block_mat2x2::<POINT, SPARAMS, POINT, SDOF>(
+            (Factor::mat_v(factor_tangent), dx_mat_v_tangent),
+            (M::<SPARAMS, POINT>::zero(), Factor::dx_exp(factor_tangent)),
+        )
+    }
+
+    fn dx_log_x(params: &V<PARAMS>) -> M<DOF, PARAMS> {
+        let factor_params = &Self::factor_params(params);
+        let trans = &Self::translation(params);
+        let factor_tangent = Factor::log(factor_params);
+
+        let dx_log_x = Factor::dx_log_x(factor_params);
+        let dx_mat_v_inverse = Factor::dx_mat_v_inverse(&factor_tangent);
+
+        let mut dx_mat_v_inv_tangent = M::<POINT, SPARAMS>::zero();
+
+        for i in 0..SDOF {
+            let v = dx_mat_v_inverse[i] * trans;
+            let r = dx_log_x.row(i);
+            dx_mat_v_inv_tangent += v * r;
+        }
+
+        M::block_mat2x2::<POINT, SDOF, POINT, SPARAMS>(
+            (Factor::mat_v_inverse(&factor_tangent), dx_mat_v_inv_tangent),
+            (M::<SDOF, POINT>::zero(), dx_log_x),
+        )
+    }
+
+    fn da_a_mul_b(a: &V<PARAMS>, b: &V<PARAMS>) -> M<PARAMS, PARAMS> {
+        let a_factor_params = &Self::factor_params(a);
+        let b_factor_params = &Self::factor_params(b);
+
+        let b_trans = &Self::translation(b);
+
+        M::block_mat2x2::<POINT, SPARAMS, POINT, SPARAMS>(
+            (
+                M::<POINT, POINT>::identity(),
+                Factor::dparams_matrix_times_point(a_factor_params, b_trans),
+            ),
+            (
+                M::<SPARAMS, POINT>::zero(),
+                Factor::da_a_mul_b(a_factor_params, b_factor_params),
+            ),
+        )
+    }
+
+    fn db_a_mul_b(a: &V<PARAMS>, b: &V<PARAMS>) -> M<PARAMS, PARAMS> {
+        let a_factor_params = &Self::factor_params(a);
+        let b_factor_params = &Self::factor_params(b);
+
+        M::block_mat2x2::<POINT, SPARAMS, POINT, SPARAMS>(
+            (Factor::matrix(a_factor_params), M::<POINT, SPARAMS>::zero()),
+            (
+                M::<SPARAMS, POINT>::zero(),
+                Factor::db_a_mul_b(a_factor_params, b_factor_params),
+            ),
+        )
+    }
 }
 
 impl<
@@ -344,7 +416,7 @@ impl<
         const AMBIENT: usize,
         const SDOF: usize,
         const SPARAMS: usize,
-        FactorImpl: lie::traits::IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, POINT>,
+        FactorImpl: lie::traits::IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT>,
     >
     IsTranslationProductGroup<
         S,
@@ -374,6 +446,10 @@ impl<
     ) -> Self {
         let params = Self::Impl::params_from(translation, factor.params());
         Self::from_params(&params)
+    }
+
+    fn from_t(translation: &<S as IsScalar>::Vector<POINT>) -> Self {
+        Self::from_translation_and_factor(translation, &LieGroup::identity())
     }
 
     fn set_translation(&mut self, translation: &<S as IsScalar>::Vector<POINT>) {

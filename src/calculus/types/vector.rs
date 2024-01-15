@@ -39,6 +39,8 @@ pub trait IsVector<S: IsScalar, const ROWS: usize>: IsVectorLike {
     ) -> Self;
 
     fn dot(self, rhs: Self) -> S;
+
+    fn normalized(&self) -> Self;
 }
 
 impl<const ROWS: usize> IsVector<f64, ROWS> for V<ROWS> {
@@ -97,6 +99,10 @@ impl<const ROWS: usize> IsVector<f64, ROWS> for V<ROWS> {
 
     fn dot(self, rhs: Self) -> f64 {
         V::dot(&self, &rhs)
+    }
+
+    fn normalized(&self) -> Self {
+        self.normalize()
     }
 }
 

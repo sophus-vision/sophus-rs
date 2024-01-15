@@ -15,8 +15,7 @@ pub trait IsMatrix<S: IsScalar, const ROWS: usize, const COLS: usize>:
 
     fn identity() -> Self;
     fn from_array2(vals: [[S; COLS]; ROWS]) -> Self;
-    fn from_c_array2(vals: [[f64; COLS];ROWS]) -> Self;
-
+    fn from_c_array2(vals: [[f64; COLS]; ROWS]) -> Self;
 
     fn get(&self, idx: (usize, usize)) -> S;
 
@@ -70,7 +69,7 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS> for M<ROWS,
         m
     }
 
-    fn from_c_array2(vals: [[f64; COLS];ROWS]) -> Self {
+    fn from_c_array2(vals: [[f64; COLS]; ROWS]) -> Self {
         let mut m = M::<ROWS, COLS>::zeros();
         for c in 0..COLS {
             for r in 0..ROWS {

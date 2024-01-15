@@ -24,7 +24,7 @@ impl<const D: usize> IRegion<D> {
     }
 }
 
-trait PointTraits<const D: usize>: Copy + Bounded + std::ops::Index<usize> {
+pub trait PointTraits<const D: usize>: Copy + Bounded + std::ops::Index<usize> {
     type Point: Bounded;
 
     fn smallest() -> Self::Point {
@@ -71,7 +71,7 @@ impl<const D: usize> PointTraits<D> for SVector<i64, D> {
     }
 }
 
-trait RegionTraits<const D: usize, P: PointTraits<D>> {
+pub trait RegionTraits<const D: usize, P: PointTraits<D>> {
     type Region;
 
     fn unbounded() -> Self;
@@ -93,6 +93,8 @@ trait RegionTraits<const D: usize, P: PointTraits<D>> {
     fn from_point(point: P) -> Self::Region {
         Self::from_min_max(point, point)
     }
+
+    fn extend(&mut self, point: &P);
 
     fn min(&self) -> P {
         self.try_min().unwrap()
@@ -181,6 +183,15 @@ impl<const D: usize> RegionTraits<D, SVector<f64, D>> for Region<D> {
     fn mid(&self) -> SVector<f64, D> {
         self.min() + 0.5 * self.range()
     }
+
+    fn extend(&mut self, point: &SVector<f64, D>) {
+        if self.is_empty() {
+            *self = Self::from_point(*point);
+        }
+        let (min, max) = self.min().inf_sup(point);
+
+        *self = Self::from_min_max(min, max)
+    }
 }
 
 impl<const D: usize> RegionTraits<D, SVector<i64, D>> for IRegion<D> {
@@ -242,6 +253,15 @@ impl<const D: usize> RegionTraits<D, SVector<i64, D>> for IRegion<D> {
 
     fn mid(&self) -> SVector<i64, D> {
         self.min() + self.range() / 2
+    }
+
+    fn extend(&mut self, point: &SVector<i64, D>) {
+        if self.is_empty() {
+            *self = Self::from_point(*point);
+        }
+        let (min, max) = self.min().inf_sup(point);
+
+        *self = Self::from_min_max(min, max)
     }
 }
 

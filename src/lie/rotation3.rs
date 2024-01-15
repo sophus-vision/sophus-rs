@@ -1,5 +1,7 @@
 use std::marker::PhantomData;
 
+use nalgebra::ComplexField;
+
 use crate::calculus::dual::dual_scalar::Dual;
 use crate::calculus::types::matrix::IsMatrix;
 use crate::calculus::types::params::HasParams;
@@ -8,6 +10,7 @@ use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::cross;
 use crate::calculus::types::vector::IsVector;
 use crate::calculus::types::M;
+use crate::calculus::types::V;
 use crate::lie;
 use crate::manifold::{self};
 
@@ -68,8 +71,8 @@ impl<S: IsScalar> manifold::traits::TangentImpl<S, 3> for Rotation3Impl<S> {
             S::Vector::<3>::from_c_array([1.0, 0.0, 0.0]),
             S::Vector::<3>::from_c_array([0.0, 1.0, 0.0]),
             S::Vector::<3>::from_c_array([0.0, 0.0, 1.0]),
-            S::Vector::<3>::from_c_array([0.5, 0.5, 0.5]),
-            S::Vector::<3>::from_c_array([-0.5, -0.5, -0.5]),
+            S::Vector::<3>::from_c_array([0.5, 0.5, 0.1]),
+            S::Vector::<3>::from_c_array([-0.1, -0.5, -0.5]),
         ]
     }
 }
@@ -207,8 +210,8 @@ impl<S: IsScalar> IsLieGroupImpl<S, 3, 4, 3, 3> for Rotation3Impl<S> {
         )
     }
 
-    fn ad(tangent: &S::Vector<3>) -> S::Matrix<3, 3> {
-        Self::hat(tangent)
+    fn ad(omega: &S::Vector<3>) -> S::Matrix<3, 3> {
+        Self::hat(omega)
     }
 
     type GenG<S2: IsScalar> = Rotation3Impl<S2>;
@@ -226,7 +229,13 @@ impl<S: IsScalar> IsLieGroupImpl<S, 3, 4, 3, 3> for Rotation3Impl<S> {
         let ivec =
             rhs_ivec.scaled(lhs_re) + lhs_ivec.scaled(rhs_re) + cross::<S>(lhs_ivec, rhs_ivec);
 
-        S::Vector::block_vec2(re.to_vec(), ivec)
+        let mut params = S::Vector::block_vec2(re.to_vec(), ivec);
+
+        if (params.norm().real()-1.0).abs() > 1e-7 {
+            // todo: use tailor approximation for norm close to 1
+            params = params.normalized();
+        }
+        params
     }
 
     fn has_shortest_path_ambiguity(params: &<S as IsScalar>::Vector<4>) -> bool {
@@ -245,17 +254,105 @@ impl lie::traits::IsF64LieGroupImpl<3, 4, 3, 3> for Rotation3Impl<f64> {
         ])
     }
 
+    fn da_a_mul_b(_a: &V<4>, b: &V<4>) -> M<4, 4> {
+        let b_real = b[0];
+        let b_imag0 = b[1];
+        let b_imag1 = b[2];
+        let b_imag2 = b[3];
+
+        M::<4, 4>::from_array2([
+            [b_real, -b_imag0, -b_imag1, -b_imag2],
+            [b_imag0, b_real, b_imag2, -b_imag1],
+            [b_imag1, -b_imag2, b_real, b_imag0],
+            [b_imag2, b_imag1, -b_imag0, b_real],
+        ])
+    }
+
+    fn db_a_mul_b(a: &V<4>, _b: &V<4>) -> M<4, 4> {
+        let a_real = a[0];
+        let a_imag0 = a[1];
+        let a_imag1 = a[2];
+        let a_imag2 = a[3];
+
+        M::<4, 4>::from_array2([
+            [a_real, -a_imag0, -a_imag1, -a_imag2],
+            [a_imag0, a_real, -a_imag2, a_imag1],
+            [a_imag1, a_imag2, a_real, -a_imag0],
+            [a_imag2, -a_imag1, a_imag0, a_real],
+        ])
+    }
+
     fn dx_exp_x_times_point_at_0(point: crate::calculus::types::V<3>) -> M<3, 3> {
         Self::hat(&-point)
     }
+
+    fn dx_exp(omega: &V<3>) -> M<4, 3> {
+        let theta_sq = omega.squared_norm();
+
+        if theta_sq < 1e-6 {
+            return Self::dx_exp_x_at_0();
+        }
+
+        let omega_0 = omega[0];
+        let omega_1 = omega[1];
+        let omega_2 = omega[2];
+        let theta = theta_sq.sqrt();
+        let a = (0.5 * theta).sin() / theta;
+        let b = (0.5 * theta).cos() / (theta_sq) - 2.0 * (0.5 * theta).sin() / (theta_sq * theta);
+
+        0.5 * M::from_array2([
+            [-omega_0 * a, -omega_1 * a, -omega_2 * a],
+            [
+                omega_0 * omega_0 * b + 2.0 * a,
+                omega_0 * omega_1 * b,
+                omega_0 * omega_2 * b,
+            ],
+            [
+                omega_0 * omega_1 * b,
+                omega_1 * omega_1 * b + 2.0 * a,
+                omega_1 * omega_2 * b,
+            ],
+            [
+                omega_0 * omega_2 * b,
+                omega_1 * omega_2 * b,
+                omega_2 * omega_2 * b + 2.0 * a,
+            ],
+        ])
+    }
+
+    fn dx_log_x(params: &V<4>) -> M<3, 4> {
+        let ivec: V<3> = params.get_fixed_rows::<3>(1);
+        let w: f64 = params[0];
+        let squared_n: f64 = ivec.squared_norm();
+
+        if squared_n < 1e-6 {
+            let mut m = M::<3, 4>::zeros();
+            m.fixed_columns_mut::<3>(1)
+                .copy_from(&(2.0 * M::<3, 3>::identity()));
+            return m;
+        }
+
+        let n: f64 = squared_n.sqrt();
+        let theta = 2.0 * n.atan2(w);
+
+        let dw_ivec_theta: V<3> = ivec * (-2.0 / (squared_n + w * w));
+        let factor = 2.0 * w / (squared_n * (squared_n + w * w)) - theta / (squared_n * n);
+
+        let mut m = M::<3, 4>::zeros();
+
+        m.set_column(0, &dw_ivec_theta);
+        m.fixed_columns_mut::<3>(1)
+            .copy_from(&(M::<3, 3>::identity() * theta / n + ivec * ivec.transpose() * factor));
+        m
+    }
 }
 
-impl<S: IsScalar> lie::traits::IsLieFactorGroupImpl<S, 3, 4, 3, 3> for Rotation3Impl<S> {
+impl<S: IsScalar> lie::traits::IsLieFactorGroupImpl<S, 3, 4, 3> for Rotation3Impl<S> {
     type GenFactorG<S2: IsScalar> = Rotation3Impl<S2>;
     type RealFactorG = Rotation3Impl<f64>;
     type DualFactorG = Rotation3Impl<Dual>;
 
-    fn mat_v(_params: &S::Vector<4>, omega: &S::Vector<3>) -> S::Matrix<3, 3> {
+    fn mat_v(omega: &S::Vector<3>) -> S::Matrix<3, 3> {
         let theta_sq = omega.squared_norm();
         let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S>::hat(omega);
         let mat_omega_sq = mat_omega.clone().mat_mul(mat_omega.clone());
@@ -269,9 +366,9 @@ impl<S: IsScalar> lie::traits::IsLieFactorGroupImpl<S, 3, 4, 3, 3> for Rotation3
         }
     }
 
-    fn mat_v_inverse(_params: &S::Vector<4>, tangent: &S::Vector<3>) -> S::Matrix<3, 3> {
-        let theta_sq = tangent.clone().dot(tangent.clone());
-        let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S>::hat(tangent);
+    fn mat_v_inverse(omega: &S::Vector<3>) -> S::Matrix<3, 3> {
+        let theta_sq = omega.clone().dot(omega.clone());
+        let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S>::hat(omega);
         let mat_omega_sq = mat_omega.clone().mat_mul(mat_omega.clone());
 
         if theta_sq.real() < 1e-6 {
@@ -300,6 +397,166 @@ impl<S: IsScalar> lie::traits::IsLieFactorGroupImpl<S, 3, 4, 3, 3> for Rotation3
     }
 }
 
+impl lie::traits::IsF64LieFactorGroupImpl<3, 4, 3> for Rotation3Impl<f64> {
+    fn dx_mat_v(omega: &crate::calculus::types::V<3>) -> [M<3, 3>; 3] {
+        let theta_sq = omega.squared_norm();
+        let dt_mat_omega_pos_idx = [(2, 1), (0, 2), (1, 0)];
+        let dt_mat_omega_neg_idx = [(1, 2), (2, 0), (0, 1)];
+        if theta_sq.real() < 1e-6 {
+            let mut l = [M::<3, 3>::zeros(); 3];
+
+            for i in 0..3 {
+                *l[i].get_mut(dt_mat_omega_pos_idx[i]).unwrap() += 0.5;
+                *l[i].get_mut(dt_mat_omega_neg_idx[i]).unwrap() -= 0.5;
+
+                println!("l[i] = {:?}", l[i])
+            }
+
+            println!("l = {:?}", l);
+
+            return l;
+        }
+
+        let mat_omega: M<3, 3> = Rotation3Impl::<f64>::hat(omega);
+        let mat_omega_sq = mat_omega.clone().mat_mul(mat_omega);
+
+        let theta = theta_sq.sqrt();
+        let domega_theta = V::from_array([omega[0] / theta, omega[1] / theta, omega[2] / theta]);
+
+        let a = (1.0 - theta.cos()) / theta_sq;
+        let dt_a = (-2.0 + 2.0 * theta.cos() + theta * theta.sin()) / (theta * theta_sq);
+
+        let b = (theta - theta.sin()) / (theta_sq * theta);
+        let dt_b = -(2.0 * theta + theta * theta.cos() - 3.0 * theta.sin()) / theta.powi(4);
+
+        let dt_mat_omega_sq = [
+            M::from_array2([
+                [0.0, omega[1], omega[2]],
+                [omega[1], -2.0 * omega[0], 0.0],
+                [omega[2], 0.0, -2.0 * omega[0]],
+            ]),
+            M::from_array2([
+                [-2.0 * omega[1], omega[0], 0.0],
+                [omega[0], 0.0, omega[2]],
+                [0.0, omega[2], -2.0 * omega[1]],
+            ]),
+            M::from_array2([
+                [-2.0 * omega[2], 0.0, omega[0]],
+                [0.0, -2.0 * omega[2], omega[1]],
+                [omega[0], omega[1], 0.0],
+            ]),
+        ];
+
+        let mut l = [M::<3, 3>::zeros(); 3];
+
+        for i in 0..3 {
+            l[i] = domega_theta[i] * dt_a * mat_omega;
+            println!("l[i] = {:?}", l[i]);
+            *l[i].get_mut(dt_mat_omega_pos_idx[i]).unwrap() += a;
+            *l[i].get_mut(dt_mat_omega_neg_idx[i]).unwrap() -= a;
+            println!("pl[i] = {:?}", l[i]);
+            l[i] += b * dt_mat_omega_sq[i] + domega_theta[i] * dt_b * mat_omega_sq;
+        }
+
+        l
+    }
+
+    fn dparams_matrix_times_point(params: &V<4>, point: &V<3>) -> M<3, 4> {
+        let r = params[0];
+        let ivec0 = params[1];
+        let ivec1 = params[2];
+        let ivec2 = params[3];
+
+        let p0 = point[0];
+        let p1 = point[1];
+        let p2 = point[2];
+
+        M::from_array2([
+            [
+                2.0 * ivec1 * p2 - 2.0 * ivec2 * p1,
+                2.0 * ivec1 * p1 + 2.0 * ivec2 * p2,
+                2.0 * r * p2 + 2.0 * ivec0 * p1 - 4.0 * ivec1 * p0,
+                -2.0 * r * p1 + 2.0 * ivec0 * p2 - 4.0 * ivec2 * p0,
+            ],
+            [
+                -2.0 * ivec0 * p2 + 2.0 * ivec2 * p0,
+                -2.0 * r * p2 - 4.0 * ivec0 * p1 + 2.0 * ivec1 * p0,
+                2.0 * ivec0 * p0 + 2.0 * ivec2 * p2,
+                2.0 * r * p0 + 2.0 * ivec1 * p2 - 4.0 * ivec2 * p1,
+            ],
+            [
+                2.0 * ivec0 * p1 - 2.0 * ivec1 * p0,
+                2.0 * r * p1 - 4.0 * ivec0 * p2 + 2.0 * ivec2 * p0,
+                -2.0 * r * p0 - 4.0 * ivec1 * p2 + 2.0 * ivec2 * p1,
+                2.0 * ivec0 * p0 + 2.0 * ivec1 * p1,
+            ],
+        ])
+    }
+
+    fn dx_mat_v_inverse(omega: &crate::calculus::types::V<3>) -> [M<3, 3>; 3] {
+        let theta_sq = omega.squared_norm();
+        let theta = theta_sq.sqrt();
+        let half_theta = 0.5 * theta;
+        let mat_omega: M<3, 3> = Rotation3Impl::<f64>::hat(omega);
+        let mat_omega_sq = mat_omega.clone().mat_mul(mat_omega);
+
+        let dt_mat_omega_pos_idx = [(2, 1), (0, 2), (1, 0)];
+        let dt_mat_omega_neg_idx = [(1, 2), (2, 0), (0, 1)];
+
+        if theta_sq.real() < 1e-6 {
+            let mut l = [M::<3, 3>::zeros(); 3];
+
+            for i in 0..3 {
+                *l[i].get_mut(dt_mat_omega_pos_idx[i]).unwrap() -= 0.5;
+                *l[i].get_mut(dt_mat_omega_neg_idx[i]).unwrap() += 0.5;
+
+                println!("l[i] = {:?}", l[i])
+            }
+
+            println!("l = {:?}", l);
+
+            return l;
+        }
+
+        let domega_theta = V::from_array([omega[0] / theta, omega[1] / theta, omega[2] / theta]);
+
+        let c = (1.0 - (0.5 * theta * half_theta.cos()) / (half_theta.sin())) / theta_sq;
+
+        let dt_c = (-2.0
+            + (0.25 * theta_sq) / (half_theta.sin() * half_theta.sin())
+            + (half_theta * half_theta.cos()) / half_theta.sin())
+            / theta.powi(3);
+
+        let dt_mat_omega_sq = [
+            M::from_array2([
+                [0.0, omega[1], omega[2]],
+                [omega[1], -2.0 * omega[0], 0.0],
+                [omega[2], 0.0, -2.0 * omega[0]],
+            ]),
+            M::from_array2([
+                [-2.0 * omega[1], omega[0], 0.0],
+                [omega[0], 0.0, omega[2]],
+                [0.0, omega[2], -2.0 * omega[1]],
+            ]),
+            M::from_array2([
+                [-2.0 * omega[2], 0.0, omega[0]],
+                [0.0, -2.0 * omega[2], omega[1]],
+                [omega[0], omega[1], 0.0],
+            ]),
+        ];
+
+        let mut l = [M::<3, 3>::zeros(); 3];
+
+        for i in 0..3 {
+            l[i][dt_mat_omega_pos_idx[i]] += -0.5;
+            l[i][dt_mat_omega_neg_idx[i]] -= -0.5;
+            l[i] += dt_mat_omega_sq[i].scaled(c) + domega_theta[i] * mat_omega_sq.scaled(dt_c);
+        }
+
+        l
+    }
+}
+
 pub type Isometry3Impl<S> =
     lie::semi_direct_product::TranslationProductGroupImpl<S, 6, 7, 3, 4, 3, 4, Rotation3Impl<S>>;
 pub type Rotation3<S> = LieGroup<S, 3, 4, 3, 3, Rotation3Impl<S>>;
@@ -322,6 +579,12 @@ impl<S: IsScalar> Isometry3<S> {
     }
 }
 
+impl Default for Isometry3<f64> {
+    fn default() -> Self {
+        Self::identity()
+    }
+}
+
 mod tests {
 
     #[test]
@@ -332,6 +595,7 @@ mod tests {
         Rotation3::<f64>::test_suite();
         Rotation3::<Dual>::test_suite();
         Rotation3::<f64>::real_test_suite();
+        Rotation3::<f64>::real_factor_test_suite();
     }
 
     #[test]

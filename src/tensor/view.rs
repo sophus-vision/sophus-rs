@@ -90,11 +90,11 @@ pub type TensorViewDD<'a, Scalar> = TensorViewX<'a, 2, Scalar>;
 
 // rank 2
 // D0 x [B]
-pub type TensorViewBD<'a, Scalar, const B: usize> = TensorViewXB<'a, 2, 1, 1, Scalar, B>;
+pub type TensorViewDB<'a, Scalar, const B: usize> = TensorViewXB<'a, 2, 1, 1, Scalar, B>;
 
 // rank 2
 // D0 x [R]
-pub type TensorViewRD<'a, Scalar, const R: usize> = TensorViewXR<'a, 2, 1, 1, Scalar, R>;
+pub type TensorViewDR<'a, Scalar, const R: usize> = TensorViewXR<'a, 2, 1, 1, Scalar, R>;
 
 // rank 3
 // D0 x D1 x D2
@@ -102,20 +102,20 @@ pub type TensorViewRRR<'a, Scalar> = TensorViewX<'a, 3, Scalar>;
 
 // rank 3
 // D0 x D1 x [B]
-pub type TensorViewBDD<'a, Scalar, const B: usize> = TensorViewXB<'a, 3, 2, 1, Scalar, B>;
+pub type TensorViewDDB<'a, Scalar, const B: usize> = TensorViewXB<'a, 3, 2, 1, Scalar, B>;
 
 // rank 3
 // D0 x D1 x [R]
-pub type TensorViewRDD<'a, Scalar, const R: usize> = TensorViewXR<'a, 3, 2, 1, Scalar, R>;
+pub type TensorViewDDR<'a, Scalar, const R: usize> = TensorViewXR<'a, 3, 2, 1, Scalar, R>;
 
 // rank 3
 // D0 x [R x B]
-pub type TensorViewRBD<'a, Scalar, const R: usize, const B: usize> =
+pub type TensorViewDRB<'a, Scalar, const R: usize, const B: usize> =
     TensorViewXRB<'a, 3, 1, 2, Scalar, R, B>;
 
 // rank 3
 // D0 x [R x C]
-pub type TensorViewRCD<'a, Scalar, const R: usize, const C: usize> =
+pub type TensorViewDRC<'a, Scalar, const R: usize, const C: usize> =
     TensorViewXRC<'a, 3, 1, 2, Scalar, R, C>;
 
 // rank 4
@@ -124,25 +124,25 @@ pub type TensorViewDDDD<'a, Scalar> = TensorViewX<'a, 4, Scalar>;
 
 // rank 4
 // D0 x D1 x D2 x [B]
-pub type TensorViewBDDD<'a, Scalar, const B: usize> = TensorViewXB<'a, 4, 3, 1, Scalar, B>;
+pub type TensorViewDDDB<'a, Scalar, const B: usize> = TensorViewXB<'a, 4, 3, 1, Scalar, B>;
 
 // rank 4
 // D0 x D1 x D2 x [R]
-pub type TensorViewRDDD<'a, Scalar, const R: usize> = TensorViewXR<'a, 4, 3, 1, Scalar, R>;
+pub type TensorViewDDDR<'a, Scalar, const R: usize> = TensorViewXR<'a, 4, 3, 1, Scalar, R>;
 
 // rank 4
 // D0 x D1 x [R x B]
-pub type TensorViewRBDD<'a, Scalar, const R: usize, const B: usize> =
+pub type TensorViewDDRB<'a, Scalar, const R: usize, const B: usize> =
     TensorViewXRB<'a, 4, 2, 2, Scalar, R, B>;
 
 // rank 4
 // D0 x D1 x [R x C]
-pub type TensorViewRCDD<'a, Scalar, const R: usize, const C: usize> =
+pub type TensorViewDDRC<'a, Scalar, const R: usize, const C: usize> =
     TensorViewXRC<'a, 4, 2, 2, Scalar, R, C>;
 
 // rank 4
 // D0 x [R x C x B]
-pub type TensorViewRBCD<'a, Scalar, const R: usize, const C: usize, const B: usize> =
+pub type TensorViewDRCB<'a, Scalar, const R: usize, const C: usize, const B: usize> =
     TensorViewXRCB<'a, 4, 1, 3, Scalar, R, C, B>;
 
 pub trait IsTensorLike<
@@ -225,8 +225,9 @@ macro_rules! tensor_view_is_view {
                 let ptr = elem_view.as_ptr() as *const Scalar;
                 use ndarray::ShapeBuilder;
 
-                assert_eq!(std::mem::size_of::<STensor>(), 
-                    std::mem::size_of::<Scalar>() * ROWS * COLS* BATCHES
+                assert_eq!(
+                    std::mem::size_of::<STensor>(),
+                    std::mem::size_of::<Scalar>() * ROWS * COLS * BATCHES
                 );
                 let scalar_view =
                     unsafe { ndarray::ArrayView::from_shape_ptr(shape.strides(strides), ptr) };
@@ -367,7 +368,7 @@ mod tests {
             let ndview =
                 ndarray::ArrayView::from_shape(rank2_shape.strides([2, 1]), &arr[..]).unwrap();
             assert!(ndview.is_standard_layout());
-            let view = TensorViewRCDD::new(ndview);
+            let view = TensorViewDDRC::new(ndview);
 
             println!("{}", view.elem_view);
             for d0 in 0..view.dims()[0] {
@@ -405,7 +406,7 @@ mod tests {
             let ndview =
                 ndarray::ArrayView::from_shape(rank3_shape.strides(strides), &arr[..]).unwrap();
             assert!(ndview.is_standard_layout());
-            let view = TensorViewRDDD::new(ndview);
+            let view = TensorViewDDDR::new(ndview);
 
             println!("{}", view.elem_view);
             for d0 in 0..view.dims()[0] {

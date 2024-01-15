@@ -24,6 +24,7 @@ use crate::manifold::traits::IsManifold;
 use crate::manifold::traits::TangentImpl;
 use crate::tensor::view::IsTensorLike;
 
+use super::traits::IsF64LieFactorGroupImpl;
 use super::traits::IsF64LieGroupImpl;
 use super::traits::IsLieGroup;
 use super::traits::IsLieGroupImpl;
@@ -124,7 +125,7 @@ impl<
     type GenGroup<S2: IsScalar, G2: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT>> =
         LieGroup<S2, DOF, PARAMS, POINT, AMBIENT, G2>;
     type RealGroup = Self::GenGroup<f64, G::RealG>;
-    type DualGroup = Self::GenGroup<Dual, G::DualG>; 
+    type DualGroup = Self::GenGroup<Dual, G::DualG>;
 }
 
 impl<
@@ -433,9 +434,33 @@ impl<
         G::dx_exp_x_times_point_at_0(point)
     }
 
+    pub fn dx_exp(tangent: &V<DOF>) -> M<PARAMS, DOF> {
+        G::dx_exp(tangent)
+    }
+
+    pub fn dx_log_x(params: &V<PARAMS>) -> M<DOF, PARAMS> {
+        G::dx_log_x(params)
+    }
+
     pub fn to_dual_c(self) -> LieGroup<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG> {
         let dual_params = DualV::<PARAMS>::c(self.params);
         LieGroup::from_params(&dual_params)
+    }
+
+    pub fn dx_log_a_exp_x_b_at_0(a: &Self, b: &Self) -> M<DOF, DOF> {
+        let ab = a.group_mul(b);
+        Self::dx_log_x(ab.params())
+            * Self::da_a_mul_b(&Self::identity(), &ab)
+            * Self::dx_exp_x_at_0()
+            * Self::adj(a)
+    }
+
+    fn da_a_mul_b(a: &Self, b: &Self) -> M<PARAMS, PARAMS> {
+        G::da_a_mul_b(a.params(), b.params())
+    }
+
+    fn db_a_mul_b(a: &Self, b: &Self) -> M<PARAMS, PARAMS> {
+        G::db_a_mul_b(a.params(), b.params())
     }
 
     fn adjoint_jacobian_tests() {
@@ -550,6 +575,43 @@ impl<
         }
     }
 
+    fn test_mul_jacobians() {
+        for a in Self::element_examples() {
+            for b in Self::element_examples() {
+                let a_dual = a.clone().to_dual_c();
+                let b_dual = b.clone().to_dual_c();
+
+                let dual_mul_x = |vv: DualV<PARAMS>| -> DualV<PARAMS> {
+                    LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::from_params(&vv)
+                        .group_mul(&b_dual)
+                        .params()
+                        .clone()
+                };
+
+                let auto_diff =
+                    VectorValuedMapFromVector::static_fw_autodiff(dual_mul_x, *a.clone().params());
+                let analytic_diff = Self::da_a_mul_b(&a, &b);
+                assert_relative_eq!(analytic_diff, auto_diff, epsilon = 0.001);
+
+                let dual_mul_x = |vv: DualV<PARAMS>| -> DualV<PARAMS> {
+                    a_dual
+                        .group_mul(
+                            &LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::from_params(
+                                &vv,
+                            ),
+                        )
+                        .params()
+                        .clone()
+                };
+
+                let auto_diff =
+                    VectorValuedMapFromVector::static_fw_autodiff(dual_mul_x, *b.clone().params());
+                let analytic_diff = Self::db_a_mul_b(&a, &b);
+                assert_relative_eq!(analytic_diff, auto_diff, epsilon = 0.001);
+            }
+        }
+    }
+
     fn test_exp_log_jacobians() {
         for t in G::tangent_examples() {
             // x == log(exp(x))
@@ -559,17 +621,21 @@ impl<
 
             // dx exp(x).matrix
             {
-                let exp_t = |t: V<DOF>| -> M<AMBIENT, AMBIENT> { Self::exp(&t).matrix() };
-                let dual_exp_t = |vv: DualV<DOF>| -> DualM<AMBIENT, AMBIENT> {
-                    LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::exp(&vv).matrix()
+                let exp_t = |t: V<DOF>| -> V<PARAMS> { *Self::exp(&t).params() };
+                let dual_exp_t = |vv: DualV<DOF>| -> DualV<PARAMS> {
+                    LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::exp(&vv)
+                        .params()
+                        .clone()
                 };
 
-                let num_diff = MatrixValuedMapFromVector::sym_diff_quotient(exp_t, t, 0.0001);
-                let auto_diff = MatrixValuedMapFromVector::fw_autodiff(dual_exp_t, t);
+                let num_diff =
+                    VectorValuedMapFromVector::static_sym_diff_quotient(exp_t, t, 0.0001);
+                let auto_diff = VectorValuedMapFromVector::static_fw_autodiff(dual_exp_t, t);
 
-                for i in 0..DOF {
-                    assert_relative_eq!(auto_diff.get([i]), num_diff.get([i]), epsilon = 0.001);
-                }
+                assert_relative_eq!(auto_diff, num_diff, epsilon = 0.001);
+
+                let analytic_diff = Self::dx_exp(&t);
+                assert_relative_eq!(analytic_diff, num_diff, epsilon = 0.001);
             }
         }
 
@@ -628,17 +694,58 @@ impl<
                         .log()
                 };
 
-                let num_diff = VectorValuedMapFromVector::sym_diff_quotient(log_x, o, 0.0001);
-                let auto_diff = VectorValuedMapFromVector::fw_autodiff(dual_log_x, o);
+                let num_diff =
+                    VectorValuedMapFromVector::static_sym_diff_quotient(log_x, o, 0.0001);
+                let auto_diff = VectorValuedMapFromVector::static_fw_autodiff(dual_log_x, o);
 
-                for i in 0..DOF {
-                    assert_relative_eq!(auto_diff.get([i]), num_diff.get([i]), epsilon = 0.001);
-                }
+                assert_relative_eq!(auto_diff, num_diff, epsilon = 0.001);
+
+                let dual_log_x = |g: DualV<PARAMS>| -> DualV<DOF> {
+                    LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::from_params(&g).log()
+                };
+
+                let auto_diff =
+                    VectorValuedMapFromVector::static_fw_autodiff(dual_log_x, *g.params());
+
+                let analytic_diff = Self::dx_log_x(g.params());
+                assert_relative_eq!(analytic_diff, auto_diff, epsilon = 0.001);
+            }
+        }
+
+        println!("---");
+
+        for a in Self::element_examples() {
+            for b in Self::element_examples() {
+                println!("a: {:?}, b: {:?}", a, b);
+                let dual_params_a = DualV::c(*a.clone().params());
+                let dual_a = LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::from_params(
+                    &dual_params_a,
+                );
+
+                let dual_params_b = DualV::c(*b.params());
+                let dual_b = LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::from_params(
+                    &dual_params_b,
+                );
+                let dual_log_x = |t: DualV<DOF>| -> DualV<DOF> {
+                    dual_a
+                        .group_mul(
+                            &LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::exp(&t)
+                                .group_mul(&dual_b),
+                        )
+                        .log()
+                };
+
+                let analytic_diff = Self::dx_log_a_exp_x_b_at_0(&a, &b);
+                let o = V::zeros();
+                let auto_diff = VectorValuedMapFromVector::static_fw_autodiff(dual_log_x, o);
+
+                assert_relative_eq!(auto_diff, analytic_diff, epsilon = 0.001);
             }
         }
     }
 
     pub fn real_test_suite() {
+        Self::test_mul_jacobians();
         Self::adjoint_jacobian_tests();
         Self::test_hat_jacobians();
         Self::test_exp_log_jacobians();
@@ -656,5 +763,98 @@ impl<
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.compact().real())
+    }
+}
+
+impl<
+        const DOF: usize,
+        const PARAMS: usize,
+        const POINT: usize,
+        G: IsF64LieFactorGroupImpl<DOF, PARAMS, POINT>,
+    > LieGroup<f64, DOF, PARAMS, POINT, POINT, G>
+{
+    pub fn mat_v(tangent: &V<DOF>) -> M<POINT, POINT> {
+        G::mat_v(tangent)
+    }
+
+    pub fn mat_v_inverse(tangent: &V<DOF>) -> M<POINT, POINT> {
+        G::mat_v_inverse(tangent)
+    }
+
+    pub fn dx_mat_v(tangent: &V<DOF>) -> [M<POINT, POINT>; DOF] {
+        G::dx_mat_v(tangent)
+    }
+
+    pub fn dx_mat_v_inverse(tangent: &V<DOF>) -> [M<POINT, POINT>; DOF] {
+        G::dx_mat_v_inverse(tangent)
+    }
+
+    fn dparams_matrix_times_point(params: &V<PARAMS>, point: &V<POINT>) -> M<POINT, PARAMS> {
+        G::dparams_matrix_times_point(params, point)
+    }
+
+    fn test_mat_v() {
+        for t in G::tangent_examples() {
+            let mat_v = Self::mat_v(&t);
+            let mat_v_inverse = Self::mat_v_inverse(&t);
+
+            assert_relative_eq!(
+                mat_v.mat_mul(mat_v_inverse),
+                M::<POINT, POINT>::identity(),
+                epsilon = 0.0001
+            );
+        }
+    }
+
+    fn test_mat_v_jacobian() {
+        for t in G::tangent_examples() {
+            println!("t: {}", t);
+            let mat_v_jacobian = Self::dx_mat_v(&t);
+
+            let mat_v_x = |t: V<DOF>| -> M<POINT, POINT> { Self::mat_v(&t) };
+            let num_diff = MatrixValuedMapFromVector::sym_diff_quotient(mat_v_x, t, 0.0001);
+
+            for i in 0..DOF {
+                println!("i: {}", i);
+                assert_relative_eq!(mat_v_jacobian[i], num_diff.get([i]), epsilon = 0.001);
+            }
+
+            let mat_v_inv_jacobian = Self::dx_mat_v_inverse(&t);
+
+            let mat_v_x_inv = |t: V<DOF>| -> M<POINT, POINT> { Self::mat_v_inverse(&t) };
+            let num_diff = MatrixValuedMapFromVector::sym_diff_quotient(mat_v_x_inv, t, 0.0001);
+
+            for i in 0..DOF {
+                println!("i: {}", i);
+                assert_relative_eq!(mat_v_inv_jacobian[i], num_diff.get([i]), epsilon = 0.001);
+            }
+        }
+
+        for p in example_points::<f64, POINT>() {
+            for a in Self::element_examples() {
+                println!("a: {:?}", a);
+                println!("p: {:?}", p);
+                let dual_params_a = DualV::c(*a.clone().params());
+                let _dual_a = LieGroup::<Dual, DOF, PARAMS, POINT, POINT, G::DualG>::from_params(
+                    &dual_params_a,
+                );
+                let dual_p = DualV::c(p);
+
+                let dual_fn = |x: DualV<PARAMS>| -> DualV<POINT> {
+                    LieGroup::<Dual, DOF, PARAMS, POINT, POINT, G::DualG>::from_params(&x).matrix()
+                        * dual_p.clone()
+                };
+
+                let auto_diff = VectorValuedMapFromVector::static_fw_autodiff(dual_fn, *a.params());
+                let analytic_diff = Self::dparams_matrix_times_point(a.params(), &p);
+
+                assert_relative_eq!(analytic_diff, auto_diff, epsilon = 0.001);
+            }
+        }
+    }
+
+    pub fn real_factor_test_suite() {
+        Self::test_mat_v();
+        Self::test_mat_v_jacobian();
     }
 }

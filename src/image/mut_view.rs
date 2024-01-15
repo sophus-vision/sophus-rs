@@ -28,14 +28,14 @@ pub struct MutImageView<
 macro_rules! mut_image_view {
     ($scalar_rank:literal, $srank:literal) => {
         impl<
-            'a,
-            Scalar: IsTensorScalar + 'static,
-            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
-            const BATCHES: usize,
-            const ROWS: usize,
-            const COLS: usize,
-        > IsImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
-        for MutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+                'a,
+                Scalar: IsTensorScalar + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
+                const BATCHES: usize,
+                const ROWS: usize,
+                const COLS: usize,
+            > IsImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+            for MutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         where
             ndarray::Dim<[ndarray::Ix; $scalar_rank]>: ndarray::Dimension,
         {
@@ -59,14 +59,14 @@ macro_rules! mut_image_view {
         }
 
         impl<
-            'a,
-            Scalar: IsTensorScalar + 'static,
-            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
-            const BATCHES: usize,
-            const ROWS: usize,
-            const COLS: usize,
-        > IsMutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
-        for MutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+                'a,
+                Scalar: IsTensorScalar + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
+                const BATCHES: usize,
+                const ROWS: usize,
+                const COLS: usize,
+            > IsMutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+            for MutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         where
             MutTensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS, BATCHES>:
                 IsMutTensorLike<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS, BATCHES>,

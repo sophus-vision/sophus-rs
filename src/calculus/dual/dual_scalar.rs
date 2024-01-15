@@ -287,6 +287,23 @@ impl IsScalar for Dual {
             },
         }
     }
+
+    fn fract(self) -> Self {
+        Dual {
+            val: self.val.fract(),
+            dij_val: match self.dij_val.clone() {
+                Some(dij_val) => {
+                    let dyn_mat = MutTensorDD::from_map(&dij_val.view(), |dij: &f64| *dij);
+                    Some(dyn_mat)
+                }
+                None => None,
+            },
+        }
+    }
+
+    fn floor(&self) -> i64 {
+        self.val.floor() as i64
+    }
 }
 
 impl Add<Dual> for Dual {

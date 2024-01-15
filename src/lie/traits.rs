@@ -75,7 +75,15 @@ pub trait IsF64LieGroupImpl<
     const AMBIENT: usize,
 >: IsLieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT>
 {
+    fn da_a_mul_b(a: &V<PARAMS>, b: &V<PARAMS>) -> M<PARAMS, PARAMS>;
+
+    fn db_a_mul_b(a: &V<PARAMS>, b: &V<PARAMS>) -> M<PARAMS, PARAMS>;
+
+    fn dx_exp(tangent: &V<DOF>) -> M<PARAMS, DOF>;
+
     fn dx_exp_x_at_0() -> M<PARAMS, DOF>;
+
+    fn dx_log_x(params: &V<PARAMS>) -> M<DOF, PARAMS>;
 
     fn dx_exp_x_times_point_at_0(point: V<POINT>) -> M<POINT, DOF>;
 }
@@ -85,19 +93,15 @@ pub trait IsLieFactorGroupImpl<
     const DOF: usize,
     const PARAMS: usize,
     const POINT: usize,
-    const AMBIENT: usize,
->: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>
+>: IsLieGroupImpl<S, DOF, PARAMS, POINT, POINT>
 {
-    type GenFactorG<S2: IsScalar>: IsLieFactorGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT>;
-    type RealFactorG: IsLieFactorGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT>;
-    type DualFactorG: IsLieFactorGroupImpl<Dual, DOF, PARAMS, POINT, AMBIENT>;
+    type GenFactorG<S2: IsScalar>: IsLieFactorGroupImpl<S2, DOF, PARAMS, POINT>;
+    type RealFactorG: IsLieFactorGroupImpl<f64, DOF, PARAMS, POINT>;
+    type DualFactorG: IsLieFactorGroupImpl<Dual, DOF, PARAMS, POINT>;
 
-    fn mat_v(params: &S::Vector<PARAMS>, tangent: &S::Vector<DOF>) -> S::Matrix<POINT, POINT>;
+    fn mat_v(tangent: &S::Vector<DOF>) -> S::Matrix<POINT, POINT>;
 
-    fn mat_v_inverse(
-        params: &S::Vector<PARAMS>,
-        tangent: &S::Vector<DOF>,
-    ) -> S::Matrix<POINT, POINT>;
+    fn mat_v_inverse(tangent: &S::Vector<DOF>) -> S::Matrix<POINT, POINT>;
 
     fn adj_of_translation(
         params: &S::Vector<PARAMS>,
@@ -105,6 +109,18 @@ pub trait IsLieFactorGroupImpl<
     ) -> S::Matrix<POINT, DOF>;
 
     fn ad_of_translation(point: &S::Vector<POINT>) -> S::Matrix<POINT, DOF>;
+}
+
+pub trait IsF64LieFactorGroupImpl<const DOF: usize, const PARAMS: usize, const POINT: usize>:
+    IsLieGroupImpl<f64, DOF, PARAMS, POINT, POINT>
+    + IsLieFactorGroupImpl<f64, DOF, PARAMS, POINT>
+    + IsF64LieGroupImpl<DOF, PARAMS, POINT, POINT>
+{
+    fn dx_mat_v(tangent: &V<DOF>) -> [M<POINT, POINT>; DOF];
+
+    fn dx_mat_v_inverse(tangent: &V<DOF>) -> [M<POINT, POINT>; DOF];
+
+    fn dparams_matrix_times_point(params: &V<PARAMS>, point: &V<POINT>) -> M<POINT, PARAMS>;
 }
 
 pub trait IsLieGroup<
@@ -144,10 +160,9 @@ pub trait IsTranslationProductGroup<
 {
     type Impl;
 
-    fn from_translation_and_factor(
-        translation: &S::Vector<POINT>,
-        factor: &FactorGroup,
-    ) -> Self;
+    fn from_translation_and_factor(translation: &S::Vector<POINT>, factor: &FactorGroup) -> Self;
+
+    fn from_t(params: &S::Vector<POINT>) -> Self;
 
     fn set_translation(&mut self, translation: &S::Vector<POINT>);
     fn translation(&self) -> S::Vector<POINT>;

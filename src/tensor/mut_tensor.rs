@@ -200,7 +200,7 @@ pub type MutTensorDDR<Scalar, const R: usize> = MutTensorXR<3, 2, 1, Scalar, R>;
 
 // rank 3
 // D0 x [R, B]
-pub type MutTensorRDB<Scalar, const R: usize, const B: usize> = MutTensorXRB<3, 1, 2, Scalar, R, B>;
+pub type MutTensorDRB<Scalar, const R: usize, const B: usize> = MutTensorXRB<3, 1, 2, Scalar, R, B>;
 
 // rank 3
 // D0 x [R x C]
@@ -379,7 +379,7 @@ macro_rules! mut_tensor_is_view {
             (
                 shape: [usize; $drank],
                 val: STensor,
-            ) -> Self 
+            ) -> Self
             {
                 Self{
                     mut_array: ndarray::Array::<STensor, Dim<[Ix; $drank]>>::from_elem(shape, val),
@@ -393,7 +393,7 @@ macro_rules! mut_tensor_is_view {
                 const OTHER_HRANK: usize, const OTHER_SRANK: usize,
                 OtherScalar: IsTensorScalar+ 'static,
                 OtherSTensor: IsStaticTensor<
-                    OtherScalar, OTHER_SRANK, OTHER_BATCHES, 
+                    OtherScalar, OTHER_SRANK, OTHER_BATCHES,
                     OTHER_ROWS, OTHER_COLS
                 > + 'static,
                 const OTHER_BATCHES: usize, const OTHER_ROWS: usize, const OTHER_COLS: usize,

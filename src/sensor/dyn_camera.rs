@@ -5,6 +5,7 @@ type V<const N: usize> = nalgebra::SVector<f64, N>;
 type M<const N: usize, const O: usize> = nalgebra::SMatrix<f64, N, O>;
 use super::any_camera::AnyProjCameraType;
 use super::perspective_camera::PerspectiveCameraType;
+use super::traits::DistortTable;
 use super::traits::IsCameraEnum;
 
 #[derive(Debug, Clone)]
@@ -55,12 +56,17 @@ impl<CameraType: IsCameraEnum> DynCameraFacade<CameraType> {
     pub fn undistort_table(&self) -> MutImage2F32 {
         self.camera_type.undistort_table()
     }
+
+    pub fn distort_table(&self) -> DistortTable {
+        self.camera_type.distort_table()
+    }
 }
 
 mod tests {
 
     #[test]
     fn camera_prop_tests() {
+        use approx::assert_abs_diff_eq;
         use approx::assert_relative_eq;
 
         use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
@@ -68,6 +74,7 @@ mod tests {
         use crate::image::mut_image::MutImage2F32;
         use crate::image::view::ImageSize;
         use crate::image::view::IsImageView;
+        use crate::sensor::traits::DistortTable;
 
         use super::DynCamera;
         use super::V;
@@ -100,7 +107,7 @@ mod tests {
 
             let table: MutImage2F32 = camera.undistort_table();
 
-            for pixel in pixels_in_image {
+            for pixel in pixels_in_image.clone() {
                 for d in [1.0, 0.1, 0.5, 1.1, 3.0, 15.0] {
                     let point_in_camera = camera.cam_unproj_with_z(&pixel, d);
                     assert_relative_eq!(point_in_camera[2], d, epsilon = 1e-6);
@@ -124,6 +131,19 @@ mod tests {
                 );
 
                 assert_relative_eq!(dx, numeric_dx, epsilon = 1e-4);
+            }
+
+            let table: DistortTable = camera.distort_table();
+
+            for pixel in pixels_in_image {
+                let proj = camera.undistort(&pixel);
+                println!("proj: {:?}", proj);
+                println!("region: {:?}", table.region);
+                let analytic_pixel = camera.distort(&proj);
+                let lut_pixel = table.lookup(&proj);
+
+                assert_abs_diff_eq!(analytic_pixel, pixel, epsilon = 1e-3);
+                assert_abs_diff_eq!(analytic_pixel, lut_pixel, epsilon = 1e-3);
             }
         }
     }

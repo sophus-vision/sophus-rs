@@ -6,9 +6,9 @@ use std::marker::PhantomData;
 use std::ops::AddAssign;
 use std::ops::Deref;
 
+use crate::calculus::types::params::HasParams;
 use crate::calculus::types::M;
 use crate::calculus::types::V;
-use crate::calculus::types::params::HasParams;
 use crate::lie::rotation2::Isometry2;
 use crate::lie::rotation3::Isometry3;
 
@@ -270,6 +270,12 @@ pub struct VarPoolBuilder {
     families: std::collections::BTreeMap<String, Box<dyn IsVarFamily>>,
 }
 
+impl Default for VarPoolBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VarPoolBuilder {
     pub fn new() -> Self {
         Self {
@@ -384,7 +390,8 @@ impl VarPool {
         ResidualFn: IsResidualFn<NUM, NUM_ARGS, VarTuple, Constants>,
     {
         use crate::opt::cost_args::CompareIdx;
-        let mut var_kind_array = VarTuple::var_kind_array(self, cost.signature.family_names.clone());
+        let mut var_kind_array =
+            VarTuple::var_kind_array(self, cost.signature.family_names.clone());
         let c_array = c_from_var_kind(&var_kind_array);
 
         if !calc_derivatives {
@@ -659,13 +666,13 @@ where
         Self {
             signature,
             residual_fn,
-            phantom: PhantomData::default(),
+            phantom: PhantomData,
         }
     }
 
     fn sort(&mut self, variables: &VarPool) {
         let var_kind_array =
-            &VarTuple::var_kind_array(&variables, self.signature.family_names.clone());
+            &VarTuple::var_kind_array(variables, self.signature.family_names.clone());
         use crate::opt::cost_args::CompareIdx;
 
         let c_array = c_from_var_kind(var_kind_array);
@@ -718,7 +725,7 @@ impl SparseNormalEquation {
 
             for evaluated_term in evaluated_cost.terms.iter() {
                 assert_eq!(evaluated_term.idx.len(), 1);
-                let idx = evaluated_term.idx[0].clone();
+                let idx = evaluated_term.idx[0];
                 assert_eq!(idx.len(), num_args);
 
                 for arg_id_alpha in 0..num_args {
@@ -840,12 +847,7 @@ impl SparseNormalEquation {
         let ldl = sprs_ldl::Ldl::new().check_symmetry(sprs::SymmetryCheck::DontCheckSymmetry);
         let ldl_num = ldl.numeric(self.sparse_hessian.view()).unwrap();
 
-        ldl_num.solve(
-            self.neg_gradient
-                .iter()
-                .map(|x: &f64| *x)
-                .collect::<Vec<f64>>(),
-        )
+        ldl_num.solve(self.neg_gradient.iter().copied().collect::<Vec<f64>>())
     }
 }
 
@@ -896,7 +898,7 @@ where
 {
     cost.sort(&variables);
     let mut init_costs: Vec<EvaluatedCost<NUM, NUM_ARGS>> = Vec::new();
-    
+
     init_costs.push(variables.apply(&cost, false));
     let mut nu = params.initial_lm_nu;
 
