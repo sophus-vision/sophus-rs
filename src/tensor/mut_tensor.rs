@@ -485,7 +485,7 @@ mod tests {
 
     use super::*;
 
-    use crate::tensor::{self, element::P3F32};
+    use crate::tensor::element::P3F32;
 
     #[test]
     fn empty_image() {
