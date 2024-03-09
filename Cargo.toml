@@ -6,34 +6,45 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-approx = {version= "0.5.1"}
+approx = { version = "0.5.1" }
 as-any = "0.3.1"
 assertables = "7.0.1"
 async-trait = "0.1.77"
-bytemuck = {version = "1.14.0",features = [ "derive" ] }
+bytemuck = { version = "1.14.0", features = ["derive"] }
 concat-arrays = "0.1.2"
 dyn-clone = "1.0.16"
-egui_extras = "0.25"
-eframe = {version= "0.25", features = ["wgpu"]}
-env_logger = "0.10"
-faer-core = "0.16"
-hollywood = "0.3.0"
-image = {version = "0.24", features = ["jpeg", "png", "tga", "gif", "ico", "bmp", "hdr", "tiff", "avif", "webp"] }
+egui_extras = "0.26"
+eframe = { version = "0.26", features = ["wgpu"] }
+env_logger = "0.11"
+faer = "0.18"
+hollywood = "0.5.0"
+image = { version = "0.24", features = [
+    "jpeg",
+    "png",
+    "tga",
+    "gif",
+    "ico",
+    "bmp",
+    "hdr",
+    "tiff",
+    "avif",
+    "webp",
+] }
 log = "0.4.14"
-nalgebra = {version="0.32", features = ["rand"]}
-ndarray = {version="0.15.4", features = ["approx-0_5"]}
+nalgebra = { version = "0.32", features = ["rand"] }
+ndarray = { version = "0.15.4", features = ["approx-0_5"] }
 num-traits = "0.2.15"
+png = "0.17.11"
+rand = "0.8.5"
 simba = "0.8.1"
-sprs = "0.11"
-sprs-ldl = "0.10"
 tokio = { version = "1", features = ["full"] }
-typenum = {version= "1.17.0", features = ["const-generics"] }
-wgpu = "0.18"
+typenum = { version = "1.17.0", features = ["const-generics"] }
+wgpu = "0.19"
 winit = { version = "0.29", features = ["android-native-activity"] }
 
 
 [dev-dependencies.proptest]
-version =  "1.1.0"
+version = "1.1.0"
 default-features = false
 features = ["std"]
 

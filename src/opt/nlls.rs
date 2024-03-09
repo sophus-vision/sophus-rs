@@ -11,6 +11,7 @@ use crate::calculus::types::M;
 use crate::calculus::types::V;
 use crate::lie::rotation2::Isometry2;
 use crate::lie::rotation3::Isometry3;
+use crate::opt::solvers::solve;
 
 use super::block::BlockVector;
 use super::block::NewBlockMatrix;
@@ -36,7 +37,7 @@ pub trait IsVariable: Clone + Debug {
     const DOF: usize;
     type Arg;
 
-    fn update(&mut self, delta: &[f64]);
+    fn update(&mut self, delta: nalgebra::DVectorView<f64>);
 }
 
 pub trait IsVarTuple<const NUM_ARGS: usize> {
@@ -130,7 +131,7 @@ impl<M0: IsVariable + 'static, M1: IsVariable + 'static, M2: IsVariable + 'stati
 impl<const N: usize> IsVariable for V<N> {
     const DOF: usize = N;
 
-    fn update(&mut self, delta: &[f64]) {
+    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
         for d in 0..Self::DOF {
             self[d] += delta[d];
         }
@@ -142,7 +143,7 @@ impl<const N: usize> IsVariable for V<N> {
 impl IsVariable for Isometry2<f64> {
     const DOF: usize = 3;
 
-    fn update(&mut self, delta: &[f64]) {
+    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
         let mut delta_vec = V::<3>::zeros();
         for d in 0..Self::DOF {
             delta_vec[d] = delta[d];
@@ -159,7 +160,7 @@ impl IsVariable for Isometry2<f64> {
 impl IsVariable for Isometry3<f64> {
     const DOF: usize = 6;
 
-    fn update(&mut self, delta: &[f64]) {
+    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
         let mut delta_vec = V::<6>::zeros();
         for d in 0..Self::DOF {
             delta_vec[d] = delta[d];
@@ -197,18 +198,26 @@ impl<Var: IsVariable> VarFamily<Var> {
 }
 
 pub trait IsVarFamily: as_any::AsAny + Debug + DynClone {
-    fn update(&mut self, delta: &[f64]);
-    fn num_scalars(&self) -> usize;
+    fn update(&mut self, delta: nalgebra::DVectorView<f64>);
+
+    fn update_i(&mut self, i: usize, delta: nalgebra::DVector<f64>);
+
+    fn num_free_scalars(&self) -> usize;
     fn calc_start_indices(&mut self, offset: &mut usize);
+    fn num_marg_scalars(&self) -> usize;
     fn get_start_indices(&self) -> &Vec<i64>;
 
-    fn dof(&self) -> usize;
+    fn len(&self) -> usize;
+
+    //fn dof(&self) -> usize;
+    fn free_or_marg_dof(&self) -> usize;
+
     fn get_var_kind(&self) -> VarKind;
 }
 
 impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
-    fn update(&mut self, delta: &[f64]) {
-        let dof = self.dof();
+    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
+        let dof = self.free_or_marg_dof();
 
         assert_eq!(self.start_indices.len(), self.members.len());
 
@@ -218,12 +227,28 @@ impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
                 continue;
             }
             let start_idx = start_idx as usize;
-            self.members[i].update(&delta[start_idx..start_idx + dof]);
+            self.members[i].update(delta.rows(start_idx, dof));
         }
     }
 
-    fn num_scalars(&self) -> usize {
-        (self.members.len() - self.constant_members.len()) * Var::DOF
+    fn len(&self) -> usize {
+        self.members.len()
+    }
+
+    fn num_free_scalars(&self) -> usize {
+        match self.get_var_kind() {
+            VarKind::Free => (self.members.len() - self.constant_members.len()) * Var::DOF,
+            VarKind::Conditioned => 0,
+            VarKind::Marginalized => 0,
+        }
+    }
+
+    fn num_marg_scalars(&self) -> usize {
+        match self.get_var_kind() {
+            VarKind::Free => 0,
+            VarKind::Conditioned => 0,
+            VarKind::Marginalized => (self.members.len() - self.constant_members.len()) * Var::DOF,
+        }
     }
 
     // returns -1 if variable is not free
@@ -234,24 +259,50 @@ impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
             "Ths function must ony called once"
         );
 
-        let mut indices = vec![];
-        let mut idx: usize = *inout_offset;
-        for i in 0..self.members.len() {
-            if self.constant_members.contains_key(&i) {
-                indices.push(-1);
-            } else {
-                indices.push(idx as i64);
-                idx += Var::DOF;
+        match self.get_var_kind() {
+            VarKind::Free => {
+                let mut indices = vec![];
+                let mut idx: usize = *inout_offset;
+                for i in 0..self.members.len() {
+                    if self.constant_members.contains_key(&i) {
+                        indices.push(-1);
+                    } else {
+                        indices.push(idx as i64);
+                        idx += Var::DOF;
+                    }
+                }
+                *inout_offset = idx;
+
+                assert_eq!(indices.len(), self.members.len());
+                self.start_indices = indices;
+            }
+            VarKind::Conditioned => {
+                let mut indices = vec![];
+
+                for _i in 0..self.members.len() {
+                    indices.push(-1);
+                }
+                assert_eq!(indices.len(), self.members.len());
+                self.start_indices = indices;
+            }
+            VarKind::Marginalized => {
+                let mut indices = vec![];
+
+                for _i in 0..self.members.len() {
+                    indices.push(-2);
+                }
+                assert_eq!(indices.len(), self.members.len());
+                self.start_indices = indices;
             }
         }
-        *inout_offset = idx;
-
-        assert_eq!(indices.len(), self.members.len());
-        self.start_indices = indices;
     }
 
-    fn dof(&self) -> usize {
-        Var::DOF
+    fn free_or_marg_dof(&self) -> usize {
+        match self.get_var_kind() {
+            VarKind::Free => Var::DOF,
+            VarKind::Conditioned => 0,
+            VarKind::Marginalized => Var::DOF,
+        }
     }
 
     fn get_var_kind(&self) -> VarKind {
@@ -260,6 +311,10 @@ impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
 
     fn get_start_indices(&self) -> &Vec<i64> {
         &self.start_indices
+    }
+
+    fn update_i(&mut self, i: usize, delta: nalgebra::DVector<f64>) {
+        self.members[i].update(delta.as_view());
     }
 }
 
@@ -299,7 +354,7 @@ impl VarPoolBuilder {
 
 #[derive(Debug, Clone)]
 pub struct VarPool {
-    families: std::collections::BTreeMap<String, Box<dyn IsVarFamily>>,
+    pub(crate) families: std::collections::BTreeMap<String, Box<dyn IsVarFamily>>,
 }
 
 impl VarPool {
@@ -317,20 +372,35 @@ impl VarPool {
 
 #[derive(Debug, Clone)]
 pub struct EvaluatedCost<const NUM: usize, const NUM_ARGS: usize> {
-    pub family_names: Vec<String>,
+    pub family_names: [String; NUM_ARGS],
     pub terms: Vec<EvaluatedTerm<NUM, NUM_ARGS>>,
+    pub dof_tuple: [i64; NUM_ARGS],
 }
 
 impl<const NUM: usize, const NUM_ARGS: usize> EvaluatedCost<NUM, NUM_ARGS> {
-    fn new(family_names: Vec<String>) -> Self {
+    fn new(family_names: [String; NUM_ARGS], dof_tuple: [i64; NUM_ARGS]) -> Self {
         EvaluatedCost {
             family_names,
             terms: Vec::new(),
+            dof_tuple,
         }
+    }
+
+    pub fn num_of_kind(&self, kind: VarKind, pool: &VarPool) -> usize {
+        let mut c = 0;
+
+        for name in self.family_names.iter() {
+            c += if pool.families.get(name).unwrap().get_var_kind() == kind {
+                1
+            } else {
+                0
+            };
+        }
+        c
     }
 }
 
-fn c_from_var_kind<const N: usize>(var_kind_array: &[VarKind; N]) -> [char; N] {
+pub fn c_from_var_kind<const N: usize>(var_kind_array: &[VarKind; N]) -> [char; N] {
     let mut c_array: [char; N] = ['0'; N];
 
     for i in 0..N {
@@ -349,16 +419,26 @@ impl VarPool {
         let mut num = 0;
 
         for f in self.families.iter() {
-            num += f.1.num_scalars();
+            num += f.1.num_free_scalars();
         }
 
         num
     }
 
-    fn update(&self, delta: Vec<f64>) -> VarPool {
+    pub fn num_of_kind(&self, var_kind: VarKind) -> usize {
+        let mut num = 0;
+
+        for f in self.families.iter() {
+            num += if f.1.get_var_kind() == var_kind { 1 } else { 0 }
+        }
+
+        num
+    }
+
+    pub(crate) fn update(&self, delta: nalgebra::DVector<f64>) -> VarPool {
         let mut updated = self.clone();
         for family in updated.families.iter_mut() {
-            family.1.update(&delta[..]);
+            family.1.update(delta.as_view());
         }
         updated
     }
@@ -399,7 +479,10 @@ impl VarPool {
         }
         let less = CompareIdx { c: c_array };
 
-        let mut evaluated_terms = EvaluatedCost::new(cost.signature.family_names.clone().into());
+        let mut evaluated_terms = EvaluatedCost::new(
+            cost.signature.family_names.clone().into(),
+            TermSignature::DOF_TUPLE,
+        );
 
         let mut i = 0;
 
@@ -430,7 +513,7 @@ impl VarPool {
             while i < cost.signature.terms.len() {
                 let inner_term_signature = &cost.signature.terms[i];
 
-                if !less.are_all_free_cars_equal(outer_idx, inner_term_signature.idx_ref()) {
+                if !less.are_all_non_cond_vars_equal(outer_idx, inner_term_signature.idx_ref()) {
                     // end condition for reduction over conditioned variables
                     break;
                 }
@@ -695,161 +778,6 @@ where
         }
     }
 }
-pub struct SparseNormalEquation {
-    sparse_hessian: sprs::CsMat<f64>,
-    neg_gradient: nalgebra::DVector<f64>,
-}
-
-impl SparseNormalEquation {
-    fn from_families_and_cost<const NUM: usize, const NUM_ARGS: usize>(
-        variables: &VarPool,
-        costs: Vec<EvaluatedCost<NUM, NUM_ARGS>>,
-        nu: f64,
-    ) -> SparseNormalEquation {
-        let num_var_params = variables.num_free_params();
-        let mut hessian_triplet = sprs::TriMat::new((num_var_params, num_var_params));
-        let mut neg_grad = nalgebra::DVector::<f64>::zeros(num_var_params);
-
-        let mut start_indices_per_arg = Vec::new();
-
-        assert_eq!(costs.len(), 1);
-        for evaluated_cost in costs.iter() {
-            let num_args = evaluated_cost.family_names.len();
-
-            let mut dof_per_arg = Vec::new();
-            for name in evaluated_cost.family_names.iter() {
-                let family = variables.families.get(name).unwrap();
-                start_indices_per_arg.push(family.get_start_indices());
-                dof_per_arg.push(family.dof());
-            }
-
-            for evaluated_term in evaluated_cost.terms.iter() {
-                assert_eq!(evaluated_term.idx.len(), 1);
-                let idx = evaluated_term.idx[0];
-                assert_eq!(idx.len(), num_args);
-
-                for arg_id_alpha in 0..num_args {
-                    let dof_alpha = dof_per_arg[arg_id_alpha];
-
-                    let var_idx_alpha = idx[arg_id_alpha];
-                    let start_idx_alpha = start_indices_per_arg[arg_id_alpha][var_idx_alpha];
-
-                    if start_idx_alpha == -1 {
-                        continue;
-                    }
-
-                    let grad_block = evaluated_term.gradient.block(arg_id_alpha);
-                    let start_idx_alpha = start_idx_alpha as usize;
-                    assert_eq!(dof_alpha, grad_block.nrows());
-
-                    neg_grad
-                        .rows_mut(start_idx_alpha, dof_alpha)
-                        .add_assign(-grad_block);
-
-                    let hessian_block = evaluated_term.hessian.block(arg_id_alpha, arg_id_alpha);
-                    assert_eq!(dof_alpha, hessian_block.nrows());
-                    assert_eq!(dof_alpha, hessian_block.ncols());
-
-                    // block diagonal
-                    for r in 0..dof_alpha {
-                        for c in 0..dof_alpha {
-                            let mut d = 0.0;
-                            if r == c {
-                                d = nu;
-                            }
-                            hessian_triplet.add_triplet(
-                                start_idx_alpha + r,
-                                start_idx_alpha + c,
-                                hessian_block[(r, c)] + d,
-                            );
-                        }
-                    }
-
-                    // off diagonal hessian
-                    for arg_id_beta in 0..num_args {
-                        // skip diagonal blocks
-                        if arg_id_alpha == arg_id_beta {
-                            continue;
-                        }
-                        let dof_beta = dof_per_arg[arg_id_beta];
-
-                        let var_idx_beta = idx[arg_id_beta];
-                        let start_idx_beta = start_indices_per_arg[arg_id_beta][var_idx_beta];
-                        if start_idx_beta == -1 {
-                            continue;
-                        }
-                        let start_idx_beta = start_idx_beta as usize;
-
-                        let hessian_block_alpha_beta =
-                            evaluated_term.hessian.block(arg_id_alpha, arg_id_beta);
-                        let hessian_block_beta_alpha =
-                            evaluated_term.hessian.block(arg_id_beta, arg_id_alpha);
-
-                        assert_eq!(dof_alpha, hessian_block_alpha_beta.nrows());
-                        assert_eq!(dof_beta, hessian_block_alpha_beta.ncols());
-                        assert_eq!(dof_beta, hessian_block_beta_alpha.nrows());
-                        assert_eq!(dof_alpha, hessian_block_beta_alpha.ncols());
-
-                        // alpha-beta off-diagonal
-                        for r in 0..dof_alpha {
-                            for c in 0..dof_beta {
-                                hessian_triplet.add_triplet(
-                                    start_idx_alpha + r,
-                                    start_idx_beta + c,
-                                    hessian_block_alpha_beta[(r, c)],
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        Self {
-            sparse_hessian: hessian_triplet.to_csr(),
-            neg_gradient: neg_grad,
-        }
-    }
-
-    pub fn is_symmetric<N, I, Iptr, IpStorage, IStorage, DStorage>(
-        mat: &sprs::CsMatBase<N, I, IpStorage, IStorage, DStorage, Iptr>,
-    ) -> bool
-    where
-        N: PartialEq + std::fmt::Display,
-        I: sprs::SpIndex,
-        Iptr: sprs::SpIndex,
-        IpStorage: Deref<Target = [Iptr]>,
-        IStorage: Deref<Target = [I]>,
-        DStorage: Deref<Target = [N]>,
-    {
-        if mat.rows() != mat.cols() {
-            return false;
-        }
-        for (outer_ind, vec) in mat.outer_iterator().enumerate() {
-            for (inner_ind, value) in vec.iter() {
-                match mat.get_outer_inner(inner_ind, outer_ind) {
-                    None => return false,
-                    Some(transposed_val) => {
-                        if transposed_val != value {
-                            println!("{} != {}", transposed_val, value);
-                            return false;
-                        }
-                    }
-                }
-            }
-        }
-        true
-    }
-
-    fn solve(&mut self) -> Vec<f64> {
-        Self::is_symmetric(&self.sparse_hessian.view());
-
-        let ldl = sprs_ldl::Ldl::new().check_symmetry(sprs::SymmetryCheck::DontCheckSymmetry);
-        let ldl_num = ldl.numeric(self.sparse_hessian.view()).unwrap();
-
-        ldl_num.solve(self.neg_gradient.iter().copied().collect::<Vec<f64>>())
-    }
-}
 
 fn calc_square_error<const NUM: usize, const NUM_ARGS: usize>(
     cost: Vec<EvaluatedCost<NUM, NUM_ARGS>>,
@@ -915,15 +843,7 @@ where
         println!("evaluate costs: {:.2?}", now.elapsed());
         let now = Instant::now();
 
-        let mut normal_eq =
-            SparseNormalEquation::from_families_and_cost(&variables, evaluated_costs, nu);
-        println!("build normal eq {:.2?}", now.elapsed());
-        let now = Instant::now();
-
-        let delta = normal_eq.solve();
-        println!("solve {:.2?}", now.elapsed());
-        let now = Instant::now();
-        let updated_families = variables.update(delta);
+        let updated_families = solve::<NUM, NUM_ARGS, VarTuple>(&variables, evaluated_costs, nu);
 
         let mut new_costs: Vec<EvaluatedCost<NUM, NUM_ARGS>> = Vec::new();
         new_costs.push(updated_families.apply(&cost, false));

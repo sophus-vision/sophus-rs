@@ -4,12 +4,12 @@ use crate::tensor::mut_view::IsMutTensorLike;
 use crate::tensor::mut_view::MutTensorView;
 use crate::tensor::view::IsTensorLike;
 
+use super::view::GenImageView;
 use super::view::ImageSize;
-use super::view::ImageView;
 use super::view::IsImageView;
 
 #[derive(Debug, PartialEq)]
-pub struct MutImageView<
+pub struct GenMutImageView<
     'a,
     const SCALAR_RANK: usize,
     const SRANK: usize,
@@ -31,11 +31,11 @@ macro_rules! mut_image_view {
                 'a,
                 Scalar: IsTensorScalar + 'static,
                 STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
-                const BATCHES: usize,
                 const ROWS: usize,
                 const COLS: usize,
+                const BATCHES: usize,
             > IsImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
-            for MutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+            for GenMutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         where
             ndarray::Dim<[ndarray::Ix; $scalar_rank]>: ndarray::Dimension,
         {
@@ -48,9 +48,9 @@ macro_rules! mut_image_view {
 
             fn image_view(
                 &'a self,
-            ) -> ImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES> {
+            ) -> GenImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES> {
                 let view = self.mut_tensor_view.view();
-                ImageView { tensor_view: view }
+                GenImageView { tensor_view: view }
             }
 
             fn image_size(&'a self) -> ImageSize {
@@ -62,11 +62,11 @@ macro_rules! mut_image_view {
                 'a,
                 Scalar: IsTensorScalar + 'static,
                 STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
-                const BATCHES: usize,
                 const ROWS: usize,
                 const COLS: usize,
+                const BATCHES: usize,
             > IsMutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
-            for MutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+            for GenMutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         where
             MutTensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS, BATCHES>:
                 IsMutTensorLike<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS, BATCHES>,
@@ -74,8 +74,9 @@ macro_rules! mut_image_view {
         {
             fn mut_image_view<'b: 'a>(
                 &'b mut self,
-            ) -> MutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES> {
-                MutImageView {
+            ) -> GenMutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+            {
+                GenMutImageView {
                     mut_tensor_view: MutTensorView::<
                         'a,
                         $scalar_rank,
@@ -120,7 +121,7 @@ pub trait IsMutImageView<
 {
     fn mut_image_view<'b: 'a>(
         &'b mut self,
-    ) -> MutImageView<'a, SCALAR_RANK, SRANK, Scalar, STensor, ROWS, COLS, BATCHES>;
+    ) -> GenMutImageView<'a, SCALAR_RANK, SRANK, Scalar, STensor, ROWS, COLS, BATCHES>;
 
     fn mut_pixel(&'a mut self, u: usize, v: usize) -> &mut STensor;
 }

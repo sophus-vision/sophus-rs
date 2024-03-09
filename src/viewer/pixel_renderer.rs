@@ -1,4 +1,4 @@
-pub mod pixel_line;
+pub mod line;
 pub mod pixel_point;
 
 use bytemuck::Pod;
@@ -7,11 +7,11 @@ use std::num::NonZeroU64;
 use wgpu::util::DeviceExt;
 use wgpu::DepthStencilState;
 
-use self::pixel_line::PixelLineRenderer;
+use self::line::PixelLineRenderer;
 use self::pixel_point::PixelPointRenderer;
+use super::actor::ViewerBuilder;
 use super::scene_renderer::interaction::InteractionState;
 use super::DepthRenderer;
-use super::ViewerBuilder;
 use super::ViewerRenderState;
 
 pub struct PixelRenderer {
@@ -84,8 +84,8 @@ impl PixelRenderer {
         });
 
         let camera_uniform = OrthoCam {
-            width: builder.camera.intrinsics.image_size().width as f32,
-            height: builder.camera.intrinsics.image_size().height as f32,
+            width: builder.config.camera.intrinsics.image_size().width as f32,
+            height: builder.config.camera.intrinsics.image_size().height as f32,
             dummy0: 0.0,
             dummy1: 0.0,
         };

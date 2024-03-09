@@ -1,19 +1,20 @@
 pub mod buffers;
 pub mod depth_renderer;
 pub mod interaction;
-pub mod scene_line;
-pub mod scene_point;
-pub mod scene_triangle;
+pub mod line;
+pub mod mesh;
+pub mod point;
+pub mod textured_mesh;
 
 use eframe::egui;
 use wgpu::DepthStencilState;
 
 use self::buffers::SceneRenderBuffers;
 use self::interaction::Interaction;
-use self::scene_point::ScenePointRenderer;
-use self::scene_triangle::MeshRenderer;
+use self::mesh::MeshRenderer;
+use self::point::ScenePointRenderer;
+use super::actor::ViewerBuilder;
 use super::DepthRenderer;
-use super::ViewerBuilder;
 use super::ViewerRenderState;
 use crate::calculus::region::RegionTraits;
 use crate::image::arc_image::ArcImageF32;
@@ -24,8 +25,9 @@ use crate::tensor::view::IsTensorLike;
 pub struct SceneRenderer {
     pub buffers: SceneRenderBuffers,
     pub mesh_renderer: MeshRenderer,
+    pub textured_mesh_renderer: textured_mesh::TexturedMeshRenderer,
     pub point_renderer: ScenePointRenderer,
-    pub line_renderer: scene_line::SceneLineRenderer,
+    pub line_renderer: line::SceneLineRenderer,
     pub depth_renderer: DepthRenderer,
     pub interaction: Interaction,
 }
@@ -40,7 +42,7 @@ impl SceneRenderer {
 
         let depth_renderer = DepthRenderer::new(
             wgpu_render_state,
-            &builder.camera.intrinsics,
+            &builder.config.camera.intrinsics,
             depth_stencil.clone(),
         );
 
@@ -110,20 +112,25 @@ impl SceneRenderer {
                 &pipeline_layout,
                 depth_stencil.clone(),
             ),
+            textured_mesh_renderer: textured_mesh::TexturedMeshRenderer::new(
+                wgpu_render_state,
+                &pipeline_layout,
+                depth_stencil.clone(),
+            ),
             point_renderer: ScenePointRenderer::new(
                 wgpu_render_state,
                 &pipeline_layout,
                 depth_stencil.clone(),
             ),
-            line_renderer: scene_line::SceneLineRenderer::new(
+            line_renderer: line::SceneLineRenderer::new(
                 wgpu_render_state,
                 &pipeline_layout,
                 depth_stencil,
             ),
             interaction: Interaction {
                 maybe_state: None,
-                scene_from_camera: builder.camera.scene_from_camera,
-                clipping_planes: builder.camera.clipping_planes,
+                scene_from_camera: builder.config.camera.scene_from_camera,
+                clipping_planes: builder.config.camera.clipping_planes,
             },
         }
     }
@@ -165,6 +172,11 @@ impl SceneRenderer {
             timestamp_writes: None,
         });
         self.mesh_renderer.paint(
+            &mut render_pass,
+            &self.buffers.bind_group,
+            &self.buffers.dist_bind_group,
+        );
+        self.textured_mesh_renderer.paint(
             &mut render_pass,
             &self.buffers.bind_group,
             &self.buffers.dist_bind_group,
@@ -213,12 +225,23 @@ impl SceneRenderer {
             &self.buffers.bind_group,
             &self.buffers.dist_bind_group,
         );
+        self.textured_mesh_renderer.depth_paint(
+            &mut render_pass,
+            &self.buffers.bind_group,
+            &self.buffers.dist_bind_group,
+        );
+        self.line_renderer.depth_paint(
+            &mut render_pass,
+            &self.buffers.bind_group,
+            &self.buffers.dist_bind_group,
+        );
     }
 
     pub fn clear_vertex_data(&mut self) {
         self.line_renderer.vertex_data.clear();
         self.point_renderer.vertex_data.clear();
         self.mesh_renderer.vertices.clear();
+        self.textured_mesh_renderer.vertices.clear();
     }
 
     pub fn prepare(&self, state: &ViewerRenderState, intrinsics: &KannalaBrandtCamera<f64>) {
@@ -232,11 +255,15 @@ impl SceneRenderer {
             0,
             bytemuck::cast_slice(self.line_renderer.vertex_data.as_slice()),
         );
-
         state.queue.write_buffer(
             &self.mesh_renderer.vertex_buffer,
             0,
             bytemuck::cast_slice(self.mesh_renderer.vertices.as_slice()),
+        );
+        state.queue.write_buffer(
+            &self.textured_mesh_renderer.vertex_buffer,
+            0,
+            bytemuck::cast_slice(self.textured_mesh_renderer.vertices.as_slice()),
         );
 
         let mut scene_from_camera_uniform: [[f32; 4]; 4] = [[0.0; 4]; 4];

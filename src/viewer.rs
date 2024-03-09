@@ -1,6 +1,7 @@
 pub mod actor;
 pub mod offscreen;
 pub mod pixel_renderer;
+pub mod renderable;
 pub mod scene_renderer;
 
 use eframe::egui::load::SizedTexture;
@@ -9,138 +10,30 @@ use eframe::egui::Sense;
 use eframe::egui::{self};
 use eframe::egui_wgpu::Renderer;
 use eframe::epaint::mutex::RwLock;
+use hollywood::actors::egui::EguiAppFromBuilder;
+use hollywood::actors::egui::Stream;
 use hollywood::compute::pipeline::CancelRequest;
-use nalgebra::SVector;
+use hollywood::core::request::RequestMessage;
 use std::sync::Arc;
 
-use self::actor::ViewerCamera;
-use self::actor::ViewerState;
+use self::actor::ViewerBuilder;
 use self::offscreen::OffscreenTexture;
 use self::pixel_renderer::PixelRenderer;
+use self::renderable::Renderable;
 use self::scene_renderer::depth_renderer::DepthRenderer;
+use self::scene_renderer::textured_mesh::TexturedMeshVertex3;
 use self::scene_renderer::SceneRenderer;
+use crate::image::arc_image::ArcImage4U8;
+use crate::image::view::ImageSize;
+use crate::image::view::IsImageView;
 use crate::lie::rotation3::Isometry3;
 use crate::sensor::perspective_camera::KannalaBrandtCamera;
-use crate::viewer::actor::ViewerMessage;
+use crate::tensor::view::IsTensorLike;
 use crate::viewer::pixel_renderer::LineVertex2;
 use crate::viewer::pixel_renderer::PointVertex2;
-use crate::viewer::scene_renderer::scene_line::LineVertex3;
-use crate::viewer::scene_renderer::scene_point::PointVertex3;
-use crate::viewer::scene_renderer::scene_triangle::MeshVertex3;
-
-#[derive(Clone, Debug, Default)]
-pub struct Color {
-    pub r: f32,
-    pub g: f32,
-    pub b: f32,
-    pub a: f32,
-}
-
-#[derive(Clone, Debug)]
-pub enum Renderable {
-    Lines2(Lines2),
-    Points2(Points2),
-    Lines3(Lines3),
-    Points3(Points3),
-    Triangles3(Triangles3),
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct Lines2 {
-    pub name: String,
-    pub lines: Vec<Line2>,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct Points2 {
-    pub name: String,
-    pub points: Vec<Point2>,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct Lines3 {
-    pub name: String,
-    pub lines: Vec<Line3>,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct Points3 {
-    pub name: String,
-    pub points: Vec<Point3>,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct Triangles3 {
-    pub name: String,
-    pub mesh: Vec<Triangle3>,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct Line2 {
-    pub p0: SVector<f32, 2>,
-    pub p1: SVector<f32, 2>,
-    pub color: Color,
-    pub line_width: f32,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct Line3 {
-    pub p0: SVector<f32, 3>,
-    pub p1: SVector<f32, 3>,
-    pub color: Color,
-    pub line_width: f32,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct Point2 {
-    pub p: SVector<f32, 2>,
-    pub color: Color,
-    pub point_size: f32,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct Point3 {
-    pub p: SVector<f32, 3>,
-    pub color: Color,
-    pub point_size: f32,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct Triangle3 {
-    pub p0: SVector<f32, 3>,
-    pub p1: SVector<f32, 3>,
-    pub p2: SVector<f32, 3>,
-    pub color: Color,
-}
-
-pub struct ViewerBuilder {
-    pub camera: ViewerCamera,
-
-    pub update_receiver: std::sync::mpsc::Receiver<ViewerMessage>,
-    pub view_pose_sender: tokio::sync::mpsc::Sender<Isometry3<f64>>,
-    pub cancel_request_sender: Option<tokio::sync::mpsc::Sender<CancelRequest>>,
-
-    pub viewer_state: ViewerState,
-}
-
-impl ViewerBuilder {
-    pub fn new(camera: ViewerCamera) -> Self {
-        let (update_sender, update_receiver) = std::sync::mpsc::channel();
-        let (view_pose_sender, view_pose_receiver) = tokio::sync::mpsc::channel(100);
-        let view_pose_receiver_arc = Arc::new(view_pose_receiver);
-
-        Self {
-            camera,
-            update_receiver,
-            cancel_request_sender: None,
-            view_pose_sender,
-            viewer_state: ViewerState {
-                sender: Some(update_sender),
-                view_pose_receiver: Some(view_pose_receiver_arc),
-            },
-        }
-    }
-}
+use crate::viewer::scene_renderer::line::LineVertex3;
+use crate::viewer::scene_renderer::mesh::MeshVertex3;
+use crate::viewer::scene_renderer::point::PointVertex3;
 
 #[derive(Clone)]
 pub struct ViewerRenderState {
@@ -150,19 +43,63 @@ pub struct ViewerRenderState {
     pub adapter: Arc<wgpu::Adapter>,
 }
 
+pub(crate) struct BackgroundTexture {
+    pub(crate) background_image_texture: wgpu::Texture,
+    pub(crate) background_image_tex_id: egui::TextureId,
+}
+
+impl BackgroundTexture {
+    fn new(image_size: ImageSize, render_state: ViewerRenderState) -> Self {
+        let background_image_target_target =
+            render_state
+                .device
+                .create_texture(&wgpu::TextureDescriptor {
+                    label: None,
+                    size: wgpu::Extent3d {
+                        width: image_size.width as u32,
+                        height: image_size.height as u32,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                        | wgpu::TextureUsages::COPY_DST
+                        | wgpu::TextureUsages::TEXTURE_BINDING,
+                    view_formats: &[wgpu::TextureFormat::Rgba8UnormSrgb],
+                });
+
+        let background_image_texture_view =
+            background_image_target_target.create_view(&wgpu::TextureViewDescriptor::default());
+        let background_image_tex_id = render_state.wgpu_state.write().register_native_texture(
+            render_state.device.as_ref(),
+            &background_image_texture_view,
+            wgpu::FilterMode::Linear,
+        );
+
+        Self {
+            background_image_texture: background_image_target_target,
+            background_image_tex_id,
+        }
+    }
+}
+
 pub struct SimpleViewer {
     state: ViewerRenderState,
     offscreen: OffscreenTexture,
     cam: KannalaBrandtCamera<f64>,
     pixel: PixelRenderer,
     scene: SceneRenderer,
-
-    receiver: std::sync::mpsc::Receiver<ViewerMessage>,
+    background_image: Option<ArcImage4U8>,
+    background_texture: Option<BackgroundTexture>,
+    message_recv: std::sync::mpsc::Receiver<Stream<Vec<Renderable>>>,
+    request_recv: std::sync::mpsc::Receiver<RequestMessage<(), Isometry3<f64>>>,
     cancel_request_sender: tokio::sync::mpsc::Sender<CancelRequest>,
 }
 
-impl SimpleViewer {
-    pub fn new(builder: ViewerBuilder, render_state: &ViewerRenderState) -> Self {
+impl EguiAppFromBuilder<ViewerBuilder> for SimpleViewer {
+    fn new(builder: ViewerBuilder, render_state: ViewerRenderState) -> Box<SimpleViewer> {
         let depth_stencil = Some(wgpu::DepthStencilState {
             format: wgpu::TextureFormat::Depth32Float,
             depth_write_enabled: true,
@@ -171,61 +108,76 @@ impl SimpleViewer {
             bias: wgpu::DepthBiasState::default(),
         });
 
-        Self {
+        Box::new(SimpleViewer {
             state: render_state.clone(),
-            offscreen: OffscreenTexture::new(render_state, &builder.camera.intrinsics),
-            cam: builder.camera.intrinsics,
-            pixel: PixelRenderer::new(render_state, &builder, depth_stencil.clone()),
-            scene: SceneRenderer::new(render_state, &builder, depth_stencil),
-            receiver: builder.update_receiver,
+            offscreen: OffscreenTexture::new(&render_state, &builder.config.camera.intrinsics),
+            cam: builder.config.camera.intrinsics,
+            pixel: PixelRenderer::new(&render_state, &builder, depth_stencil.clone()),
+            scene: SceneRenderer::new(&render_state, &builder, depth_stencil),
+            message_recv: builder.message_recv,
+            request_recv: builder.request_recv,
             cancel_request_sender: builder.cancel_request_sender.unwrap(),
-        }
+            background_image: None,
+            background_texture: None,
+        })
     }
 
+    type Out = SimpleViewer;
+
+    type State = ViewerRenderState;
+}
+
+impl SimpleViewer {
     fn add_renderables_to_tables(&mut self) {
-        for msg in self.receiver.try_iter() {
-            match msg {
-                ViewerMessage::Packets(msg_vec) => {
-                    for m in msg_vec {
-                        match m {
-                            Renderable::Lines2(lines) => {
-                                self.pixel
-                                    .line_renderer
-                                    .lines_table
-                                    .insert(lines.name, lines.lines);
-                            }
-                            Renderable::Points2(points) => {
-                                self.pixel
-                                    .point_renderer
-                                    .points_table
-                                    .insert(points.name, points.points);
-                            }
-                            Renderable::Lines3(lines3) => {
-                                self.scene
-                                    .line_renderer
-                                    .line_table
-                                    .insert(lines3.name, lines3.lines);
-                            }
-                            Renderable::Points3(points3) => {
-                                self.scene
-                                    .point_renderer
-                                    .point_table
-                                    .insert(points3.name, points3.points);
-                            }
-                            Renderable::Triangles3(triangles3) => {
-                                self.scene
-                                    .mesh_renderer
-                                    .mesh_table
-                                    .insert(triangles3.name, triangles3.mesh);
-                            }
-                        }
+        for stream in self.message_recv.try_iter() {
+            for m in stream.msg {
+                match m {
+                    Renderable::Lines2(lines) => {
+                        self.pixel
+                            .line_renderer
+                            .lines_table
+                            .insert(lines.name, lines.lines);
                     }
-                }
-                ViewerMessage::RequestViewPose(request) => {
-                    request.reply(|_| self.scene.interaction.scene_from_camera);
+                    Renderable::Points2(points) => {
+                        self.pixel
+                            .point_renderer
+                            .points_table
+                            .insert(points.name, points.points);
+                    }
+                    Renderable::Lines3(lines3) => {
+                        self.scene
+                            .line_renderer
+                            .line_table
+                            .insert(lines3.name, lines3.lines);
+                    }
+                    Renderable::Points3(points3) => {
+                        self.scene
+                            .point_renderer
+                            .point_table
+                            .insert(points3.name, points3.points);
+                    }
+                    Renderable::Mesh3(mesh) => {
+                        self.scene
+                            .mesh_renderer
+                            .mesh_table
+                            .insert(mesh.name, mesh.mesh);
+                    }
+                    Renderable::TexturedMesh3(textured_mesh) => {
+                        self.scene
+                            .textured_mesh_renderer
+                            .mesh_table
+                            .insert(textured_mesh.name, textured_mesh.mesh);
+                    }
+                    Renderable::BackgroundImage(image) => {
+                        self.background_image = Some(image);
+                    }
                 }
             }
         }
+        for request in self.request_recv.try_iter() {
+            request.reply(|_| self.scene.interaction.scene_from_camera);
+        }
+
         for (_, points) in self.pixel.point_renderer.points_table.iter() {
             for point in points.iter() {
                 let v = PointVertex2 {
@@ -321,6 +273,25 @@ impl SimpleViewer {
                 self.scene.mesh_renderer.vertices.push(v2);
             }
         }
+        for (_, mesh) in self.scene.textured_mesh_renderer.mesh_table.iter() {
+            for trig in mesh.iter() {
+                let v0 = TexturedMeshVertex3 {
+                    _pos: [trig.p0[0], trig.p0[1], trig.p0[2]],
+                    _tex: [trig.tex0[0], trig.tex0[1]],
+                };
+                let v1 = TexturedMeshVertex3 {
+                    _pos: [trig.p1[0], trig.p1[1], trig.p1[2]],
+                    _tex: [trig.tex1[0], trig.tex1[1]],
+                };
+                let v2 = TexturedMeshVertex3 {
+                    _pos: [trig.p2[0], trig.p2[1], trig.p2[2]],
+                    _tex: [trig.tex2[0], trig.tex2[1]],
+                };
+                self.scene.textured_mesh_renderer.vertices.push(v0);
+                self.scene.textured_mesh_renderer.vertices.push(v1);
+                self.scene.textured_mesh_renderer.vertices.push(v2);
+            }
+        }
     }
 }
 
@@ -341,6 +312,47 @@ impl eframe::App for SimpleViewer {
 
         self.pixel.prepare(&self.state);
         self.scene.prepare(&self.state, &self.cam);
+
+        if let Some(image) = self.background_image.clone() {
+            self.background_texture = Some(BackgroundTexture::new(
+                image.image_size(),
+                self.state.clone(),
+            ));
+            let tex_ref = self.background_texture.as_ref().unwrap();
+
+            self.state.queue.write_texture(
+                wgpu::ImageCopyTexture {
+                    texture: &tex_ref.background_image_texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                bytemuck::cast_slice(image.tensor.scalar_view().as_slice().unwrap()),
+                wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(4 * image.image_size().width as u32),
+                    rows_per_image: None,
+                },
+                tex_ref.background_image_texture.size(),
+            );
+
+            self.background_image = None;
+        }
+        // self.state.queue.write_texture(
+        //     wgpu::ImageCopyTexture {
+        //         texture: &self.buffers.dist_texture,
+        //         mip_level: 0,
+        //         origin: wgpu::Origin3d::ZERO,
+        //         aspect: wgpu::TextureAspect::All,
+        //     },
+        //     bytemuck::cast_slice(distort_lut.table.tensor.scalar_view().as_slice().unwrap()),
+        //     wgpu::ImageDataLayout {
+        //         offset: 0,
+        //         bytes_per_row: Some(8 * distort_lut.table.image_size().width as u32),
+        //         rows_per_image: None,
+        //     },
+        //     self.buffers.dist_texture.size(),
+        // );
 
         let mut command_encoder = self
             .state
@@ -373,14 +385,25 @@ impl eframe::App for SimpleViewer {
             &self.scene.depth_renderer,
         );
 
-        let depth_image = self.offscreen.download_images(
-            &self.state,
-            command_encoder,
-            &self.cam.image_size(),
-        );
+        let depth_image =
+            self.offscreen
+                .download_images(&self.state, command_encoder, &self.cam.image_size());
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.scope(|ui| {
+                if let Some(image) = &self.background_texture {
+                    ui.add(
+                        Image::new(SizedTexture {
+                            size: egui::Vec2::new(
+                                image.background_image_texture.size().width as f32,
+                                image.background_image_texture.size().height as f32,
+                            ),
+                            id: image.background_image_tex_id,
+                        })
+                        .fit_to_original_size(1.0),
+                    );
+                }
+
                 let response = ui.add(
                     Image::new(SizedTexture {
                         size: egui::Vec2::new(
@@ -392,6 +415,7 @@ impl eframe::App for SimpleViewer {
                     .fit_to_original_size(1.0)
                     .sense(Sense::click_and_drag()),
                 );
+
                 self.scene.process_event(&self.cam, &response, depth_image);
             });
         });

@@ -4,7 +4,7 @@ use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use nalgebra::SVector;
 use wgpu::DepthStencilState;
 
-use crate::viewer::Line2;
+use crate::viewer::renderable::Line2;
 use crate::viewer::ViewerRenderState;
 
 use super::LineVertex2;
@@ -20,7 +20,7 @@ impl PixelLineRenderer {
     pub fn new(
         wgpu_render_state: &ViewerRenderState,
         pipeline_layout: &wgpu::PipelineLayout,
-        depth_stencil: Option<DepthStencilState>
+        depth_stencil: Option<DepthStencilState>,
     ) -> Self {
         let device = &wgpu_render_state.device;
 
@@ -71,7 +71,7 @@ impl PixelLineRenderer {
                 entry_point: "vs_main",
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: std::mem::size_of::<LineVertex2>() as wgpu::BufferAddress,
-                    step_mode: wgpu::VertexStepMode::Vertex,                             
+                    step_mode: wgpu::VertexStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1=>Float32x4, 2 => Float32x2, 3 => Float32],
                 }],
             },

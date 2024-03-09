@@ -84,13 +84,27 @@ where
         le_than(self.c.as_ref(), lhs, rhs)
     }
 
-    pub fn are_all_free_cars_equal(&self, lhs: &[usize], rhs: &[usize]) -> bool {
+    pub fn are_all_non_cond_vars_equal(&self, lhs: &[usize], rhs: &[usize]) -> bool {
         let mut i = 0;
         loop {
             if i >= lhs.len() {
                 break;
             }
-            if self.c.as_ref()[i] == 'f' && lhs[i] != rhs[i] {
+            if self.c.as_ref()[i] != 'c' && lhs[i] != rhs[i] {
+                return false;
+            }
+            i += 1;
+        }
+        true
+    }
+
+    pub fn are_all_marg_vars_equal(&self, lhs: &[usize], rhs: &[usize]) -> bool {
+        let mut i = 0;
+        loop {
+            if i >= lhs.len() {
+                break;
+            }
+            if self.c.as_ref()[i] == 'm' && lhs[i] != rhs[i] {
                 return false;
             }
             i += 1;

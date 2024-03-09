@@ -1,3 +1,5 @@
+pub mod spline_segment;
+
 use crate::calculus::spline::spline_segment::CubicBSplineSegment;
 use crate::calculus::spline::spline_segment::SegmentCase;
 use crate::calculus::types::scalar::IsScalar;
@@ -201,8 +203,9 @@ mod test {
 
     #[test]
     fn test() {
-        use crate::calculus::points::{example_points};
-        use crate::calculus::spline::spline::{CubicBSpline, CubicBSplineParams};
+        use crate::calculus::points::example_points;
+        use crate::calculus::spline::CubicBSpline;
+        use crate::calculus::spline::CubicBSplineParams;
 
         let points = example_points::<f64, 2>();
         for (t0, delta_t) in [(0.0, 1.0)] {

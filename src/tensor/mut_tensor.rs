@@ -241,9 +241,9 @@ macro_rules! mut_tensor_is_view {
         'a,
                 Scalar: IsTensorScalar + 'static,
                 STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
-                const BATCHES: usize,
                 const ROWS: usize,
                 const COLS: usize,
+                const BATCHES: usize,
             > IsTensorLike<'a, $scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
             for MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
         {
@@ -289,9 +289,9 @@ macro_rules! mut_tensor_is_view {
         'a,
                 Scalar: IsTensorScalar + 'static,
                 STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
-                const BATCHES: usize,
                 const ROWS: usize,
                 const COLS: usize,
+                const BATCHES: usize,
             >
             IsMutTensorLike<'a,
                 $scalar_rank, $drank, $srank,
@@ -318,14 +318,14 @@ macro_rules! mut_tensor_is_view {
 
         impl<'a,  Scalar: IsTensorScalar+ 'static,
                 STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
-                const BATCHES: usize,
                 const ROWS: usize,
-                const COLS: usize
+                const COLS: usize,
+                const BATCHES: usize,
         >
             MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         {
 
-         pub fn mut_view<'b: 'a>(
+            pub fn mut_view<'b: 'a>(
                 &'b mut self,
             ) -> MutTensorView<'a,
                                $scalar_rank, $drank, $srank,
@@ -341,7 +341,7 @@ macro_rules! mut_tensor_is_view {
                 )
             }
 
-         pub  fn view<'b: 'a>(&'b self
+            pub fn view<'b: 'a>(&'b self
             ) -> TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor,
                             ROWS, COLS, BATCHES> {
                 TensorView::<'a, $scalar_rank, $drank, $srank, Scalar, STensor,
@@ -349,7 +349,7 @@ macro_rules! mut_tensor_is_view {
                     self.mut_array.view())
             }
 
-          pub   fn from_shape(size: [usize; $drank]) -> Self {
+            pub fn from_shape(size: [usize; $drank]) -> Self {
                 MutTensor::<$scalar_rank, $drank, $srank, Scalar, STensor,
                             ROWS, COLS, BATCHES>::from_shape_and_val(
                     size, STensor::zero()
@@ -393,15 +393,15 @@ macro_rules! mut_tensor_is_view {
                 const OTHER_HRANK: usize, const OTHER_SRANK: usize,
                 OtherScalar: IsTensorScalar+ 'static,
                 OtherSTensor: IsStaticTensor<
-                    OtherScalar, OTHER_SRANK, OTHER_BATCHES,
-                    OTHER_ROWS, OTHER_COLS
+                    OtherScalar, OTHER_SRANK,
+                    OTHER_ROWS, OTHER_COLS, OTHER_BATCHES
                 > + 'static,
-                const OTHER_BATCHES: usize, const OTHER_ROWS: usize, const OTHER_COLS: usize,
+                const OTHER_ROWS: usize, const OTHER_COLS: usize, const OTHER_BATCHES: usize,
                 V : IsTensorView::<
                     'b,
                     OTHER_HRANK, $drank, OTHER_SRANK,
                     OtherScalar, OtherSTensor,
-                    OTHER_BATCHES, OTHER_ROWS, OTHER_COLS
+                    OTHER_ROWS, OTHER_COLS, OTHER_BATCHES
                 >,
                 F: FnMut(&OtherSTensor)-> STensor
             > (
@@ -423,24 +423,24 @@ macro_rules! mut_tensor_is_view {
                 const OTHER_HRANK: usize, const OTHER_SRANK: usize,
                 OtherScalar: IsTensorScalar + 'static,
                 OtherSTensor: IsStaticTensor<
-                    OtherScalar, OTHER_SRANK, OTHER_BATCHES, OTHER_ROWS, OTHER_COLS
+                    OtherScalar, OTHER_SRANK, OTHER_ROWS, OTHER_COLS, OTHER_BATCHES
                 > + 'static,
-                const OTHER_BATCHES: usize, const OTHER_ROWS: usize, const OTHER_COLS: usize,
+                const OTHER_ROWS: usize, const OTHER_COLS: usize, const OTHER_BATCHES: usize,
             V : IsTensorView::<'b,
                 OTHER_HRANK, $drank, OTHER_SRANK,
                 OtherScalar, OtherSTensor,
-                OTHER_BATCHES, OTHER_ROWS, OTHER_COLS
+                OTHER_ROWS, OTHER_COLS, OTHER_BATCHES
             >,
             const OTHER_HRANK2: usize, const OTHER_SRANK2: usize,
             OtherScalar2: IsTensorScalar + 'static,
             OtherSTensor2: IsStaticTensor<
-                OtherScalar2, OTHER_SRANK2, OTHER_BATCHES2, OTHER_ROWS2, OTHER_COLS2
+                OtherScalar2, OTHER_SRANK2, OTHER_ROWS2, OTHER_COLS2, OTHER_BATCHES2,
             > + 'static,
-            const OTHER_BATCHES2: usize, const OTHER_ROWS2: usize, const OTHER_COLS2: usize,
+            const OTHER_ROWS2: usize, const OTHER_COLS2: usize, const OTHER_BATCHES2: usize,
             V2 : IsTensorView::<'b,
                 OTHER_HRANK2, $drank, OTHER_SRANK2,
                 OtherScalar2, OtherSTensor2,
-                OTHER_BATCHES2, OTHER_ROWS2, OTHER_COLS2
+                OTHER_ROWS2, OTHER_COLS2, OTHER_BATCHES2
             >,
             F: FnMut(&OtherSTensor, &OtherSTensor2)->STensor
             >(

@@ -1,5 +1,8 @@
 use nalgebra::SVector;
 
+use super::traits::DistortTable;
+use super::traits::IsCameraDistortionImpl;
+use super::traits::IsProjection;
 use crate::calculus::region;
 use crate::calculus::region::Region;
 use crate::calculus::region::RegionTraits;
@@ -11,9 +14,6 @@ use crate::image::arc_image::ArcImage2F32;
 use crate::image::mut_image::MutImage2F32;
 use crate::image::mut_view::IsMutImageView;
 use crate::image::view::ImageSize;
-use super::traits::DistortTable;
-use super::traits::IsCameraDistortionImpl;
-use super::traits::IsProjection;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Camera<
@@ -175,7 +175,7 @@ impl<
                 *table.mut_pixel(u, v) = SVector::<f32, 2>::new(pixel.cast().x, pixel.cast().y);
             }
         }
-        distort_table.table = ArcImage2F32::from_mut_image(table);
+        distort_table.table = table.into();
         distort_table
     }
 }

@@ -203,9 +203,9 @@ macro_rules! tensor_view_is_view {
                 'a,
                 Scalar: IsTensorScalar + 'static,
                 STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES>,
-                const BATCHES: usize,
                 const ROWS: usize,
                 const COLS: usize,
+                const BATCHES: usize,
             > TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         {
             pub fn new(
@@ -237,15 +237,20 @@ macro_rules! tensor_view_is_view {
                     scalar_view,
                 }
             }
+
+            pub fn from_shape_and_slice(shape: [usize; $drank], slice: &'a [STensor]) -> Self {
+                let elem_view = ndarray::ArrayView::from_shape(shape, slice).unwrap();
+                Self::new(elem_view)
+            }
         }
 
         impl<
                 'a,
                 Scalar: IsTensorScalar + 'static,
                 STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
-                const BATCHES: usize,
                 const ROWS: usize,
                 const COLS: usize,
+                const BATCHES: usize,
             > IsTensorLike<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
             for TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         {
@@ -291,9 +296,9 @@ macro_rules! tensor_view_is_view {
                 'a,
                 Scalar: IsTensorScalar + 'static,
                 STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
-                const BATCHES: usize,
                 const ROWS: usize,
                 const COLS: usize,
+                const BATCHES: usize,
             > IsTensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
             for TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         {

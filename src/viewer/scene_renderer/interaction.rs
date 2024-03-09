@@ -77,7 +77,7 @@ impl Interaction {
             let uv = maybe_uv.unwrap();
             let mut z = self
                 .clipping_planes
-                .z_from_ndc(z_buffer.pixel(uv.x as usize, uv.y as usize)[0] as f64);
+                .z_from_ndc(z_buffer.pixel(uv.x as usize, uv.y as usize) as f64);
             if z >= self.clipping_planes.far {
                 z = self.median_scene_depth(z_buffer);
             }

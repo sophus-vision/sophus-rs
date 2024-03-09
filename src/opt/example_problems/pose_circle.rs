@@ -19,7 +19,7 @@ fn res_fn<S: IsScalar>(
     .log()
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct PoseGraph {}
 
 impl IsResidualFn<12, 2, (Isometry2<f64>, Isometry2<f64>), Isometry2<f64>> for PoseGraph {
@@ -76,8 +76,8 @@ impl IsResidualFn<12, 2, (Isometry2<f64>, Isometry2<f64>), Isometry2<f64>> for P
     }
 }
 
-#[derive(Clone)]
-struct PoseGraphCostTermSignature {
+#[derive(Debug, Clone)]
+pub struct PoseGraphCostTermSignature {
     pose_a_from_pose_b: Isometry2<f64>,
     entity_indices: [usize; 2],
 }
@@ -96,10 +96,17 @@ impl IsTermSignature<2> for PoseGraphCostTermSignature {
     const DOF_TUPLE: [i64; 2] = [3, 3];
 }
 
+#[derive(Debug, Clone)]
 pub struct PoseCircleProblem {
     pub true_world_from_robot: Vec<Isometry2<f64>>,
-    est_world_from_robot: Vec<Isometry2<f64>>,
-    obs_pose_a_from_pose_b_poses: CostSignature<2, Isometry2<f64>, PoseGraphCostTermSignature>,
+    pub est_world_from_robot: Vec<Isometry2<f64>>,
+    pub obs_pose_a_from_pose_b_poses: CostSignature<2, Isometry2<f64>, PoseGraphCostTermSignature>,
+}
+
+impl Default for PoseCircleProblem {
+    fn default() -> Self {
+        Self::new(25)
+    }
 }
 
 impl PoseCircleProblem {
@@ -174,19 +181,21 @@ impl PoseCircleProblem {
         }
     }
 
-    pub fn test(&self) {
+    pub fn calc_error(&self, est_world_from_robot: &Vec<Isometry2<f64>>) -> f64 {
         let mut res_err = 0.0;
         for obs in self.obs_pose_a_from_pose_b_poses.terms.clone() {
             let residual = res_fn(
-                self.est_world_from_robot[obs.entity_indices[0]],
-                self.est_world_from_robot[obs.entity_indices[1]],
+                est_world_from_robot[obs.entity_indices[0]],
+                est_world_from_robot[obs.entity_indices[1]],
                 obs.pose_a_from_pose_b,
             );
             res_err += residual.dot(residual);
         }
         res_err /= self.obs_pose_a_from_pose_b_poses.terms.len() as f64;
-        assert!(res_err > 1.0, "{} > thr?", res_err);
+        res_err
+    }
 
+    pub fn optimize(&self) -> VarPool {
         let mut constants = HashMap::new();
         constants.insert(0, ());
 
@@ -195,29 +204,14 @@ impl PoseCircleProblem {
 
         let var_pool = VarPoolBuilder::new().add_family("poses", family).build();
 
-        let up_var_pool = optimize_one_cost(
+        optimize_one_cost(
             var_pool,
             Cost::new(self.obs_pose_a_from_pose_b_poses.clone(), PoseGraph {}),
             OptParams {
                 num_iter: 5,
                 initial_lm_nu: 1.0,
             },
-        );
-
-        let refined_world_from_robot = up_var_pool.get_members::<Isometry2<f64>>("poses".into());
-
-        let mut res_err = 0.0;
-
-        for obs in self.obs_pose_a_from_pose_b_poses.terms.clone() {
-            let residual = res_fn(
-                refined_world_from_robot[obs.entity_indices[0]],
-                refined_world_from_robot[obs.entity_indices[1]],
-                obs.pose_a_from_pose_b,
-            );
-            res_err += residual.dot(residual);
-        }
-        res_err /= self.obs_pose_a_from_pose_b_poses.terms.len() as f64;
-        assert!(res_err < 0.05, "{} < thr?", res_err);
+        )
     }
 }
 
@@ -226,7 +220,17 @@ mod tests {
     #[test]
     fn simple_prior_opt_tests() {
         use super::PoseCircleProblem;
+        use crate::lie::rotation2::Isometry2;
 
-        PoseCircleProblem::new(2500).test();
+        let pose_graph = PoseCircleProblem::new(2500);
+
+        let res_err = pose_graph.calc_error(&pose_graph.est_world_from_robot);
+        assert!(res_err > 1.0, "{} > thr?", res_err);
+
+        let up_var_pool = pose_graph.optimize();
+        let refined_world_from_robot = up_var_pool.get_members::<Isometry2<f64>>("poses".into());
+
+        let res_err = pose_graph.calc_error(&refined_world_from_robot);
+        assert!(res_err < 0.05, "{} < thr?", res_err);
     }
 }

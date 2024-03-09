@@ -1,54 +1,52 @@
 use std::collections::BTreeMap;
 
+use crate::viewer::renderable::TexturedTriangle3;
+
+use crate::viewer::ViewerRenderState;
 use bytemuck::Pod;
 use bytemuck::Zeroable;
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use wgpu::DepthStencilState;
-use crate::viewer::ViewerRenderState;
-use crate::viewer::Triangle3;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
-pub struct MeshVertex3 {
+pub struct TexturedMeshVertex3 {
     pub _pos: [f32; 3],
-    pub _color: [f32; 4],
+    pub _tex: [f32; 2],
 }
 
-pub struct MeshRenderer {
+pub(crate) struct TexturedMeshes {
+    pub(crate) start_idx: u32,
+    pub(crate) end_idx: u32,
+
+    pub texture: wgpu::Texture,
+    pub bind_group: wgpu::BindGroup,
+}
+
+pub struct TexturedMeshRenderer {
     pub pipeline: wgpu::RenderPipeline,
     pub depth_pipeline: wgpu::RenderPipeline,
     pub vertex_buffer: wgpu::Buffer,
-    pub mesh_table: BTreeMap<String, Vec<Triangle3>>,
-    pub vertices: Vec<MeshVertex3>,
+    pub mesh_table: BTreeMap<String, Vec<TexturedTriangle3>>,
+    pub vertices: Vec<TexturedMeshVertex3>,
+    pub meshes: BTreeMap<String, TexturedMeshes>,
 }
 
-impl MeshRenderer {
+impl TexturedMeshRenderer {
     pub fn new(
         wgpu_render_state: &ViewerRenderState,
         pipeline_layout: &wgpu::PipelineLayout,
-        depth_stencil: Option<DepthStencilState>
+        depth_stencil: Option<DepthStencilState>,
     ) -> Self {
         let device = &wgpu_render_state.device;
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("scene triangle shader"),
+            label: Some("scene mesh shader"),
             source: wgpu::ShaderSource::Wgsl(
                 format!(
                     "{} {}",
                     include_str!("./utils.wgsl"),
-                    include_str!("./triangle_scene_shader.wgsl")
-                )
-                .into(),
-            ),
-        });
-
-        let depth_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("scene depth triangle shader"),
-            source: wgpu::ShaderSource::Wgsl(
-                format!(
-                    "{} {}",
-                    include_str!("./utils.wgsl"),
-                    include_str!("./depth_triangle_scene_shader.wgsl")
+                    include_str!("./mesh_scene_shader.wgsl")
                 )
                 .into(),
             ),
@@ -57,17 +55,17 @@ impl MeshRenderer {
         // hack: generate a buffer of 1000 points, because vertex buffer cannot be resized
         let mut vertex_data = vec![];
         for _i in 0..1000 {
-            vertex_data.push(MeshVertex3 {
+            vertex_data.push(TexturedMeshVertex3 {
                 _pos: [0.0, 0.0, 0.0],
-                _color: [1.0, 0.0, 0.0, 1.0],
+                _tex: [0.0, 0.0],
             });
-            vertex_data.push(MeshVertex3 {
+            vertex_data.push(TexturedMeshVertex3 {
                 _pos: [0.0, 0.0, 0.0],
-                _color: [1.0, 0.0, 0.0, 1.0],
+                _tex: [0.0, 0.0],
             });
-            vertex_data.push(MeshVertex3 {
+            vertex_data.push(TexturedMeshVertex3 {
                 _pos: [0.0, 0.0, 0.0],
-                _color: [1.0, 0.0, 0.0, 1.0],
+                _tex: [0.0, 0.0],
             });
         }
 
@@ -78,15 +76,15 @@ impl MeshRenderer {
         });
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("triangle scene pipeline"),
+            label: Some("mesh scene pipeline"),
             layout: Some(pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
                 buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<MeshVertex3>() as wgpu::BufferAddress, 
-                    step_mode: wgpu::VertexStepMode::Vertex,                             
-                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4],
+                    array_stride: std::mem::size_of::<TexturedMeshVertex3>() as wgpu::BufferAddress,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2],
                 }],
             },
             fragment: Some(wgpu::FragmentState {
@@ -101,20 +99,20 @@ impl MeshRenderer {
         });
 
         let depth_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("depth_triangle scene pipeline"),
+            label: Some("depth_mesh scene pipeline"),
             layout: Some(pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &depth_shader,
+                module: &shader,
                 entry_point: "vs_main",
                 buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<MeshVertex3>() as wgpu::BufferAddress, 
-                    step_mode: wgpu::VertexStepMode::Vertex,                            
+                    array_stride: std::mem::size_of::<TexturedMeshVertex3>() as wgpu::BufferAddress,
+                    step_mode: wgpu::VertexStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4],
                 }],
             },
             fragment: Some(wgpu::FragmentState {
-                module: &depth_shader,
-                entry_point: "fs_main",
+                module: &shader,
+                entry_point: "depth_fs_main",
                 targets: &[Some(wgpu::TextureFormat::R32Float.into())],
             }),
             primitive: wgpu::PrimitiveState::default(),
@@ -130,6 +128,7 @@ impl MeshRenderer {
             vertex_buffer,
             vertices: vec![],
             mesh_table: BTreeMap::new(),
+            meshes: BTreeMap::new(),
         }
     }
 
@@ -141,7 +140,7 @@ impl MeshRenderer {
     ) {
         render_pass.set_pipeline(&self.pipeline);
         render_pass.set_bind_group(0, bind_group, &[]);
-        render_pass.set_bind_group(1, dist_bind_group, &[]); // NEW!
+        render_pass.set_bind_group(1, dist_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.draw(0..self.vertices.len() as u32, 0..1);
     }
@@ -154,7 +153,7 @@ impl MeshRenderer {
     ) {
         depth_render_pass.set_pipeline(&self.depth_pipeline);
         depth_render_pass.set_bind_group(0, bind_group, &[]);
-        depth_render_pass.set_bind_group(1, dist_bind_group, &[]); // NEW!
+        depth_render_pass.set_bind_group(1, dist_bind_group, &[]);
         depth_render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         depth_render_pass.draw(0..self.vertices.len() as u32, 0..1);
     }

@@ -8,7 +8,7 @@ pub trait SophusAddAssign<Rhs = Self> {
     fn add_assign(&mut self, rhs: Rhs);
 }
 
-impl SophusAddAssign for faer_core::Mat<f64> {
+impl SophusAddAssign for faer::Mat<f64> {
     fn add_assign(&mut self, other: Self) {
         for i in 0..self.nrows() {
             for j in 0..self.ncols() {

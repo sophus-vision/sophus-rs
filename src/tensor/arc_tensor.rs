@@ -151,9 +151,9 @@ macro_rules! arc_tensor_is_tensor_view {
             'a,
             Scalar: IsTensorScalar + 'static,
             STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
-            const BATCHES: usize,
             const ROWS: usize,
             const COLS: usize,
+            const BATCHES: usize,
         > IsTensorLike<
             'a, $scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES
         > for ArcTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
@@ -200,12 +200,20 @@ macro_rules! arc_tensor_is_tensor_view {
             'a,
             Scalar: IsTensorScalar+ 'static,
             STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
-            const BATCHES: usize,
             const ROWS: usize,
             const COLS: usize,
+            const BATCHES: usize,
         >
             ArcTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
         {
+
+            pub fn make_copy_from(
+                v: &TensorView<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+            ) -> Self
+            {
+                Self::from_mut_tensor(IsTensorLike::to_mut_image(v))
+            }
+
            pub fn from_mut_tensor(
                 tensor:
                 MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>,
@@ -251,14 +259,14 @@ macro_rules! arc_tensor_is_tensor_view {
                 const OTHER_HRANK: usize, const OTHER_SRANK: usize,
                 OtherScalar: IsTensorScalar+ 'static,
                 OtherSTensor: IsStaticTensor<
-                    OtherScalar, OTHER_SRANK, OTHER_BATCHES, OTHER_ROWS, OTHER_COLS
+                    OtherScalar, OTHER_SRANK, OTHER_ROWS, OTHER_COLS, OTHER_BATCHES
                 > + 'static,
-                const OTHER_BATCHES: usize, const OTHER_ROWS: usize, const OTHER_COLS: usize,
+                const OTHER_ROWS: usize, const OTHER_COLS: usize,const OTHER_BATCHES: usize,
                 V : IsTensorView::<
                     'b,
                     OTHER_HRANK, $drank, OTHER_SRANK,
                     OtherScalar, OtherSTensor,
-                    OTHER_BATCHES, OTHER_ROWS, OTHER_COLS
+                     OTHER_ROWS, OTHER_COLS,OTHER_BATCHES
                 >,
                 F: FnMut(&OtherSTensor)-> STensor
             >(
@@ -282,25 +290,25 @@ macro_rules! arc_tensor_is_tensor_view {
                 const OTHER_HRANK: usize, const OTHER_SRANK: usize,
                 OtherScalar: IsTensorScalar + 'static,
                 OtherSTensor: IsStaticTensor<
-                    OtherScalar, OTHER_SRANK, OTHER_BATCHES, OTHER_ROWS, OTHER_COLS
+                    OtherScalar, OTHER_SRANK, OTHER_ROWS, OTHER_COLS, OTHER_BATCHES
                 > + 'static,
-                const OTHER_BATCHES: usize, const OTHER_ROWS: usize, const OTHER_COLS: usize,
+               const OTHER_ROWS: usize, const OTHER_COLS: usize, const OTHER_BATCHES: usize,
                 V : IsTensorView::<
                         'b,
                         OTHER_HRANK, $drank, OTHER_SRANK,
                         OtherScalar, OtherSTensor,
-                        OTHER_BATCHES, OTHER_ROWS, OTHER_COLS
+                        OTHER_ROWS, OTHER_COLS, OTHER_BATCHES
                 >,
                 const OTHER_HRANK2: usize, const OTHER_SRANK2: usize,
                 OtherScalar2: IsTensorScalar + 'static,
                 OtherSTensor2: IsStaticTensor<
-                    OtherScalar2, OTHER_SRANK2, OTHER_BATCHES2, OTHER_ROWS2, OTHER_COLS2
+                    OtherScalar2, OTHER_SRANK2, OTHER_ROWS2, OTHER_COLS2, OTHER_BATCHES2
                 > + 'static,
-                const OTHER_BATCHES2: usize, const OTHER_ROWS2: usize, const OTHER_COLS2: usize,
+                const OTHER_ROWS2: usize, const OTHER_COLS2: usize, const OTHER_BATCHES2: usize,
                 V2 : IsTensorView::<'b,
                     OTHER_HRANK2, $drank, OTHER_SRANK2,
                     OtherScalar2, OtherSTensor2,
-                    OTHER_BATCHES2, OTHER_ROWS2, OTHER_COLS2
+                    OTHER_ROWS2, OTHER_COLS2,  OTHER_BATCHES2
                 >,
                 F: FnMut(&OtherSTensor, &OtherSTensor2) -> STensor
             > (
@@ -423,7 +431,6 @@ mod tests {
             let mut_img = MutTensorDR::from_shape_and_val(shape, P1F32::new(0.5f32));
             let img = ArcTensorDR::from_mut_tensor(mut_img);
 
-            
             let mut img2 = img.clone();
             // assert_eq!(Arc::strong_count(&img.buffer), 2);
             // assert_eq!(Arc::strong_count(&img2.buffer), 2);

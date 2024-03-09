@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use wgpu::DepthStencilState;
 
-use crate::viewer::Point2;
+use crate::viewer::renderable::Point2;
 use crate::viewer::ViewerRenderState;
 
 use super::PointVertex2;
@@ -23,7 +23,7 @@ impl PixelPointRenderer {
     pub fn new(
         wgpu_render_state: &ViewerRenderState,
         pipeline_layout: &wgpu::PipelineLayout,
-        depth_stencil: Option<DepthStencilState>
+        depth_stencil: Option<DepthStencilState>,
     ) -> Self {
         let device = &wgpu_render_state.device;
 
@@ -73,7 +73,7 @@ impl PixelPointRenderer {
                 entry_point: "vs_main",
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: std::mem::size_of::<PointVertex2>() as wgpu::BufferAddress,
-                    step_mode: wgpu::VertexStepMode::Vertex,                             
+                    step_mode: wgpu::VertexStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1=>Float32, 2 => Float32x4],
                 }],
             },

@@ -1,6 +1,6 @@
 use crate::sensor::traits::DistortTable;
-use crate::viewer::ViewerRenderState;
 use crate::viewer::ViewerBuilder;
+use crate::viewer::ViewerRenderState;
 
 use std::sync::Mutex;
 use wgpu::util::DeviceExt;
@@ -46,10 +46,7 @@ pub struct SceneRenderBuffers {
 }
 
 impl SceneRenderBuffers {
-    pub(crate) fn new(
-        wgpu_render_state: &ViewerRenderState,
-        builder: &ViewerBuilder,
-    ) -> Self {
+    pub(crate) fn new(wgpu_render_state: &ViewerRenderState, builder: &ViewerBuilder) -> Self {
         let device = &wgpu_render_state.device;
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -61,7 +58,7 @@ impl SceneRenderBuffers {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: None, 
+                        min_binding_size: None,
                     },
                     count: None,
                 },
@@ -96,14 +93,14 @@ impl SceneRenderBuffers {
         ];
 
         let transform_uniforms = Transforms {
-            width: builder.camera.intrinsics.image_size().width as f32,
-            height: builder.camera.intrinsics.image_size().height as f32,
+            width: builder.config.camera.intrinsics.image_size().width as f32,
+            height: builder.config.camera.intrinsics.image_size().height as f32,
             near: 0.1,
             far: 1000.0,
-            fx: builder.camera.intrinsics.params()[0] as f32,
-            fy: builder.camera.intrinsics.params()[1] as f32,
-            px: builder.camera.intrinsics.params()[2] as f32,
-            py: builder.camera.intrinsics.params()[3] as f32,
+            fx: builder.config.camera.intrinsics.params()[0] as f32,
+            fy: builder.config.camera.intrinsics.params()[1] as f32,
+            px: builder.config.camera.intrinsics.params()[2] as f32,
+            py: builder.config.camera.intrinsics.params()[3] as f32,
         };
 
         let transform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -155,8 +152,8 @@ impl SceneRenderBuffers {
         });
 
         let texture_size = wgpu::Extent3d {
-            width: builder.camera.intrinsics.image_size().width as u32,
-            height: builder.camera.intrinsics.image_size().height as u32,
+            width: builder.config.camera.intrinsics.image_size().width as u32,
+            height: builder.config.camera.intrinsics.image_size().height as u32,
             depth_or_array_layers: 1,
         };
         let dist_texture = device.create_texture(&wgpu::TextureDescriptor {

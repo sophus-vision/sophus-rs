@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use nalgebra::SimdValue;
 use simba::simd::AutoSimd;
 pub use typenum::generic_const_mappings::Const;
 
@@ -131,6 +132,8 @@ pub trait IsStaticTensor<
 {
     type CShape: IsCShape<SRANK>;
 
+    fn from_slice(slice: &[Scalar]) -> Self;
+
     fn zero() -> Self;
 
     fn number_category() -> NumberCategory {
@@ -185,6 +188,10 @@ impl<Scalar: IsTensorScalar + 'static> IsStaticTensor<Scalar, 0, 1, 1, 1> for Sc
     fn strides() -> [usize; 0] {
         []
     }
+
+    fn from_slice(slice: &[Scalar]) -> Self {
+        slice[0]
+    }
 }
 
 // RANK 1 TENSORS
@@ -210,6 +217,10 @@ impl<Scalar: IsTensorScalar + 'static, const BATCHES: usize>
     fn strides() -> [usize; 1] {
         [1]
     }
+
+    fn from_slice(slice: &[Scalar]) -> Self {
+        todo!("BatchScalar::from_slice")
+    }
 }
 
 // A vector
@@ -232,6 +243,12 @@ impl<Scalar: IsTensorScalar + 'static, const ROWS: usize> IsStaticTensor<Scalar,
 
     fn strides() -> [usize; 1] {
         [1]
+    }
+
+    fn from_slice(slice: &[Scalar]) -> Self {
+        let mut v = Self::zeros();
+        v.copy_from_slice(slice);
+        v
     }
 }
 
@@ -259,6 +276,10 @@ impl<Scalar: IsTensorScalar + 'static, const BATCHES: usize, const ROWS: usize>
     fn strides() -> [usize; 2] {
         [1, BATCHES]
     }
+
+    fn from_slice(slice: &[Scalar]) -> Self {
+        todo!("SVec<AutoSimd<[Scalar; BATCHES]>, ROWS>::from_slice")
+    }
 }
 
 // a matrix
@@ -281,6 +302,12 @@ impl<Scalar: IsTensorScalar + 'static, const ROWS: usize, const COLS: usize>
 
     fn strides() -> [usize; 2] {
         [1, ROWS]
+    }
+
+    fn from_slice(slice: &[Scalar]) -> Self {
+        let mut v = Self::zeros();
+        v.copy_from_slice(slice);
+        v
     }
 }
 
@@ -309,6 +336,10 @@ impl<
 
     fn strides() -> [usize; 3] {
         [1, BATCHES, BATCHES * ROWS]
+    }
+
+    fn from_slice(slice: &[Scalar]) -> Self {
+        todo!("SMat<AutoSimd<[Scalar; BATCHES]>, ROWS, COLS>::from_slice")
     }
 }
 

@@ -1,9 +1,9 @@
-
-
+use hollywood::actors::egui::EguiActor;
+use hollywood::actors::egui::Stream;
 pub use hollywood::compute::Context;
 use hollywood::core::request::ReplyMessage;
 use hollywood::core::request::RequestChannel;
-use hollywood::core::request::RequestHub;
+pub use hollywood::core::request::RequestHub;
 pub use hollywood::core::*;
 use hollywood::macros::*;
 use nalgebra::SVector;
@@ -13,24 +13,15 @@ use sophus_rs::image::view::ImageSize;
 use sophus_rs::lie::rotation3::Isometry3;
 use sophus_rs::lie::traits::IsTranslationProductGroup;
 use sophus_rs::sensor::perspective_camera::KannalaBrandtCamera;
-use sophus_rs::viewer::actor::run_viewer_on_man_thread;
-use sophus_rs::viewer::actor::ViewerActor;
+
+use sophus_rs::image::arc_image::ArcImage4F32;
+use sophus_rs::viewer::actor::run_viewer_on_main_thread;
+use sophus_rs::viewer::actor::ViewerBuilder;
 use sophus_rs::viewer::actor::ViewerCamera;
-use sophus_rs::viewer::actor::ViewerProp;
-use sophus_rs::viewer::Color;
-use sophus_rs::viewer::Line2;
-use sophus_rs::viewer::Line3;
-use sophus_rs::viewer::Lines2;
-use sophus_rs::viewer::Lines3;
-use sophus_rs::viewer::Point2;
-use sophus_rs::viewer::Point3;
-use sophus_rs::viewer::Points2;
-use sophus_rs::viewer::Points3;
-use sophus_rs::viewer::Renderable;
-use sophus_rs::viewer::Triangle3;
-use sophus_rs::viewer::Triangles3;
-use sophus_rs::viewer::ViewerBuilder;
+use sophus_rs::viewer::actor::ViewerConfig;
+use sophus_rs::viewer::renderable::*;
 use sophus_rs::viewer::scene_renderer::interaction::WgpuClippingPlanes;
+use sophus_rs::viewer::SimpleViewer;
 
 #[actor(ContentGeneratorMessage)]
 type ContentGenerator = Actor<
@@ -57,7 +48,7 @@ pub struct ContentGeneratorRequest {
 }
 
 impl RequestHub<ContentGeneratorMessage> for ContentGeneratorRequest {
-    fn from_context_and_parent(
+    fn from_parent_and_sender(
         actor_name: &str,
         sender: &tokio::sync::mpsc::Sender<ContentGeneratorMessage>,
     ) -> Self {
@@ -71,7 +62,7 @@ impl RequestHub<ContentGeneratorMessage> for ContentGeneratorRequest {
     }
 }
 
-impl Morph for ContentGeneratorRequest {
+impl Activate for ContentGeneratorRequest {
     fn extract(&mut self) -> Self {
         Self {
             scene_from_camera_request: self.scene_from_camera_request.extract(),
@@ -112,7 +103,7 @@ impl Default for ContentGeneratorState {
 #[actor_outputs]
 pub struct ContentGeneratorOutbound {
     /// curves
-    pub packets: OutboundChannel<Vec<Renderable>>,
+    pub packets: OutboundChannel<Stream<Vec<Renderable>>>,
 }
 
 impl OnMessage for ContentGeneratorMessage {
@@ -132,6 +123,12 @@ impl OnMessage for ContentGeneratorMessage {
                     SVector::<f32, 3>::new(0.0, 0.0, -0.1),
                     SVector::<f32, 3>::new(0.0, 1.0, 0.0),
                     SVector::<f32, 3>::new(1.0, 0.0, 0.0),
+                ];
+
+                let ttrig_points = [
+                    SVector::<f32, 3>::new(0.1, 0.0, 0.3),
+                    SVector::<f32, 3>::new(0.1, 1.0, 0.3),
+                    SVector::<f32, 3>::new(1.1, 0.0, 0.3),
                 ];
 
                 if state.counter == 0 {
@@ -203,6 +200,15 @@ impl OnMessage for ContentGeneratorMessage {
                         },
                     }];
 
+                    let textured_mesh = vec![TexturedTriangle3 {
+                        p0: ttrig_points[0],
+                        p1: ttrig_points[1],
+                        p2: ttrig_points[2],
+                        tex0: SVector::<f32, 2>::new(0.0, 0.0),
+                        tex1: SVector::<f32, 2>::new(0.0, 0.0),
+                        tex2: SVector::<f32, 2>::new(0.0, 0.0),
+                    }];
+
                     let line3 = vec![
                         Line3 {
                             p0: SVector::<f32, 3>::new(0.0, 0.0, 0.0),
@@ -244,12 +250,24 @@ impl OnMessage for ContentGeneratorMessage {
                         points: points2,
                     }));
                     renderables.push(Renderable::Points3(Points3 {
-                        name: "points23".to_owned(),
+                        name: "points3".to_owned(),
                         points: points3,
                     }));
-                    renderables.push(Renderable::Triangles3(Triangles3 {
-                        name: "points2".to_owned(),
+                    renderables.push(Renderable::Mesh3(Mesh3 {
+                        name: "mesh".to_owned(),
                         mesh,
+                    }));
+
+                    renderables.push(Renderable::TexturedMesh3(TexturedMesh3 {
+                        name: "tex_mesh".to_owned(),
+                        mesh: textured_mesh,
+                        texture: ArcImage4F32::from_image_size_and_val(
+                            ImageSize {
+                                width: 2,
+                                height: 2,
+                            },
+                            nalgebra::SVector::<f32, 4>::new(0.0, 0.0, 0.0, 0.0),
+                        ),
                     }));
 
                     renderables.push(Renderable::Lines3(Lines3 {
@@ -387,7 +405,7 @@ impl OnMessage for ContentGeneratorMessage {
                     lines,
                 }));
 
-                outbound.packets.send(renderables);
+                outbound.packets.send(Stream { msg: renderables });
 
                 request.scene_from_camera_request.send_request(());
             }
@@ -430,7 +448,7 @@ pub async fn run_viewer_example() {
         scene_from_camera,
     };
 
-    let mut builder = ViewerBuilder::new(camera);
+    let mut builder = ViewerBuilder::from_config(ViewerConfig { camera });
 
     // Pipeline configuration
     let pipeline = hollywood::compute::Context::configure(&mut |context| {
@@ -450,7 +468,7 @@ pub async fn run_viewer_example() {
         );
         // 3. The viewer actor
         let mut viewer =
-            ViewerActor::from_prop_and_state(context, ViewerProp {}, builder.viewer_state.clone());
+            EguiActor::<Vec<Renderable>, (), Isometry3<f64>>::from_builder(context, &builder);
 
         // Pipeline connections:
         timer
@@ -460,11 +478,11 @@ pub async fn run_viewer_example() {
         content_generator
             .outbound
             .packets
-            .connect(context, &mut viewer.inbound.packets);
+            .connect(context, &mut viewer.inbound.stream);
         content_generator
             .request
             .scene_from_camera_request
-            .connect(context, &mut viewer.inbound.request_view_pose);
+            .connect(context, &mut viewer.inbound.request);
     });
 
     // The cancel_requester is used to cancel the pipeline.
@@ -478,7 +496,7 @@ pub async fn run_viewer_example() {
     // 1. Run the pipeline on a separate thread.
     let pipeline_handle = tokio::spawn(pipeline.run());
     // 2. Run the viewer on the main thread. This is a blocking call.
-    run_viewer_on_man_thread(builder);
+    run_viewer_on_main_thread::<ViewerBuilder, SimpleViewer>(builder);
     // 3. Wait for the pipeline to finish.
     pipeline_handle.await.unwrap();
 }

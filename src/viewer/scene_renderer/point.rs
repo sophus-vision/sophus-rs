@@ -1,13 +1,11 @@
-use std::collections::BTreeMap;
 use bytemuck::Pod;
 use bytemuck::Zeroable;
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
+use std::collections::BTreeMap;
 use wgpu::DepthStencilState;
 
-
-use crate::viewer::Point3;
+use crate::viewer::renderable::Point3;
 use crate::viewer::ViewerRenderState;
-
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -28,7 +26,7 @@ impl ScenePointRenderer {
     pub fn new(
         wgpu_render_state: &ViewerRenderState,
         pipeline_layout: &wgpu::PipelineLayout,
-        depth_stencil: Option<DepthStencilState>
+        depth_stencil: Option<DepthStencilState>,
     ) -> Self {
         let device = &wgpu_render_state.device;
 
@@ -62,14 +60,14 @@ impl ScenePointRenderer {
         });
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("triangle scene pipeline"),
+            label: Some("mesh scene pipeline"),
             layout: Some(pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
                 buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<PointVertex3>() as wgpu::BufferAddress, 
-                    step_mode: wgpu::VertexStepMode::Vertex,                             
+                    array_stride: std::mem::size_of::<PointVertex3>() as wgpu::BufferAddress,
+                    step_mode: wgpu::VertexStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1=>Float32, 2 => Float32x4],
 
                 }],

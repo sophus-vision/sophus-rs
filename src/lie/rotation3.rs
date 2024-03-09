@@ -231,7 +231,7 @@ impl<S: IsScalar> IsLieGroupImpl<S, 3, 4, 3, 3> for Rotation3Impl<S> {
 
         let mut params = S::Vector::block_vec2(re.to_vec(), ivec);
 
-        if (params.norm().real()-1.0).abs() > 1e-7 {
+        if (params.norm().real() - 1.0).abs() > 1e-7 {
             // todo: use tailor approximation for norm close to 1
             params = params.normalized();
         }

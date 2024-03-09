@@ -61,9 +61,9 @@ macro_rules! mut_view_is_view {
                 'a,
                 Scalar: IsTensorScalar + 'static,
                 STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
-                const BATCHES: usize,
                 const ROWS: usize,
                 const COLS: usize,
+                const BATCHES: usize,
             > MutTensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
         {
 
@@ -125,13 +125,13 @@ macro_rules! mut_view_is_view {
                 OtherSTensor: IsStaticTensor<
                     OtherScalar,
                     OTHER_SRANK,
-                    OTHER_BATCHES,
                     OTHER_ROWS,
-                    OTHER_COLS
+                    OTHER_COLS,
+                    OTHER_BATCHES,
                 > + 'static,
-                const OTHER_BATCHES: usize,
                 const OTHER_ROWS: usize,
                 const OTHER_COLS: usize,
+                const OTHER_BATCHES: usize,
                 V : IsTensorView::<
                     'b,
                     OTHER_HRANK,
@@ -139,9 +139,9 @@ macro_rules! mut_view_is_view {
                     OTHER_SRANK,
                     OtherScalar,
                     OtherSTensor,
-                    OTHER_BATCHES,
                     OTHER_ROWS,
-                    OTHER_COLS
+                    OTHER_COLS,
+                    OTHER_BATCHES,
                 >,
                 F: FnMut(&mut STensor, &OtherSTensor)
             >(
@@ -162,9 +162,9 @@ macro_rules! mut_view_is_view {
         'a,
                 Scalar: IsTensorScalar + 'static,
                 STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
-                const BATCHES: usize,
                 const ROWS: usize,
                 const COLS: usize,
+                const BATCHES: usize,
             > IsTensorLike<'a, $scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
             for MutTensorView<
                 'a,
@@ -219,9 +219,9 @@ macro_rules! mut_view_is_view {
         'a,
                 Scalar: IsTensorScalar + 'static,
                 STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
-                const BATCHES: usize,
                 const ROWS: usize,
                 const COLS: usize,
+                const BATCHES: usize,
             >
             IsMutTensorLike<'a,
                 $scalar_rank,

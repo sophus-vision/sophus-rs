@@ -158,17 +158,15 @@ mod test {
 
     #[test]
     fn test_spline_basis_fn() {
+        use crate::calculus::dual::dual_scalar::Dual;
+        use crate::calculus::dual::dual_vector::DualV;
+        use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
+        use crate::calculus::points::example_points;
         use crate::calculus::spline::spline_segment::CubicBSplineFn;
-        use crate::calculus::{
-            dual::{dual_scalar::Dual, dual_vector::DualV},
-            maps::vector_valued_maps::VectorValuedMapFromVector,
-            points::example_points,
-            types::{
-                scalar::IsScalar,
-                vector::{IsVector, IsVectorLike},
-                V,
-            },
-        };
+        use crate::calculus::types::scalar::IsScalar;
+        use crate::calculus::types::vector::IsVector;
+        use crate::calculus::types::vector::IsVectorLike;
+        use crate::calculus::types::V;
 
         let points = &example_points::<f64, 3>();
         assert!(points.len() >= 8);
@@ -226,17 +224,16 @@ mod test {
 
     #[test]
     fn test_spline_segment() {
-        use crate::calculus::{
-            dual::{dual_scalar::Dual, dual_vector::DualV},
-            maps::vector_valued_maps::VectorValuedMapFromVector,
-            points::example_points,
-            spline::spline_segment::{CubicBSplineSegment, SegmentCase},
-            types::{
-                scalar::IsScalar,
-                vector::{IsVector, IsVectorLike},
-                V,
-            },
-        };
+        use crate::calculus::dual::dual_scalar::Dual;
+        use crate::calculus::dual::dual_vector::DualV;
+        use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
+        use crate::calculus::points::example_points;
+        use crate::calculus::spline::spline_segment::CubicBSplineSegment;
+        use crate::calculus::spline::spline_segment::SegmentCase;
+        use crate::calculus::types::scalar::IsScalar;
+        use crate::calculus::types::vector::IsVector;
+        use crate::calculus::types::vector::IsVectorLike;
+        use crate::calculus::types::V;
 
         let points = &example_points::<f64, 3>();
         assert!(points.len() >= 8);

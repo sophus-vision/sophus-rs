@@ -1,13 +1,10 @@
 use eframe::egui::{self};
-use ndarray::ArrayView2;
 
 use super::ViewerRenderState;
 use crate::image::arc_image::ArcImageF32;
 use crate::image::view::ImageSize;
+use crate::image::view::ImageViewF32;
 use crate::sensor::perspective_camera::KannalaBrandtCamera;
-use crate::tensor::mut_tensor::InnerScalarToVec;
-use crate::tensor::mut_tensor::MutTensorDD;
-use crate::tensor::view::TensorViewDD;
 
 #[derive(Debug)]
 pub(crate) struct OffscreenTexture {
@@ -146,14 +143,14 @@ impl OffscreenTexture {
 
             let data = buffer_slice.get_mapped_range();
 
-            let tensor_view = TensorViewDD::<f32>::new(
-                ArrayView2::from_shape((h as usize, w as usize), bytemuck::cast_slice(&data[..]))
-                    .unwrap(),
+            let view = ImageViewF32::from_size_and_slice(
+                ImageSize {
+                    width: w as usize,
+                    height: h as usize,
+                },
+                bytemuck::cast_slice(&data[..]),
             );
-            let tensor = MutTensorDD::make_copy_from(&tensor_view);
-            let img = ArcImageF32 {
-                tensor: tensor.to_shared().inner_scalar_to_vec(),
-            };
+            let img = ArcImageF32::make_copy_from(&view);
             maybe_depth_image = Some(img);
         }
         self.depth_output_staging_buffer.unmap();
