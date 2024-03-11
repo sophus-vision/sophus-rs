@@ -1,17 +1,22 @@
 use nalgebra::SVector;
 use num_traits::Bounded;
 
+/// Region - n-dimensional interval
 #[derive(Debug, Copy, Clone)]
 pub struct Region<const D: usize> {
+    /// min and max of the region
     pub min_max: Option<(SVector<f64, D>, SVector<f64, D>)>,
 }
 
+/// Integer Region - n-dimensional interval
 #[derive(Debug, Copy, Clone)]
 pub struct IRegion<const D: usize> {
+    /// min and max of the region
     pub min_max: Option<(SVector<i64, D>, SVector<i64, D>)>,
 }
 
 impl<const D: usize> IRegion<D> {
+    /// convert integer region to floating point region
     pub fn to_region(&self) -> Region<D> {
         if self.is_empty() {
             return Region::empty();
@@ -24,22 +29,29 @@ impl<const D: usize> IRegion<D> {
     }
 }
 
-pub trait PointTraits<const D: usize>: Copy + Bounded + std::ops::Index<usize> {
+/// Traits for points
+pub trait IsPoint<const D: usize>: Copy + Bounded + std::ops::Index<usize> {
+    /// Point type
     type Point: Bounded;
 
+    /// smallest point
     fn smallest() -> Self::Point {
         Bounded::min_value()
     }
+
+    /// largest point
     fn largest() -> Self::Point {
         Bounded::max_value()
     }
 
+    /// clamp point
     fn clamp(&self, min: Self, max: Self) -> Self::Point;
 
+    /// check if point is less or equal to another point
     fn is_less_equal(&self, rhs: Self) -> bool;
 }
 
-impl<const D: usize> PointTraits<D> for SVector<f64, D> {
+impl<const D: usize> IsPoint<D> for SVector<f64, D> {
     type Point = Self;
 
     fn clamp(&self, min: Self, max: Self) -> Self::Point {
@@ -55,7 +67,7 @@ impl<const D: usize> PointTraits<D> for SVector<f64, D> {
     }
 }
 
-impl<const D: usize> PointTraits<D> for SVector<i64, D> {
+impl<const D: usize> IsPoint<D> for SVector<i64, D> {
     type Point = Self;
 
     fn clamp(&self, min: Self::Point, max: Self::Point) -> Self::Point {
@@ -71,43 +83,70 @@ impl<const D: usize> PointTraits<D> for SVector<i64, D> {
     }
 }
 
-pub trait RegionTraits<const D: usize, P: PointTraits<D>> {
+/// Traits for regions
+pub trait IsRegion<const D: usize, P: IsPoint<D>> {
+    /// Region type
     type Region;
 
+    /// create unbounded region
     fn unbounded() -> Self;
 
+    /// create empty region
     fn empty() -> Self::Region;
 
+    /// create region from min and max values
     fn from_min_max(min: P, max: P) -> Self::Region;
 
-    fn is_empty(&self) -> bool;
-
-    fn is_degenerated(&self) -> bool;
-
-    fn is_proper(&self) -> bool {
-        !self.is_empty() && !self.is_degenerated()
-    }
-
-    fn is_unbounded(&self) -> bool;
-
+    /// create region from point
     fn from_point(point: P) -> Self::Region {
         Self::from_min_max(point, point)
     }
 
+    /// is region empty
+    fn is_empty(&self) -> bool;
+
+    /// is region degenerated
+    ///
+    /// A region is degenerated if it is not empty and min == max
+    fn is_degenerated(&self) -> bool;
+
+    /// is region proper
+    ///
+    /// A region is proper if it is not empty and not degenerated
+    fn is_proper(&self) -> bool {
+        !self.is_empty() && !self.is_degenerated()
+    }
+
+    /// is region unbounded
+    fn is_unbounded(&self) -> bool;
+
+    /// extend region to include point
     fn extend(&mut self, point: &P);
 
+    /// min of the region
+    ///
+    /// panics if the region is empty
     fn min(&self) -> P {
         self.try_min().unwrap()
     }
+
+    /// max of the region
+    ///
+    /// panics if the region is empty
     fn max(&self) -> P {
         self.try_max().unwrap()
     }
 
+    /// return min of the region or None if the region is empty
     fn try_min(&self) -> Option<P>;
+
+    /// return max of the region or None if the region is empty
     fn try_max(&self) -> Option<P>;
 
+    /// clamp point to the region
     fn clamp(&self, p: P) -> P;
 
+    /// check if the region contains a point
     fn contains(&self, p: P) -> bool {
         if self.is_empty() {
             return false;
@@ -115,12 +154,14 @@ pub trait RegionTraits<const D: usize, P: PointTraits<D>> {
         self.min().is_less_equal(self.min()) && p.is_less_equal(self.max())
     }
 
+    /// range of the region
     fn range(&self) -> P;
 
+    /// mid of the region
     fn mid(&self) -> P;
 }
 
-impl<const D: usize> RegionTraits<D, SVector<f64, D>> for Region<D> {
+impl<const D: usize> IsRegion<D, SVector<f64, D>> for Region<D> {
     type Region = Self;
 
     fn unbounded() -> Self {
@@ -194,7 +235,7 @@ impl<const D: usize> RegionTraits<D, SVector<f64, D>> for Region<D> {
     }
 }
 
-impl<const D: usize> RegionTraits<D, SVector<i64, D>> for IRegion<D> {
+impl<const D: usize> IsRegion<D, SVector<i64, D>> for IRegion<D> {
     type Region = Self;
 
     fn unbounded() -> Self {

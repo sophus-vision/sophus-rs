@@ -1,3 +1,4 @@
+/// Cubic B-Spline details
 pub mod spline_segment;
 
 use crate::calculus::spline::spline_segment::CubicBSplineSegment;
@@ -10,12 +11,16 @@ use assertables::assert_le;
 use assertables::assert_le_as_result;
 use nalgebra::Scalar;
 
+/// Cubic B-Spline implementation
 pub struct CubicBSplineImpl<S: IsScalar, const DIMS: usize> {
+    /// Control points
     pub control_points: Vec<S::Vector<DIMS>>,
+    /// delta between control points
     pub delta_t: S,
 }
 
 impl<S: IsScalar, const DIMS: usize> CubicBSplineImpl<S, DIMS> {
+    /// indices involved
     pub fn idx_involved(&self, segment_idx: usize) -> Vec<usize> {
         let num = self.num_segments();
         assert!(segment_idx < num);
@@ -27,6 +32,7 @@ impl<S: IsScalar, const DIMS: usize> CubicBSplineImpl<S, DIMS> {
         vec![idx_prev, idx_0, idx_1, idx_2]
     }
 
+    /// Interpolate
     pub fn interpolate(&self, segment_idx: usize, u: S) -> S::Vector<DIMS> {
         let num = self.num_segments();
         assert!(segment_idx < num);
@@ -60,6 +66,7 @@ impl<S: IsScalar, const DIMS: usize> CubicBSplineImpl<S, DIMS> {
         self.control_points.len() - 1
     }
 
+    /// derivative of the interpolation
     pub fn dxi_interpolate(
         &self,
         segment_idx: usize,
@@ -108,24 +115,34 @@ impl<S: IsScalar, const DIMS: usize> CubicBSplineImpl<S, DIMS> {
     }
 }
 
+/// Index and u
 #[derive(Clone, Debug, Copy)]
 pub struct IndexAndU<S: Scalar> {
+    /// segment index
     pub segment_idx: usize,
+    /// u
     pub u: S,
 }
 
+/// Cubic B-Spline
 pub struct CubicBSpline<S: IsScalar, const DIMS: usize> {
+    /// Cubic B-Spline implementation
     pub spline_impl: CubicBSplineImpl<S, DIMS>,
+    /// start time t0
     pub t0: S,
 }
 
+/// Cubic B-Spline parameters
 #[derive(Clone, Debug, Copy)]
 pub struct CubicBSplineParams<S: IsScalar + 'static> {
+    /// delta between control points
     pub delta_t: S,
+    /// start time t0
     pub t0: S,
 }
 
 impl<S: IsScalar + 'static, const DIMS: usize> CubicBSpline<S, DIMS> {
+    /// create a new cubic B-Spline
     pub fn new(control_points: Vec<S::Vector<DIMS>>, params: CubicBSplineParams<S>) -> Self {
         Self {
             spline_impl: CubicBSplineImpl {
@@ -135,23 +152,28 @@ impl<S: IsScalar + 'static, const DIMS: usize> CubicBSpline<S, DIMS> {
             t0: params.t0,
         }
     }
+
+    /// interpolate
     pub fn interpolate(&self, t: S) -> S::Vector<DIMS> {
         let index_and_u = self.index_and_u(t);
         self.spline_impl
             .interpolate(index_and_u.segment_idx, index_and_u.u)
     }
 
+    /// derivative of the interpolation
     pub fn dxi_interpolate(&self, t: S, control_point_idx: usize) -> S::Matrix<DIMS, DIMS> {
         let index_and_u = self.index_and_u(t);
         self.spline_impl
             .dxi_interpolate(index_and_u.segment_idx, index_and_u.u, control_point_idx)
     }
 
+    /// indices involved
     pub fn idx_involved(&self, t: S) -> Vec<usize> {
         let index_and_u = self.index_and_u(t);
         self.spline_impl.idx_involved(index_and_u.segment_idx)
     }
 
+    /// index and u
     pub fn index_and_u(&self, t: S) -> IndexAndU<S> {
         assert_ge!(t.real(), self.t0.real());
         assert_le!(t.real(), self.t_max().real());
@@ -185,15 +207,17 @@ impl<S: IsScalar + 'static, const DIMS: usize> CubicBSpline<S, DIMS> {
         idx_and_u
     }
 
-    // normalized between [0, N]
+    /// normalized between [0, N]
     pub fn normalized_t(&self, t: S) -> S {
         (t - self.t0.clone()) / self.spline_impl.delta_t.clone()
     }
 
+    /// number of segments
     pub fn num_segments(&self) -> usize {
         self.spline_impl.num_segments()
     }
 
+    /// t_max
     pub fn t_max(&self) -> S {
         self.t0.clone() + S::c(self.num_segments() as f64) * self.spline_impl.delta_t.clone()
     }

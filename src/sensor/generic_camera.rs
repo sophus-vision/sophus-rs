@@ -4,12 +4,12 @@ use super::traits::DistortTable;
 use super::traits::IsCameraDistortionImpl;
 use super::traits::IsProjection;
 use crate::calculus::region;
+use crate::calculus::region::IsRegion;
 use crate::calculus::region::Region;
-use crate::calculus::region::RegionTraits;
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
-use crate::calculus::types::M;
-use crate::calculus::types::V;
+use crate::calculus::types::MatF64;
+use crate::calculus::types::VecF64;
 use crate::image::arc_image::ArcImage2F32;
 use crate::image::mut_image::MutImage2F32;
 use crate::image::mut_view::IsMutImageView;
@@ -65,7 +65,7 @@ impl<
         Distort::undistort(&self.params, distorted_point)
     }
 
-    pub fn dx_distort_x(&self, proj_point_in_camera_z1_plane: &V<2>) -> M<2, 2> {
+    pub fn dx_distort_x(&self, proj_point_in_camera_z1_plane: &VecF64<2>) -> MatF64<2, 2> {
         Distort::dx_distort_x(self.params.real(), proj_point_in_camera_z1_plane)
     }
 
@@ -115,7 +115,7 @@ impl<
         let h = self.image_size.height;
         for v in 0..h {
             for u in 0..w {
-                let pixel = self.undistort(&V::<2>::new(u as f64, v as f64));
+                let pixel = self.undistort(&VecF64::<2>::new(u as f64, v as f64));
                 *table.mut_pixel(u, v) = pixel.cast();
             }
         }
@@ -135,21 +135,21 @@ impl<
         for u in 0..self.image_size.width {
             // top border
             let v = 0;
-            let point_in_proj = self.undistort(&V::<2>::new(u as f64, v as f64));
+            let point_in_proj = self.undistort(&VecF64::<2>::new(u as f64, v as f64));
             region.extend(&point_in_proj);
             // bottom border
             let v = self.image_size.height - 1;
-            let point_in_proj = self.undistort(&V::<2>::new(u as f64, v as f64));
+            let point_in_proj = self.undistort(&VecF64::<2>::new(u as f64, v as f64));
             region.extend(&point_in_proj);
         }
         for v in 0..self.image_size.height {
             // left border
             let u = 0;
-            let point_in_proj = self.undistort(&V::<2>::new(u as f64, v as f64));
+            let point_in_proj = self.undistort(&VecF64::<2>::new(u as f64, v as f64));
             region.extend(&point_in_proj);
             // right border
             let u = self.image_size.width - 1;
-            let point_in_proj = self.undistort(&V::<2>::new(u as f64, v as f64));
+            let point_in_proj = self.undistort(&VecF64::<2>::new(u as f64, v as f64));
             region.extend(&point_in_proj);
         }
         let region =
@@ -167,7 +167,7 @@ impl<
 
         for v in 0..h {
             for u in 0..w {
-                let point_proj = V::<2>::new(
+                let point_proj = VecF64::<2>::new(
                     distort_table.offset().x + (u as f64) * distort_table.incr().x,
                     distort_table.offset().y + (v as f64) * distort_table.incr().y,
                 );

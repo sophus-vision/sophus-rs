@@ -6,8 +6,8 @@ use std::ops::Sub;
 
 use crate::calculus::types::matrix::IsMatrix;
 use crate::calculus::types::vector::IsVectorLike;
-use crate::calculus::types::M;
-use crate::calculus::types::V;
+use crate::calculus::types::MatF64;
+use crate::calculus::types::VecF64;
 use crate::tensor::mut_tensor::MutTensorDD;
 use crate::tensor::mut_tensor::MutTensorDDR;
 use crate::tensor::mut_tensor::MutTensorDDRC;
@@ -17,9 +17,12 @@ use crate::tensor::view::IsTensorLike;
 use super::dual_scalar::Dual;
 use super::dual_vector::DualV;
 
+/// Dual matrix
 #[derive(Clone)]
 pub struct DualM<const ROWS: usize, const COLS: usize> {
-    pub val: M<ROWS, COLS>,
+    /// value - real matrix
+    pub val: MatF64<ROWS, COLS>,
+    /// derivative - infinitesimal matrix
     pub dij_val: Option<MutTensorDDRC<f64, ROWS, COLS>>,
 }
 
@@ -29,8 +32,8 @@ impl<const ROWS: usize, const COLS: usize> DualM<ROWS, COLS> {
         const R1: usize,
         const C0: usize,
         const C1: usize,
-        F: FnMut(&M<R0, C0>) -> M<ROWS, COLS>,
-        G: FnMut(&M<R1, C1>) -> M<ROWS, COLS>,
+        F: FnMut(&MatF64<R0, C0>) -> MatF64<ROWS, COLS>,
+        G: FnMut(&MatF64<R1, C1>) -> MatF64<ROWS, COLS>,
     >(
         lhs_dx: &Option<MutTensorDDRC<f64, R0, C0>>,
         rhs_dx: &Option<MutTensorDDRC<f64, R1, C1>>,
@@ -61,8 +64,8 @@ impl<const ROWS: usize, const COLS: usize> DualM<ROWS, COLS> {
         const R0: usize,
         const R1: usize,
         const C0: usize,
-        F: FnMut(&M<R0, C0>) -> V<ROWS>,
-        G: FnMut(&V<R1>) -> V<ROWS>,
+        F: FnMut(&MatF64<R0, C0>) -> VecF64<ROWS>,
+        G: FnMut(&VecF64<R1>) -> VecF64<ROWS>,
     >(
         lhs_dx: &Option<MutTensorDDRC<f64, R0, C0>>,
         rhs_dx: &Option<MutTensorDDR<f64, R1>>,
@@ -92,8 +95,8 @@ impl<const ROWS: usize, const COLS: usize> DualM<ROWS, COLS> {
     fn binary_ms_dij<
         const R0: usize,
         const C0: usize,
-        F: FnMut(&M<R0, C0>) -> M<ROWS, COLS>,
-        G: FnMut(&f64) -> M<ROWS, COLS>,
+        F: FnMut(&MatF64<R0, C0>) -> MatF64<ROWS, COLS>,
+        G: FnMut(&f64) -> MatF64<ROWS, COLS>,
     >(
         lhs_dx: &Option<MutTensorDDRC<f64, R0, C0>>,
         rhs_dx: &Option<MutTensorDD<f64>>,
@@ -120,7 +123,7 @@ impl<const ROWS: usize, const COLS: usize> DualM<ROWS, COLS> {
         }
     }
 
-    pub fn two_dx<const R1: usize, const C1: usize, const R2: usize, const C2: usize>(
+    fn two_dx<const R1: usize, const C1: usize, const R2: usize, const C2: usize>(
         mut lhs_dx: Option<MutTensorDDRC<f64, R1, C1>>,
         mut rhs_dx: Option<MutTensorDDRC<f64, R2, C2>>,
     ) -> Option<DijPairM<R1, C1, R2, C2>> {
@@ -151,7 +154,7 @@ impl<const ROWS: usize, const COLS: usize> DualM<ROWS, COLS> {
         })
     }
 
-    pub fn two_dx_from_vec(
+    fn two_dx_from_vec(
         mut lhs_dx: Option<MutTensorDDRC<f64, ROWS, COLS>>,
         mut rhs_dx: Option<MutTensorDDR<f64, COLS>>,
     ) -> Option<DijPairMV<ROWS, COLS>> {
@@ -182,7 +185,8 @@ impl<const ROWS: usize, const COLS: usize> DualM<ROWS, COLS> {
         })
     }
 
-    pub fn v(val: M<ROWS, COLS>) -> Self {
+    /// Create a dual matrix
+    pub fn v(val: MatF64<ROWS, COLS>) -> Self {
         let mut dij_val = MutTensorDDRC::<f64, ROWS, COLS>::from_shape([ROWS, COLS]);
         for i in 0..ROWS {
             for j in 0..COLS {
@@ -210,7 +214,7 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<Dual, ROWS, COLS> for DualM<
         }
     }
 
-    fn c(val: M<ROWS, COLS>) -> Self {
+    fn c(val: MatF64<ROWS, COLS>) -> Self {
         Self { val, dij_val: None }
     }
 
@@ -227,7 +231,7 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<Dual, ROWS, COLS> for DualM<
     }
 
     fn identity() -> Self {
-        DualM::c(M::<ROWS, COLS>::identity())
+        DualM::c(MatF64::<ROWS, COLS>::identity())
     }
 
     fn get(&self, idx: (usize, usize)) -> Dual {
@@ -242,7 +246,7 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<Dual, ROWS, COLS> for DualM<
 
     fn from_array2(duals: [[Dual; COLS]; ROWS]) -> Self {
         let mut shape = None;
-        let mut val_mat = M::<ROWS, COLS>::zeros();
+        let mut val_mat = MatF64::<ROWS, COLS>::zeros();
         for i in 0..duals.len() {
             let d_rows = duals[i].clone();
             for j in 0..d_rows.len() {
@@ -285,7 +289,7 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<Dual, ROWS, COLS> for DualM<
         }
     }
 
-    fn real(&self) -> &M<ROWS, COLS> {
+    fn real(&self) -> &MatF64<ROWS, COLS> {
         &self.val
     }
 
@@ -316,13 +320,13 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<Dual, ROWS, COLS> for DualM<
         let maybe_dij = Self::two_dx(top_row.dij_val, bot_row.dij_val);
 
         Self {
-            val: M::<ROWS, COLS>::block_mat2x1(top_row.val, bot_row.val),
+            val: MatF64::<ROWS, COLS>::block_mat2x1(top_row.val, bot_row.val),
             dij_val: match maybe_dij {
                 Some(dij_val) => {
                     let mut r = MutTensorDDRC::<f64, ROWS, COLS>::from_shape(dij_val.shape());
                     for d0 in 0..dij_val.shape()[0] {
                         for d1 in 0..dij_val.shape()[1] {
-                            *r.mut_view().get_mut([d0, d1]) = M::<ROWS, COLS>::block_mat2x1(
+                            *r.mut_view().get_mut([d0, d1]) = MatF64::<ROWS, COLS>::block_mat2x1(
                                 dij_val.lhs.get([d0, d1]),
                                 dij_val.rhs.get([d0, d1]),
                             );
@@ -343,13 +347,13 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<Dual, ROWS, COLS> for DualM<
         let maybe_dij = Self::two_dx(left_col.dij_val, righ_col.dij_val);
 
         Self {
-            val: M::<ROWS, COLS>::block_mat1x2(left_col.val, righ_col.val),
+            val: MatF64::<ROWS, COLS>::block_mat1x2(left_col.val, righ_col.val),
             dij_val: match maybe_dij {
                 Some(dij_val) => {
                     let mut r = MutTensorDDRC::<f64, ROWS, COLS>::from_shape(dij_val.shape());
                     for d0 in 0..dij_val.shape()[0] {
                         for d1 in 0..dij_val.shape()[1] {
-                            *r.mut_view().get_mut([d0, d1]) = M::<ROWS, COLS>::block_mat1x2(
+                            *r.mut_view().get_mut([d0, d1]) = MatF64::<ROWS, COLS>::block_mat1x2(
                                 dij_val.lhs.get([d0, d1]),
                                 dij_val.rhs.get([d0, d1]),
                             );
@@ -397,7 +401,7 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<Dual, ROWS, COLS> for DualM<
 
     fn from_c_array2(vals: [[f64; COLS]; ROWS]) -> Self {
         DualM {
-            val: M::from_c_array2(vals),
+            val: MatF64::from_c_array2(vals),
             dij_val: None,
         }
     }
@@ -451,7 +455,7 @@ impl<const ROWS: usize, const COLS: usize> Neg for DualM<ROWS, COLS> {
 
 impl<const ROWS: usize, const COLS: usize> IsVectorLike for DualM<ROWS, COLS> {
     fn zero() -> Self {
-        Self::c(M::zeros())
+        Self::c(MatF64::zeros())
     }
 }
 
@@ -484,7 +488,7 @@ impl<const ROWS: usize, const COLS: usize> Debug for DualM<ROWS, COLS> {
     }
 }
 
-pub struct DijPairM<const ROWS: usize, const COLS: usize, const ROWS2: usize, const COLS2: usize> {
+struct DijPairM<const ROWS: usize, const COLS: usize, const ROWS2: usize, const COLS2: usize> {
     lhs: MutTensorDDRC<f64, ROWS, COLS>,
     rhs: MutTensorDDRC<f64, ROWS2, COLS2>,
 }
@@ -497,7 +501,7 @@ impl<const ROWS: usize, const COLS: usize, const ROWS2: usize, const COLS2: usiz
     }
 }
 
-pub struct DijPairMV<const ROWS: usize, const COLS: usize> {
+struct DijPairMV<const ROWS: usize, const COLS: usize> {
     pub lhs: MutTensorDDRC<f64, ROWS, COLS>,
     pub rhs: MutTensorDDR<f64, COLS>,
 }
@@ -511,11 +515,11 @@ mod test {
         use crate::calculus::maps::matrix_valued_maps::MatrixValuedMapFromMatrix;
         use crate::calculus::types::matrix::IsMatrix;
         use crate::calculus::types::scalar::IsScalar;
-        use crate::calculus::types::M;
+        use crate::calculus::types::MatF64;
         use crate::tensor::view::IsTensorLike;
 
-        let m_2x4 = M::<2, 4>::new_random();
-        let m_4x1 = M::<4, 1>::new_random();
+        let m_2x4 = MatF64::<2, 4>::new_random();
+        let m_4x1 = MatF64::<4, 1>::new_random();
 
         fn mat_mul_fn<S: IsScalar>(x: S::Matrix<2, 4>, y: S::Matrix<4, 1>) -> S::Matrix<2, 1> {
             x.mat_mul(y)
@@ -564,7 +568,7 @@ mod test {
             x.mat_mul(x.clone())
         }
 
-        let m_4x4 = M::<4, 4>::new_random();
+        let m_4x4 = MatF64::<4, 4>::new_random();
 
         let finite_diff =
             MatrixValuedMapFromMatrix::sym_diff_quotient(mat_mul2_fn::<f64>, m_4x4, 1e-6);

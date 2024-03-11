@@ -15,10 +15,13 @@ use num_traits::Zero;
 use super::dual_matrix::DualM;
 use super::dual_vector::DualV;
 
+/// Dual number
 #[derive(Clone)]
 pub struct Dual {
+    /// value - real number
     pub val: f64,
 
+    /// derivative - infinitesimal number
     pub dij_val: Option<MutTensorDD<f64>>,
 }
 
@@ -45,6 +48,7 @@ impl Zero for Dual {
 }
 
 impl Dual {
+    /// create a dual number
     pub fn v(val: f64) -> Self {
         let dij_val = MutTensorDD::<f64>::from_shape_and_val([1, 1], 1.0);
         Self {

@@ -5,8 +5,8 @@ use nalgebra::RowVector2;
 use crate::calculus::types::params::ParamsImpl;
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
-use crate::calculus::types::M;
-use crate::calculus::types::V;
+use crate::calculus::types::MatF64;
+use crate::calculus::types::VecF64;
 
 use super::affine::AffineDistortionImpl;
 use super::traits::IsCameraDistortionImpl;
@@ -160,7 +160,7 @@ impl<S: IsScalar> IsCameraDistortionImpl<S, 4, 8> for KannalaBrandtDistortionImp
         }
     }
 
-    fn dx_distort_x(params: &V<8>, proj_point_in_camera_z1_plane: &V<2>) -> M<2, 2> {
+    fn dx_distort_x(params: &VecF64<8>, proj_point_in_camera_z1_plane: &VecF64<2>) -> MatF64<2, 2> {
         let a = proj_point_in_camera_z1_plane[0];
         let b = proj_point_in_camera_z1_plane[1];
         let fx = params[0];
@@ -171,7 +171,7 @@ impl<S: IsScalar> IsCameraDistortionImpl<S, 4, 8> for KannalaBrandtDistortionImp
         let radius_sq = a * a + b * b;
 
         if radius_sq < 1e-8 {
-            return M::<2, 2>::from_diagonal(&V::<2>::new(fx, fy));
+            return MatF64::<2, 2>::from_diagonal(&VecF64::<2>::new(fx, fy));
         }
 
         let c0 = a.powi(2);
@@ -202,7 +202,7 @@ impl<S: IsScalar> IsCameraDistortionImpl<S, 4, 8> for KannalaBrandtDistortionImp
         let c20 = c19 / c2.powi(3);
         let c21 = a * b * c19 * (-c13 * c2 + c15 * c17) / c3;
 
-        M::<2, 2>::from_rows(&[
+        MatF64::<2, 2>::from_rows(&[
             RowVector2::new(c20 * fx * (-c0 * c16 + c0 * c18 + c14), c21 * fx),
             RowVector2::new(c21 * fy, c20 * fy * (-c1 * c16 + c1 * c18 + c14)),
         ])

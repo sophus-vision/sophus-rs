@@ -16,7 +16,7 @@ use self::point::ScenePointRenderer;
 use super::actor::ViewerBuilder;
 use super::DepthRenderer;
 use super::ViewerRenderState;
-use crate::calculus::region::RegionTraits;
+use crate::calculus::region::IsRegion;
 use crate::image::arc_image::ArcImageF32;
 use crate::image::view::IsImageView;
 use crate::sensor::perspective_camera::KannalaBrandtCamera;

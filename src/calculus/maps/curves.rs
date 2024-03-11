@@ -1,24 +1,24 @@
 use crate::calculus::dual::dual_matrix::DualM;
 use crate::calculus::dual::dual_scalar::Dual;
 use crate::calculus::dual::dual_vector::DualV;
-use crate::calculus::types::M;
-use crate::calculus::types::V;
+use crate::calculus::types::MatF64;
+use crate::calculus::types::VecF64;
 use crate::tensor::view::IsTensorLike;
 
-// A smooth curve in ℝ.
-//
-// This is a function which takes a scalar and returns a scalar:
-//
-//  f: ℝ -> ℝ
+/// A smooth curve in ℝ.
+///
+/// This is a function which takes a scalar and returns a scalar:
+///
+///  f: ℝ -> ℝ
 pub struct ScalarValuedCurve;
 
 impl ScalarValuedCurve {
-    // Finite difference quotient of the scalar-valued curve.
-    //
-    // The derivative is also a scalar.
-    //
-    // Since all operations are batched, the function returns a vector of scalars, i.e. a rank-1
-    // tensor.
+    /// Finite difference quotient of the scalar-valued curve.
+    ///
+    /// The derivative is also a scalar.
+    ///
+    /// Since all operations are batched, the function returns a vector of scalars, i.e. a rank-1
+    /// tensor.
     pub fn sym_diff_quotient<TFn>(curve: TFn, a: f64, h: f64) -> f64
     where
         TFn: Fn(f64) -> f64,
@@ -26,6 +26,7 @@ impl ScalarValuedCurve {
         (curve(a + h) - curve(a - h)) / (2.0 * h)
     }
 
+    /// Auto differentiation of the scalar-valued curve.
     pub fn fw_autodiff<TFn>(curve: TFn, a: f64) -> f64
     where
         TFn: Fn(Dual) -> Dual,
@@ -34,28 +35,29 @@ impl ScalarValuedCurve {
     }
 }
 
-// A smooth curve in ℝʳ.
-//
-// This is a function which takes a scalar and returns a vector:
-//
-//   f: ℝ -> ℝʳ
+/// A smooth curve in ℝʳ.
+///
+/// This is a function which takes a scalar and returns a vector:
+///
+///   f: ℝ -> ℝʳ
 pub struct VectorValuedCurve;
 
 impl VectorValuedCurve {
-    // Finite difference quotient of the vector-valued curve.
-    //
-    // The derivative is also a vector.
-    //
-    // Since all operations are batched, the function returns a vector of vector, i.e. a rank-2
-    // tensor.
-    pub fn sym_diff_quotient<TFn, const ROWS: usize>(curve: TFn, a: f64, h: f64) -> V<ROWS>
+    /// Finite difference quotient of the vector-valued curve.
+    ///
+    /// The derivative is also a vector.
+    ///
+    /// Since all operations are batched, the function returns a vector of vector, i.e. a rank-2
+    /// tensor.
+    pub fn sym_diff_quotient<TFn, const ROWS: usize>(curve: TFn, a: f64, h: f64) -> VecF64<ROWS>
     where
-        TFn: Fn(f64) -> V<ROWS>,
+        TFn: Fn(f64) -> VecF64<ROWS>,
     {
         (curve(a + h) - curve(a - h)) / (2.0 * h)
     }
 
-    pub fn fw_autodiff<TFn, const ROWS: usize>(curve: TFn, a: f64) -> V<ROWS>
+    /// Auto differentiation of the vector-valued curve.
+    pub fn fw_autodiff<TFn, const ROWS: usize>(curve: TFn, a: f64) -> VecF64<ROWS>
     where
         TFn: Fn(Dual) -> DualV<ROWS>,
     {
@@ -63,34 +65,35 @@ impl VectorValuedCurve {
     }
 }
 
-// A smooth curve in ℝʳ x ℝᶜ.
-//
-// This is a function which takes a scalar and returns a matrix:
-//   f: ℝ -> ℝʳ x ℝᶜ
+/// A smooth curve in ℝʳ x ℝᶜ.
+///
+/// This is a function which takes a scalar and returns a matrix:
+///   f: ℝ -> ℝʳ x ℝᶜ
 pub struct MatrixValuedCurve;
 
 impl MatrixValuedCurve {
-    // Finite difference quotient of the matrix-valued curve.
-    //
-    // The derivative is also a matrix.
-    //
-    // Since all operations are batched, the function returns a vector of matrices, i.e. a rank-3
-    // tensor.
+    /// Finite difference quotient of the matrix-valued curve.
+    ///
+    /// The derivative is also a matrix.
+    ///
+    /// Since all operations are batched, the function returns a vector of matrices, i.e. a rank-3
+    /// tensor.
     pub fn sym_diff_quotient<TFn, const ROWS: usize, const COLS: usize>(
         curve: TFn,
         a: f64,
         h: f64,
-    ) -> M<ROWS, COLS>
+    ) -> MatF64<ROWS, COLS>
     where
-        TFn: Fn(f64) -> M<ROWS, COLS>,
+        TFn: Fn(f64) -> MatF64<ROWS, COLS>,
     {
         (curve(a + h) - curve(a - h)) / (2.0 * h)
     }
 
+    /// Auto differentiation of the matrix-valued curve.
     pub fn fw_autodiff<TFn, const ROWS: usize, const COLS: usize>(
         curve: TFn,
         a: f64,
-    ) -> M<ROWS, COLS>
+    ) -> MatF64<ROWS, COLS>
     where
         TFn: Fn(Dual) -> DualM<ROWS, COLS>,
     {

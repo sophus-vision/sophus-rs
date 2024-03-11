@@ -6,7 +6,7 @@ use std::ops::Sub;
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
 use crate::calculus::types::vector::IsVectorLike;
-use crate::calculus::types::V;
+use crate::calculus::types::VecF64;
 use crate::tensor::mut_tensor::InnerVecToMat;
 use crate::tensor::mut_tensor::MutTensorDD;
 use crate::tensor::mut_tensor::MutTensorDDR;
@@ -16,14 +16,18 @@ use crate::tensor::view::IsTensorLike;
 use super::dual_matrix::DualM;
 use super::dual_scalar::Dual;
 
+/// Dual vector
 #[derive(Clone)]
 pub struct DualV<const ROWS: usize> {
-    pub val: V<ROWS>,
+    /// value - real vector
+    pub val: VecF64<ROWS>,
+    /// derivative - infinitesimal vector
     pub dij_val: Option<MutTensorDDR<f64, ROWS>>,
 }
 
 impl<const ROWS: usize> DualV<ROWS> {
-    pub fn v(val: V<ROWS>) -> Self {
+    /// create a dual vector
+    pub fn v(val: VecF64<ROWS>) -> Self {
         let mut dij_val = MutTensorDDR::<f64, ROWS>::from_shape([ROWS, 1]);
         for i in 0..ROWS {
             dij_val.mut_view().get_mut([i, 0])[(i, 0)] = 1.0;
@@ -38,8 +42,8 @@ impl<const ROWS: usize> DualV<ROWS> {
     fn binary_dij<
         const R0: usize,
         const R1: usize,
-        F: FnMut(&V<R0>) -> V<ROWS>,
-        G: FnMut(&V<R1>) -> V<ROWS>,
+        F: FnMut(&VecF64<R0>) -> VecF64<ROWS>,
+        G: FnMut(&VecF64<R1>) -> VecF64<ROWS>,
     >(
         lhs_dx: &Option<MutTensorDDR<f64, R0>>,
         rhs_dx: &Option<MutTensorDDR<f64, R1>>,
@@ -66,7 +70,11 @@ impl<const ROWS: usize> DualV<ROWS> {
         }
     }
 
-    fn binary_vs_dij<const R0: usize, F: FnMut(&V<R0>) -> V<ROWS>, G: FnMut(&f64) -> V<ROWS>>(
+    fn binary_vs_dij<
+        const R0: usize,
+        F: FnMut(&VecF64<R0>) -> VecF64<ROWS>,
+        G: FnMut(&f64) -> VecF64<ROWS>,
+    >(
         lhs_dx: &Option<MutTensorDDR<f64, R0>>,
         rhs_dx: &Option<MutTensorDD<f64>>,
         mut left_op: F,
@@ -92,7 +100,7 @@ impl<const ROWS: usize> DualV<ROWS> {
         }
     }
 
-    pub fn two_dx<const R0: usize, const R1: usize>(
+    fn two_dx<const R0: usize, const R1: usize>(
         mut lhs_dx: Option<MutTensorDDR<f64, R0>>,
         mut rhs_dx: Option<MutTensorDDR<f64, R1>>,
     ) -> Option<DijPair<R0, R1>> {
@@ -156,7 +164,7 @@ impl<const ROWS: usize> Add for DualV<ROWS> {
     }
 }
 
-pub struct DijPair<const R0: usize, const R1: usize> {
+struct DijPair<const R0: usize, const R1: usize> {
     lhs: MutTensorDDR<f64, R0>,
     rhs: MutTensorDDR<f64, R1>,
 }
@@ -182,7 +190,7 @@ impl<const ROWS: usize> Debug for DualV<ROWS> {
 
 impl<const ROWS: usize> IsVectorLike for DualV<ROWS> {
     fn zero() -> Self {
-        Self::c(V::zeros())
+        Self::c(VecF64::zeros())
     }
 }
 
@@ -219,7 +227,7 @@ impl<const ROWS: usize> IsVector<Dual, ROWS> for DualV<ROWS> {
 
     fn from_array(duals: [Dual; ROWS]) -> Self {
         let mut shape = None;
-        let mut val_v = V::<ROWS>::zeros();
+        let mut val_v = VecF64::<ROWS>::zeros();
         for i in 0..duals.len() {
             let d = duals.clone()[i].clone();
 
@@ -258,16 +266,16 @@ impl<const ROWS: usize> IsVector<Dual, ROWS> for DualV<ROWS> {
 
     fn from_c_array(vals: [f64; ROWS]) -> Self {
         DualV {
-            val: V::from_c_array(vals),
+            val: VecF64::from_c_array(vals),
             dij_val: None,
         }
     }
 
-    fn c(val: V<ROWS>) -> Self {
+    fn c(val: VecF64<ROWS>) -> Self {
         Self { val, dij_val: None }
     }
 
-    fn real(&self) -> &V<ROWS> {
+    fn real(&self) -> &VecF64<ROWS> {
         &self.val
     }
 
@@ -295,13 +303,13 @@ impl<const ROWS: usize> IsVector<Dual, ROWS> for DualV<ROWS> {
 
         let maybe_dij = Self::two_dx(top_row.dij_val, bot_row.dij_val);
         Self {
-            val: V::<ROWS>::block_vec2(top_row.val, bot_row.val),
+            val: VecF64::<ROWS>::block_vec2(top_row.val, bot_row.val),
             dij_val: match maybe_dij {
                 Some(dij_val) => {
                     let mut r = MutTensorDDR::<f64, ROWS>::from_shape(dij_val.shape());
                     for d0 in 0..dij_val.shape()[0] {
                         for d1 in 0..dij_val.shape()[1] {
-                            *r.mut_view().get_mut([d0, d1]) = V::<ROWS>::block_vec2(
+                            *r.mut_view().get_mut([d0, d1]) = VecF64::<ROWS>::block_vec2(
                                 dij_val.lhs.get([d0, d1]),
                                 dij_val.rhs.get([d0, d1]),
                             );
@@ -352,10 +360,10 @@ mod test {
         use crate::calculus::points::example_points;
         use crate::calculus::types::scalar::IsScalar;
         use crate::calculus::types::vector::IsVector;
-        use crate::calculus::types::V;
+        use crate::calculus::types::VecF64;
         use crate::tensor::view::IsTensorLike;
 
-        let points: Vec<V<4>> = example_points::<f64, 4>();
+        let points: Vec<VecF64<4>> = example_points::<f64, 4>();
 
         for p in points.clone() {
             for p1 in points.clone() {

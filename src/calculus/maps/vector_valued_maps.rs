@@ -2,37 +2,37 @@ use std::marker::PhantomData;
 
 use crate::calculus::dual::dual_matrix::DualM;
 use crate::calculus::dual::dual_vector::DualV;
-use crate::calculus::types::M;
-use crate::calculus::types::V;
+use crate::calculus::types::MatF64;
+use crate::calculus::types::VecF64;
 use crate::tensor::mut_tensor::MutTensorDDR;
 use crate::tensor::mut_tensor::MutTensorDR;
 use crate::tensor::mut_view::IsMutTensorLike;
 use crate::tensor::view::IsTensorLike;
 
-// Vector-valued map on a vector space.
-//
-// This is a function which takes a vector and returns a vector:
-//
-//  f: ℝᵐ -> ℝʳ
-//
-// These functions are also called vector fields (on vector space x s).
-//
+/// Vector-valued map on a vector space.
+///
+/// This is a function which takes a vector and returns a vector:
+///
+///  f: ℝᵐ -> ℝʳ
+///
+/// These functions are also called vector fields (on vector space x s).
+///
 pub struct VectorValuedMapFromVector;
 
 impl VectorValuedMapFromVector {
-    // Finite difference quotient of the vector-valued map.
-    //
-    // The derivative is a matrix or rank-2 tensor with shape (Rₒ x Rᵢ).
-    //
-    // For efficiency reasons, we return the transpose Rᵢ x [Rₒ]
-    //
+    /// Finite difference quotient of the vector-valued map.
+    ///
+    /// The derivative is a matrix or rank-2 tensor with shape (Rₒ x Rᵢ).
+    ///
+    /// For efficiency reasons, we return the transpose Rᵢ x [Rₒ]
+    ///
     pub fn sym_diff_quotient<TFn, const OUTROWS: usize, const INROWS: usize>(
         vector_valued: TFn,
-        a: V<INROWS>,
+        a: VecF64<INROWS>,
         eps: f64,
     ) -> MutTensorDR<f64, OUTROWS>
     where
-        TFn: Fn(V<INROWS>) -> V<OUTROWS>,
+        TFn: Fn(VecF64<INROWS>) -> VecF64<OUTROWS>,
     {
         let mut out = MutTensorDR::<f64, OUTROWS>::from_shape([INROWS]);
 
@@ -49,9 +49,10 @@ impl VectorValuedMapFromVector {
         out
     }
 
+    /// Auto differentiation of the vector-valued map.
     pub fn fw_autodiff<TFn, const OUTROWS: usize, const INROWS: usize>(
         vector_valued: TFn,
-        a: V<INROWS>,
+        a: VecF64<INROWS>,
     ) -> MutTensorDR<f64, OUTROWS>
     where
         TFn: Fn(DualV<INROWS>) -> DualV<OUTROWS>,
@@ -67,20 +68,20 @@ impl VectorValuedMapFromVector {
         }
     }
 
-    // Finite difference quotient of the vector-valued map.
-    //
-    // The derivative is a matrix or rank-2 tensor with shape (Rₒ x Rᵢ).
-    //
+    /// Finite difference quotient of the vector-valued map.
+    ///
+    /// The derivative is a matrix or rank-2 tensor with shape (Rₒ x Rᵢ).
+    ///
     pub fn static_sym_diff_quotient<TFn, const OUTROWS: usize, const INROWS: usize>(
         vector_valued: TFn,
-        a: V<INROWS>,
+        a: VecF64<INROWS>,
         eps: f64,
-    ) -> M<OUTROWS, INROWS>
+    ) -> MatF64<OUTROWS, INROWS>
     where
-        TFn: Fn(V<INROWS>) -> V<OUTROWS>,
+        TFn: Fn(VecF64<INROWS>) -> VecF64<OUTROWS>,
     {
         let jac = Self::sym_diff_quotient(vector_valued, a, eps);
-        let mut sjac = M::<OUTROWS, INROWS>::zeros();
+        let mut sjac = MatF64::<OUTROWS, INROWS>::zeros();
 
         for r in 0..INROWS {
             let v = jac.get([r]);
@@ -90,15 +91,16 @@ impl VectorValuedMapFromVector {
         sjac
     }
 
+    /// Auto differentiation of the vector-valued map.
     pub fn static_fw_autodiff<TFn, const OUTROWS: usize, const INROWS: usize>(
         vector_valued: TFn,
-        a: V<INROWS>,
-    ) -> M<OUTROWS, INROWS>
+        a: VecF64<INROWS>,
+    ) -> MatF64<OUTROWS, INROWS>
     where
         TFn: Fn(DualV<INROWS>) -> DualV<OUTROWS>,
     {
         let jac = Self::fw_autodiff(vector_valued, a);
-        let mut sjac = M::<OUTROWS, INROWS>::zeros();
+        let mut sjac = MatF64::<OUTROWS, INROWS>::zeros();
 
         for r in 0..INROWS {
             let v = jac.get([r]);
@@ -109,30 +111,30 @@ impl VectorValuedMapFromVector {
     }
 }
 
-// Vector-valued map on a product space (= space of matrices).
-//
-// This is a function which takes a matrix and returns a vector:
-//
-//  f: ℝᵐ x ℝⁿ -> ℝʳ
-//
-// This type of function is also called a vector field (on product spaces).
-//
+/// Vector-valued map on a product space (= space of matrices).
+///
+/// This is a function which takes a matrix and returns a vector:
+///
+///  f: ℝᵐ x ℝⁿ -> ℝʳ
+///
+/// This type of function is also called a vector field (on product spaces).
+///
 pub struct VectorValuedMapFromMatrix;
 
 impl VectorValuedMapFromMatrix {
-    // Finite difference quotient of the vector-valued map.
-    //
-    // The derivative is a matrix or rank-3 tensor with shape (Rₒ x Rᵢ x Cᵢ).
-    //
-    // For efficiency reasons, we return Rᵢ x Cᵢ x [Rₒ]
-    //
+    /// Finite difference quotient of the vector-valued map.
+    ///
+    /// The derivative is a matrix or rank-3 tensor with shape (Rₒ x Rᵢ x Cᵢ).
+    ///
+    /// For efficiency reasons, we return Rᵢ x Cᵢ x [Rₒ]
+    ///
     pub fn sym_diff_quotient<TFn, const OUTROWS: usize, const INROWS: usize, const INCOLS: usize>(
         vector_valued: TFn,
-        a: M<INROWS, INCOLS>,
+        a: MatF64<INROWS, INCOLS>,
         eps: f64,
     ) -> MutTensorDDR<f64, OUTROWS>
     where
-        TFn: Fn(M<INROWS, INCOLS>) -> V<OUTROWS>,
+        TFn: Fn(MatF64<INROWS, INCOLS>) -> VecF64<OUTROWS>,
     {
         let mut out = MutTensorDDR::<f64, OUTROWS>::from_shape([INROWS, INCOLS]);
 
@@ -153,9 +155,10 @@ impl VectorValuedMapFromMatrix {
         out
     }
 
+    /// Auto differentiation of the vector-valued map.
     pub fn fw_autodiff<TFn, const OUTROWS: usize, const INROWS: usize, const INCOLS: usize>(
         vector_valued: TFn,
-        a: M<INROWS, INCOLS>,
+        a: MatF64<INROWS, INCOLS>,
     ) -> MutTensorDDR<f64, OUTROWS>
     where
         TFn: Fn(DualM<INROWS, INCOLS>) -> DualV<OUTROWS>,
@@ -171,10 +174,10 @@ mod test {
         use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
         use crate::calculus::types::scalar::IsScalar;
         use crate::calculus::types::vector::IsVector;
-        use crate::calculus::types::V;
+        use crate::calculus::types::VecF64;
         use crate::tensor::view::IsTensorLike;
 
-        let a = V::<3>::new(0.6, 2.2, 1.1);
+        let a = VecF64::<3>::new(0.6, 2.2, 1.1);
 
         //       [[ x ]]   [[ x / z ]]
         //  proj [[ y ]] = [[       ]]
@@ -204,7 +207,7 @@ mod test {
         use crate::calculus::types::matrix::IsMatrix;
         use crate::calculus::types::scalar::IsScalar;
         use crate::calculus::types::vector::IsVector;
-        use crate::calculus::types::M;
+        use crate::calculus::types::MatF64;
         use crate::tensor::view::IsTensorLike;
 
         fn f<S: IsScalar, M32: IsMatrix<S, 3, 2>, V4: IsVector<S, 4>>(x: M32) -> V4 {
@@ -218,7 +221,7 @@ mod test {
             V4::from_array([a + b, c + d, e + f, S::c(1.0)])
         }
 
-        let mut mat = M::<3, 2>::zeros();
+        let mut mat = MatF64::<3, 2>::zeros();
         mat[(0, 0)] = -4.6;
         mat[(0, 1)] = -1.6;
         mat[(1, 0)] = 0.6;

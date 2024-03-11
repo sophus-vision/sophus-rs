@@ -1,105 +1,26 @@
-use crate::calculus::dual::dual_scalar::Dual;
-use crate::calculus::dual::dual_vector::DualV;
-
-use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
-use crate::calculus::types::V;
+use crate::calculus::types::VecF64;
 use crate::lie::rotation2::Isometry2;
+use crate::opt::cost_fn::CostFn;
+use crate::opt::cost_fn::CostSignature;
+use crate::opt::example_problems::cost_fn::pose_graph::PoseGraphCostTermSignature;
 use crate::opt::nlls::*;
+use crate::opt::variables::VarFamily;
+use crate::opt::variables::VarKind;
+use crate::opt::variables::VarPool;
+use crate::opt::variables::VarPoolBuilder;
 use std::collections::HashMap;
 
-fn res_fn<S: IsScalar>(
-    world_from_pose_a: Isometry2<S>,
-    world_from_pose_b: Isometry2<S>,
-    pose_a_from_pose_b: Isometry2<S>,
-) -> S::Vector<3> {
-    (world_from_pose_a
-        .inverse()
-        .group_mul(&world_from_pose_b.group_mul(&pose_a_from_pose_b.inverse())))
-    .log()
-}
+use super::cost_fn::pose_graph::PoseGraphCostFn;
 
-#[derive(Copy, Clone, Debug)]
-struct PoseGraph {}
-
-impl IsResidualFn<12, 2, (Isometry2<f64>, Isometry2<f64>), Isometry2<f64>> for PoseGraph {
-    fn eval(
-        &self,
-        world_from_pose_x: (Isometry2<f64>, Isometry2<f64>),
-        derivatives: [VarKind; 2],
-        obs: &Isometry2<f64>,
-    ) -> EvaluatedTerm<12, 2> {
-        let world_from_pose_a = world_from_pose_x.0;
-        let world_from_pose_b = world_from_pose_x.1;
-
-        let residual = res_fn(world_from_pose_a, world_from_pose_b, *obs);
-
-        let mut maybe_dx0 = None;
-        let mut maybe_dx1 = None;
-
-        let _dx_res_fn_a = |x: DualV<3>| -> DualV<3> {
-            let world_from_pose_a_bar: Isometry2<Dual> =
-                Isometry2::<Dual>::exp(&x).group_mul(&world_from_pose_a.to_dual_c());
-            res_fn(
-                world_from_pose_a_bar,
-                world_from_pose_b.to_dual_c(),
-                obs.to_dual_c(),
-            )
-        };
-        let _dx_res_fn_b = |x: DualV<3>| -> DualV<3> {
-            let world_from_pose_b_bar: Isometry2<Dual> =
-                Isometry2::<Dual>::exp(&x).group_mul(&world_from_pose_b.to_dual_c());
-            res_fn(
-                world_from_pose_a.to_dual_c(),
-                world_from_pose_b_bar,
-                obs.to_dual_c(),
-            )
-        };
-        let _zeros: V<3> = V::<3>::zeros();
-
-        if derivatives[0] != VarKind::Conditioned {
-            let dx_res_a = -Isometry2::dx_log_a_exp_x_b_at_0(
-                &world_from_pose_a.inverse(),
-                &world_from_pose_b.group_mul(&obs.inverse()),
-            );
-            maybe_dx0 = Some(dx_res_a);
-        }
-
-        if derivatives[1] != VarKind::Conditioned {
-            let dx_res_b = Isometry2::dx_log_a_exp_x_b_at_0(
-                &world_from_pose_a.inverse(),
-                &world_from_pose_b.group_mul(&obs.inverse()),
-            );
-            maybe_dx1 = Some(dx_res_b);
-        }
-        EvaluatedTerm::new2(maybe_dx0, maybe_dx1, residual)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct PoseGraphCostTermSignature {
-    pose_a_from_pose_b: Isometry2<f64>,
-    entity_indices: [usize; 2],
-}
-
-impl IsTermSignature<2> for PoseGraphCostTermSignature {
-    type Constants = Isometry2<f64>;
-
-    fn c_ref(&self) -> &Self::Constants {
-        &self.pose_a_from_pose_b
-    }
-
-    fn idx_ref(&self) -> &[usize; 2] {
-        &self.entity_indices
-    }
-
-    const DOF_TUPLE: [i64; 2] = [3, 3];
-}
-
+/// Pose graph example problem
 #[derive(Debug, Clone)]
 pub struct PoseCircleProblem {
+    /// true poses
     pub true_world_from_robot: Vec<Isometry2<f64>>,
+    /// estimated poses
     pub est_world_from_robot: Vec<Isometry2<f64>>,
+    /// pose-pose constraints
     pub obs_pose_a_from_pose_b_poses: CostSignature<2, Isometry2<f64>, PoseGraphCostTermSignature>,
 }
 
@@ -110,6 +31,7 @@ impl Default for PoseCircleProblem {
 }
 
 impl PoseCircleProblem {
+    /// Create a new pose graph problem
     pub fn new(len: usize) -> Self {
         let mut true_world_from_robot_poses = vec![];
         let mut est_world_from_robot_poses = vec![];
@@ -126,7 +48,7 @@ impl PoseCircleProblem {
             let angle = frac * std::f64::consts::TAU;
             let x = radius * angle.cos();
             let y = radius * angle.sin();
-            let p = V::<3>::from_c_array([x, y, 0.1 * angle]);
+            let p = VecF64::<3>::from_c_array([x, y, 0.1 * angle]);
             true_world_from_robot_poses.push(Isometry2::exp(&p));
         }
 
@@ -136,7 +58,7 @@ impl PoseCircleProblem {
             let true_world_from_pose_a = true_world_from_robot_poses[a_idx];
             let true_world_from_pose_b = true_world_from_robot_poses[b_idx];
 
-            let p = V::<3>::from_c_array([0.001, 0.001, 0.0001]);
+            let p = VecF64::<3>::from_c_array([0.001, 0.001, 0.0001]);
             let pose_a_from_pose_b = Isometry2::exp(&p).group_mul(
                 &true_world_from_pose_a
                     .inverse()
@@ -162,7 +84,7 @@ impl PoseCircleProblem {
 
             let world_from_pose_a = est_world_from_robot_poses[a_idx];
             let pose_a_from_pose_b = obs.pose_a_from_pose_b;
-            let p = V::<3>::from_c_array([0.1, 0.1, 0.1]);
+            let p = VecF64::<3>::from_c_array([0.1, 0.1, 0.1]);
             let world_from_pose_b =
                 Isometry2::exp(&p).group_mul(&world_from_pose_a.group_mul(&pose_a_from_pose_b));
 
@@ -181,10 +103,11 @@ impl PoseCircleProblem {
         }
     }
 
+    /// Calculate the error of the current estimate
     pub fn calc_error(&self, est_world_from_robot: &Vec<Isometry2<f64>>) -> f64 {
         let mut res_err = 0.0;
         for obs in self.obs_pose_a_from_pose_b_poses.terms.clone() {
-            let residual = res_fn(
+            let residual = super::cost_fn::pose_graph::res_fn(
                 est_world_from_robot[obs.entity_indices[0]],
                 est_world_from_robot[obs.entity_indices[1]],
                 obs.pose_a_from_pose_b,
@@ -195,18 +118,25 @@ impl PoseCircleProblem {
         res_err
     }
 
+    /// Optimize the problem
     pub fn optimize(&self) -> VarPool {
         let mut constants = HashMap::new();
         constants.insert(0, ());
 
-        let family: VarFamily<Isometry2<f64>> =
-            VarFamily::new(VarKind::Free, self.est_world_from_robot.clone(), constants);
+        let family: VarFamily<Isometry2<f64>> = VarFamily::new_with_const_ids(
+            VarKind::Free,
+            self.est_world_from_robot.clone(),
+            constants,
+        );
 
         let var_pool = VarPoolBuilder::new().add_family("poses", family).build();
 
-        optimize_one_cost(
+        optimize(
             var_pool,
-            Cost::new(self.obs_pose_a_from_pose_b_poses.clone(), PoseGraph {}),
+            vec![CostFn::new(
+                self.obs_pose_a_from_pose_b_poses.clone(),
+                PoseGraphCostFn {},
+            )],
             OptParams {
                 num_iter: 5,
                 initial_lm_nu: 1.0,

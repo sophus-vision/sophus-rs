@@ -15,11 +15,14 @@ use crate::calculus::types::params::ParamsImpl;
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
 use crate::calculus::types::vector::IsVectorLike;
-use crate::calculus::types::M;
-use crate::calculus::types::V;
+use crate::calculus::types::MatF64;
+use crate::calculus::types::VecF64;
 use crate::lie;
 use crate::manifold::{self};
 
+/// implementation of a translation product group
+///
+/// It is a semi-direct product of the commutative translation group (Euclidean vector space) and a factor group.
 #[derive(Debug, Copy, Clone)]
 pub struct TranslationProductGroupImpl<
     S: IsScalar,
@@ -45,14 +48,17 @@ impl<
         F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT>,
     > TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, F>
 {
+    /// translation part of the group parameters
     pub fn translation(params: &S::Vector<PARAMS>) -> S::Vector<POINT> {
         params.get_fixed_rows::<POINT>(0)
     }
 
+    /// factor part of the group parameters
     pub fn factor_params(params: &S::Vector<PARAMS>) -> S::Vector<SPARAMS> {
         params.get_fixed_rows::<SPARAMS>(POINT)
     }
 
+    /// create group parameters from translation and factor parameters
     pub fn params_from(
         translation: &S::Vector<POINT>,
         factor_params: &S::Vector<SPARAMS>,
@@ -60,14 +66,17 @@ impl<
         S::Vector::block_vec2(translation.clone(), factor_params.clone())
     }
 
+    /// translation part of the tangent vector
     fn translation_tangent(tangent: &S::Vector<DOF>) -> S::Vector<POINT> {
         tangent.get_fixed_rows::<POINT>(0)
     }
 
+    /// factor part of the tangent vector
     fn factor_tangent(tangent: &S::Vector<DOF>) -> S::Vector<SDOF> {
         tangent.get_fixed_rows::<SDOF>(POINT)
     }
 
+    /// create tangent vector from translation and factor tangent
     fn tangent_from(
         translation: &S::Vector<POINT>,
         factor_tangent: &S::Vector<SDOF>,
@@ -321,26 +330,29 @@ impl<
     > IsF64LieGroupImpl<DOF, PARAMS, POINT, AMBIENT>
     for TranslationProductGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, Factor>
 {
-    fn dx_exp_x_at_0() -> M<PARAMS, DOF> {
-        M::block_mat2x2::<POINT, SPARAMS, POINT, SDOF>(
-            (M::<POINT, POINT>::identity(), M::<POINT, SDOF>::zero()),
-            (M::<SPARAMS, POINT>::zero(), Factor::dx_exp_x_at_0()),
+    fn dx_exp_x_at_0() -> MatF64<PARAMS, DOF> {
+        MatF64::block_mat2x2::<POINT, SPARAMS, POINT, SDOF>(
+            (
+                MatF64::<POINT, POINT>::identity(),
+                MatF64::<POINT, SDOF>::zero(),
+            ),
+            (MatF64::<SPARAMS, POINT>::zero(), Factor::dx_exp_x_at_0()),
         )
     }
 
-    fn dx_exp_x_times_point_at_0(point: V<POINT>) -> M<POINT, DOF> {
-        M::block_mat1x2(
-            M::<POINT, POINT>::identity(),
+    fn dx_exp_x_times_point_at_0(point: VecF64<POINT>) -> MatF64<POINT, DOF> {
+        MatF64::block_mat1x2(
+            MatF64::<POINT, POINT>::identity(),
             Factor::dx_exp_x_times_point_at_0(point),
         )
     }
 
-    fn dx_exp(tangent: &V<DOF>) -> M<PARAMS, DOF> {
+    fn dx_exp(tangent: &VecF64<DOF>) -> MatF64<PARAMS, DOF> {
         let factor_tangent = &Self::factor_tangent(tangent);
         let trans_tangent = &Self::translation_tangent(tangent);
 
         let dx_mat_v = Factor::dx_mat_v(factor_tangent);
-        let mut dx_mat_v_tangent = M::<POINT, SDOF>::zero();
+        let mut dx_mat_v_tangent = MatF64::<POINT, SDOF>::zero();
 
         for i in 0..SDOF {
             dx_mat_v_tangent
@@ -348,13 +360,16 @@ impl<
                 .copy_from(&(dx_mat_v[i] * trans_tangent));
         }
 
-        M::block_mat2x2::<POINT, SPARAMS, POINT, SDOF>(
+        MatF64::block_mat2x2::<POINT, SPARAMS, POINT, SDOF>(
             (Factor::mat_v(factor_tangent), dx_mat_v_tangent),
-            (M::<SPARAMS, POINT>::zero(), Factor::dx_exp(factor_tangent)),
+            (
+                MatF64::<SPARAMS, POINT>::zero(),
+                Factor::dx_exp(factor_tangent),
+            ),
         )
     }
 
-    fn dx_log_x(params: &V<PARAMS>) -> M<DOF, PARAMS> {
+    fn dx_log_x(params: &VecF64<PARAMS>) -> MatF64<DOF, PARAMS> {
         let factor_params = &Self::factor_params(params);
         let trans = &Self::translation(params);
         let factor_tangent = Factor::log(factor_params);
@@ -362,7 +377,7 @@ impl<
         let dx_log_x = Factor::dx_log_x(factor_params);
         let dx_mat_v_inverse = Factor::dx_mat_v_inverse(&factor_tangent);
 
-        let mut dx_mat_v_inv_tangent = M::<POINT, SPARAMS>::zero();
+        let mut dx_mat_v_inv_tangent = MatF64::<POINT, SPARAMS>::zero();
 
         for i in 0..SDOF {
             let v = dx_mat_v_inverse[i] * trans;
@@ -370,38 +385,41 @@ impl<
             dx_mat_v_inv_tangent += v * r;
         }
 
-        M::block_mat2x2::<POINT, SDOF, POINT, SPARAMS>(
+        MatF64::block_mat2x2::<POINT, SDOF, POINT, SPARAMS>(
             (Factor::mat_v_inverse(&factor_tangent), dx_mat_v_inv_tangent),
-            (M::<SDOF, POINT>::zero(), dx_log_x),
+            (MatF64::<SDOF, POINT>::zero(), dx_log_x),
         )
     }
 
-    fn da_a_mul_b(a: &V<PARAMS>, b: &V<PARAMS>) -> M<PARAMS, PARAMS> {
+    fn da_a_mul_b(a: &VecF64<PARAMS>, b: &VecF64<PARAMS>) -> MatF64<PARAMS, PARAMS> {
         let a_factor_params = &Self::factor_params(a);
         let b_factor_params = &Self::factor_params(b);
 
         let b_trans = &Self::translation(b);
 
-        M::block_mat2x2::<POINT, SPARAMS, POINT, SPARAMS>(
+        MatF64::block_mat2x2::<POINT, SPARAMS, POINT, SPARAMS>(
             (
-                M::<POINT, POINT>::identity(),
+                MatF64::<POINT, POINT>::identity(),
                 Factor::dparams_matrix_times_point(a_factor_params, b_trans),
             ),
             (
-                M::<SPARAMS, POINT>::zero(),
+                MatF64::<SPARAMS, POINT>::zero(),
                 Factor::da_a_mul_b(a_factor_params, b_factor_params),
             ),
         )
     }
 
-    fn db_a_mul_b(a: &V<PARAMS>, b: &V<PARAMS>) -> M<PARAMS, PARAMS> {
+    fn db_a_mul_b(a: &VecF64<PARAMS>, b: &VecF64<PARAMS>) -> MatF64<PARAMS, PARAMS> {
         let a_factor_params = &Self::factor_params(a);
         let b_factor_params = &Self::factor_params(b);
 
-        M::block_mat2x2::<POINT, SPARAMS, POINT, SPARAMS>(
-            (Factor::matrix(a_factor_params), M::<POINT, SPARAMS>::zero()),
+        MatF64::block_mat2x2::<POINT, SPARAMS, POINT, SPARAMS>(
             (
-                M::<SPARAMS, POINT>::zero(),
+                Factor::matrix(a_factor_params),
+                MatF64::<POINT, SPARAMS>::zero(),
+            ),
+            (
+                MatF64::<SPARAMS, POINT>::zero(),
                 Factor::db_a_mul_b(a_factor_params, b_factor_params),
             ),
         )
