@@ -1,65 +1,83 @@
 use super::scalar::IsScalar;
 use super::vector::IsVectorLike;
-use super::M;
-use super::V;
+use super::MatF64;
+use super::VecF64;
 use std::fmt::Debug;
 use std::ops::Mul;
 
+/// Matrix - either a real (f64) or a dual number matrix
 pub trait IsMatrix<S: IsScalar, const ROWS: usize, const COLS: usize>:
     Debug + Clone + Sized + Mul<S::Vector<COLS>, Output = S::Vector<ROWS>> + IsVectorLike
 {
-    fn c(val: M<ROWS, COLS>) -> Self;
-    fn real(&self) -> &M<ROWS, COLS>;
+    /// create a constant matrix
+    fn c(val: MatF64<ROWS, COLS>) -> Self;
 
+    /// return the real part
+    fn real(&self) -> &MatF64<ROWS, COLS>;
+
+    /// return scaled matrix
     fn scaled(&self, v: S) -> Self;
 
+    /// create an identity matrix
     fn identity() -> Self;
+
+    /// create from 2d array
     fn from_array2(vals: [[S; COLS]; ROWS]) -> Self;
+
+    /// create from constant 2d array
     fn from_c_array2(vals: [[f64; COLS]; ROWS]) -> Self;
 
+    /// get element
     fn get(&self, idx: (usize, usize)) -> S;
 
+    /// create 2x1 block matrix
     fn block_mat2x1<const R0: usize, const R1: usize>(
         top_row: S::Matrix<R0, COLS>,
         bot_row: S::Matrix<R1, COLS>,
     ) -> Self;
 
+    /// create 1x2 block matrix
     fn block_mat1x2<const C0: usize, const C1: usize>(
         left_col: S::Matrix<ROWS, C0>,
         righ_col: S::Matrix<ROWS, C1>,
     ) -> Self;
 
+    /// create 2x2 block matrix
     fn block_mat2x2<const R0: usize, const R1: usize, const C0: usize, const C1: usize>(
         top_row: (S::Matrix<R0, C0>, S::Matrix<R0, C1>),
         bot_row: (S::Matrix<R1, C0>, S::Matrix<R1, C1>),
     ) -> Self;
 
+    /// matrix multiplication
     fn mat_mul<const C2: usize>(&self, other: S::Matrix<COLS, C2>) -> S::Matrix<ROWS, C2>;
 
+    /// get fixed submatrix
     fn get_fixed_submat<const R: usize, const C: usize>(
         &self,
         start_r: usize,
         start_c: usize,
     ) -> S::Matrix<R, C>;
 
+    /// extract column vector
     fn get_col_vec(&self, r: usize) -> S::Vector<ROWS>;
 
+    /// extract row vector
     fn get_row_vec(&self, r: usize) -> S::Vector<ROWS>;
 }
 
-impl<const ROWS: usize, const COLS: usize> IsVectorLike for M<ROWS, COLS> {
+impl<const ROWS: usize, const COLS: usize> IsVectorLike for MatF64<ROWS, COLS> {
     fn zero() -> Self {
-        M::zeros()
+        MatF64::zeros()
     }
 }
 
-impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS> for M<ROWS, COLS> {
-    fn c(val: M<ROWS, COLS>) -> Self {
+impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS> for MatF64<ROWS, COLS> {
+    fn c(val: MatF64<ROWS, COLS>) -> Self {
         val
     }
 
-    fn from_array2(vals: [[f64; COLS]; ROWS]) -> M<ROWS, COLS> {
-        let mut m = M::<ROWS, COLS>::zeros();
+    fn from_array2(vals: [[f64; COLS]; ROWS]) -> MatF64<ROWS, COLS> {
+        let mut m = MatF64::<ROWS, COLS>::zeros();
 
         for c in 0..COLS {
             for r in 0..ROWS {
@@ -70,7 +88,7 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS> for M<ROWS,
     }
 
     fn from_c_array2(vals: [[f64; COLS]; ROWS]) -> Self {
-        let mut m = M::<ROWS, COLS>::zeros();
+        let mut m = MatF64::<ROWS, COLS>::zeros();
         for c in 0..COLS {
             for r in 0..ROWS {
                 m[(r, c)] = vals[r][c];
@@ -91,13 +109,13 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS> for M<ROWS,
         self
     }
 
-    fn mat_mul<const C2: usize>(&self, other: M<COLS, C2>) -> M<ROWS, C2> {
+    fn mat_mul<const C2: usize>(&self, other: MatF64<COLS, C2>) -> MatF64<ROWS, C2> {
         self * other
     }
 
     fn block_mat2x1<const R0: usize, const R1: usize>(
-        top_row: M<R0, COLS>,
-        bot_row: M<R1, COLS>,
+        top_row: MatF64<R0, COLS>,
+        bot_row: MatF64<R1, COLS>,
     ) -> Self {
         assert_eq!(ROWS, R0 + R1);
         let mut m = Self::zero();
@@ -108,8 +126,8 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS> for M<ROWS,
     }
 
     fn block_mat2x2<const R0: usize, const R1: usize, const C0: usize, const C1: usize>(
-        top_row: (M<R0, C0>, M<R0, C1>),
-        bot_row: (M<R1, C0>, M<R1, C1>),
+        top_row: (MatF64<R0, C0>, MatF64<R0, C1>),
+        bot_row: (MatF64<R1, C0>, MatF64<R1, C1>),
     ) -> Self {
         assert_eq!(ROWS, R0 + R1);
         assert_eq!(COLS, C0 + C1);
@@ -140,15 +158,15 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS> for M<ROWS,
         &self,
         start_r: usize,
         start_c: usize,
-    ) -> M<R, C> {
+    ) -> MatF64<R, C> {
         self.fixed_view::<R, C>(start_r, start_c).into()
     }
 
-    fn get_col_vec(&self, c: usize) -> V<ROWS> {
+    fn get_col_vec(&self, c: usize) -> VecF64<ROWS> {
         self.fixed_view::<ROWS, 1>(0, c).into()
     }
 
-    fn get_row_vec(&self, r: usize) -> V<ROWS> {
+    fn get_row_vec(&self, r: usize) -> VecF64<ROWS> {
         self.fixed_view::<1, ROWS>(0, r).transpose()
     }
 

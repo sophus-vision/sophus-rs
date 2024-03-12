@@ -2,12 +2,15 @@ use crate::calculus::points::example_points;
 use crate::calculus::types::params::HasParams;
 use crate::calculus::types::params::ParamsImpl;
 use crate::calculus::types::scalar::IsScalar;
-use crate::calculus::types::V;
+use crate::calculus::types::VecF64;
 
+/// A tangent implementation.
 pub trait TangentImpl<S: IsScalar, const DOF: usize> {
+    /// Examples of tangent vectors.
     fn tangent_examples() -> Vec<S::Vector<DOF>>;
 }
 
+/// A manifold implementation.
 pub trait ManifoldImpl<
     S: IsScalar,
     const DOF: usize,
@@ -16,19 +19,25 @@ pub trait ManifoldImpl<
     const AMBIENT_DIM: usize,
 >: ParamsImpl<S, PARAMS> + TangentImpl<S, DOF>
 {
+    /// o-plus operation.
     fn oplus(params: &S::Vector<PARAMS>, tangent: &S::Vector<DOF>) -> S::Vector<PARAMS>;
+    /// o-minus operation.
     fn ominus(params1: &S::Vector<PARAMS>, params2: &S::Vector<PARAMS>) -> S::Vector<DOF>;
 }
 
+/// A manifold.
 pub trait IsManifold<S: IsScalar, const PARAMS: usize, const DOF: usize>:
     HasParams<S, PARAMS> + std::fmt::Debug + Clone
 {
+    /// manifold parameters
     fn params(&self) -> &S::Vector<PARAMS>;
+    /// o-plus operation
     fn oplus(&self, tangent: &S::Vector<DOF>) -> Self;
+    /// o-minus operation
     fn ominus(&self, rhs: &Self) -> S::Vector<DOF>;
 }
 
-impl<const N: usize> ParamsImpl<f64, N> for V<N> {
+impl<const N: usize> ParamsImpl<f64, N> for VecF64<N> {
     fn are_params_valid(_params: &<f64 as IsScalar>::Vector<N>) -> bool {
         true
     }
@@ -42,7 +51,7 @@ impl<const N: usize> ParamsImpl<f64, N> for V<N> {
     }
 }
 
-impl<const N: usize> HasParams<f64, N> for V<N> {
+impl<const N: usize> HasParams<f64, N> for VecF64<N> {
     fn from_params(params: &<f64 as IsScalar>::Vector<N>) -> Self {
         *params
     }
@@ -56,7 +65,7 @@ impl<const N: usize> HasParams<f64, N> for V<N> {
     }
 }
 
-impl<const N: usize> IsManifold<f64, N, N> for V<N> {
+impl<const N: usize> IsManifold<f64, N, N> for VecF64<N> {
     fn oplus(&self, tangent: &<f64 as IsScalar>::Vector<N>) -> Self {
         self + tangent
     }

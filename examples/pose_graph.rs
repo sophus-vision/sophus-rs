@@ -4,21 +4,21 @@ use hollywood::actors::egui::Stream;
 pub use hollywood::compute::Context;
 pub use hollywood::core::*;
 use hollywood::macros::*;
-use sophus_rs::calculus::types::vector::IsVector;
-use sophus_rs::calculus::types::V;
-use sophus_rs::image::view::ImageSize;
-use sophus_rs::lie::rotation2::Isometry2;
-use sophus_rs::lie::rotation3::Isometry3;
-use sophus_rs::lie::traits::IsTranslationProductGroup;
-use sophus_rs::opt::example_problems::pose_circle::PoseCircleProblem;
-use sophus_rs::sensor::perspective_camera::KannalaBrandtCamera;
-use sophus_rs::viewer::actor::run_viewer_on_main_thread;
-use sophus_rs::viewer::actor::ViewerBuilder;
-use sophus_rs::viewer::actor::ViewerCamera;
-use sophus_rs::viewer::actor::ViewerConfig;
-use sophus_rs::viewer::renderable::*;
-use sophus_rs::viewer::scene_renderer::interaction::WgpuClippingPlanes;
-use sophus_rs::viewer::SimpleViewer;
+use sophus::calculus::types::vector::IsVector;
+use sophus::calculus::types::VecF64;
+use sophus::image::view::ImageSize;
+use sophus::lie::rotation2::Isometry2;
+use sophus::lie::rotation3::Isometry3;
+use sophus::lie::traits::IsTranslationProductGroup;
+use sophus::opt::example_problems::pose_circle::PoseCircleProblem;
+use sophus::sensor::perspective_camera::KannalaBrandtCamera;
+use sophus::viewer::actor::run_viewer_on_main_thread;
+use sophus::viewer::actor::ViewerBuilder;
+use sophus::viewer::actor::ViewerCamera;
+use sophus::viewer::actor::ViewerConfig;
+use sophus::viewer::renderable::*;
+use sophus::viewer::scene_renderer::interaction::WgpuClippingPlanes;
+use sophus::viewer::SimpleViewer;
 
 #[actor(ContentGeneratorMessage)]
 type ContentGenerator = Actor<
@@ -48,9 +48,9 @@ pub struct ContentGeneratorOutbound {
 }
 
 fn make_axes(world_from_local_poses: Vec<Isometry2<f64>>) -> Vec<Line3> {
-    let zero_in_local = V::<2>::zeros();
-    let x_axis_local = V::<2>::new(1.0, 0.0);
-    let y_axis_local = V::<2>::new(0.0, 1.0);
+    let zero_in_local = VecF64::<2>::zeros();
+    let x_axis_local = VecF64::<2>::new(1.0, 0.0);
+    let y_axis_local = VecF64::<2>::new(0.0, 1.0);
 
     let mut lines = vec![];
 
@@ -60,8 +60,8 @@ fn make_axes(world_from_local_poses: Vec<Isometry2<f64>>) -> Vec<Line3> {
         let axis_y_in_world = world_from_local.transform(&y_axis_local);
 
         lines.push(Line3 {
-            p0: V::<3>::new(zero_in_world.x, zero_in_world.y, 0.0).cast(),
-            p1: V::<3>::new(axis_x_in_world.x, axis_x_in_world.y, 0.0).cast(),
+            p0: VecF64::<3>::new(zero_in_world.x, zero_in_world.y, 0.0).cast(),
+            p1: VecF64::<3>::new(axis_x_in_world.x, axis_x_in_world.y, 0.0).cast(),
             color: Color {
                 r: 1.0,
                 g: 0.0,
@@ -71,8 +71,8 @@ fn make_axes(world_from_local_poses: Vec<Isometry2<f64>>) -> Vec<Line3> {
             line_width: 2.0,
         });
         lines.push(Line3 {
-            p0: V::<3>::new(zero_in_world.x, zero_in_world.y, 0.0).cast(),
-            p1: V::<3>::new(axis_y_in_world.x, axis_y_in_world.y, 0.0).cast(),
+            p0: VecF64::<3>::new(zero_in_world.x, zero_in_world.y, 0.0).cast(),
+            p1: VecF64::<3>::new(axis_y_in_world.x, axis_y_in_world.y, 0.0).cast(),
             color: Color {
                 r: 0.0,
                 g: 1.0,
@@ -125,13 +125,13 @@ impl InboundMessageNew<f64> for ContentGeneratorMessage {
 pub async fn run_viewer_example() {
     // Camera / view pose parameters
     let intrinsics = KannalaBrandtCamera::<f64>::new(
-        &V::<8>::from_array([600.0, 600.0, 320.0, 240.0, 0.0, 0.0, 0.0, 0.0]),
+        &VecF64::<8>::from_array([600.0, 600.0, 320.0, 240.0, 0.0, 0.0, 0.0, 0.0]),
         ImageSize {
             width: 640,
             height: 480,
         },
     );
-    let scene_from_camera = Isometry3::from_t(&V::<3>::new(0.0, 0.0, -50.0));
+    let scene_from_camera = Isometry3::from_t(&VecF64::<3>::new(0.0, 0.0, -50.0));
     let clipping_planes = WgpuClippingPlanes {
         near: 0.1,
         far: 1000.0,

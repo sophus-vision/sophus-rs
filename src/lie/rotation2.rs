@@ -5,8 +5,8 @@ use crate::calculus::types::params::ParamsImpl;
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
 use crate::calculus::types::vector::IsVectorLike;
-use crate::calculus::types::M;
-use crate::calculus::types::V;
+use crate::calculus::types::MatF64;
+use crate::calculus::types::VecF64;
 use crate::lie;
 use crate::lie::traits::IsLieGroupImpl;
 use crate::manifold::{self};
@@ -14,6 +14,7 @@ use std::marker::PhantomData;
 
 use super::traits::IsTranslationProductGroup;
 
+/// 2D rotation group implementation struct - SO(2)
 #[derive(Debug, Copy, Clone)]
 pub struct Rotation2Impl<S: IsScalar> {
     phanton: PhantomData<S>,
@@ -148,36 +149,37 @@ impl<S: IsScalar> lie::traits::IsLieGroupImpl<S, 1, 2, 2, 2> for Rotation2Impl<S
 }
 
 impl lie::traits::IsF64LieGroupImpl<1, 2, 2, 2> for Rotation2Impl<f64> {
-    fn dx_exp_x_at_0() -> M<2, 1> {
-        M::from_c_array2([[0.0], [1.0]])
+    fn dx_exp_x_at_0() -> MatF64<2, 1> {
+        MatF64::from_c_array2([[0.0], [1.0]])
     }
 
-    fn dx_exp_x_times_point_at_0(point: crate::calculus::types::V<2>) -> M<2, 1> {
-        M::from_array2([[-point[1]], [point[0]]])
+    fn dx_exp_x_times_point_at_0(point: crate::calculus::types::VecF64<2>) -> MatF64<2, 1> {
+        MatF64::from_array2([[-point[1]], [point[0]]])
     }
 
-    fn dx_exp(tangent: &V<1>) -> M<2, 1> {
+    fn dx_exp(tangent: &VecF64<1>) -> MatF64<2, 1> {
         let theta = tangent[0];
 
-        M::<2, 1>::from_array2([[-theta.sin()], [theta.cos()]])
+        MatF64::<2, 1>::from_array2([[-theta.sin()], [theta.cos()]])
     }
 
-    fn dx_log_x(params: &V<2>) -> M<1, 2> {
+    fn dx_log_x(params: &VecF64<2>) -> MatF64<1, 2> {
         let x_0 = params[0];
         let x_1 = params[1];
         let x_sq = x_0 * x_0 + x_1 * x_1;
-        M::from_array2([[-x_1 / x_sq, x_0 / x_sq]])
+        MatF64::from_array2([[-x_1 / x_sq, x_0 / x_sq]])
     }
 
-    fn da_a_mul_b(_a: &V<2>, b: &V<2>) -> M<2, 2> {
+    fn da_a_mul_b(_a: &VecF64<2>, b: &VecF64<2>) -> MatF64<2, 2> {
         Self::matrix(b)
     }
 
-    fn db_a_mul_b(a: &V<2>, _b: &V<2>) -> M<2, 2> {
+    fn db_a_mul_b(a: &VecF64<2>, _b: &VecF64<2>) -> MatF64<2, 2> {
         Self::matrix(a)
     }
 }
 
+/// 2d rotation group - SO(2)
 pub type Rotation2<S> = lie::lie_group::LieGroup<S, 1, 2, 2, 2, Rotation2Impl<S>>;
 
 impl<S: IsScalar> lie::traits::IsLieFactorGroupImpl<S, 1, 2, 2> for Rotation2Impl<S> {
@@ -238,7 +240,7 @@ impl<S: IsScalar> lie::traits::IsLieFactorGroupImpl<S, 1, 2, 2> for Rotation2Imp
 }
 
 impl lie::traits::IsF64LieFactorGroupImpl<1, 2, 2> for Rotation2Impl<f64> {
-    fn dx_mat_v(tangent: &V<1>) -> [M<2, 2>; 1] {
+    fn dx_mat_v(tangent: &VecF64<1>) -> [MatF64<2, 2>; 1] {
         let theta = tangent[0];
         let theta_sq = theta * theta;
         let sin_theta = theta.sin();
@@ -256,14 +258,14 @@ impl lie::traits::IsF64LieFactorGroupImpl<1, 2, 2> for Rotation2Impl<f64> {
             )
         };
 
-        [M::<2, 2>::from_array2([[m00, m01], [-m01, m00]])]
+        [MatF64::<2, 2>::from_array2([[m00, m01], [-m01, m00]])]
     }
 
-    fn dparams_matrix_times_point(_params: &V<2>, point: &V<2>) -> M<2, 2> {
-        M::from_array2([[point[0], -point[1]], [point[1], point[0]]])
+    fn dparams_matrix_times_point(_params: &VecF64<2>, point: &VecF64<2>) -> MatF64<2, 2> {
+        MatF64::from_array2([[point[0], -point[1]], [point[1], point[0]]])
     }
 
-    fn dx_mat_v_inverse(tangent: &V<1>) -> [M<2, 2>; 1] {
+    fn dx_mat_v_inverse(tangent: &VecF64<1>) -> [MatF64<2, 2>; 1] {
         let theta = tangent[0];
         let sin_theta = theta.sin();
         let cos_theta = theta.cos();
@@ -274,16 +276,27 @@ impl lie::traits::IsF64LieFactorGroupImpl<1, 2, 2> for Rotation2Impl<f64> {
             (theta - sin_theta) / (2.0 * (cos_theta - 1.0))
         };
 
-        [M::<2, 2>::from_array2([[c, 0.5], [-0.5, c]])]
+        [MatF64::<2, 2>::from_array2([[c, 0.5], [-0.5, c]])]
     }
 }
 
-pub type Isometry2Impl<S> =
-    lie::semi_direct_product::TranslationProductGroupImpl<S, 3, 4, 2, 3, 1, 2, Rotation2Impl<S>>;
+/// 2D isometry group implementation struct - SE(2)
+pub type Isometry2Impl<S> = lie::translation_product_product::TranslationProductGroupImpl<
+    S,
+    3,
+    4,
+    2,
+    3,
+    1,
+    2,
+    Rotation2Impl<S>,
+>;
 
+/// 2D isometry group - SE(2)
 pub type Isometry2<S> = lie::lie_group::LieGroup<S, 3, 4, 2, 3, Isometry2Impl<S>>;
 
 impl<S: IsScalar> Isometry2<S> {
+    /// create isometry from translation and rotation
     pub fn from_translation_and_rotation(
         translation: &<S as IsScalar>::Vector<2>,
         rotation: &Rotation2<S>,
@@ -291,10 +304,12 @@ impl<S: IsScalar> Isometry2<S> {
         Self::from_translation_and_factor(translation, rotation)
     }
 
+    /// set rotation
     pub fn set_rotation(&mut self, rotation: &Rotation2<S>) {
         self.set_factor(rotation)
     }
 
+    /// get rotation
     pub fn rotation(&self) -> Rotation2<S> {
         self.factor()
     }

@@ -1,3 +1,5 @@
+use super::variables::VarKind;
+
 const fn le_than<const N: usize>(
     c: &[char],
     lhs: [usize; N],
@@ -69,6 +71,26 @@ const fn le_than<const N: usize>(
     std::cmp::Ordering::Equal
 }
 
+/// Convert VarKind array to char array for comparison
+pub fn c_from_var_kind<const N: usize>(var_kind_array: &[VarKind; N]) -> [char; N] {
+    let mut c_array: [char; N] = ['0'; N];
+
+    for i in 0..N {
+        c_array[i] = match var_kind_array[i] {
+            VarKind::Free => 'f',
+            VarKind::Conditioned => 'c',
+            VarKind::Marginalized => 'm',
+        };
+    }
+
+    c_array
+}
+
+/// Wrapper around the char array for comparison
+///
+/// f: free variable
+/// c: conditioned variable
+/// m: marginalized variable
 pub struct CompareIdx<C>
 where
     C: AsRef<[char]>,
@@ -80,10 +102,12 @@ impl<C> CompareIdx<C>
 where
     C: AsRef<[char]>,
 {
+    /// Compare two cost argument id tuples
     pub fn le_than<const N: usize>(&self, lhs: [usize; N], rhs: [usize; N]) -> std::cmp::Ordering {
         le_than(self.c.as_ref(), lhs, rhs)
     }
 
+    /// Return true if all non-conditioned variables are equal
     pub fn are_all_non_cond_vars_equal(&self, lhs: &[usize], rhs: &[usize]) -> bool {
         let mut i = 0;
         loop {
@@ -98,6 +122,7 @@ where
         true
     }
 
+    /// Return true if all marginalized variables are equal
     pub fn are_all_marg_vars_equal(&self, lhs: &[usize], rhs: &[usize]) -> bool {
         let mut i = 0;
         loop {

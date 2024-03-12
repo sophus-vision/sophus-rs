@@ -264,6 +264,7 @@ impl SparseLdlt {
         x
     }
 
+    /// Create a sparse LDLT factorization from a symmetric triplet matrix
     pub fn from_triplets(sym_tri_mat: &SymmetricTripletMatrix) -> Self {
         SparseLdlt {
             upper_ccs: faer::sparse::SparseColMat::try_new_from_triplets(
@@ -275,6 +276,7 @@ impl SparseLdlt {
         }
     }
 
+    /// convert to dense matrix (for testing purposes)
     pub fn to_dense(&self) -> nalgebra::DMatrix<f64> {
         let upper_dense = self.upper_ccs.to_dense();
         let mut nalgebra_mat = DMatrix::<f64>::zeros(upper_dense.nrows(), upper_dense.ncols());
@@ -288,6 +290,10 @@ impl SparseLdlt {
         nalgebra_mat
     }
 
+    /// Solve the linear system `Ax = b`
+    ///
+    /// TODO: Consider a more efficient API where the symbolic factorization is
+    ///       computed once and then reused for multiple solves.
     pub fn solve(&self, b: &nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
         let symbolic_perm = self.symbolic_and_perm();
         self.solve_from_symbolic(b, &symbolic_perm)

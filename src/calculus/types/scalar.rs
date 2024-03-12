@@ -7,9 +7,10 @@ use std::ops::Sub;
 
 use super::matrix::IsMatrix;
 use super::vector::IsVector;
-use super::M;
-use super::V;
+use super::MatF64;
+use super::VecF64;
 
+/// Scalar - either a real (f64) or a dual number
 pub trait IsScalar:
     PartialOrd
     + PartialEq
@@ -25,35 +26,61 @@ pub trait IsScalar:
     + num_traits::Zero
     + From<f64>
 {
+    /// Vector type
     type Vector<const ROWS: usize>: IsVector<Self, ROWS>;
+
+    /// Matrix type
     type Matrix<const ROWS: usize, const COLS: usize>: IsMatrix<Self, ROWS, COLS>;
 
+    /// create a constant scalar
     fn c(val: f64) -> Self;
+
+    /// return the real part
     fn real(&self) -> f64;
 
+    /// absolute value
     fn abs(self) -> Self;
+
+    /// cosine
     fn cos(self) -> Self;
+
+    /// sine
     fn sin(self) -> Self;
+
+    /// tangent
     fn tan(self) -> Self;
+
+    /// arccosine
     fn acos(self) -> Self;
+
+    /// arcsine
     fn asin(self) -> Self;
+
+    /// arctangent
     fn atan(self) -> Self;
+
+    /// square root
     fn sqrt(self) -> Self;
 
+    /// arctangent2
     fn atan2(self, x: Self) -> Self;
 
+    /// value
     fn value(self) -> f64;
 
+    /// return as a vector
     fn to_vec(self) -> Self::Vector<1>;
 
+    /// fractional part
     fn fract(self) -> Self;
 
+    /// floor
     fn floor(&self) -> i64;
 }
 
 impl IsScalar for f64 {
-    type Vector<const ROWS: usize> = V<ROWS>;
-    type Matrix<const ROWS: usize, const COLS: usize> = M<ROWS, COLS>;
+    type Vector<const ROWS: usize> = VecF64<ROWS>;
+    type Matrix<const ROWS: usize, const COLS: usize> = MatF64<ROWS, COLS>;
 
     fn abs(self) -> f64 {
         f64::abs(self)
@@ -87,8 +114,8 @@ impl IsScalar for f64 {
         self.value()
     }
 
-    fn to_vec(self) -> V<1> {
-        V::<1>::new(self)
+    fn to_vec(self) -> VecF64<1> {
+        VecF64::<1>::new(self)
     }
 
     fn tan(self) -> Self {

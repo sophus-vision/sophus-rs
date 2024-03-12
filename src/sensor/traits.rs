@@ -1,8 +1,8 @@
 use nalgebra::SMatrix;
 use nalgebra::SVector;
 
+use crate::calculus::region::IsRegion;
 use crate::calculus::region::Region;
-use crate::calculus::region::RegionTraits;
 use crate::calculus::types::params::ParamsImpl;
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;

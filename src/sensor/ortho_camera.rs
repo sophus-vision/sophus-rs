@@ -2,8 +2,8 @@ use std::marker::PhantomData;
 
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
-use crate::calculus::types::M;
-use crate::calculus::types::V;
+use crate::calculus::types::MatF64;
+use crate::calculus::types::VecF64;
 
 use super::affine::AffineDistortionImpl;
 use super::generic_camera::Camera;
@@ -23,7 +23,7 @@ impl<S: IsScalar> IsProjection<S> for ProjectionOrtho<S> {
         S::Vector::<3>::from_array([point_in_camera.get(0), point_in_camera.get(1), extension])
     }
 
-    fn dx_proj_x(_point_in_camera: &V<3>) -> M<2, 3> {
+    fn dx_proj_x(_point_in_camera: &VecF64<3>) -> MatF64<2, 3> {
         unimplemented!("dx_proj_x not implemented for ProjectionOrtho")
     }
 }

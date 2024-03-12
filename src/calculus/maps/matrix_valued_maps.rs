@@ -3,34 +3,34 @@ use std::marker::PhantomData;
 use crate::calculus::dual::dual_matrix::DualM;
 use crate::calculus::dual::dual_vector::DualV;
 use crate::calculus::types::matrix::IsMatrix;
-use crate::calculus::types::M;
-use crate::calculus::types::V;
+use crate::calculus::types::MatF64;
+use crate::calculus::types::VecF64;
 use crate::tensor::element::SMat;
 use crate::tensor::mut_tensor::MutTensorDDRC;
 use crate::tensor::mut_tensor::MutTensorDRC;
 use crate::tensor::mut_view::IsMutTensorLike;
 
-// Matrix-valued map on a vector space.
-//
-// This is a function which takes a vector and returns a matrix:
-//
-//  f: ℝᵐ -> ℝʳ x ℝᶜ
-//
+/// Matrix-valued map on a vector space.
+///
+/// This is a function which takes a vector and returns a matrix:
+///
+///  f: ℝᵐ -> ℝʳ x ℝᶜ
+///
 pub struct MatrixValuedMapFromVector;
 
 impl MatrixValuedMapFromVector {
-    // Finite difference quotient of the matrix-valued map.
-    //
-    // The derivative is a rank-3 tensor with shape (Rₒ x Cₒ x Rᵢ).
-    //
-    // For efficiency reasons, we return Rᵢ x [Rₒ x Cₒ]
+    /// Finite difference quotient of the matrix-valued map.
+    ///
+    /// The derivative is a rank-3 tensor with shape (Rₒ x Cₒ x Rᵢ).
+    ///
+    /// For efficiency reasons, we return Rᵢ x [Rₒ x Cₒ]
     pub fn sym_diff_quotient<TFn, const OUTROWS: usize, const OUTCOLS: usize, const INROWS: usize>(
         matrix_valued: TFn,
-        a: V<INROWS>,
+        a: VecF64<INROWS>,
         eps: f64,
     ) -> MutTensorDRC<f64, OUTROWS, OUTCOLS>
     where
-        TFn: Fn(V<INROWS>) -> M<OUTROWS, OUTCOLS>,
+        TFn: Fn(VecF64<INROWS>) -> MatF64<OUTROWS, OUTCOLS>,
     {
         let mut out = MutTensorDRC::<f64, OUTROWS, OUTCOLS>::from_shape([INROWS]);
         for i1 in 0..INROWS {
@@ -48,9 +48,10 @@ impl MatrixValuedMapFromVector {
         out
     }
 
+    /// Auto differentiation of the matrix-valued map.
     pub fn fw_autodiff<TFn, const OUTROWS: usize, const OUTCOLS: usize, const INROWS: usize>(
         matrix_valued: TFn,
-        a: V<INROWS>,
+        a: VecF64<INROWS>,
     ) -> MutTensorDRC<f64, OUTROWS, OUTCOLS>
     where
         TFn: Fn(DualV<INROWS>) -> DualM<OUTROWS, OUTCOLS>,
@@ -67,20 +68,20 @@ impl MatrixValuedMapFromVector {
     }
 }
 
-// Matrix-valued map on a product space (=matrices).
-//
-// This is a function which takes a matrix and returns a matrix:
-//
-//  f: ℝᵐ x ℝⁿ -> ℝʳ x ℝᶜ
-//
+/// Matrix-valued map on a product space (=matrices).
+///
+/// This is a function which takes a matrix and returns a matrix:
+///
+///  f: ℝᵐ x ℝⁿ -> ℝʳ x ℝᶜ
+///
 pub struct MatrixValuedMapFromMatrix;
 
 impl MatrixValuedMapFromMatrix {
-    // Finite difference quotient of the matrix-valued map.
-    //
-    // The derivative is a rank-4 tensor with shape (Rₒ x Cₒ x Rᵢ x Cᵢ).
-    //
-    // For efficiency reasons, we return Rᵢ x Cᵢ x [Rₒ x Cₒ]
+    /// Finite difference quotient of the matrix-valued map.
+    ///
+    /// The derivative is a rank-4 tensor with shape (Rₒ x Cₒ x Rᵢ x Cᵢ).
+    ///
+    /// For efficiency reasons, we return Rᵢ x Cᵢ x [Rₒ x Cₒ]
     pub fn sym_diff_quotient<
         TFn,
         const OUTROWS: usize,
@@ -89,11 +90,11 @@ impl MatrixValuedMapFromMatrix {
         const INCOLS: usize,
     >(
         vector_field: TFn,
-        a: M<INROWS, INCOLS>,
+        a: MatF64<INROWS, INCOLS>,
         eps: f64,
     ) -> MutTensorDDRC<f64, OUTROWS, OUTCOLS>
     where
-        TFn: Fn(M<INROWS, INCOLS>) -> M<OUTROWS, OUTCOLS>,
+        TFn: Fn(MatF64<INROWS, INCOLS>) -> MatF64<OUTROWS, OUTCOLS>,
     {
         let mut out = MutTensorDDRC::<f64, OUTROWS, OUTCOLS>::from_shape_and_val(
             [INROWS, INCOLS],
@@ -116,6 +117,7 @@ impl MatrixValuedMapFromMatrix {
         out
     }
 
+    /// Auto differentiation of the matrix-valued map.
     pub fn fw_autodiff<
         TFn,
         const OUTROWS: usize,
@@ -124,7 +126,7 @@ impl MatrixValuedMapFromMatrix {
         const INCOLS: usize,
     >(
         matrix_valued: TFn,
-        a: M<INROWS, INCOLS>,
+        a: MatF64<INROWS, INCOLS>,
     ) -> MutTensorDDRC<f64, OUTROWS, OUTCOLS>
     where
         TFn: Fn(DualM<INROWS, INCOLS>) -> DualM<OUTROWS, OUTCOLS>,
@@ -141,7 +143,7 @@ mod test {
         use crate::calculus::types::matrix::IsMatrix;
         use crate::calculus::types::scalar::IsScalar;
         use crate::calculus::types::vector::IsVector;
-        use crate::calculus::types::V;
+        use crate::calculus::types::VecF64;
         use crate::tensor::view::IsTensorLike;
 
         //      [[ i ]]
@@ -174,7 +176,7 @@ mod test {
             ret
         }
 
-        let a = V::<6>::new(0.1, 0.2, 0.4, 0.7, 0.8, 0.9);
+        let a = VecF64::<6>::new(0.1, 0.2, 0.4, 0.7, 0.8, 0.9);
 
         let finite_diff = MatrixValuedMapFromVector::sym_diff_quotient(hat_fn, a, 1e-6);
         let auto_grad = MatrixValuedMapFromVector::fw_autodiff(hat_fn, a);
@@ -190,7 +192,7 @@ mod test {
         use crate::calculus::maps::matrix_valued_maps::MatrixValuedMapFromMatrix;
         use crate::calculus::types::matrix::IsMatrix;
         use crate::calculus::types::scalar::IsScalar;
-        use crate::calculus::types::M;
+        use crate::calculus::types::MatF64;
         use crate::tensor::view::IsTensorLike;
 
         //      [[ a   b ]]       1    [[  d  -b ]]
@@ -211,7 +213,7 @@ mod test {
                 [-det.clone() * c, det * a],
             ])
         }
-        let a = M::<2, 2>::new(0.1, 0.2, 0.4, 0.7);
+        let a = MatF64::<2, 2>::new(0.1, 0.2, 0.4, 0.7);
 
         let finite_diff = MatrixValuedMapFromMatrix::sym_diff_quotient(f, a, 1e-6);
         let auto_grad = MatrixValuedMapFromMatrix::fw_autodiff(f, a);

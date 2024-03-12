@@ -1,36 +1,36 @@
 use crate::calculus::dual::dual_matrix::DualM;
 use crate::calculus::dual::dual_scalar::Dual;
 use crate::calculus::dual::dual_vector::DualV;
-use crate::calculus::types::M;
-use crate::calculus::types::V;
+use crate::calculus::types::MatF64;
+use crate::calculus::types::VecF64;
 use crate::tensor::mut_tensor::MutTensorDD;
 use crate::tensor::view::IsTensorLike;
 
-// Scalar-valued map on a vector space.
-//
-// This is a function which takes a vector and returns a scalar:
-//
-//   f: ℝᵐ -> ℝ
-//
-// These functions are also called a scalar fields (on vector spaces).
-//
+/// Scalar-valued map on a vector space.
+///
+/// This is a function which takes a vector and returns a scalar:
+///
+///   f: ℝᵐ -> ℝ
+///
+/// These functions are also called a scalar fields (on vector spaces).
+///
 pub struct ScalarValuedMapFromVector;
 
 impl ScalarValuedMapFromVector {
-    // Finite difference quotient of the scalar-valued map.
-    //
-    // The derivative is a vector or rank-1 tensor of shape (Rᵢ).
-    //
-    // Since all operations are batched, it returns a (B x Rᵢ) rank-2 tensor.
+    /// Finite difference quotient of the scalar-valued map.
+    ///
+    /// The derivative is a vector or rank-1 tensor of shape (Rᵢ).
+    ///
+    /// Since all operations are batched, it returns a (B x Rᵢ) rank-2 tensor.
     pub fn sym_diff_quotient<TFn, const INROWS: usize>(
         scalar_valued: TFn,
-        a: V<INROWS>,
+        a: VecF64<INROWS>,
         eps: f64,
-    ) -> V<INROWS>
+    ) -> VecF64<INROWS>
     where
-        TFn: Fn(V<INROWS>) -> f64,
+        TFn: Fn(VecF64<INROWS>) -> f64,
     {
-        let mut out = V::<INROWS>::zeros();
+        let mut out = VecF64::<INROWS>::zeros();
 
         for r in 0..INROWS {
             let mut a_plus = a;
@@ -44,13 +44,17 @@ impl ScalarValuedMapFromVector {
         out
     }
 
-    pub fn fw_autodiff<TFn, const INROWS: usize>(scalar_valued: TFn, a: V<INROWS>) -> V<INROWS>
+    /// Auto differentiation of the scalar-valued map.
+    pub fn fw_autodiff<TFn, const INROWS: usize>(
+        scalar_valued: TFn,
+        a: VecF64<INROWS>,
+    ) -> VecF64<INROWS>
     where
         TFn: Fn(DualV<INROWS>) -> Dual,
     {
         let jacobian: MutTensorDD<f64> = scalar_valued(DualV::v(a)).dij_val.unwrap();
         assert_eq!(jacobian.dims(), [INROWS, 1]);
-        let mut out = V::zeros();
+        let mut out = VecF64::zeros();
 
         for r in 0..jacobian.dims()[0] {
             out[r] = jacobian.get([r, 0]);
@@ -59,29 +63,29 @@ impl ScalarValuedMapFromVector {
     }
 }
 
-// Scalar-valued map on a product space (= space of matrices).
-//
-// This is a function which takes a matrix and returns a scalar:
-//
-//   f: ℝᵐ x ℝⁿ -> ℝ
-//
-// These functions are also called a scalar fields (on product spaces).
-//
+/// Scalar-valued map on a product space (= space of matrices).
+///
+/// This is a function which takes a matrix and returns a scalar:
+///
+///   f: ℝᵐ x ℝⁿ -> ℝ
+///
+/// These functions are also called a scalar fields (on product spaces).
+///
 pub struct ScalarValuedMapFromMatrix;
 
 impl ScalarValuedMapFromMatrix {
-    // Finite difference quotient of the scalar-valued map.
-    //
-    // The derivative is a matrix or rank-2 tensor of shape (Rᵢ x Cⱼ).
+    /// Finite difference quotient of the scalar-valued map.
+    ///
+    /// The derivative is a matrix or rank-2 tensor of shape (Rᵢ x Cⱼ).
     pub fn sym_diff_quotient<TFn, const INROWS: usize, const INCOLS: usize>(
         scalar_valued: TFn,
-        a: M<INROWS, INCOLS>,
+        a: MatF64<INROWS, INCOLS>,
         eps: f64,
-    ) -> M<INROWS, INCOLS>
+    ) -> MatF64<INROWS, INCOLS>
     where
-        TFn: Fn(M<INROWS, INCOLS>) -> f64,
+        TFn: Fn(MatF64<INROWS, INCOLS>) -> f64,
     {
-        let mut out = M::<INROWS, INCOLS>::zeros();
+        let mut out = MatF64::<INROWS, INCOLS>::zeros();
 
         for r in 0..INROWS {
             for c in 0..INCOLS {
@@ -96,16 +100,17 @@ impl ScalarValuedMapFromMatrix {
         out
     }
 
+    /// Auto differentiation of the scalar-valued map.
     pub fn fw_autodiff<TFn, const INROWS: usize, const INCOLS: usize>(
         scalar_valued: TFn,
-        a: M<INROWS, INCOLS>,
-    ) -> M<INROWS, INCOLS>
+        a: MatF64<INROWS, INCOLS>,
+    ) -> MatF64<INROWS, INCOLS>
     where
         TFn: Fn(DualM<INROWS, INCOLS>) -> Dual,
     {
         let jacobian: MutTensorDD<f64> = scalar_valued(DualM::v(a)).dij_val.unwrap();
         assert_eq!(jacobian.dims(), [INROWS, INCOLS]);
-        let mut out = M::zeros();
+        let mut out = MatF64::zeros();
 
         for r in 0..jacobian.dims()[0] {
             for c in 0..jacobian.dims()[1] {
@@ -128,13 +133,13 @@ mod test {
     #[cfg(test)]
     use crate::calculus::types::vector::IsVector;
     #[cfg(test)]
-    use crate::calculus::types::M;
+    use crate::calculus::types::MatF64;
     #[cfg(test)]
-    use crate::calculus::types::V;
+    use crate::calculus::types::VecF64;
 
     #[test]
     fn test_scalar_valued_map_from_vector() {
-        let a = V::<2>::new(0.1, 0.4);
+        let a = VecF64::<2>::new(0.1, 0.4);
 
         fn f<S: IsScalar, V2: IsVector<S, 2>>(x: V2) -> S {
             x.norm()
@@ -161,7 +166,7 @@ mod test {
             (a * d) - (b * c)
         }
 
-        let mut mat = M::<3, 2>::zeros();
+        let mut mat = MatF64::<3, 2>::zeros();
         mat[(0, 0)] = 4.6;
         mat[(1, 0)] = 1.6;
         mat[(1, 1)] = 0.6;

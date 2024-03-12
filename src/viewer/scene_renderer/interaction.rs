@@ -1,6 +1,6 @@
 use eframe::egui;
 
-use crate::calculus::types::V;
+use crate::calculus::types::VecF64;
 use crate::image::arc_image::ArcImageF32;
 use crate::image::view::IsImageView;
 use crate::lie::rotation3::Isometry3;
@@ -27,8 +27,8 @@ impl WgpuClippingPlanes {
 #[derive(Clone, Copy)]
 pub struct InteractionState {
     pub depth: f64,
-    pub drag_start_uv: V<2>,
-    pub current_uv: V<2>,
+    pub drag_start_uv: VecF64<2>,
+    pub current_uv: VecF64<2>,
 }
 
 #[derive(Clone, Copy)]
@@ -83,8 +83,8 @@ impl Interaction {
             }
             self.maybe_state = Some(InteractionState {
                 depth: z,
-                drag_start_uv: V::<2>::new(pixel.x as f64, pixel.y as f64),
-                current_uv: V::<2>::new(pixel.x as f64, pixel.y as f64),
+                drag_start_uv: VecF64::<2>::new(pixel.x as f64, pixel.y as f64),
+                current_uv: VecF64::<2>::new(pixel.x as f64, pixel.y as f64),
             });
         } else if response.drag_released() {
             // A drag event finished
@@ -100,7 +100,7 @@ impl Interaction {
             let depth = drag_state.depth;
             let p0 = cam.cam_unproj_with_z(&pixel, depth);
             let p1 = cam.cam_unproj_with_z(
-                &V::<2>::new(pixel.x + delta_x as f64, pixel.y + delta_y as f64),
+                &VecF64::<2>::new(pixel.x + delta_x as f64, pixel.y + delta_y as f64),
                 depth,
             );
             let mut scene_from_camera = self.scene_from_camera;
@@ -110,14 +110,15 @@ impl Interaction {
                 .set_translation(&(scene_from_camera.translation() + translation_update));
             self.scene_from_camera = scene_from_camera;
             self.maybe_state.as_mut().unwrap().current_uv =
-                V::<2>::new(current_pixel[0] as f64, current_pixel[1] as f64);
+                VecF64::<2>::new(current_pixel[0] as f64, current_pixel[1] as f64);
         } else if response.dragged_by(egui::PointerButton::Primary) {
             // translate scene
 
             let drag_state = self.maybe_state.unwrap();
             let pixel = drag_state.drag_start_uv;
             let depth = drag_state.depth;
-            let delta = 0.01 * V::<6>::new(0.0, 0.0, 0.0, -delta_y as f64, delta_x as f64, 0.0);
+            let delta =
+                0.01 * VecF64::<6>::new(0.0, 0.0, 0.0, -delta_y as f64, delta_x as f64, 0.0);
             let camera_from_scene_point = Isometry3::from_t(&cam.cam_unproj_with_z(&pixel, depth));
             self.scene_from_camera =
                 self.scene_from_camera

@@ -5,11 +5,13 @@ use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
 use crate::calculus::types::vector::IsVectorLike;
 
+/// cubic basis function
 pub struct CubicBasisFunction<S> {
     phantom: PhantomData<S>,
 }
 
 impl<S: IsScalar> CubicBasisFunction<S> {
+    /// C matrix
     pub fn c() -> S::Matrix<3, 4> {
         S::Matrix::<3, 4>::from_c_array2([
             [5.0 / 6.0, 3.0 / 6.0, -3.0 / 6.0, 1.0 / 6.0],
@@ -18,23 +20,27 @@ impl<S: IsScalar> CubicBasisFunction<S> {
         ])
     }
 
+    /// B(u) matrix
     pub fn b(u: S) -> S::Vector<3> {
         let u_sq = u.clone() * u.clone();
         Self::c() * S::Vector::<4>::from_array([1.0.into(), u.clone(), u_sq.clone(), u_sq * u])
     }
 
+    /// derivative of B(u) matrix with respect to u
     pub fn du_b(u: S, delta_t: S) -> S::Vector<3> {
         let u_sq = u.clone() * u.clone();
         Self::c().scaled(S::c(1.0) / delta_t)
             * S::Vector::<4>::from_array([S::c(0.0), S::c(1.0), S::c(2.0) * u, S::c(3.0) * u_sq])
     }
 
+    /// second derivative of B(u) matrix with respect to u
     pub fn du2_b(u: S, delta_t: S) -> S::Vector<3> {
         Self::c().scaled(S::c(1.0) / (delta_t.clone() * delta_t))
             * S::Vector::<4>::from_array([S::c(0.0), S::c(0.0), S::c(2.0), S::c(6.0) * u])
     }
 }
 
+/// cubic B-spline function
 pub struct CubicBSplineFn<S: IsScalar, const DIMS: usize> {
     phantom: PhantomData<S>,
 }
@@ -62,13 +68,18 @@ impl<S: IsScalar, const DIMS: usize> CubicBSplineFn<S, DIMS> {
     }
 }
 
+/// Segment case
 #[derive(Clone, Debug, Copy)]
 pub enum SegmentCase {
+    /// First segment
     First,
+    /// segment in the middle
     Normal,
+    /// Last segment
     Last,
 }
 
+/// Cubic B-spline segment
 #[derive(Clone, Debug)]
 pub struct CubicBSplineSegment<S: IsScalar, const DIMS: usize> {
     pub(crate) case: SegmentCase,
@@ -76,6 +87,7 @@ pub struct CubicBSplineSegment<S: IsScalar, const DIMS: usize> {
 }
 
 impl<S: IsScalar, const DIMS: usize> CubicBSplineSegment<S, DIMS> {
+    /// Interpolate
     pub fn interpolate(&self, u: S) -> S::Vector<DIMS> {
         match self.case {
             SegmentCase::First => CubicBSplineFn::interpolate(
@@ -108,6 +120,7 @@ impl<S: IsScalar, const DIMS: usize> CubicBSplineSegment<S, DIMS> {
         }
     }
 
+    /// Derivative of the interpolation with respect to u
     pub fn dxi_interpolate(&self, u: S, quadruple_idx: usize) -> S::Matrix<DIMS, DIMS> {
         match self.case {
             SegmentCase::First => {
@@ -166,7 +179,7 @@ mod test {
         use crate::calculus::types::scalar::IsScalar;
         use crate::calculus::types::vector::IsVector;
         use crate::calculus::types::vector::IsVectorLike;
-        use crate::calculus::types::V;
+        use crate::calculus::types::VecF64;
 
         let points = &example_points::<f64, 3>();
         assert!(points.len() >= 8);
@@ -180,7 +193,7 @@ mod test {
             for p_idx in 0..points.len() - 4 {
                 let first_control_point = points[p_idx];
                 let first_control_point_dual = DualV::c(points[p_idx]);
-                let mut segment_control_points = [V::<3>::zeros(); 3];
+                let mut segment_control_points = [VecF64::<3>::zeros(); 3];
                 let mut segment_control_points_dual =
                     [DualV::<3>::zero(), DualV::<3>::zero(), DualV::<3>::zero()];
                 for i in 0..3 {
@@ -233,13 +246,13 @@ mod test {
         use crate::calculus::types::scalar::IsScalar;
         use crate::calculus::types::vector::IsVector;
         use crate::calculus::types::vector::IsVectorLike;
-        use crate::calculus::types::V;
+        use crate::calculus::types::VecF64;
 
         let points = &example_points::<f64, 3>();
         assert!(points.len() >= 8);
 
         for p_idx in 0..points.len() - 4 {
-            let mut segment_control_points = [V::<3>::zeros(); 4];
+            let mut segment_control_points = [VecF64::<3>::zeros(); 4];
             let mut segment_control_points_dual = [
                 DualV::<3>::zero(),
                 DualV::<3>::zero(),
@@ -265,7 +278,7 @@ mod test {
                     }
                     for i in 0..4 {
                         let analytic_dx = base.dxi_interpolate(u, i);
-                        let f = |v: V<3>| {
+                        let f = |v: VecF64<3>| {
                             let mut base_copy = base.clone();
                             base_copy.control_points[i] = v;
                             base_copy.interpolate(u)

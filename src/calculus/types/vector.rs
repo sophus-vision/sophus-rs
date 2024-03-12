@@ -5,51 +5,72 @@ use std::ops::Sub;
 
 use super::scalar::IsScalar;
 
-use super::M;
-use super::V;
+use super::MatF64;
+use super::VecF64;
 
+/// is vector like
 pub trait IsVectorLike:
     Debug + Clone + Sized + Neg<Output = Self> + Add<Output = Self> + Sub<Output = Self>
 {
+    /// create a zero vector
     fn zero() -> Self;
 }
 
+/// Vector - either a real (f64) or a dual number vector
 pub trait IsVector<S: IsScalar, const ROWS: usize>: IsVectorLike {
-    fn c(val: V<ROWS>) -> Self;
-    fn real(&self) -> &V<ROWS>;
+    /// create a constant vector
+    fn c(val: VecF64<ROWS>) -> Self;
 
+    /// return the real part
+    fn real(&self) -> &VecF64<ROWS>;
+
+    /// squared norm
     fn squared_norm(&self) -> S;
+
+    /// norm
     fn norm(&self) -> S;
+
+    /// get ith element
     fn get(&self, idx: usize) -> S;
+
+    /// set ith element as constant
     fn set_c(&mut self, idx: usize, v: f64);
 
+    /// create a vector from an array
     fn from_array(vals: [S; ROWS]) -> Self;
+
+    /// create a constant vector from an array
     fn from_c_array(vals: [f64; ROWS]) -> Self;
 
+    /// return scaled vector
     fn scaled(&self, v: S) -> Self;
 
+    /// get fixed rows
     fn get_fixed_rows<const R: usize>(&self, start: usize) -> S::Vector<R>;
-    // fn from_fn<F: FnMut(usize) -> S>(f: F) -> Self;
 
+    /// return the matrix representation
     fn to_mat(self) -> S::Matrix<ROWS, 1>;
 
+    /// create a block vector
     fn block_vec2<const R0: usize, const R1: usize>(
         top_row: S::Vector<R0>,
         bot_row: S::Vector<R1>,
     ) -> Self;
 
+    /// dot product
     fn dot(self, rhs: Self) -> S;
 
+    /// return normalized vector
     fn normalized(&self) -> Self;
 }
 
-impl<const ROWS: usize> IsVector<f64, ROWS> for V<ROWS> {
-    fn from_array(vals: [f64; ROWS]) -> V<ROWS> {
-        V::<ROWS>::from_row_slice(&vals[..])
+impl<const ROWS: usize> IsVector<f64, ROWS> for VecF64<ROWS> {
+    fn from_array(vals: [f64; ROWS]) -> VecF64<ROWS> {
+        VecF64::<ROWS>::from_row_slice(&vals[..])
     }
 
     fn from_c_array(vals: [f64; ROWS]) -> Self {
-        V::<ROWS>::from_row_slice(&vals[..])
+        VecF64::<ROWS>::from_row_slice(&vals[..])
     }
 
     fn get(&self, idx: usize) -> f64 {
@@ -64,7 +85,7 @@ impl<const ROWS: usize> IsVector<f64, ROWS> for V<ROWS> {
         self.norm_squared()
     }
 
-    fn c(val: V<ROWS>) -> Self {
+    fn c(val: VecF64<ROWS>) -> Self {
         val
     }
 
@@ -72,15 +93,18 @@ impl<const ROWS: usize> IsVector<f64, ROWS> for V<ROWS> {
         self
     }
 
-    fn get_fixed_rows<const R: usize>(&self, start: usize) -> V<R> {
+    fn get_fixed_rows<const R: usize>(&self, start: usize) -> VecF64<R> {
         self.fixed_rows::<R>(start).into()
     }
 
-    fn to_mat(self) -> M<ROWS, 1> {
+    fn to_mat(self) -> MatF64<ROWS, 1> {
         self
     }
 
-    fn block_vec2<const R0: usize, const R1: usize>(top_row: V<R0>, bot_row: V<R1>) -> Self {
+    fn block_vec2<const R0: usize, const R1: usize>(
+        top_row: VecF64<R0>,
+        bot_row: VecF64<R1>,
+    ) -> Self {
         assert_eq!(ROWS, R0 + R1);
         let mut m = Self::zero();
 
@@ -98,7 +122,7 @@ impl<const ROWS: usize> IsVector<f64, ROWS> for V<ROWS> {
     }
 
     fn dot(self, rhs: Self) -> f64 {
-        V::dot(&self, &rhs)
+        VecF64::dot(&self, &rhs)
     }
 
     fn normalized(&self) -> Self {
@@ -106,6 +130,7 @@ impl<const ROWS: usize> IsVector<f64, ROWS> for V<ROWS> {
     }
 }
 
+/// cross product
 pub fn cross<S: IsScalar>(lhs: S::Vector<3>, rhs: S::Vector<3>) -> S::Vector<3> {
     let l0 = lhs.get(0);
     let l1 = lhs.get(1);

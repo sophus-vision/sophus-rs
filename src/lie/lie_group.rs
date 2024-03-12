@@ -18,8 +18,8 @@ use crate::calculus::types::params::ParamsImpl;
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
 use crate::calculus::types::vector::IsVectorLike;
-use crate::calculus::types::M;
-use crate::calculus::types::V;
+use crate::calculus::types::MatF64;
+use crate::calculus::types::VecF64;
 use crate::manifold::traits::IsManifold;
 use crate::manifold::traits::TangentImpl;
 use crate::tensor::view::IsTensorLike;
@@ -29,6 +29,7 @@ use super::traits::IsF64LieGroupImpl;
 use super::traits::IsLieGroup;
 use super::traits::IsLieGroupImpl;
 
+/// Lie group
 #[derive(Debug, Copy, Clone)]
 pub struct LieGroup<
     S: IsScalar,
@@ -137,62 +138,77 @@ impl<
         G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>,
     > LieGroup<S, DOF, PARAMS, POINT, AMBIENT, G>
 {
+    /// group adjoint
     pub fn adj(&self) -> S::Matrix<DOF, DOF> {
         G::adj(&self.params)
     }
 
+    /// exponential map
     pub fn exp(omega: &S::Vector<DOF>) -> Self {
         Self::from_params(&G::exp(omega))
     }
 
+    /// logarithmic map
     pub fn log(&self) -> S::Vector<DOF> {
         G::log(&self.params)
     }
 
+    /// hat operator: hat: R^d -> R^{a x a}
     pub fn hat(omega: &S::Vector<DOF>) -> S::Matrix<AMBIENT, AMBIENT> {
         G::hat(omega)
     }
 
+    /// vee operator: vee: R^{a x a} -> R^d
     pub fn vee(xi: &S::Matrix<AMBIENT, AMBIENT>) -> S::Vector<DOF> {
         G::vee(xi)
     }
 
+    /// identity element
     pub fn identity() -> Self {
         Self::from_params(&G::identity_params())
     }
 
+    /// group multiplication
     pub fn group_mul(&self, other: &Self) -> Self {
         Self::from_params(&G::group_mul(&self.params, &other.params))
     }
 
+    /// group inverse
     pub fn inverse(&self) -> Self {
         Self::from_params(&G::inverse(&self.params))
     }
 
+    /// transform a point
     pub fn transform(&self, point: &S::Vector<POINT>) -> S::Vector<POINT> {
         G::transform(&self.params, point)
     }
 
+    /// convert point to ambient space
     pub fn to_ambient(point: &S::Vector<POINT>) -> S::Vector<AMBIENT> {
         G::to_ambient(point)
     }
 
+    /// return compact matrix representation
     pub fn compact(&self) -> S::Matrix<POINT, AMBIENT> {
         G::compact(&self.params)
     }
 
+    /// return square matrix representation
     pub fn matrix(&self) -> S::Matrix<AMBIENT, AMBIENT> {
         G::matrix(&self.params)
     }
 
+    /// algebra adjoint
     pub fn ad(tangent: &S::Vector<DOF>) -> S::Matrix<DOF, DOF> {
         G::ad(tangent)
     }
 
+    /// are there multiple shortest paths to the identity?
     pub fn has_shortest_path_ambiguity(&self) -> bool {
         G::has_shortest_path_ambiguity(&self.params)
     }
 
+    /// group element examples
     pub fn element_examples() -> Vec<Self> {
         let mut elements = vec![];
         for params in Self::params_examples() {
@@ -201,7 +217,7 @@ impl<
         elements
     }
 
-    pub fn presentability_tests() {
+    fn presentability_tests() {
         if G::IS_ORIGIN_PRESERVING {
             for g in &Self::element_examples() {
                 let o = S::Vector::<POINT>::zero();
@@ -320,6 +336,7 @@ impl<
         }
     }
 
+    /// run all tests
     pub fn test_suite() {
         // Most tests will trivially pass if there are no examples. So first we make sure we have at least three per group.
         let group_examples: Vec<_> = Self::element_examples();
@@ -426,28 +443,34 @@ impl<
         G: IsF64LieGroupImpl<DOF, PARAMS, POINT, AMBIENT>,
     > LieGroup<f64, DOF, PARAMS, POINT, AMBIENT, G>
 {
-    pub fn dx_exp_x_at_0() -> M<PARAMS, DOF> {
+    /// derivative of exponential map at the identity
+    pub fn dx_exp_x_at_0() -> MatF64<PARAMS, DOF> {
         G::dx_exp_x_at_0()
     }
 
-    pub fn dx_exp_x_times_point_at_0(point: V<POINT>) -> M<POINT, DOF> {
+    /// derivative of exponential map times point at the identity
+    pub fn dx_exp_x_times_point_at_0(point: VecF64<POINT>) -> MatF64<POINT, DOF> {
         G::dx_exp_x_times_point_at_0(point)
     }
 
-    pub fn dx_exp(tangent: &V<DOF>) -> M<PARAMS, DOF> {
+    /// derivative of exponential map
+    pub fn dx_exp(tangent: &VecF64<DOF>) -> MatF64<PARAMS, DOF> {
         G::dx_exp(tangent)
     }
 
-    pub fn dx_log_x(params: &V<PARAMS>) -> M<DOF, PARAMS> {
+    /// derivative of logarithmic map
+    pub fn dx_log_x(params: &VecF64<PARAMS>) -> MatF64<DOF, PARAMS> {
         G::dx_log_x(params)
     }
 
+    /// dual representation of the group
     pub fn to_dual_c(self) -> LieGroup<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG> {
         let dual_params = DualV::<PARAMS>::c(self.params);
         LieGroup::from_params(&dual_params)
     }
 
-    pub fn dx_log_a_exp_x_b_at_0(a: &Self, b: &Self) -> M<DOF, DOF> {
+    /// derivative of log(exp(x)) at the identity
+    pub fn dx_log_a_exp_x_b_at_0(a: &Self, b: &Self) -> MatF64<DOF, DOF> {
         let ab = a.group_mul(b);
         Self::dx_log_x(ab.params())
             * Self::da_a_mul_b(&Self::identity(), &ab)
@@ -455,24 +478,26 @@ impl<
             * Self::adj(a)
     }
 
-    fn da_a_mul_b(a: &Self, b: &Self) -> M<PARAMS, PARAMS> {
+    /// derivative of group multiplication with respect to the first argument
+    pub fn da_a_mul_b(a: &Self, b: &Self) -> MatF64<PARAMS, PARAMS> {
         G::da_a_mul_b(a.params(), b.params())
     }
 
-    fn db_a_mul_b(a: &Self, b: &Self) -> M<PARAMS, PARAMS> {
+    /// derivative of group multiplication with respect to the second argument
+    pub fn db_a_mul_b(a: &Self, b: &Self) -> MatF64<PARAMS, PARAMS> {
         G::db_a_mul_b(a.params(), b.params())
     }
 
     fn adjoint_jacobian_tests() {
-        let tangent_examples: Vec<V<DOF>> = G::tangent_examples();
+        let tangent_examples: Vec<VecF64<DOF>> = G::tangent_examples();
 
         for a in &tangent_examples {
-            let ad_a: M<DOF, DOF> = Self::ad(a);
+            let ad_a: MatF64<DOF, DOF> = Self::ad(a);
 
             for b in &tangent_examples {
                 if DOF > 0 {
                     let num_diff_ad_a = VectorValuedMapFromVector::sym_diff_quotient(
-                        |x: V<DOF>| {
+                        |x: VecF64<DOF>| {
                             Self::vee(
                                 &(&Self::hat(a) * Self::hat(&x) - Self::hat(&x) * &Self::hat(a)),
                             )
@@ -537,12 +562,12 @@ impl<
     fn test_hat_jacobians() {
         for x in G::tangent_examples() {
             // x == vee(hat(x))
-            let vee_hat_x: V<DOF> = Self::vee(&Self::hat(&x));
+            let vee_hat_x: VecF64<DOF> = Self::vee(&Self::hat(&x));
             assert_relative_eq!(x, vee_hat_x, epsilon = 0.0001);
 
             // dx hat(x)
             {
-                let hat_x = |v: V<DOF>| -> M<AMBIENT, AMBIENT> { Self::hat(&v) };
+                let hat_x = |v: VecF64<DOF>| -> MatF64<AMBIENT, AMBIENT> { Self::hat(&v) };
                 let dual_hat_x = |vv: DualV<DOF>| -> DualM<AMBIENT, AMBIENT> { G::DualG::hat(&vv) };
 
                 let num_diff = MatrixValuedMapFromVector::sym_diff_quotient(hat_x, x, 0.0001);
@@ -556,7 +581,7 @@ impl<
             // dx vee(y)
             {
                 let a = Self::hat(&x);
-                let vee_x = |v: M<AMBIENT, AMBIENT>| -> V<DOF> { Self::vee(&v) };
+                let vee_x = |v: MatF64<AMBIENT, AMBIENT>| -> VecF64<DOF> { Self::vee(&v) };
                 let dual_vee_x = |vv: DualM<AMBIENT, AMBIENT>| -> DualV<DOF> { G::DualG::vee(&vv) };
 
                 let num_diff = VectorValuedMapFromMatrix::sym_diff_quotient(vee_x, a, 0.0001);
@@ -616,12 +641,12 @@ impl<
         for t in G::tangent_examples() {
             // x == log(exp(x))
 
-            let log_exp_t: V<DOF> = Self::log(&Self::exp(&t));
+            let log_exp_t: VecF64<DOF> = Self::log(&Self::exp(&t));
             assert_relative_eq!(t, log_exp_t, epsilon = 0.0001);
 
             // dx exp(x).matrix
             {
-                let exp_t = |t: V<DOF>| -> V<PARAMS> { *Self::exp(&t).params() };
+                let exp_t = |t: VecF64<DOF>| -> VecF64<PARAMS> { *Self::exp(&t).params() };
                 let dual_exp_t = |vv: DualV<DOF>| -> DualV<PARAMS> {
                     LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::exp(&vv)
                         .params()
@@ -641,7 +666,7 @@ impl<
 
         //dx exp(x) at x=0
         {
-            let exp_t = |t: V<DOF>| -> V<PARAMS> { *Self::exp(&t).params() };
+            let exp_t = |t: VecF64<DOF>| -> VecF64<PARAMS> { *Self::exp(&t).params() };
             let dual_exp_t = |vv: DualV<DOF>| -> DualV<PARAMS> {
                 LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::exp(&vv)
                     .params()
@@ -650,15 +675,16 @@ impl<
 
             let analytic_diff = Self::dx_exp_x_at_0();
             let num_diff =
-                VectorValuedMapFromVector::static_sym_diff_quotient(exp_t, V::zeros(), 0.0001);
-            let auto_diff = VectorValuedMapFromVector::static_fw_autodiff(dual_exp_t, V::zeros());
+                VectorValuedMapFromVector::static_sym_diff_quotient(exp_t, VecF64::zeros(), 0.0001);
+            let auto_diff =
+                VectorValuedMapFromVector::static_fw_autodiff(dual_exp_t, VecF64::zeros());
 
             assert_relative_eq!(auto_diff, num_diff, epsilon = 0.001);
             assert_relative_eq!(analytic_diff, num_diff, epsilon = 0.001);
         }
 
         for point in example_points::<f64, POINT>() {
-            let exp_t = |t: V<DOF>| -> V<POINT> { Self::exp(&t).transform(&point) };
+            let exp_t = |t: VecF64<DOF>| -> VecF64<POINT> { Self::exp(&t).transform(&point) };
             let dual_exp_t = |vv: DualV<DOF>| -> DualV<POINT> {
                 LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::exp(&vv)
                     .transform(&DualV::c(point))
@@ -666,8 +692,9 @@ impl<
 
             let analytic_diff = Self::dx_exp_x_times_point_at_0(point);
             let num_diff =
-                VectorValuedMapFromVector::static_sym_diff_quotient(exp_t, V::zeros(), 0.0001);
-            let auto_diff = VectorValuedMapFromVector::static_fw_autodiff(dual_exp_t, V::zeros());
+                VectorValuedMapFromVector::static_sym_diff_quotient(exp_t, VecF64::zeros(), 0.0001);
+            let auto_diff =
+                VectorValuedMapFromVector::static_fw_autodiff(dual_exp_t, VecF64::zeros());
 
             assert_relative_eq!(auto_diff, num_diff, epsilon = 0.001);
             assert_relative_eq!(analytic_diff, num_diff, epsilon = 0.001);
@@ -681,8 +708,8 @@ impl<
                     continue;
                 }
 
-                let log_x = |t: V<DOF>| -> V<DOF> { Self::exp(&t).group_mul(&g).log() };
-                let o = V::zeros();
+                let log_x = |t: VecF64<DOF>| -> VecF64<DOF> { Self::exp(&t).group_mul(&g).log() };
+                let o = VecF64::zeros();
 
                 let dual_params = DualV::c(*g.params());
                 let dual_g = LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::from_params(
@@ -736,7 +763,7 @@ impl<
                 };
 
                 let analytic_diff = Self::dx_log_a_exp_x_b_at_0(&a, &b);
-                let o = V::zeros();
+                let o = VecF64::zeros();
                 let auto_diff = VectorValuedMapFromVector::static_fw_autodiff(dual_log_x, o);
 
                 assert_relative_eq!(auto_diff, analytic_diff, epsilon = 0.001);
@@ -744,6 +771,7 @@ impl<
         }
     }
 
+    /// run all real tests
     pub fn real_test_suite() {
         Self::test_mul_jacobians();
         Self::adjoint_jacobian_tests();
@@ -773,23 +801,31 @@ impl<
         G: IsF64LieFactorGroupImpl<DOF, PARAMS, POINT>,
     > LieGroup<f64, DOF, PARAMS, POINT, POINT, G>
 {
-    pub fn mat_v(tangent: &V<DOF>) -> M<POINT, POINT> {
+    /// V matrix - used in the exponential map
+    pub fn mat_v(tangent: &VecF64<DOF>) -> MatF64<POINT, POINT> {
         G::mat_v(tangent)
     }
 
-    pub fn mat_v_inverse(tangent: &V<DOF>) -> M<POINT, POINT> {
+    /// V matrix inverse - used in the logarithmic map
+    pub fn mat_v_inverse(tangent: &VecF64<DOF>) -> MatF64<POINT, POINT> {
         G::mat_v_inverse(tangent)
     }
 
-    pub fn dx_mat_v(tangent: &V<DOF>) -> [M<POINT, POINT>; DOF] {
+    /// derivative of V matrix
+    pub fn dx_mat_v(tangent: &VecF64<DOF>) -> [MatF64<POINT, POINT>; DOF] {
         G::dx_mat_v(tangent)
     }
 
-    pub fn dx_mat_v_inverse(tangent: &V<DOF>) -> [M<POINT, POINT>; DOF] {
+    /// derivative of V matrix inverse
+    pub fn dx_mat_v_inverse(tangent: &VecF64<DOF>) -> [MatF64<POINT, POINT>; DOF] {
         G::dx_mat_v_inverse(tangent)
     }
 
-    fn dparams_matrix_times_point(params: &V<PARAMS>, point: &V<POINT>) -> M<POINT, PARAMS> {
+    /// derivative of V matrix times point
+    pub fn dparams_matrix_times_point(
+        params: &VecF64<PARAMS>,
+        point: &VecF64<POINT>,
+    ) -> MatF64<POINT, PARAMS> {
         G::dparams_matrix_times_point(params, point)
     }
 
@@ -800,7 +836,7 @@ impl<
 
             assert_relative_eq!(
                 mat_v.mat_mul(mat_v_inverse),
-                M::<POINT, POINT>::identity(),
+                MatF64::<POINT, POINT>::identity(),
                 epsilon = 0.0001
             );
         }
@@ -811,7 +847,7 @@ impl<
             println!("t: {}", t);
             let mat_v_jacobian = Self::dx_mat_v(&t);
 
-            let mat_v_x = |t: V<DOF>| -> M<POINT, POINT> { Self::mat_v(&t) };
+            let mat_v_x = |t: VecF64<DOF>| -> MatF64<POINT, POINT> { Self::mat_v(&t) };
             let num_diff = MatrixValuedMapFromVector::sym_diff_quotient(mat_v_x, t, 0.0001);
 
             for i in 0..DOF {
@@ -821,7 +857,7 @@ impl<
 
             let mat_v_inv_jacobian = Self::dx_mat_v_inverse(&t);
 
-            let mat_v_x_inv = |t: V<DOF>| -> M<POINT, POINT> { Self::mat_v_inverse(&t) };
+            let mat_v_x_inv = |t: VecF64<DOF>| -> MatF64<POINT, POINT> { Self::mat_v_inverse(&t) };
             let num_diff = MatrixValuedMapFromVector::sym_diff_quotient(mat_v_x_inv, t, 0.0001);
 
             for i in 0..DOF {
@@ -853,6 +889,7 @@ impl<
         }
     }
 
+    /// run all tests
     pub fn real_factor_test_suite() {
         Self::test_mat_v();
         Self::test_mat_v_jacobian();

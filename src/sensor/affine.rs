@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 use crate::calculus::types::params::ParamsImpl;
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
-use crate::calculus::types::M;
-use crate::calculus::types::V;
+use crate::calculus::types::MatF64;
+use crate::calculus::types::VecF64;
 
 use super::traits::IsCameraDistortionImpl;
 use crate::calculus::types::matrix::IsMatrix;
@@ -49,7 +49,10 @@ impl<S: IsScalar> IsCameraDistortionImpl<S, 0, 4> for AffineDistortionImpl<S> {
         ])
     }
 
-    fn dx_distort_x(params: &V<4>, _proj_point_in_camera_z1_plane: &V<2>) -> M<2, 2> {
-        M::<2, 2>::from_array2([[params[0], 0.0], [0.0, params[1]]])
+    fn dx_distort_x(
+        params: &VecF64<4>,
+        _proj_point_in_camera_z1_plane: &VecF64<2>,
+    ) -> MatF64<2, 2> {
+        MatF64::<2, 2>::from_array2([[params[0], 0.0], [0.0, params[1]]])
     }
 }

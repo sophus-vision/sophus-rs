@@ -9,8 +9,8 @@ use crate::calculus::types::params::ParamsImpl;
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::cross;
 use crate::calculus::types::vector::IsVector;
-use crate::calculus::types::M;
-use crate::calculus::types::V;
+use crate::calculus::types::MatF64;
+use crate::calculus::types::VecF64;
 use crate::lie;
 use crate::manifold::{self};
 
@@ -18,6 +18,7 @@ use super::lie_group::LieGroup;
 use super::traits::IsLieGroupImpl;
 use super::traits::IsTranslationProductGroup;
 
+/// 3d rotation implementation - SO(3)
 #[derive(Debug, Copy, Clone)]
 pub struct Rotation3Impl<S: IsScalar> {
     phantom: PhantomData<S>,
@@ -245,8 +246,8 @@ impl<S: IsScalar> IsLieGroupImpl<S, 3, 4, 3, 3> for Rotation3Impl<S> {
 }
 
 impl lie::traits::IsF64LieGroupImpl<3, 4, 3, 3> for Rotation3Impl<f64> {
-    fn dx_exp_x_at_0() -> M<4, 3> {
-        M::from_c_array2([
+    fn dx_exp_x_at_0() -> MatF64<4, 3> {
+        MatF64::from_c_array2([
             [0.0, 0.0, 0.0],
             [0.5, 0.0, 0.0],
             [0.0, 0.5, 0.0],
@@ -254,13 +255,13 @@ impl lie::traits::IsF64LieGroupImpl<3, 4, 3, 3> for Rotation3Impl<f64> {
         ])
     }
 
-    fn da_a_mul_b(_a: &V<4>, b: &V<4>) -> M<4, 4> {
+    fn da_a_mul_b(_a: &VecF64<4>, b: &VecF64<4>) -> MatF64<4, 4> {
         let b_real = b[0];
         let b_imag0 = b[1];
         let b_imag1 = b[2];
         let b_imag2 = b[3];
 
-        M::<4, 4>::from_array2([
+        MatF64::<4, 4>::from_array2([
             [b_real, -b_imag0, -b_imag1, -b_imag2],
             [b_imag0, b_real, b_imag2, -b_imag1],
             [b_imag1, -b_imag2, b_real, b_imag0],
@@ -268,13 +269,13 @@ impl lie::traits::IsF64LieGroupImpl<3, 4, 3, 3> for Rotation3Impl<f64> {
         ])
     }
 
-    fn db_a_mul_b(a: &V<4>, _b: &V<4>) -> M<4, 4> {
+    fn db_a_mul_b(a: &VecF64<4>, _b: &VecF64<4>) -> MatF64<4, 4> {
         let a_real = a[0];
         let a_imag0 = a[1];
         let a_imag1 = a[2];
         let a_imag2 = a[3];
 
-        M::<4, 4>::from_array2([
+        MatF64::<4, 4>::from_array2([
             [a_real, -a_imag0, -a_imag1, -a_imag2],
             [a_imag0, a_real, -a_imag2, a_imag1],
             [a_imag1, a_imag2, a_real, -a_imag0],
@@ -282,11 +283,11 @@ impl lie::traits::IsF64LieGroupImpl<3, 4, 3, 3> for Rotation3Impl<f64> {
         ])
     }
 
-    fn dx_exp_x_times_point_at_0(point: crate::calculus::types::V<3>) -> M<3, 3> {
+    fn dx_exp_x_times_point_at_0(point: crate::calculus::types::VecF64<3>) -> MatF64<3, 3> {
         Self::hat(&-point)
     }
 
-    fn dx_exp(omega: &V<3>) -> M<4, 3> {
+    fn dx_exp(omega: &VecF64<3>) -> MatF64<4, 3> {
         let theta_sq = omega.squared_norm();
 
         if theta_sq < 1e-6 {
@@ -300,7 +301,7 @@ impl lie::traits::IsF64LieGroupImpl<3, 4, 3, 3> for Rotation3Impl<f64> {
         let a = (0.5 * theta).sin() / theta;
         let b = (0.5 * theta).cos() / (theta_sq) - 2.0 * (0.5 * theta).sin() / (theta_sq * theta);
 
-        0.5 * M::from_array2([
+        0.5 * MatF64::from_array2([
             [-omega_0 * a, -omega_1 * a, -omega_2 * a],
             [
                 omega_0 * omega_0 * b + 2.0 * a,
@@ -320,29 +321,30 @@ impl lie::traits::IsF64LieGroupImpl<3, 4, 3, 3> for Rotation3Impl<f64> {
         ])
     }
 
-    fn dx_log_x(params: &V<4>) -> M<3, 4> {
-        let ivec: V<3> = params.get_fixed_rows::<3>(1);
+    fn dx_log_x(params: &VecF64<4>) -> MatF64<3, 4> {
+        let ivec: VecF64<3> = params.get_fixed_rows::<3>(1);
         let w: f64 = params[0];
         let squared_n: f64 = ivec.squared_norm();
 
         if squared_n < 1e-6 {
-            let mut m = M::<3, 4>::zeros();
+            let mut m = MatF64::<3, 4>::zeros();
             m.fixed_columns_mut::<3>(1)
-                .copy_from(&(2.0 * M::<3, 3>::identity()));
+                .copy_from(&(2.0 * MatF64::<3, 3>::identity()));
             return m;
         }
 
         let n: f64 = squared_n.sqrt();
         let theta = 2.0 * n.atan2(w);
 
-        let dw_ivec_theta: V<3> = ivec * (-2.0 / (squared_n + w * w));
+        let dw_ivec_theta: VecF64<3> = ivec * (-2.0 / (squared_n + w * w));
         let factor = 2.0 * w / (squared_n * (squared_n + w * w)) - theta / (squared_n * n);
 
-        let mut m = M::<3, 4>::zeros();
+        let mut m = MatF64::<3, 4>::zeros();
 
         m.set_column(0, &dw_ivec_theta);
-        m.fixed_columns_mut::<3>(1)
-            .copy_from(&(M::<3, 3>::identity() * theta / n + ivec * ivec.transpose() * factor));
+        m.fixed_columns_mut::<3>(1).copy_from(
+            &(MatF64::<3, 3>::identity() * theta / n + ivec * ivec.transpose() * factor),
+        );
         m
     }
 }
@@ -398,12 +400,12 @@ impl<S: IsScalar> lie::traits::IsLieFactorGroupImpl<S, 3, 4, 3> for Rotation3Imp
 }
 
 impl lie::traits::IsF64LieFactorGroupImpl<3, 4, 3> for Rotation3Impl<f64> {
-    fn dx_mat_v(omega: &crate::calculus::types::V<3>) -> [M<3, 3>; 3] {
+    fn dx_mat_v(omega: &crate::calculus::types::VecF64<3>) -> [MatF64<3, 3>; 3] {
         let theta_sq = omega.squared_norm();
         let dt_mat_omega_pos_idx = [(2, 1), (0, 2), (1, 0)];
         let dt_mat_omega_neg_idx = [(1, 2), (2, 0), (0, 1)];
         if theta_sq.real() < 1e-6 {
-            let mut l = [M::<3, 3>::zeros(); 3];
+            let mut l = [MatF64::<3, 3>::zeros(); 3];
 
             for i in 0..3 {
                 *l[i].get_mut(dt_mat_omega_pos_idx[i]).unwrap() += 0.5;
@@ -417,11 +419,12 @@ impl lie::traits::IsF64LieFactorGroupImpl<3, 4, 3> for Rotation3Impl<f64> {
             return l;
         }
 
-        let mat_omega: M<3, 3> = Rotation3Impl::<f64>::hat(omega);
+        let mat_omega: MatF64<3, 3> = Rotation3Impl::<f64>::hat(omega);
         let mat_omega_sq = mat_omega.clone().mat_mul(mat_omega);
 
         let theta = theta_sq.sqrt();
-        let domega_theta = V::from_array([omega[0] / theta, omega[1] / theta, omega[2] / theta]);
+        let domega_theta =
+            VecF64::from_array([omega[0] / theta, omega[1] / theta, omega[2] / theta]);
 
         let a = (1.0 - theta.cos()) / theta_sq;
         let dt_a = (-2.0 + 2.0 * theta.cos() + theta * theta.sin()) / (theta * theta_sq);
@@ -430,24 +433,24 @@ impl lie::traits::IsF64LieFactorGroupImpl<3, 4, 3> for Rotation3Impl<f64> {
         let dt_b = -(2.0 * theta + theta * theta.cos() - 3.0 * theta.sin()) / theta.powi(4);
 
         let dt_mat_omega_sq = [
-            M::from_array2([
+            MatF64::from_array2([
                 [0.0, omega[1], omega[2]],
                 [omega[1], -2.0 * omega[0], 0.0],
                 [omega[2], 0.0, -2.0 * omega[0]],
             ]),
-            M::from_array2([
+            MatF64::from_array2([
                 [-2.0 * omega[1], omega[0], 0.0],
                 [omega[0], 0.0, omega[2]],
                 [0.0, omega[2], -2.0 * omega[1]],
             ]),
-            M::from_array2([
+            MatF64::from_array2([
                 [-2.0 * omega[2], 0.0, omega[0]],
                 [0.0, -2.0 * omega[2], omega[1]],
                 [omega[0], omega[1], 0.0],
             ]),
         ];
 
-        let mut l = [M::<3, 3>::zeros(); 3];
+        let mut l = [MatF64::<3, 3>::zeros(); 3];
 
         for i in 0..3 {
             l[i] = domega_theta[i] * dt_a * mat_omega;
@@ -461,7 +464,7 @@ impl lie::traits::IsF64LieFactorGroupImpl<3, 4, 3> for Rotation3Impl<f64> {
         l
     }
 
-    fn dparams_matrix_times_point(params: &V<4>, point: &V<3>) -> M<3, 4> {
+    fn dparams_matrix_times_point(params: &VecF64<4>, point: &VecF64<3>) -> MatF64<3, 4> {
         let r = params[0];
         let ivec0 = params[1];
         let ivec1 = params[2];
@@ -471,7 +474,7 @@ impl lie::traits::IsF64LieFactorGroupImpl<3, 4, 3> for Rotation3Impl<f64> {
         let p1 = point[1];
         let p2 = point[2];
 
-        M::from_array2([
+        MatF64::from_array2([
             [
                 2.0 * ivec1 * p2 - 2.0 * ivec2 * p1,
                 2.0 * ivec1 * p1 + 2.0 * ivec2 * p2,
@@ -493,18 +496,18 @@ impl lie::traits::IsF64LieFactorGroupImpl<3, 4, 3> for Rotation3Impl<f64> {
         ])
     }
 
-    fn dx_mat_v_inverse(omega: &crate::calculus::types::V<3>) -> [M<3, 3>; 3] {
+    fn dx_mat_v_inverse(omega: &crate::calculus::types::VecF64<3>) -> [MatF64<3, 3>; 3] {
         let theta_sq = omega.squared_norm();
         let theta = theta_sq.sqrt();
         let half_theta = 0.5 * theta;
-        let mat_omega: M<3, 3> = Rotation3Impl::<f64>::hat(omega);
+        let mat_omega: MatF64<3, 3> = Rotation3Impl::<f64>::hat(omega);
         let mat_omega_sq = mat_omega.clone().mat_mul(mat_omega);
 
         let dt_mat_omega_pos_idx = [(2, 1), (0, 2), (1, 0)];
         let dt_mat_omega_neg_idx = [(1, 2), (2, 0), (0, 1)];
 
         if theta_sq.real() < 1e-6 {
-            let mut l = [M::<3, 3>::zeros(); 3];
+            let mut l = [MatF64::<3, 3>::zeros(); 3];
 
             for i in 0..3 {
                 *l[i].get_mut(dt_mat_omega_pos_idx[i]).unwrap() -= 0.5;
@@ -518,7 +521,8 @@ impl lie::traits::IsF64LieFactorGroupImpl<3, 4, 3> for Rotation3Impl<f64> {
             return l;
         }
 
-        let domega_theta = V::from_array([omega[0] / theta, omega[1] / theta, omega[2] / theta]);
+        let domega_theta =
+            VecF64::from_array([omega[0] / theta, omega[1] / theta, omega[2] / theta]);
 
         let c = (1.0 - (0.5 * theta * half_theta.cos()) / (half_theta.sin())) / theta_sq;
 
@@ -528,24 +532,24 @@ impl lie::traits::IsF64LieFactorGroupImpl<3, 4, 3> for Rotation3Impl<f64> {
             / theta.powi(3);
 
         let dt_mat_omega_sq = [
-            M::from_array2([
+            MatF64::from_array2([
                 [0.0, omega[1], omega[2]],
                 [omega[1], -2.0 * omega[0], 0.0],
                 [omega[2], 0.0, -2.0 * omega[0]],
             ]),
-            M::from_array2([
+            MatF64::from_array2([
                 [-2.0 * omega[1], omega[0], 0.0],
                 [omega[0], 0.0, omega[2]],
                 [0.0, omega[2], -2.0 * omega[1]],
             ]),
-            M::from_array2([
+            MatF64::from_array2([
                 [-2.0 * omega[2], 0.0, omega[0]],
                 [0.0, -2.0 * omega[2], omega[1]],
                 [omega[0], omega[1], 0.0],
             ]),
         ];
 
-        let mut l = [M::<3, 3>::zeros(); 3];
+        let mut l = [MatF64::<3, 3>::zeros(); 3];
 
         for i in 0..3 {
             l[i][dt_mat_omega_pos_idx[i]] += -0.5;
@@ -557,12 +561,26 @@ impl lie::traits::IsF64LieFactorGroupImpl<3, 4, 3> for Rotation3Impl<f64> {
     }
 }
 
-pub type Isometry3Impl<S> =
-    lie::semi_direct_product::TranslationProductGroupImpl<S, 6, 7, 3, 4, 3, 4, Rotation3Impl<S>>;
+/// 3d rotation group - SO(3)
 pub type Rotation3<S> = LieGroup<S, 3, 4, 3, 3, Rotation3Impl<S>>;
+
+/// 3d isometry implementation - SE(3)
+pub type Isometry3Impl<S> = lie::translation_product_product::TranslationProductGroupImpl<
+    S,
+    6,
+    7,
+    3,
+    4,
+    3,
+    4,
+    Rotation3Impl<S>,
+>;
+
+/// 3d isometry group - SE(3)
 pub type Isometry3<S> = lie::lie_group::LieGroup<S, 6, 7, 3, 4, Isometry3Impl<S>>;
 
 impl<S: IsScalar> Isometry3<S> {
+    /// create isometry from translation and rotation
     pub fn from_translation_and_rotation(
         translation: &<S as IsScalar>::Vector<3>,
         rotation: &Rotation3<S>,
@@ -570,10 +588,12 @@ impl<S: IsScalar> Isometry3<S> {
         Self::from_translation_and_factor(translation, rotation)
     }
 
+    /// set rotation
     pub fn set_rotation(&mut self, rotation: &Rotation3<S>) {
         self.set_factor(rotation)
     }
 
+    /// get translation
     pub fn rotation(&self) -> Rotation3<S> {
         self.factor()
     }

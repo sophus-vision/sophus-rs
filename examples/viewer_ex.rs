@@ -7,21 +7,21 @@ pub use hollywood::core::request::RequestHub;
 pub use hollywood::core::*;
 use hollywood::macros::*;
 use nalgebra::SVector;
-use sophus_rs::calculus::types::vector::IsVector;
-use sophus_rs::calculus::types::V;
-use sophus_rs::image::view::ImageSize;
-use sophus_rs::lie::rotation3::Isometry3;
-use sophus_rs::lie::traits::IsTranslationProductGroup;
-use sophus_rs::sensor::perspective_camera::KannalaBrandtCamera;
+use sophus::calculus::types::vector::IsVector;
+use sophus::calculus::types::VecF64;
+use sophus::image::view::ImageSize;
+use sophus::lie::rotation3::Isometry3;
+use sophus::lie::traits::IsTranslationProductGroup;
+use sophus::sensor::perspective_camera::KannalaBrandtCamera;
 
-use sophus_rs::image::arc_image::ArcImage4F32;
-use sophus_rs::viewer::actor::run_viewer_on_main_thread;
-use sophus_rs::viewer::actor::ViewerBuilder;
-use sophus_rs::viewer::actor::ViewerCamera;
-use sophus_rs::viewer::actor::ViewerConfig;
-use sophus_rs::viewer::renderable::*;
-use sophus_rs::viewer::scene_renderer::interaction::WgpuClippingPlanes;
-use sophus_rs::viewer::SimpleViewer;
+use sophus::image::arc_image::ArcImage4F32;
+use sophus::viewer::actor::run_viewer_on_main_thread;
+use sophus::viewer::actor::ViewerBuilder;
+use sophus::viewer::actor::ViewerCamera;
+use sophus::viewer::actor::ViewerConfig;
+use sophus::viewer::renderable::*;
+use sophus::viewer::scene_renderer::interaction::WgpuClippingPlanes;
+use sophus::viewer::SimpleViewer;
 
 #[actor(ContentGeneratorMessage)]
 type ContentGenerator = Actor<
@@ -88,13 +88,13 @@ impl Default for ContentGeneratorState {
             counter: 0,
             show: false,
             intrinsics: KannalaBrandtCamera::<f64>::new(
-                &V::<8>::from_array([600.0, 600.0, 320.0, 240.0, 0.0, 0.0, 0.0, 0.0]),
+                &VecF64::<8>::from_array([600.0, 600.0, 320.0, 240.0, 0.0, 0.0, 0.0, 0.0]),
                 ImageSize {
                     width: 640,
                     height: 480,
                 },
             ),
-            scene_from_camera: Isometry3::from_t(&V::<3>::new(0.0, 0.0, -5.0)),
+            scene_from_camera: Isometry3::from_t(&VecF64::<3>::new(0.0, 0.0, -5.0)),
         }
     }
 }
@@ -431,13 +431,13 @@ impl InboundMessageNew<ReplyMessage<Isometry3<f64>>> for ContentGeneratorMessage
 pub async fn run_viewer_example() {
     // Camera / view pose parameters
     let intrinsics = KannalaBrandtCamera::<f64>::new(
-        &V::<8>::from_array([600.0, 600.0, 320.0, 240.0, 0.0, 0.0, 0.0, 0.0]),
+        &VecF64::<8>::from_array([600.0, 600.0, 320.0, 240.0, 0.0, 0.0, 0.0, 0.0]),
         ImageSize {
             width: 640,
             height: 480,
         },
     );
-    let scene_from_camera = Isometry3::from_t(&V::<3>::new(0.0, 0.0, -5.0));
+    let scene_from_camera = Isometry3::from_t(&VecF64::<3>::new(0.0, 0.0, -5.0));
     let clipping_planes = WgpuClippingPlanes {
         near: 0.1,
         far: 1000.0,
