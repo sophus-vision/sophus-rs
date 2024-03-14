@@ -13,7 +13,7 @@ pub struct Term<const NUM: usize, const NUM_ARGS: usize> {
     pub hessian: NewBlockMatrix<NUM>,
     /// Gradient
     pub gradient: BlockVector<NUM>,
-    /// cost: 0.5 * residual^T * precision_mat * residual (??, double check this)
+    /// cost: 0.5 * residual^T * precision_mat * residual
     pub cost: f64,
     /// indices of the variable families
     pub idx: Vec<[usize; NUM_ARGS]>,
@@ -177,6 +177,19 @@ impl<
 /// Trait for making n-ary terms
 pub trait MakeTerm<const R: usize, const N: usize> {
     /// make a term from a residual value, and derivatives (=self)
+    ///
+    /// In more detail, this function computes the Hessian, gradient and least-squares cost of the
+    /// corresponding term given the following inputs:
+    ///
+    /// - `self`:          A tuple of functions that return the Jacobian of the cost function with
+    ///                    respect to each argument.
+    /// - `var_kinds`:     An array of `VarKind` for each argument of the cost function. A gradient
+    ///                    and Hessian will be computed for each argument that is not `Conditioned`.
+    /// - `residual`:      The residual of the corresponding cost term.
+    /// - `robust_kernel`: An optional robust kernel to apply to the residual.
+    /// - `precision_mat`: Precision matrix - i.e. inverse of the covariance matrix - to compute the
+    ///                    least-squares cost: `0.5 * residual^T * precision_mat * residual`.
+    ///                    If `None`, the identity matrix is used: `0.5 * residual^T * residual`.
     fn make_term<const NUM: usize, const NUM_ARGS: usize>(
         self,
         var_kinds: [VarKind; N],
@@ -188,7 +201,8 @@ pub trait MakeTerm<const R: usize, const N: usize> {
 
 // TODO: Improve MakeTerm implementations:
 //  - Figure out how to make this work for arbitrary length tuples without code duplication.
-//  - Benchmark the performance the implementation against hand-written versions to rule out pessimization.
+//  - Benchmark the performance the implementation against hand-written versions to rule out
+// pessimization.
 
 impl<F0, const D0: usize, const R: usize> MakeTerm<R, 1> for (F0,)
 where

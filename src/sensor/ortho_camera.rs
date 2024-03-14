@@ -9,6 +9,7 @@ use super::affine::AffineDistortionImpl;
 use super::generic_camera::Camera;
 use super::traits::IsProjection;
 
+/// Orthographic projection implementation
 #[derive(Debug, Clone)]
 pub struct ProjectionOrtho<S: IsScalar> {
     phantom: PhantomData<S>,
@@ -28,4 +29,5 @@ impl<S: IsScalar> IsProjection<S> for ProjectionOrtho<S> {
     }
 }
 
+/// Orthographic camera
 pub type OrthoCamera<S> = Camera<S, 0, 4, AffineDistortionImpl<S>, ProjectionOrtho<S>>;

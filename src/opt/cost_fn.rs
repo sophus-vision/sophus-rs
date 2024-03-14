@@ -149,7 +149,7 @@ where
         let less = CompareIdx { c: c_array };
 
         let mut evaluated_terms = Cost::new(
-            self.signature.family_names.clone().into(),
+            self.signature.family_names.clone(),
             TermSignature::DOF_TUPLE,
         );
 

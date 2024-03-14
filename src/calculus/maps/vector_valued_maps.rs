@@ -24,7 +24,7 @@ impl VectorValuedMapFromVector {
     ///
     /// The derivative is a matrix or rank-2 tensor with shape (Rₒ x Rᵢ).
     ///
-    /// For efficiency reasons, we return the transpose Rᵢ x [Rₒ]
+    /// For efficiency reasons, we return the transpose Rᵢ x (Rₒ)
     ///
     pub fn sym_diff_quotient<TFn, const OUTROWS: usize, const INROWS: usize>(
         vector_valued: TFn,
@@ -126,7 +126,7 @@ impl VectorValuedMapFromMatrix {
     ///
     /// The derivative is a matrix or rank-3 tensor with shape (Rₒ x Rᵢ x Cᵢ).
     ///
-    /// For efficiency reasons, we return Rᵢ x Cᵢ x [Rₒ]
+    /// For efficiency reasons, we return Rᵢ x Cᵢ x (Rₒ)
     ///
     pub fn sym_diff_quotient<TFn, const OUTROWS: usize, const INROWS: usize, const INCOLS: usize>(
         vector_valued: TFn,

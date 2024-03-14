@@ -9,7 +9,7 @@ use hollywood::macros::*;
 use nalgebra::SVector;
 use sophus::calculus::types::vector::IsVector;
 use sophus::calculus::types::VecF64;
-use sophus::image::view::ImageSize;
+use sophus::image::image_view::ImageSize;
 use sophus::lie::rotation3::Isometry3;
 use sophus::lie::traits::IsTranslationProductGroup;
 use sophus::sensor::perspective_camera::KannalaBrandtCamera;
@@ -486,7 +486,9 @@ pub async fn run_viewer_example() {
     });
 
     // The cancel_requester is used to cancel the pipeline.
-    builder.cancel_request_sender = pipeline.cancel_request_sender_template.clone();
+    builder
+        .cancel_request_sender
+        .clone_from(&pipeline.cancel_request_sender_template);
 
     // Plot the pipeline graph to the console.
     pipeline.print_flow_graph();

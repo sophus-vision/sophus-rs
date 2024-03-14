@@ -1,29 +1,26 @@
 use std::fmt::Debug;
 
-use nalgebra::SimdValue;
 use simba::simd::AutoSimd;
 pub use typenum::generic_const_mappings::Const;
 
-/// Compile time known shape with 0 dimensions
-pub type CShape0 = ();
-/// Compile time known shape with 1 dimensions
-pub type CShape1<M> = (M,);
-/// Compile time known shape with 2 dimensions
-pub type CShape2<M, N> = (M, N);
-/// Compile time known shape with 3 dimensions
-pub type CShape3<M, N, O> = (M, N, O);
+/// Number category
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum NumberCategory {
+    /// Real number such as f32 or f64
+    Real,
+    /// Unsigned integer such as u8, u16, u32, or u64
+    Unsigned,
+    /// Signed integer such as i8, i16, i32, or i64
+    Signed,
+}
 
-pub trait IsCShape<const RANK: usize> {}
-
-impl IsCShape<0> for CShape0 {}
-impl<A> IsCShape<1> for CShape1<A> {}
-impl<A, B> IsCShape<2> for CShape2<A, B> {}
-impl<A, B, C> IsCShape<3> for CShape3<A, B, C> {}
-
+/// Trait for scalar and batch scalar types
 pub trait IsTensorScalarLike: Copy + Clone + Debug {
+    /// Get the number category
     fn number_category() -> NumberCategory;
 }
 
+/// Trait for scalar types
 pub trait IsTensorScalar: IsTensorScalarLike + num_traits::Zero + nalgebra::Scalar {}
 
 impl IsTensorScalarLike for f32 {
@@ -88,82 +85,88 @@ impl IsTensorScalar for i16 {}
 impl IsTensorScalar for i32 {}
 impl IsTensorScalar for i64 {}
 
+/// Trait for batch scalar types
 pub trait IsBatchScalar: IsTensorScalarLike {}
 
-impl<Scalar: IsTensorScalar + 'static, const BATCHES: usize> IsTensorScalarLike
-    for AutoSimd<[Scalar; BATCHES]>
+impl<Scalar: IsTensorScalar + 'static, const BATCH_SIZE: usize> IsTensorScalarLike
+    for AutoSimd<[Scalar; BATCH_SIZE]>
 {
     fn number_category() -> NumberCategory {
         Scalar::number_category()
     }
 }
-impl<Scalar: IsTensorScalar + 'static, const BATCHES: usize> IsBatchScalar
-    for AutoSimd<[Scalar; BATCHES]>
+impl<Scalar: IsTensorScalar + 'static, const BATCH_SIZE: usize> IsBatchScalar
+    for AutoSimd<[Scalar; BATCH_SIZE]>
 {
 }
 
+/// Static vector
 pub type SVec<ScalarLike, const ROWS: usize> = nalgebra::SVector<ScalarLike, ROWS>;
+/// Static matrix
 pub type SMat<ScalarLike, const ROWS: usize, const COLS: usize> =
     nalgebra::SMatrix<ScalarLike, ROWS, COLS>;
 
-pub type P1U8 = SVec<u8, 1>;
-pub type P1U16 = SVec<u16, 1>;
-pub type P1F32 = SVec<f32, 1>;
-pub type P3U8 = SVec<u8, 3>;
-pub type P3U16 = SVec<u16, 3>;
-pub type P3F32 = SVec<f32, 3>;
-pub type P4U8 = SVec<u8, 4>;
-pub type P4U16 = SVec<u16, 4>;
-pub type P4F32 = SVec<f32, 4>;
+/// Batch scalar
+pub type BatchScalar<ScalarLike, const BATCH_SIZE: usize> = AutoSimd<[ScalarLike; BATCH_SIZE]>;
+/// Batch vector
+pub type BatchVec<ScalarLike, const ROWS: usize, const BATCH_SIZE: usize> =
+    nalgebra::SVector<AutoSimd<[ScalarLike; BATCH_SIZE]>, ROWS>;
+/// Batch matrix
+pub type BatchMat<ScalarLike, const ROWS: usize, const COLS: usize, const BATCH_SIZE: usize> =
+    nalgebra::SMatrix<AutoSimd<[ScalarLike; BATCH_SIZE]>, ROWS, COLS>;
 
-pub type BatchScalar<ScalarLike, const BATCHES: usize> = AutoSimd<[ScalarLike; BATCHES]>;
-pub type BatchVec<ScalarLike, const ROWS: usize, const BATCHES: usize> =
-    nalgebra::SVector<AutoSimd<[ScalarLike; BATCHES]>, ROWS>;
-pub type BatchMat<ScalarLike, const ROWS: usize, const COLS: usize, const BATCHES: usize> =
-    nalgebra::SMatrix<AutoSimd<[ScalarLike; BATCHES]>, ROWS, COLS>;
-
+/// Trait for static tensors
 pub trait IsStaticTensor<
     Scalar: IsTensorScalar + 'static,
     const SRANK: usize,
     const ROWS: usize,
     const COLS: usize,
-    const BATCHES: usize,
+    const BATCH_SIZE: usize,
 >: Copy + Clone + Debug
 {
-    type CShape: IsCShape<SRANK>;
-
+    /// Create a tensor from a slice
     fn from_slice(slice: &[Scalar]) -> Self;
 
+    /// Create a zero tensor
     fn zero() -> Self;
 
+    /// Get the number category
     fn number_category() -> NumberCategory {
         Scalar::number_category()
     }
 
+    /// Returns ith scalar element
     fn scalar(&self, idx: [usize; SRANK]) -> &Scalar;
 
+    /// Get the rank
     fn rank(&self) -> usize {
         SRANK
     }
 
+    /// Get the number of batches
     fn num_batches(&self) -> usize {
-        BATCHES
+        BATCH_SIZE
     }
 
+    /// Get the number of rows
     fn num_rows(&self) -> usize {
         ROWS
     }
 
+    /// Get the number of columns
     fn num_cols(&self) -> usize {
         COLS
     }
 
+    /// Get the compile time shape as an array
     fn sdims() -> [usize; SRANK];
 
+    /// Number of scalar elements
     fn num_scalars() -> usize {
-        BATCHES * ROWS * COLS
+        BATCH_SIZE * ROWS * COLS
     }
 
+    /// Get the stride as an array
     fn strides() -> [usize; SRANK];
 }
 
@@ -171,8 +174,6 @@ pub trait IsStaticTensor<
 //
 // a scalar
 impl<Scalar: IsTensorScalar + 'static> IsStaticTensor<Scalar, 0, 1, 1, 1> for Scalar {
-    type CShape = ();
-
     fn zero() -> Self {
         Scalar::zero()
     }
@@ -197,11 +198,9 @@ impl<Scalar: IsTensorScalar + 'static> IsStaticTensor<Scalar, 0, 1, 1, 1> for Sc
 // RANK 1 TENSORS
 //
 // A batch ofBatchScalar scalars
-impl<Scalar: IsTensorScalar + 'static, const BATCHES: usize>
-    IsStaticTensor<Scalar, 1, 1, 1, BATCHES> for BatchScalar<Scalar, BATCHES>
+impl<Scalar: IsTensorScalar + 'static, const BATCH_SIZE: usize>
+    IsStaticTensor<Scalar, 1, 1, 1, BATCH_SIZE> for BatchScalar<Scalar, BATCH_SIZE>
 {
-    type CShape = CShape1<Const<BATCHES>>;
-
     fn zero() -> Self {
         todo!()
     }
@@ -211,14 +210,14 @@ impl<Scalar: IsTensorScalar + 'static, const BATCHES: usize>
     }
 
     fn sdims() -> [usize; 1] {
-        [BATCHES]
+        [BATCH_SIZE]
     }
 
     fn strides() -> [usize; 1] {
         [1]
     }
 
-    fn from_slice(slice: &[Scalar]) -> Self {
+    fn from_slice(_slice: &[Scalar]) -> Self {
         todo!("BatchScalar::from_slice")
     }
 }
@@ -227,8 +226,6 @@ impl<Scalar: IsTensorScalar + 'static, const BATCHES: usize>
 impl<Scalar: IsTensorScalar + 'static, const ROWS: usize> IsStaticTensor<Scalar, 1, ROWS, 1, 1>
     for SVec<Scalar, ROWS>
 {
-    type CShape = CShape1<Const<ROWS>>;
-
     fn zero() -> Self {
         Self::zeros()
     }
@@ -255,11 +252,9 @@ impl<Scalar: IsTensorScalar + 'static, const ROWS: usize> IsStaticTensor<Scalar,
 // RANK 2 TENSORS
 //
 // A batch of vectors
-impl<Scalar: IsTensorScalar + 'static, const BATCHES: usize, const ROWS: usize>
-    IsStaticTensor<Scalar, 2, ROWS, 1, BATCHES> for SVec<AutoSimd<[Scalar; BATCHES]>, ROWS>
+impl<Scalar: IsTensorScalar + 'static, const BATCH_SIZE: usize, const ROWS: usize>
+    IsStaticTensor<Scalar, 2, ROWS, 1, BATCH_SIZE> for SVec<AutoSimd<[Scalar; BATCH_SIZE]>, ROWS>
 {
-    type CShape = CShape2<Const<BATCHES>, Const<ROWS>>;
-
     fn zero() -> Self {
         //Self::zeros()
         todo!()
@@ -270,15 +265,15 @@ impl<Scalar: IsTensorScalar + 'static, const BATCHES: usize, const ROWS: usize>
     }
 
     fn sdims() -> [usize; 2] {
-        [BATCHES, ROWS]
+        [BATCH_SIZE, ROWS]
     }
 
     fn strides() -> [usize; 2] {
-        [1, BATCHES]
+        [1, BATCH_SIZE]
     }
 
-    fn from_slice(slice: &[Scalar]) -> Self {
-        todo!("SVec<AutoSimd<[Scalar; BATCHES]>, ROWS>::from_slice")
+    fn from_slice(_slice: &[Scalar]) -> Self {
+        todo!("SVec<AutoSimd<[Scalar; BATCH_SIZE]>, ROWS>::from_slice")
     }
 }
 
@@ -286,8 +281,6 @@ impl<Scalar: IsTensorScalar + 'static, const BATCHES: usize, const ROWS: usize>
 impl<Scalar: IsTensorScalar + 'static, const ROWS: usize, const COLS: usize>
     IsStaticTensor<Scalar, 2, ROWS, COLS, 1> for SMat<Scalar, ROWS, COLS>
 {
-    type CShape = CShape2<Const<ROWS>, Const<COLS>>;
-
     fn zero() -> Self {
         Self::zeros()
     }
@@ -316,13 +309,12 @@ impl<Scalar: IsTensorScalar + 'static, const ROWS: usize, const COLS: usize>
 // a batch of matrices
 impl<
         Scalar: IsTensorScalar + 'static,
-        const BATCHES: usize,
+        const BATCH_SIZE: usize,
         const ROWS: usize,
         const COLS: usize,
-    > IsStaticTensor<Scalar, 3, ROWS, COLS, BATCHES>
-    for SMat<AutoSimd<[Scalar; BATCHES]>, ROWS, COLS>
+    > IsStaticTensor<Scalar, 3, ROWS, COLS, BATCH_SIZE>
+    for SMat<AutoSimd<[Scalar; BATCH_SIZE]>, ROWS, COLS>
 {
-    type CShape = CShape3<Const<BATCHES>, Const<ROWS>, Const<COLS>>;
     fn zero() -> Self {
         todo!()
     }
@@ -331,51 +323,52 @@ impl<
     }
 
     fn sdims() -> [usize; 3] {
-        [ROWS, COLS, BATCHES]
+        [ROWS, COLS, BATCH_SIZE]
     }
 
     fn strides() -> [usize; 3] {
-        [1, BATCHES, BATCHES * ROWS]
+        [1, BATCH_SIZE, BATCH_SIZE * ROWS]
     }
 
-    fn from_slice(slice: &[Scalar]) -> Self {
-        todo!("SMat<AutoSimd<[Scalar; BATCHES]>, ROWS, COLS>::from_slice")
+    fn from_slice(_slice: &[Scalar]) -> Self {
+        todo!("SMat<AutoSimd<[Scalar; BATCH_SIZE]>, ROWS, COLS>::from_slice")
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum NumberCategory {
-    Real,
-    Unsigned,
-    Signed,
-}
-
+/// Format of a static tensor
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct STensorFormat {
-    pub number_category: NumberCategory, // unsigned otherwise
+    /// Number category
+    pub number_category: NumberCategory,
+    /// Number of bytes per scalar
     pub num_bytes_per_scalar: usize,
-    pub num_batches: usize,
+    /// batch size
+    pub batch_size: usize,
+    /// number of rows
     pub num_rows: usize,
+    /// number of columns
     pub num_cols: usize,
 }
 
 impl STensorFormat {
+    /// Create a new tensor format struct
     pub fn new<
         Scalar: IsTensorScalar + 'static,
         const ROWS: usize,
         const COLS: usize,
-        const BATCHES: usize,
+        const BATCH_SIZE: usize,
     >() -> Self {
         STensorFormat {
             number_category: Scalar::number_category(),
             num_rows: ROWS,
             num_cols: COLS,
-            num_batches: BATCHES,
+            batch_size: BATCH_SIZE,
             num_bytes_per_scalar: std::mem::size_of::<Scalar>(),
         }
     }
 
+    /// Number of bytes
     pub fn num_bytes(&self) -> usize {
-        self.num_batches * self.num_rows * self.num_cols * self.num_bytes_per_scalar
+        self.batch_size * self.num_rows * self.num_cols * self.num_bytes_per_scalar
     }
 }

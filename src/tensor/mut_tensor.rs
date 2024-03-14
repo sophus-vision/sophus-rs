@@ -17,57 +17,30 @@ use super::view::IsTensorLike;
 use super::view::IsTensorView;
 use super::view::TensorView;
 
-/// A mutable tensor
+/// mutable tensor
 ///
-/// There are two ways of describing the Tensor (MutTensor as well as its siblings ArcTensor,
-/// TensorView and MutTensorView):
-///
-///  1. A dynamic tensor of static tensors:
-///    * The dynamic tensor is of rank DRANK
-///      - ``self.dims()`` is used to access its dynamic dimensions of type
-///        ``[usize: DRANK]``.
-///      - an individual element (= static tensor) can be accessed with
-///        ``self.get(idx)``, where idx is f type ``[usize: DRANK]``.
-///      - Each element is of type ``STensor``.
-///    * Each static tensor is of SRANK. In particular we have.
-///      - rank 0: scalars of type ``Scalar`` (such as ``f64`` or ``u8``).
-///      - rank 1:
-///         * A batch scalar of type ``BatchScalar<Scalar, BATCH>`` with static
-///           batch size of BATCHES.
-///         * A column vector ``SVec<Scalar, ROWS>`` aka ``nalgebra::SVector<Scalar, ROWS>`` with
-///           number of ROWS.
-///      - rank 2:
-///         * A batch vector of type ``BatchVector<Scalar, BATCHES>`` with static
-///           shape (ROWS x BATCHES).
-///         * A matrix ``SMat<Scalar, ROWS, COLS>`` aka ``nalgebra::SMatrix<Scalar, ROWS, COLS>``
-///           with static shape (ROWS x COLS).
-///       - rank 3:
-///         * A batch matrix of type ``BatchMatrix<Scalar, ROWS, COLS, BATCH>`` with static
-///           shape (BATCHES x ROWS .x COLS).
-///  2. A scalar tensor of SCALAR_RANK = DRANK + SRANK.
-///    *  ``self.scalar_dims()`` is used to access its dimensions of type
-///        ``[usize: SCALAR_RANK]`` at runtime.
-///    *  - an individual element (= static tensor) can be accessed with
-///        ``self.scalar_get(idx)``, where idx is of type ``[usize: DRANK]``.
+/// See TensorView for more details of the tensor structure
 #[derive(Default, Debug, Clone)]
 pub struct MutTensor<
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCHES> + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCH_SIZE> + 'static,
     const ROWS: usize,
     const COLS: usize,
-    const BATCHES: usize,
+    const BATCH_SIZE: usize,
 > where
     ndarray::Dim<[ndarray::Ix; DRANK]>: ndarray::Dimension,
 {
+    /// ndarray of the static tensors with shape [D1, D2, ...]
     pub mut_array: ndarray::Array<STensor, Dim<[Ix; DRANK]>>,
-    pub phantom: PhantomData<(Scalar, STensor)>,
+    pub(crate) phantom: PhantomData<(Scalar, STensor)>,
 }
 
+/// Converting a tensor of vectors to a tensor of Rx1 matrices
 pub trait InnerVecToMat<
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     const HYBER_RANK_PLUS1: usize,
@@ -78,13 +51,16 @@ pub trait InnerVecToMat<
     SVec<Scalar, ROWS>: IsStaticTensor<Scalar, SRANK_PLUS1, ROWS, 1, 1>,
     ndarray::Dim<[ndarray::Ix; DRANK]>: ndarray::Dimension,
 {
+    /// The output tensor
     type Output;
 
+    /// Convert to a tensor of Rx1 matrices
     fn inner_vec_to_mat(self) -> Self::Output;
 }
 
+/// Converting a tensor of scalars to a tensor of 1-vectors
 pub trait InnerScalarToVec<
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     const HYBER_RANK_PLUS1: usize,
@@ -94,7 +70,10 @@ pub trait InnerScalarToVec<
     SVec<Scalar, 1>: IsStaticTensor<Scalar, SRANK_PLUS1, 1, 1, 1>,
     ndarray::Dim<[ndarray::Ix; DRANK]>: ndarray::Dimension,
 {
+    /// The output tensor
     type Output;
+
+    /// Convert to a tensor of 1-vectors
     fn inner_scalar_to_vec(self) -> Self::Output;
 }
 
@@ -124,112 +103,104 @@ impl<Scalar: IsTensorScalar + 'static> InnerScalarToVec<2, 0, 2, 3, 1, Scalar>
     }
 }
 
+/// Mutable tensor of scalars
 pub type MutTensorX<const DRANK: usize, Scalar> =
     MutTensor<DRANK, DRANK, 0, Scalar, Scalar, 1, 1, 1>;
 
+/// Mutable tensor of batched scalars
 pub type MutTensorXB<
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar,
     const B: usize,
-> = MutTensor<SCALAR_RANK, DRANK, SRANK, Scalar, BatchScalar<Scalar, B>, 1, 1, B>;
+> = MutTensor<TOTAL_RANK, DRANK, SRANK, Scalar, BatchScalar<Scalar, B>, 1, 1, B>;
 
+/// Mutable tensor of vectors with shape R
 pub type MutTensorXR<
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar,
     const R: usize,
-> = MutTensor<SCALAR_RANK, DRANK, SRANK, Scalar, SVec<Scalar, R>, R, 1, 1>;
+> = MutTensor<TOTAL_RANK, DRANK, SRANK, Scalar, SVec<Scalar, R>, R, 1, 1>;
 
+/// Mutable tensor of batched vectors with shape [R x B]
 pub type MutTensorXRB<
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar,
     const R: usize,
     const B: usize,
-> = MutTensor<SCALAR_RANK, DRANK, SRANK, Scalar, BatchVec<Scalar, R, B>, R, 1, B>;
+> = MutTensor<TOTAL_RANK, DRANK, SRANK, Scalar, BatchVec<Scalar, R, B>, R, 1, B>;
 
+/// Mutable tensor of matrices with shape [R x C]
 pub type MutTensorXRC<
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar,
     const R: usize,
     const C: usize,
-> = MutTensor<SCALAR_RANK, DRANK, SRANK, Scalar, SMat<Scalar, R, C>, R, C, 1>;
+> = MutTensor<TOTAL_RANK, DRANK, SRANK, Scalar, SMat<Scalar, R, C>, R, C, 1>;
 
+/// Mutable tensor of batched matrices with shape [R x C x B]
 pub type MutTensorXRCB<
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar,
     const R: usize,
     const C: usize,
     const B: usize,
-> = MutTensor<SCALAR_RANK, DRANK, SRANK, Scalar, BatchMat<Scalar, R, C, B>, R, C, B>;
+> = MutTensor<TOTAL_RANK, DRANK, SRANK, Scalar, BatchMat<Scalar, R, C, B>, R, C, B>;
 
-// rank 1 - D0
+/// rank-1 mutable tensor of scalars with shape D0
 pub type MutTensorD<Scalar> = MutTensorX<1, Scalar>;
 
-// rank 2
-// D0 x D1
+/// rank-2 mutable tensor of scalars with shape [D0 x D1]
 pub type MutTensorDD<Scalar> = MutTensorX<2, Scalar>;
 
-// rank 2
-// D0 x [B]
+/// rank-2 mutable tensor of batched scalars with shape [D0 x B]
 pub type MutTensorDB<Scalar, const B: usize> = MutTensorXB<2, 1, 1, Scalar, B>;
 
-// rank 2
-// D0 x [R]
+/// rank-2 mutable tensor of vectors with shape [D0 x R]
 pub type MutTensorDR<Scalar, const R: usize> = MutTensorXR<2, 1, 1, Scalar, R>;
 
-// rank 3
-// D0 x D1 x D2
+/// rank-3 mutable tensor of scalars with shape [D0 x D1 x D2]
 pub type MutTensorDDD<Scalar> = MutTensorX<3, Scalar>;
 
-// rank 3
-//  D0 x D1 x [B]
+/// rank-3 mutable tensor of batched scalars with shape [D0 x D1 x B]
 pub type MutTensorDDB<Scalar, const B: usize> = MutTensorXB<3, 2, 1, Scalar, B>;
 
-// rank 3
-// D0 x D1 x [R]
+/// rank-3 mutable tensor of vectors with shape [D0 x D1 x R]
 pub type MutTensorDDR<Scalar, const R: usize> = MutTensorXR<3, 2, 1, Scalar, R>;
 
-// rank 3
-// D0 x [R, B]
+/// rank-3 mutable tensor of batched vectors with shape [D0 x R x B]
 pub type MutTensorDRB<Scalar, const R: usize, const B: usize> = MutTensorXRB<3, 1, 2, Scalar, R, B>;
 
-// rank 3
-// D0 x [R x C]
+/// rank-3 mutable tensor of matrices with shape [D0 x R x C]
 pub type MutTensorDRC<Scalar, const R: usize, const C: usize> = MutTensorXRC<3, 1, 2, Scalar, R, C>;
 
-// rank 4
-// srank 0, drank 4
+/// rank-4 mutable tensor of scalars with shape [D0 x D1 x D2 x D3]
 pub type MutTensorDDDD<Scalar> = MutTensorX<4, Scalar>;
 
-// rank 4
-// D0 x D1 x D2 x [B]
+/// rank-4 mutable tensor of batched scalars with shape [D0 x D1 x D2 x B]
 pub type MutTensorDDDB<Scalar, const B: usize> = MutTensorXB<4, 3, 1, Scalar, B>;
 
-// rank 4
-//  D0 x D1 x D2 x [R]
+/// rank-4 mutable tensor of vectors with shape [D0 x D1 x D2 x R]
 pub type MutTensorDDDR<Scalar, const R: usize> = MutTensorXR<4, 3, 1, Scalar, R>;
 
-// rank 4
-// D0 x D1 x [R x B]
+/// rank-4 mutable tensor of batched vectors with shape [D0 x D1 x R x B]
 pub type MutTensorDDRB<Scalar, const R: usize, const B: usize> =
     MutTensorXRB<4, 2, 2, Scalar, R, B>;
 
-// rank 4
-//  D0 x D1 x [R x C]
+/// rank-4 mutable tensor of matrices with shape [D0 x R x C x B]
 pub type MutTensorDDRC<Scalar, const R: usize, const C: usize> =
     MutTensorXRC<4, 2, 2, Scalar, R, C>;
 
-// rank 4
-// D0 x [R x C x B]
+/// rank-4 mutable tensor of batched matrices with shape [D0 x R x C x B]
 pub type MutTensorDRCB<Scalar, const R: usize, const C: usize, const B: usize> =
     MutTensorXRCB<4, 1, 3, Scalar, R, C, B>;
 
@@ -240,12 +211,12 @@ macro_rules! mut_tensor_is_view {
         impl<
         'a,
                 Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
+                STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCH_SIZE> + 'static,
                 const ROWS: usize,
                 const COLS: usize,
-                const BATCHES: usize,
-            > IsTensorLike<'a, $scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
-            for MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
+                const BATCH_SIZE: usize,
+            > IsTensorLike<'a, $scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCH_SIZE>
+            for MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCH_SIZE>
         {
             fn elem_view<'b:'a>(
                 &'b self,
@@ -275,9 +246,9 @@ macro_rules! mut_tensor_is_view {
                 self.view().scalar_dims()
             }
 
-            fn to_mut_image(
+            fn to_mut_tensor(
                 &self,
-            ) -> MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES> {
+            ) -> MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCH_SIZE> {
                 MutTensor {
                     mut_array: self.elem_view().to_owned(),
                     phantom: PhantomData::default(),
@@ -288,17 +259,17 @@ macro_rules! mut_tensor_is_view {
         impl<
         'a,
                 Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
+                STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCH_SIZE> + 'static,
                 const ROWS: usize,
                 const COLS: usize,
-                const BATCHES: usize,
+                const BATCH_SIZE: usize,
             >
             IsMutTensorLike<'a,
                 $scalar_rank, $drank, $srank,
                 Scalar, STensor,
-                ROWS, COLS, BATCHES
+                ROWS, COLS, BATCH_SIZE
             >
-            for MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+            for MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
         {
             fn elem_view_mut<'b:'a>(
                 &'b mut self,
@@ -317,64 +288,50 @@ macro_rules! mut_tensor_is_view {
         }
 
         impl<'a,  Scalar: IsTensorScalar+ 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCH_SIZE> + 'static,
                 const ROWS: usize,
                 const COLS: usize,
-                const BATCHES: usize,
+                const BATCH_SIZE: usize,
         >
-            MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+            MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
         {
 
+
+            /// returns a mutable view of the tensor
             pub fn mut_view<'b: 'a>(
                 &'b mut self,
             ) -> MutTensorView<'a,
                                $scalar_rank, $drank, $srank,
                                Scalar, STensor,
-                               ROWS, COLS, BATCHES>
+                               ROWS, COLS, BATCH_SIZE>
             {
                 MutTensorView::<
                     'a,
                     $scalar_rank, $drank, $srank,
-                    Scalar, STensor, ROWS, COLS, BATCHES>::new
+                    Scalar, STensor, ROWS, COLS, BATCH_SIZE>::new
                 (
                     self.mut_array.view_mut()
                 )
             }
 
+            /// returns a view of the tensor
             pub fn view<'b: 'a>(&'b self
             ) -> TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor,
-                            ROWS, COLS, BATCHES> {
+                            ROWS, COLS, BATCH_SIZE> {
                 TensorView::<'a, $scalar_rank, $drank, $srank, Scalar, STensor,
-                             ROWS, COLS, BATCHES>::new(
+                             ROWS, COLS, BATCH_SIZE>::new(
                     self.mut_array.view())
             }
 
+            /// create a new tensor from a shape - filled with zeros
             pub fn from_shape(size: [usize; $drank]) -> Self {
                 MutTensor::<$scalar_rank, $drank, $srank, Scalar, STensor,
-                            ROWS, COLS, BATCHES>::from_shape_and_val(
+                            ROWS, COLS, BATCH_SIZE>::from_shape_and_val(
                     size, STensor::zero()
                 )
             }
 
-            pub fn make_copy_from(
-                v: &TensorView<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
-            ) -> Self
-            {
-                IsTensorLike::to_mut_image(v)
-            }
-
-            pub fn to_shared(self)
-                -> ArcTensor::<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
-            {
-                ArcTensor::<
-                    $scalar_rank,
-                    $drank, $srank,
-                    Scalar, STensor,
-                    ROWS, COLS, BATCHES>::from_mut_tensor(self)
-            }
-
-
-
+            /// create a new tensor from a shape and a value
             pub fn from_shape_and_val
             (
                 shape: [usize; $drank],
@@ -387,7 +344,27 @@ macro_rules! mut_tensor_is_view {
                 }
             }
 
+            /// create a new mutable tensor by copying from another tensor
+            pub fn make_copy_from(
+                v: &TensorView<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
+            ) -> Self
+            {
+                IsTensorLike::to_mut_tensor(v)
+            }
 
+            /// return ArcTensor copy of the mutable tensor
+            pub fn to_shared(self)
+                -> ArcTensor::<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCH_SIZE>
+            {
+                ArcTensor::<
+                    $scalar_rank,
+                    $drank, $srank,
+                    Scalar, STensor,
+                    ROWS, COLS, BATCH_SIZE>::from_mut_tensor(self)
+            }
+
+            /// create a new mutable tensor by applying a unary operator to each element of another
+            /// tensor
             pub fn from_map<
                 'b,
                 const OTHER_HRANK: usize, const OTHER_SRANK: usize,
@@ -418,6 +395,8 @@ macro_rules! mut_tensor_is_view {
                 }
             }
 
+            /// create a new mutable tensor by applying a binary operator to each element of two
+            /// other tensors
             pub fn from_map2<
                 'b,
                 const OTHER_HRANK: usize, const OTHER_SRANK: usize,
@@ -485,8 +464,6 @@ mod tests {
 
     use super::*;
 
-    use crate::tensor::element::P3F32;
-
     #[test]
     fn empty_image() {
         {
@@ -521,7 +498,7 @@ mod tests {
         {
             let tensor_f32 = MutTensorD::from_shape_and_val(shape, 1.0);
             let op = |v: &f32| {
-                let mut value = P3F32::default();
+                let mut value = SVec::<f32, 3>::default();
                 value[0] = *v;
                 value[1] = 0.2 * *v;
                 value[2] = 0.3 * *v;
@@ -539,7 +516,7 @@ mod tests {
         {
             let tensor_f32 = MutTensorDD::from_shape_and_val(shape, 1.0);
             let op = |v: &f32| {
-                let mut value = P3F32::default();
+                let mut value = SVec::<f32, 3>::default();
                 value[0] = *v;
                 value[1] = 0.2 * *v;
                 value[2] = 0.3 * *v;
@@ -553,7 +530,7 @@ mod tests {
         {
             let tensor_f32 = MutTensorDDD::from_shape_and_val(shape, 1.0);
             let op = |v: &f32| {
-                let mut value = P3F32::default();
+                let mut value = SVec::<f32, 3>::default();
                 value[0] = *v;
                 value[1] = 0.2 * *v;
                 value[2] = 0.3 * *v;

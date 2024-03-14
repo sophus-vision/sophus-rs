@@ -16,6 +16,20 @@ use super::arc_image::ArcImageF32;
 use super::arc_image::ArcImageR;
 use super::arc_image::ArcImageU16;
 use super::arc_image::ArcImageU8;
+use super::image_view::ImageSize;
+use super::image_view::ImageView2F32;
+use super::image_view::ImageView2U16;
+use super::image_view::ImageView2U8;
+use super::image_view::ImageView3F32;
+use super::image_view::ImageView3U16;
+use super::image_view::ImageView3U8;
+use super::image_view::ImageView4F32;
+use super::image_view::ImageView4U16;
+use super::image_view::ImageView4U8;
+use super::image_view::ImageViewF32;
+use super::image_view::ImageViewU16;
+use super::image_view::ImageViewU8;
+use super::image_view::IsImageView;
 use super::mut_image::MutImage;
 use super::mut_image::MutImage2F32;
 use super::mut_image::MutImage2U16;
@@ -30,221 +44,274 @@ use super::mut_image::MutImageF32;
 use super::mut_image::MutImageR;
 use super::mut_image::MutImageU16;
 use super::mut_image::MutImageU8;
-use super::view::ImageSize;
-use super::view::ImageView2F32;
-use super::view::ImageView2U16;
-use super::view::ImageView2U8;
-use super::view::ImageView3F32;
-use super::view::ImageView3U16;
-use super::view::ImageView3U8;
-use super::view::ImageView4F32;
-use super::view::ImageView4U16;
-use super::view::ImageView4U8;
-use super::view::ImageViewF32;
-use super::view::ImageViewU16;
-use super::view::ImageViewU8;
-use super::view::IsImageView;
 
-pub enum DynPercentageMutImageU {
+/// dynamic mutable intensity image of unsigned integer values
+pub enum DynIntensityMutImageU {
+    /// mutable u8 grayscale image
     GrayscaleU8(MutImageU8),
+    /// mutable u8 grayscale+alpha image
     GrayscaleAlphaU8(MutImage2U8),
+    /// mutable u8 RGB image
     RgbU8(MutImage3U8),
+    /// mutable u8 RGBA image
     RgbaU8(MutImage4U8),
+    /// mutable u16 grayscale image
     GrayscaleU16(MutImageU16),
+    /// mutable u16 grayscale+alpha image
     GrayscaleAlphaU16(MutImage2U16),
+    /// mutable u16 RGB image
     RgbU16(MutImage3U16),
+    /// mutable u16 RGBA image
     RgbaU16(MutImage4U16),
 }
 
-pub enum DynPercentageArcImageU {
+/// dynamic mutable intensity image of unsigned integer values
+pub enum DynIntensityArcImageU {
+    /// shared u8 grayscale image
     GrayscaleU8(ArcImageU8),
+    /// shared u8 grayscale+alpha image
     GrayscaleAlphaU8(ArcImage2U8),
+    /// shared u8 RGB image
     RgbU8(ArcImage3U8),
+    /// shared u8 RGBA image
     RgbaU8(ArcImage4U8),
+    /// shared u16 grayscale image
     GrayscaleU16(ArcImageU16),
+    /// shared u16 grayscale+alpha image
     GrayscaleAlphaU16(ArcImage2U16),
+    /// shared u16 RGB image
     RgbU16(ArcImage3U16),
+    /// shared u16 RGBA image
     RgbaU16(ArcImage4U16),
 }
 
-impl From<DynPercentageMutImageU> for DynPercentageArcImageU {
-    fn from(image: DynPercentageMutImageU) -> Self {
+impl From<DynIntensityMutImageU> for DynIntensityArcImageU {
+    fn from(image: DynIntensityMutImageU) -> Self {
         match image {
-            DynPercentageMutImageU::GrayscaleU8(image) => {
-                DynPercentageArcImageU::GrayscaleU8(image.into())
+            DynIntensityMutImageU::GrayscaleU8(image) => {
+                DynIntensityArcImageU::GrayscaleU8(image.into())
             }
-            DynPercentageMutImageU::GrayscaleAlphaU8(image) => {
-                DynPercentageArcImageU::GrayscaleAlphaU8(image.into())
+            DynIntensityMutImageU::GrayscaleAlphaU8(image) => {
+                DynIntensityArcImageU::GrayscaleAlphaU8(image.into())
             }
-            DynPercentageMutImageU::RgbU8(image) => DynPercentageArcImageU::RgbU8(image.into()),
-            DynPercentageMutImageU::RgbaU8(image) => DynPercentageArcImageU::RgbaU8(image.into()),
-            DynPercentageMutImageU::GrayscaleU16(image) => {
-                DynPercentageArcImageU::GrayscaleU16(image.into())
+            DynIntensityMutImageU::RgbU8(image) => DynIntensityArcImageU::RgbU8(image.into()),
+            DynIntensityMutImageU::RgbaU8(image) => DynIntensityArcImageU::RgbaU8(image.into()),
+            DynIntensityMutImageU::GrayscaleU16(image) => {
+                DynIntensityArcImageU::GrayscaleU16(image.into())
             }
-            DynPercentageMutImageU::GrayscaleAlphaU16(image) => {
-                DynPercentageArcImageU::GrayscaleAlphaU16(image.into())
+            DynIntensityMutImageU::GrayscaleAlphaU16(image) => {
+                DynIntensityArcImageU::GrayscaleAlphaU16(image.into())
             }
-            DynPercentageMutImageU::RgbU16(image) => DynPercentageArcImageU::RgbU16(image.into()),
-            DynPercentageMutImageU::RgbaU16(image) => DynPercentageArcImageU::RgbaU16(image.into()),
+            DynIntensityMutImageU::RgbU16(image) => DynIntensityArcImageU::RgbU16(image.into()),
+            DynIntensityMutImageU::RgbaU16(image) => DynIntensityArcImageU::RgbaU16(image.into()),
         }
     }
 }
 
-pub enum DynPercentageImageViewU<'a> {
+/// dynamic intensity image view of unsigned integer values
+pub enum DynIntensityImageViewU<'a> {
+    /// u8 grayscale image view
     GrayscaleU8(ImageViewU8<'a>),
+    /// u8 grayscale+alpha image view
     GrayscaleAlphaU8(ImageView2U8<'a>),
+    /// u8 RGB image view
     RgbU8(ImageView3U8<'a>),
+    /// u8 RGBA image view
     RgbaU8(ImageView4U8<'a>),
+    /// u16 grayscale image view
     GrayscaleU16(ImageViewU16<'a>),
+    /// u16 grayscale+alpha image view
     GrayscaleAlphaU16(ImageView2U16<'a>),
+    /// u16 RGB image view
     RgbU16(ImageView3U16<'a>),
+    /// u16 RGBA image view
     RgbaU16(ImageView4U16<'a>),
 }
 
-pub enum DynPercentageMutImage {
+/// dynamic mutable intensity image
+pub enum DynIntensityMutImage {
+    /// mutable u8 grayscale image
     GrayscaleU8(MutImageU8),
+    /// mutable u8 grayscale+alpha image
     GrayscaleAlphaU8(MutImage2U8),
+    /// mutable u8 RGB image
     RgbU8(MutImage3U8),
+    /// mutable u8 RGBA image
     RgbaU8(MutImage4U8),
+    /// mutable u16 grayscale image
     GrayscaleU16(MutImageU16),
+    /// mutable u16 grayscale+alpha image
     GrayscaleAlphaU16(MutImage2U16),
+    /// mutable u16 RGB image
     RgbU16(MutImage3U16),
+    /// mutable u16 RGBA image
     RgbaU16(MutImage4U16),
+    /// mutable f32 grayscale image
     GrayscaleF32(MutImageF32),
+    /// mutable f32 grayscale+alpha image
     GrayscaleAlphaF32(MutImage2F32),
+    /// mutable f32 RGB image
     RgbF32(MutImage3F32),
+    /// mutable f32 RGBA image
     RgbaF32(MutImage4F32),
 }
-
-pub enum DynPercentageArcImage {
+/// dynamic intensity image view
+pub enum DynIntensityArcImage {
+    /// shared u8 grayscale image
     GrayscaleU8(ArcImageU8),
+    /// shared u8 grayscale+alpha image
     GrayscaleAlphaU8(ArcImage2U8),
+    /// shared u8 RGB image
     RgbU8(ArcImage3U8),
+    /// shared u8 RGBA image
     RgbaU8(ArcImage4U8),
+    /// shared u16 grayscale image
     GrayscaleU16(ArcImageU16),
+    /// shared u16 grayscale+alpha image
     GrayscaleAlphaU16(ArcImage2U16),
+    /// shared u16 RGB image
     RgbU16(ArcImage3U16),
+    /// shared u16 RGBA image
     RgbaU16(ArcImage4U16),
+    /// shared f32 grayscale image
     GrayscaleF32(ArcImageF32),
+    /// shared f32 grayscale+alpha image
     GrayscaleAlphaF32(ArcImage2F32),
+    /// shared f32 RGB image
     RgbF32(ArcImage3F32),
+    /// shared f32 RGBA image
     RgbaF32(ArcImage4F32),
 }
 
 /// Convert a GenMutImage to an GenArcImage  
 ///
-impl From<DynPercentageMutImage> for DynPercentageArcImage {
-    fn from(image: DynPercentageMutImage) -> Self {
+impl From<DynIntensityMutImage> for DynIntensityArcImage {
+    fn from(image: DynIntensityMutImage) -> Self {
         match image {
-            DynPercentageMutImage::GrayscaleU8(image) => {
-                DynPercentageArcImage::GrayscaleU8(image.into())
+            DynIntensityMutImage::GrayscaleU8(image) => {
+                DynIntensityArcImage::GrayscaleU8(image.into())
             }
-            DynPercentageMutImage::GrayscaleAlphaU8(image) => {
-                DynPercentageArcImage::GrayscaleAlphaU8(image.into())
+            DynIntensityMutImage::GrayscaleAlphaU8(image) => {
+                DynIntensityArcImage::GrayscaleAlphaU8(image.into())
             }
-            DynPercentageMutImage::RgbU8(image) => DynPercentageArcImage::RgbU8(image.into()),
-            DynPercentageMutImage::RgbaU8(image) => DynPercentageArcImage::RgbaU8(image.into()),
-            DynPercentageMutImage::GrayscaleU16(image) => {
-                DynPercentageArcImage::GrayscaleU16(image.into())
+            DynIntensityMutImage::RgbU8(image) => DynIntensityArcImage::RgbU8(image.into()),
+            DynIntensityMutImage::RgbaU8(image) => DynIntensityArcImage::RgbaU8(image.into()),
+            DynIntensityMutImage::GrayscaleU16(image) => {
+                DynIntensityArcImage::GrayscaleU16(image.into())
             }
-            DynPercentageMutImage::GrayscaleAlphaU16(image) => {
-                DynPercentageArcImage::GrayscaleAlphaU16(image.into())
+            DynIntensityMutImage::GrayscaleAlphaU16(image) => {
+                DynIntensityArcImage::GrayscaleAlphaU16(image.into())
             }
-            DynPercentageMutImage::RgbU16(image) => DynPercentageArcImage::RgbU16(image.into()),
-            DynPercentageMutImage::RgbaU16(image) => DynPercentageArcImage::RgbaU16(image.into()),
-            DynPercentageMutImage::GrayscaleF32(image) => {
-                DynPercentageArcImage::GrayscaleF32(image.into())
+            DynIntensityMutImage::RgbU16(image) => DynIntensityArcImage::RgbU16(image.into()),
+            DynIntensityMutImage::RgbaU16(image) => DynIntensityArcImage::RgbaU16(image.into()),
+            DynIntensityMutImage::GrayscaleF32(image) => {
+                DynIntensityArcImage::GrayscaleF32(image.into())
             }
-            DynPercentageMutImage::GrayscaleAlphaF32(image) => {
-                DynPercentageArcImage::GrayscaleAlphaF32(image.into())
+            DynIntensityMutImage::GrayscaleAlphaF32(image) => {
+                DynIntensityArcImage::GrayscaleAlphaF32(image.into())
             }
-            DynPercentageMutImage::RgbF32(image) => DynPercentageArcImage::RgbF32(image.into()),
-            DynPercentageMutImage::RgbaF32(image) => DynPercentageArcImage::RgbaF32(image.into()),
+            DynIntensityMutImage::RgbF32(image) => DynIntensityArcImage::RgbF32(image.into()),
+            DynIntensityMutImage::RgbaF32(image) => DynIntensityArcImage::RgbaF32(image.into()),
         }
     }
 }
 
-impl DynPercentageArcImage {
+impl DynIntensityArcImage {
+    /// Converts to u8 grayscale image
     pub fn to_grayscale_u8(&self) -> ArcImageU8 {
         match self {
-            DynPercentageArcImage::GrayscaleU8(image) => image.clone(),
-            DynPercentageArcImage::GrayscaleAlphaU8(image) => {
-                PercentageArcImage::to_grayscale(image)
+            DynIntensityArcImage::GrayscaleU8(image) => image.clone(),
+            DynIntensityArcImage::GrayscaleAlphaU8(image) => IntensityArcImage::to_grayscale(image),
+            DynIntensityArcImage::RgbU8(image) => IntensityArcImage::to_grayscale(image),
+            DynIntensityArcImage::RgbaU8(image) => IntensityArcImage::to_grayscale(image),
+            DynIntensityArcImage::GrayscaleU16(image) => {
+                IntensityArcImage::cast_u8(&IntensityArcImage::to_grayscale(image))
             }
-            DynPercentageArcImage::RgbU8(image) => PercentageArcImage::to_grayscale(image),
-            DynPercentageArcImage::RgbaU8(image) => PercentageArcImage::to_grayscale(image),
-            DynPercentageArcImage::GrayscaleU16(image) => {
-                PercentageArcImage::cast_u8(&PercentageArcImage::to_grayscale(image))
+            DynIntensityArcImage::GrayscaleAlphaU16(image) => {
+                IntensityArcImage::cast_u8(&IntensityArcImage::to_grayscale(image))
             }
-            DynPercentageArcImage::GrayscaleAlphaU16(image) => {
-                PercentageArcImage::cast_u8(&PercentageArcImage::to_grayscale(image))
+            DynIntensityArcImage::RgbU16(image) => {
+                IntensityArcImage::cast_u8(&IntensityArcImage::to_grayscale(image))
             }
-            DynPercentageArcImage::RgbU16(image) => {
-                PercentageArcImage::cast_u8(&PercentageArcImage::to_grayscale(image))
+            DynIntensityArcImage::RgbaU16(image) => {
+                IntensityArcImage::cast_u8(&IntensityArcImage::to_grayscale(image))
             }
-            DynPercentageArcImage::RgbaU16(image) => {
-                PercentageArcImage::cast_u8(&PercentageArcImage::to_grayscale(image))
+            DynIntensityArcImage::GrayscaleF32(image) => {
+                IntensityArcImage::cast_u8(&IntensityArcImage::to_grayscale(image))
             }
-            DynPercentageArcImage::GrayscaleF32(image) => {
-                PercentageArcImage::cast_u8(&PercentageArcImage::to_grayscale(image))
+            DynIntensityArcImage::GrayscaleAlphaF32(image) => {
+                IntensityArcImage::cast_u8(&IntensityArcImage::to_grayscale(image))
             }
-            DynPercentageArcImage::GrayscaleAlphaF32(image) => {
-                PercentageArcImage::cast_u8(&PercentageArcImage::to_grayscale(image))
+            DynIntensityArcImage::RgbF32(image) => {
+                IntensityArcImage::cast_u8(&IntensityArcImage::to_grayscale(image))
             }
-            DynPercentageArcImage::RgbF32(image) => {
-                PercentageArcImage::cast_u8(&PercentageArcImage::to_grayscale(image))
-            }
-            DynPercentageArcImage::RgbaF32(image) => {
-                PercentageArcImage::cast_u8(&PercentageArcImage::to_grayscale(image))
+            DynIntensityArcImage::RgbaF32(image) => {
+                IntensityArcImage::cast_u8(&IntensityArcImage::to_grayscale(image))
             }
         }
     }
 }
 
-pub enum DynPercentageImageView<'a> {
+/// dynamic intensity image view
+pub enum DynIntensityImageView<'a> {
+    /// u8 grayscale image view
     GrayscaleU8(ImageViewU8<'a>),
+    /// u8 grayscale+alpha image view
     GrayscaleAlphaU8(ImageView2U8<'a>),
+    /// u8 RGB image view
     RgbU8(ImageView3U8<'a>),
+    /// u8 RGBA image view
     RgbaU8(ImageView4U8<'a>),
+    /// u16 grayscale image view
     GrayscaleU16(ImageViewU16<'a>),
+    /// u16 grayscale+alpha image view
     GrayscaleAlphaU16(ImageView2U16<'a>),
+    /// u16 RGB image view
     RgbU16(ImageView3U16<'a>),
+    /// u16 RGBA image view
     RgbaU16(ImageView4U16<'a>),
+    /// f32 grayscale image view
     GrayscaleF32(ImageViewF32<'a>),
+    /// f32 grayscale+alpha image view
     GrayscaleAlphaF32(ImageView2F32<'a>),
+    /// f32 RGB image view
     RgbF32(ImageView3F32<'a>),
+    /// f32 RGBA image view
     RgbaF32(ImageView4F32<'a>),
 }
 
-/// Trait for "percentage" images (grayscale, RGB, RGBA).
+/// Trait for "intensity" images (grayscale, grayscale+alpha, RGB, RGBA).
 ///
-/// Hence it s a trait for grayscale (1-channel), RGB (3-channel), and RGBA images (4-channel).
+/// Hence it s a trait for grayscale (1-channel), grayscale+alpha (2-channel), RGB (3-channel), and
+/// RGBA images (4-channel).
 ///
-/// This trait provides methods for converting between different image types. Three scalar types
-/// are supported: `u8`, `u16`, and `f32`:
+/// This trait provides methods for converting between different image types. As of now, three
+/// scalar types are supported: `u8`, `u16`, and `f32`:
 ///
-///  - u8 images are in the range [0, 255], i.e. 100% corresponds to 255.
+///  - u8 images are in the range [0, 255], i.e. 100% intensity corresponds to 255.
 ///
-///  - u16 images are in the range [0, 65535], i.e. 100% corresponds to 65535.
+///  - u16 images are in the range [0, 65535], i.e. 100% intensity corresponds to 65535.
 ///
-///  - f32 images shall be in the range [0.0, 1.0] and 100% corresponds to 1.0.
+///  - f32 images shall be in the range [0.0, 1.0] and 100% intensity corresponds to 1.0.
 ///    If the f32 is outside this range, conversion results may be surprising.
 ///
 /// These are image types which typically used for computer vision and graphics applications.
-pub trait PercentageMutImage<
-    const SCALAR_RANK: usize,
+pub trait IntensityMutImage<
+    const TOTAL_RANK: usize,
     const SRANK: usize,
     Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCHES> + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCH_SIZE> + 'static,
     const ROWS: usize,
     const COLS: usize,
-    const BATCHES: usize,
+    const BATCH_SIZE: usize,
 >
 {
-    /// The type of the image with the same number of channels, but with a u8 scalar type.
+    /// Shared tensor type
     type GenArcImage<S: IsTensorScalar>;
+    /// Mutable tensor type
     type GenMutImage<S: IsTensorScalar>;
 
+    /// Pixel type
     type Pixel<S: IsTensorScalar>;
 
     /// Converts a pixel to a grayscale value.
@@ -265,34 +332,22 @@ pub trait PercentageMutImage<
     /// Converts the image to a u8 image.
     fn cast_u8(img: Self) -> Self::GenMutImage<u8>;
 
-    // {
-    //     Self::to_map(&img, |rgb: &STensor| -> Scalar {
-    //         Self::cast_pixel_u8(rgb)
-    //     })
-    // }
-
     /// Converts the image to a u16 image.
     fn cast_u16(img: Self) -> Self::GenMutImage<u16>;
-    //     Self::to_map(&img, |rgb: &STensor| -> Scalar {
-    //         Self::cast_pixel_u16(rgb)
-    //     })
-    // }
 
     /// Converts the image to a f32 image.
     fn cast_f32(img: Self) -> Self::GenMutImage<f32>;
 
-    // {
-    //     Self::to_map(&img, |rgb: &STensor| -> Scalar {
-    //         Self::cast_pixel_f32(rgb)
-    //     })
-    // }
+    /// Returns a dynamic image view.
+    fn into_dyn_image_view(img: Self) -> DynIntensityMutImage;
 
-    fn into_dyn_image_view(img: Self) -> DynPercentageMutImage;
-
-    fn try_into_dyn_image_view_u(img: Self) -> Option<DynPercentageMutImageU>;
+    /// Tries to return a dynamic image view of unsigned values.
+    ///
+    /// If the image is not of unsigned type, it returns None.
+    fn try_into_dyn_image_view_u(img: Self) -> Option<DynIntensityMutImageU>;
 }
 
-impl<'a> PercentageMutImage<2, 0, u8, u8, 1, 1, 1> for MutImageU8 {
+impl<'a> IntensityMutImage<2, 0, u8, u8, 1, 1, 1> for MutImageU8 {
     type Pixel<S: IsTensorScalar> = S;
 
     fn pixel_to_grayscale(pixel: &u8) -> u8 {
@@ -303,12 +358,12 @@ impl<'a> PercentageMutImage<2, 0, u8, u8, 1, 1, 1> for MutImageU8 {
         img
     }
 
-    fn into_dyn_image_view(image: Self) -> DynPercentageMutImage {
-        DynPercentageMutImage::GrayscaleU8(image)
+    fn into_dyn_image_view(image: Self) -> DynIntensityMutImage {
+        DynIntensityMutImage::GrayscaleU8(image)
     }
 
-    fn try_into_dyn_image_view_u(image: Self) -> Option<DynPercentageMutImageU> {
-        Some(DynPercentageMutImageU::GrayscaleU8(image))
+    fn try_into_dyn_image_view_u(image: Self) -> Option<DynIntensityMutImageU> {
+        Some(DynIntensityMutImageU::GrayscaleU8(image))
     }
 
     fn cast_pixel_u8(p: &u8) -> u8 {
@@ -344,7 +399,7 @@ impl<'a> PercentageMutImage<2, 0, u8, u8, 1, 1, 1> for MutImageU8 {
     }
 }
 
-impl PercentageMutImage<2, 0, u16, u16, 1, 1, 1> for MutImageU16 {
+impl IntensityMutImage<2, 0, u16, u16, 1, 1, 1> for MutImageU16 {
     type Pixel<S: IsTensorScalar> = S;
 
     fn pixel_to_grayscale(pixel: &u16) -> u16 {
@@ -355,12 +410,12 @@ impl PercentageMutImage<2, 0, u16, u16, 1, 1, 1> for MutImageU16 {
         img
     }
 
-    fn into_dyn_image_view(image: Self) -> DynPercentageMutImage {
-        DynPercentageMutImage::GrayscaleU16(image)
+    fn into_dyn_image_view(image: Self) -> DynIntensityMutImage {
+        DynIntensityMutImage::GrayscaleU16(image)
     }
 
-    fn try_into_dyn_image_view_u(image: Self) -> Option<DynPercentageMutImageU> {
-        Some(DynPercentageMutImageU::GrayscaleU16(image))
+    fn try_into_dyn_image_view_u(image: Self) -> Option<DynIntensityMutImageU> {
+        Some(DynIntensityMutImageU::GrayscaleU16(image))
     }
 
     fn cast_pixel_u8(p: &u16) -> u8 {
@@ -396,7 +451,7 @@ impl PercentageMutImage<2, 0, u16, u16, 1, 1, 1> for MutImageU16 {
     }
 }
 
-impl PercentageMutImage<2, 0, f32, f32, 1, 1, 1> for MutImageF32 {
+impl IntensityMutImage<2, 0, f32, f32, 1, 1, 1> for MutImageF32 {
     type Pixel<S: IsTensorScalar> = S;
 
     fn pixel_to_grayscale(pixel: &f32) -> f32 {
@@ -407,11 +462,11 @@ impl PercentageMutImage<2, 0, f32, f32, 1, 1, 1> for MutImageF32 {
         img
     }
 
-    fn into_dyn_image_view(image: Self) -> DynPercentageMutImage {
-        DynPercentageMutImage::GrayscaleF32(image)
+    fn into_dyn_image_view(image: Self) -> DynIntensityMutImage {
+        DynIntensityMutImage::GrayscaleF32(image)
     }
 
-    fn try_into_dyn_image_view_u(image: Self) -> Option<DynPercentageMutImageU> {
+    fn try_into_dyn_image_view_u(_image: Self) -> Option<DynIntensityMutImageU> {
         None
     }
 
@@ -448,7 +503,7 @@ impl PercentageMutImage<2, 0, f32, f32, 1, 1, 1> for MutImageF32 {
     }
 }
 
-impl PercentageMutImage<3, 1, u8, SVec<u8, 4>, 4, 1, 1> for MutImage4U8 {
+impl IntensityMutImage<3, 1, u8, SVec<u8, 4>, 4, 1, 1> for MutImage4U8 {
     type Pixel<S: IsTensorScalar> = SVec<S, 4>;
 
     fn pixel_to_grayscale(pixel: &SVec<u8, 4>) -> u8 {
@@ -461,12 +516,12 @@ impl PercentageMutImage<3, 1, u8, SVec<u8, 4>, 4, 1, 1> for MutImage4U8 {
         })
     }
 
-    fn into_dyn_image_view(image: Self) -> DynPercentageMutImage {
-        DynPercentageMutImage::RgbaU8(image)
+    fn into_dyn_image_view(image: Self) -> DynIntensityMutImage {
+        DynIntensityMutImage::RgbaU8(image)
     }
 
-    fn try_into_dyn_image_view_u(image: Self) -> Option<DynPercentageMutImageU> {
-        Some(DynPercentageMutImageU::RgbaU8(image))
+    fn try_into_dyn_image_view_u(image: Self) -> Option<DynIntensityMutImageU> {
+        Some(DynIntensityMutImageU::RgbaU8(image))
     }
 
     fn cast_pixel_u8(p: &SVec<u8, 4>) -> SVec<u8, 4> {
@@ -507,20 +562,22 @@ impl PercentageMutImage<3, 1, u8, SVec<u8, 4>, 4, 1, 1> for MutImage4U8 {
     }
 }
 
-pub trait PercentageArcImage<
-    const SCALAR_RANK: usize,
+/// Trait for "intensity" images with shared ownership.
+pub trait IntensityArcImage<
+    const TOTAL_RANK: usize,
     const SRANK: usize,
     Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCHES> + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCH_SIZE> + 'static,
     const ROWS: usize,
     const COLS: usize,
-    const BATCHES: usize,
+    const BATCH_SIZE: usize,
 >
 {
-    /// The type of the image with the same number of channels, but with a u8 scalar type.
+    /// Shared tensor type
     type GenArcImage<S: IsTensorScalar>;
+    /// Mutable tensor type
     type GenMutImage<S: IsTensorScalar>;
-
+    /// Pixel type
     type Pixel<S: IsTensorScalar>;
 
     /// Converts a pixel to a grayscale value.
@@ -541,12 +598,6 @@ pub trait PercentageArcImage<
     /// Converts the image to a u8 image.
     fn cast_u8(img: &Self) -> Self::GenArcImage<u8>;
 
-    // {
-    //     Self::to_map(&img, |rgb: &STensor| -> Scalar {
-    //         Self::cast_pixel_u8(rgb)
-    //     })
-    // }
-
     /// Converts the image to a u16 image.
     fn cast_u16(img: &Self) -> Self::GenArcImage<u16>;
     //     Self::to_map(&img, |rgb: &STensor| -> Scalar {
@@ -557,18 +608,16 @@ pub trait PercentageArcImage<
     /// Converts the image to a f32 image.
     fn cast_f32(img: &Self) -> Self::GenArcImage<f32>;
 
-    // {
-    //     Self::to_map(&img, |rgb: &STensor| -> Scalar {
-    //         Self::cast_pixel_f32(rgb)
-    //     })
-    // }
+    /// Returns a dynamic image view.
+    fn into_dyn_image_view(img: &Self) -> DynIntensityArcImage;
 
-    fn into_dyn_image_view(img: &Self) -> DynPercentageArcImage;
-
-    fn try_into_dyn_image_view_u(img: &Self) -> Option<DynPercentageArcImageU>;
+    /// Tries to return a dynamic image view of unsigned values.
+    ///
+    /// If the image is not of unsigned type, it returns None.
+    fn try_into_dyn_image_view_u(img: &Self) -> Option<DynIntensityArcImageU>;
 }
 
-impl PercentageArcImage<2, 0, u8, u8, 1, 1, 1> for ArcImageU8 {
+impl IntensityArcImage<2, 0, u8, u8, 1, 1, 1> for ArcImageU8 {
     type Pixel<S: IsTensorScalar> = S;
 
     fn pixel_to_grayscale(pixel: &u8) -> u8 {
@@ -579,12 +628,12 @@ impl PercentageArcImage<2, 0, u8, u8, 1, 1, 1> for ArcImageU8 {
         img.clone()
     }
 
-    fn into_dyn_image_view(image: &Self) -> DynPercentageArcImage {
-        DynPercentageArcImage::GrayscaleU8(image.clone())
+    fn into_dyn_image_view(image: &Self) -> DynIntensityArcImage {
+        DynIntensityArcImage::GrayscaleU8(image.clone())
     }
 
-    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynPercentageArcImageU> {
-        Some(DynPercentageArcImageU::GrayscaleU8(image.clone()))
+    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynIntensityArcImageU> {
+        Some(DynIntensityArcImageU::GrayscaleU8(image.clone()))
     }
 
     fn cast_pixel_u8(p: &u8) -> u8 {
@@ -620,7 +669,7 @@ impl PercentageArcImage<2, 0, u8, u8, 1, 1, 1> for ArcImageU8 {
     }
 }
 
-impl PercentageArcImage<2, 0, u16, u16, 1, 1, 1> for ArcImageU16 {
+impl IntensityArcImage<2, 0, u16, u16, 1, 1, 1> for ArcImageU16 {
     type Pixel<S: IsTensorScalar> = S;
 
     fn pixel_to_grayscale(pixel: &u16) -> u16 {
@@ -633,12 +682,12 @@ impl PercentageArcImage<2, 0, u16, u16, 1, 1, 1> for ArcImageU16 {
         })
     }
 
-    fn into_dyn_image_view(image: &Self) -> DynPercentageArcImage {
-        DynPercentageArcImage::GrayscaleU16(image.clone())
+    fn into_dyn_image_view(image: &Self) -> DynIntensityArcImage {
+        DynIntensityArcImage::GrayscaleU16(image.clone())
     }
 
-    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynPercentageArcImageU> {
-        Some(DynPercentageArcImageU::GrayscaleU16(image.clone()))
+    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynIntensityArcImageU> {
+        Some(DynIntensityArcImageU::GrayscaleU16(image.clone()))
     }
 
     fn cast_pixel_u8(p: &u16) -> u8 {
@@ -674,7 +723,7 @@ impl PercentageArcImage<2, 0, u16, u16, 1, 1, 1> for ArcImageU16 {
     }
 }
 
-impl PercentageArcImage<2, 0, f32, f32, 1, 1, 1> for ArcImageF32 {
+impl IntensityArcImage<2, 0, f32, f32, 1, 1, 1> for ArcImageF32 {
     type Pixel<S: IsTensorScalar> = S;
 
     fn pixel_to_grayscale(pixel: &f32) -> f32 {
@@ -685,11 +734,11 @@ impl PercentageArcImage<2, 0, f32, f32, 1, 1, 1> for ArcImageF32 {
         img.clone()
     }
 
-    fn into_dyn_image_view(image: &Self) -> DynPercentageArcImage {
-        DynPercentageArcImage::GrayscaleF32(image.clone())
+    fn into_dyn_image_view(image: &Self) -> DynIntensityArcImage {
+        DynIntensityArcImage::GrayscaleF32(image.clone())
     }
 
-    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynPercentageArcImageU> {
+    fn try_into_dyn_image_view_u(_image: &Self) -> Option<DynIntensityArcImageU> {
         None
     }
 
@@ -726,7 +775,7 @@ impl PercentageArcImage<2, 0, f32, f32, 1, 1, 1> for ArcImageF32 {
     }
 }
 
-impl PercentageArcImage<3, 1, u8, SVec<u8, 2>, 2, 1, 1> for ArcImage2U8 {
+impl IntensityArcImage<3, 1, u8, SVec<u8, 2>, 2, 1, 1> for ArcImage2U8 {
     type Pixel<S: IsTensorScalar> = SVec<S, 2>;
 
     fn pixel_to_grayscale(pixel: &SVec<u8, 2>) -> u8 {
@@ -739,12 +788,12 @@ impl PercentageArcImage<3, 1, u8, SVec<u8, 2>, 2, 1, 1> for ArcImage2U8 {
         })
     }
 
-    fn into_dyn_image_view(image: &Self) -> DynPercentageArcImage {
-        DynPercentageArcImage::GrayscaleAlphaU8(image.clone())
+    fn into_dyn_image_view(image: &Self) -> DynIntensityArcImage {
+        DynIntensityArcImage::GrayscaleAlphaU8(image.clone())
     }
 
-    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynPercentageArcImageU> {
-        Some(DynPercentageArcImageU::GrayscaleAlphaU8(image.clone()))
+    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynIntensityArcImageU> {
+        Some(DynIntensityArcImageU::GrayscaleAlphaU8(image.clone()))
     }
 
     fn cast_pixel_u8(p: &SVec<u8, 2>) -> SVec<u8, 2> {
@@ -780,7 +829,7 @@ impl PercentageArcImage<3, 1, u8, SVec<u8, 2>, 2, 1, 1> for ArcImage2U8 {
     }
 }
 
-impl PercentageArcImage<3, 1, u8, SVec<u8, 3>, 3, 1, 1> for ArcImage3U8 {
+impl IntensityArcImage<3, 1, u8, SVec<u8, 3>, 3, 1, 1> for ArcImage3U8 {
     type Pixel<S: IsTensorScalar> = SVec<S, 3>;
 
     fn pixel_to_grayscale(pixel: &SVec<u8, 3>) -> u8 {
@@ -793,12 +842,12 @@ impl PercentageArcImage<3, 1, u8, SVec<u8, 3>, 3, 1, 1> for ArcImage3U8 {
         })
     }
 
-    fn into_dyn_image_view(image: &Self) -> DynPercentageArcImage {
-        DynPercentageArcImage::RgbU8(image.clone())
+    fn into_dyn_image_view(image: &Self) -> DynIntensityArcImage {
+        DynIntensityArcImage::RgbU8(image.clone())
     }
 
-    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynPercentageArcImageU> {
-        Some(DynPercentageArcImageU::RgbU8(image.clone()))
+    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynIntensityArcImageU> {
+        Some(DynIntensityArcImageU::RgbU8(image.clone()))
     }
 
     fn cast_pixel_u8(p: &SVec<u8, 3>) -> SVec<u8, 3> {
@@ -838,7 +887,7 @@ impl PercentageArcImage<3, 1, u8, SVec<u8, 3>, 3, 1, 1> for ArcImage3U8 {
     }
 }
 
-impl PercentageArcImage<3, 1, u8, SVec<u8, 4>, 4, 1, 1> for ArcImage4U8 {
+impl IntensityArcImage<3, 1, u8, SVec<u8, 4>, 4, 1, 1> for ArcImage4U8 {
     type Pixel<S: IsTensorScalar> = SVec<S, 4>;
 
     fn pixel_to_grayscale(pixel: &SVec<u8, 4>) -> u8 {
@@ -851,12 +900,12 @@ impl PercentageArcImage<3, 1, u8, SVec<u8, 4>, 4, 1, 1> for ArcImage4U8 {
         })
     }
 
-    fn into_dyn_image_view(image: &Self) -> DynPercentageArcImage {
-        DynPercentageArcImage::RgbaU8(image.clone())
+    fn into_dyn_image_view(image: &Self) -> DynIntensityArcImage {
+        DynIntensityArcImage::RgbaU8(image.clone())
     }
 
-    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynPercentageArcImageU> {
-        Some(DynPercentageArcImageU::RgbaU8(image.clone()))
+    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynIntensityArcImageU> {
+        Some(DynIntensityArcImageU::RgbaU8(image.clone()))
     }
 
     fn cast_pixel_u8(p: &SVec<u8, 4>) -> SVec<u8, 4> {
@@ -897,7 +946,7 @@ impl PercentageArcImage<3, 1, u8, SVec<u8, 4>, 4, 1, 1> for ArcImage4U8 {
     }
 }
 
-impl PercentageArcImage<3, 1, u16, SVec<u16, 2>, 2, 1, 1> for ArcImage2U16 {
+impl IntensityArcImage<3, 1, u16, SVec<u16, 2>, 2, 1, 1> for ArcImage2U16 {
     type Pixel<S: IsTensorScalar> = SVec<S, 2>;
 
     fn pixel_to_grayscale(pixel: &SVec<u16, 2>) -> u16 {
@@ -910,12 +959,12 @@ impl PercentageArcImage<3, 1, u16, SVec<u16, 2>, 2, 1, 1> for ArcImage2U16 {
         })
     }
 
-    fn into_dyn_image_view(image: &Self) -> DynPercentageArcImage {
-        DynPercentageArcImage::GrayscaleAlphaU16(image.clone())
+    fn into_dyn_image_view(image: &Self) -> DynIntensityArcImage {
+        DynIntensityArcImage::GrayscaleAlphaU16(image.clone())
     }
 
-    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynPercentageArcImageU> {
-        Some(DynPercentageArcImageU::GrayscaleAlphaU16(image.clone()))
+    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynIntensityArcImageU> {
+        Some(DynIntensityArcImageU::GrayscaleAlphaU16(image.clone()))
     }
 
     fn cast_pixel_u8(p: &SVec<u16, 2>) -> SVec<u8, 2> {
@@ -955,7 +1004,7 @@ impl PercentageArcImage<3, 1, u16, SVec<u16, 2>, 2, 1, 1> for ArcImage2U16 {
     }
 }
 
-impl PercentageArcImage<3, 1, u16, SVec<u16, 3>, 3, 1, 1> for ArcImage3U16 {
+impl IntensityArcImage<3, 1, u16, SVec<u16, 3>, 3, 1, 1> for ArcImage3U16 {
     type Pixel<S: IsTensorScalar> = SVec<S, 3>;
 
     fn pixel_to_grayscale(pixel: &SVec<u16, 3>) -> u16 {
@@ -968,12 +1017,12 @@ impl PercentageArcImage<3, 1, u16, SVec<u16, 3>, 3, 1, 1> for ArcImage3U16 {
         })
     }
 
-    fn into_dyn_image_view(image: &Self) -> DynPercentageArcImage {
-        DynPercentageArcImage::RgbU16(image.clone())
+    fn into_dyn_image_view(image: &Self) -> DynIntensityArcImage {
+        DynIntensityArcImage::RgbU16(image.clone())
     }
 
-    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynPercentageArcImageU> {
-        Some(DynPercentageArcImageU::RgbU16(image.clone()))
+    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynIntensityArcImageU> {
+        Some(DynIntensityArcImageU::RgbU16(image.clone()))
     }
 
     fn cast_pixel_u8(p: &SVec<u16, 3>) -> SVec<u8, 3> {
@@ -1018,7 +1067,7 @@ impl PercentageArcImage<3, 1, u16, SVec<u16, 3>, 3, 1, 1> for ArcImage3U16 {
     }
 }
 
-impl PercentageArcImage<3, 1, u16, SVec<u16, 4>, 4, 1, 1> for ArcImage4U16 {
+impl IntensityArcImage<3, 1, u16, SVec<u16, 4>, 4, 1, 1> for ArcImage4U16 {
     type Pixel<S: IsTensorScalar> = SVec<S, 4>;
 
     fn pixel_to_grayscale(pixel: &SVec<u16, 4>) -> u16 {
@@ -1031,12 +1080,12 @@ impl PercentageArcImage<3, 1, u16, SVec<u16, 4>, 4, 1, 1> for ArcImage4U16 {
         })
     }
 
-    fn into_dyn_image_view(image: &Self) -> DynPercentageArcImage {
-        DynPercentageArcImage::RgbaU16(image.clone())
+    fn into_dyn_image_view(image: &Self) -> DynIntensityArcImage {
+        DynIntensityArcImage::RgbaU16(image.clone())
     }
 
-    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynPercentageArcImageU> {
-        Some(DynPercentageArcImageU::RgbaU16(image.clone()))
+    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynIntensityArcImageU> {
+        Some(DynIntensityArcImageU::RgbaU16(image.clone()))
     }
 
     fn cast_pixel_u8(p: &SVec<u16, 4>) -> SVec<u8, 4> {
@@ -1083,7 +1132,7 @@ impl PercentageArcImage<3, 1, u16, SVec<u16, 4>, 4, 1, 1> for ArcImage4U16 {
     }
 }
 
-impl PercentageArcImage<3, 1, f32, SVec<f32, 2>, 2, 1, 1> for ArcImage2F32 {
+impl IntensityArcImage<3, 1, f32, SVec<f32, 2>, 2, 1, 1> for ArcImage2F32 {
     type Pixel<S: IsTensorScalar> = SVec<S, 2>;
 
     fn pixel_to_grayscale(pixel: &SVec<f32, 2>) -> f32 {
@@ -1096,11 +1145,11 @@ impl PercentageArcImage<3, 1, f32, SVec<f32, 2>, 2, 1, 1> for ArcImage2F32 {
         })
     }
 
-    fn into_dyn_image_view(image: &Self) -> DynPercentageArcImage {
-        DynPercentageArcImage::GrayscaleAlphaF32(image.clone())
+    fn into_dyn_image_view(image: &Self) -> DynIntensityArcImage {
+        DynIntensityArcImage::GrayscaleAlphaF32(image.clone())
     }
 
-    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynPercentageArcImageU> {
+    fn try_into_dyn_image_view_u(_image: &Self) -> Option<DynIntensityArcImageU> {
         None
     }
 
@@ -1144,7 +1193,7 @@ impl PercentageArcImage<3, 1, f32, SVec<f32, 2>, 2, 1, 1> for ArcImage2F32 {
     }
 }
 
-impl PercentageArcImage<3, 1, f32, SVec<f32, 3>, 3, 1, 1> for ArcImage3F32 {
+impl IntensityArcImage<3, 1, f32, SVec<f32, 3>, 3, 1, 1> for ArcImage3F32 {
     type Pixel<S: IsTensorScalar> = SVec<S, 3>;
 
     fn pixel_to_grayscale(pixel: &SVec<f32, 3>) -> f32 {
@@ -1157,11 +1206,11 @@ impl PercentageArcImage<3, 1, f32, SVec<f32, 3>, 3, 1, 1> for ArcImage3F32 {
         })
     }
 
-    fn into_dyn_image_view(image: &Self) -> DynPercentageArcImage {
-        DynPercentageArcImage::RgbF32(image.clone())
+    fn into_dyn_image_view(image: &Self) -> DynIntensityArcImage {
+        DynIntensityArcImage::RgbF32(image.clone())
     }
 
-    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynPercentageArcImageU> {
+    fn try_into_dyn_image_view_u(_image: &Self) -> Option<DynIntensityArcImageU> {
         None
     }
 
@@ -1207,7 +1256,7 @@ impl PercentageArcImage<3, 1, f32, SVec<f32, 3>, 3, 1, 1> for ArcImage3F32 {
     }
 }
 
-impl PercentageArcImage<3, 1, f32, SVec<f32, 4>, 4, 1, 1> for ArcImage4F32 {
+impl IntensityArcImage<3, 1, f32, SVec<f32, 4>, 4, 1, 1> for ArcImage4F32 {
     type Pixel<S: IsTensorScalar> = SVec<S, 4>;
 
     fn pixel_to_grayscale(pixel: &SVec<f32, 4>) -> f32 {
@@ -1220,11 +1269,11 @@ impl PercentageArcImage<3, 1, f32, SVec<f32, 4>, 4, 1, 1> for ArcImage4F32 {
         })
     }
 
-    fn into_dyn_image_view(image: &Self) -> DynPercentageArcImage {
-        DynPercentageArcImage::RgbaF32(image.clone())
+    fn into_dyn_image_view(image: &Self) -> DynIntensityArcImage {
+        DynIntensityArcImage::RgbaF32(image.clone())
     }
 
-    fn try_into_dyn_image_view_u(image: &Self) -> Option<DynPercentageArcImageU> {
+    fn try_into_dyn_image_view_u(_image: &Self) -> Option<DynIntensityArcImageU> {
         None
     }
 
@@ -1272,16 +1321,21 @@ impl PercentageArcImage<3, 1, f32, SVec<f32, 4>, 4, 1, 1> for ArcImage4F32 {
     }
 }
 
-pub trait PercentageViewImageU<'a> {
+/// Intensity image view of unsigned integer values.
+pub trait IntensityViewImageU<'a> {
+    /// Color type of the image
     const COLOR_TYPE: png::ColorType;
+    /// Bit depth of the image
     const BIT_DEPTH: png::BitDepth;
 
+    /// Size of the image
     fn size(&'a self) -> ImageSize;
 
-    fn u8_slice(&self) -> &[u8];
+    /// raw u8 slice of the image
+    fn raw_u8_slice(&self) -> &[u8];
 }
 
-impl<'a> PercentageViewImageU<'a> for ImageViewU8<'a> {
+impl<'a> IntensityViewImageU<'a> for ImageViewU8<'a> {
     const COLOR_TYPE: png::ColorType = png::ColorType::Grayscale;
     const BIT_DEPTH: png::BitDepth = png::BitDepth::Eight;
 
@@ -1289,12 +1343,12 @@ impl<'a> PercentageViewImageU<'a> for ImageViewU8<'a> {
         self.image_size()
     }
 
-    fn u8_slice(&self) -> &[u8] {
+    fn raw_u8_slice(&self) -> &[u8] {
         self.as_scalar_slice()
     }
 }
 
-impl<'a> PercentageViewImageU<'a> for ImageView2U8<'a> {
+impl<'a> IntensityViewImageU<'a> for ImageView2U8<'a> {
     const COLOR_TYPE: png::ColorType = png::ColorType::GrayscaleAlpha;
     const BIT_DEPTH: png::BitDepth = png::BitDepth::Eight;
 
@@ -1302,12 +1356,12 @@ impl<'a> PercentageViewImageU<'a> for ImageView2U8<'a> {
         self.image_size()
     }
 
-    fn u8_slice(&self) -> &[u8] {
+    fn raw_u8_slice(&self) -> &[u8] {
         self.as_scalar_slice()
     }
 }
 
-impl<'a> PercentageViewImageU<'a> for ImageView3U8<'a> {
+impl<'a> IntensityViewImageU<'a> for ImageView3U8<'a> {
     const COLOR_TYPE: png::ColorType = png::ColorType::Rgb;
     const BIT_DEPTH: png::BitDepth = png::BitDepth::Eight;
 
@@ -1315,12 +1369,12 @@ impl<'a> PercentageViewImageU<'a> for ImageView3U8<'a> {
         self.image_size()
     }
 
-    fn u8_slice(&self) -> &[u8] {
+    fn raw_u8_slice(&self) -> &[u8] {
         self.as_scalar_slice()
     }
 }
 
-impl<'a> PercentageViewImageU<'a> for ImageView4U8<'a> {
+impl<'a> IntensityViewImageU<'a> for ImageView4U8<'a> {
     const COLOR_TYPE: png::ColorType = png::ColorType::Rgba;
     const BIT_DEPTH: png::BitDepth = png::BitDepth::Eight;
 
@@ -1328,12 +1382,12 @@ impl<'a> PercentageViewImageU<'a> for ImageView4U8<'a> {
         self.image_size()
     }
 
-    fn u8_slice(&self) -> &[u8] {
+    fn raw_u8_slice(&self) -> &[u8] {
         self.as_scalar_slice()
     }
 }
 
-impl<'a> PercentageViewImageU<'a> for ImageViewU16<'a> {
+impl<'a> IntensityViewImageU<'a> for ImageViewU16<'a> {
     const COLOR_TYPE: png::ColorType = png::ColorType::Grayscale;
     const BIT_DEPTH: png::BitDepth = png::BitDepth::Sixteen;
 
@@ -1341,12 +1395,12 @@ impl<'a> PercentageViewImageU<'a> for ImageViewU16<'a> {
         self.image_size()
     }
 
-    fn u8_slice(&self) -> &[u8] {
+    fn raw_u8_slice(&self) -> &[u8] {
         bytemuck::cast_slice(self.as_scalar_slice())
     }
 }
 
-impl<'a> PercentageViewImageU<'a> for ImageView2U16<'a> {
+impl<'a> IntensityViewImageU<'a> for ImageView2U16<'a> {
     const COLOR_TYPE: png::ColorType = png::ColorType::GrayscaleAlpha;
     const BIT_DEPTH: png::BitDepth = png::BitDepth::Sixteen;
 
@@ -1354,12 +1408,12 @@ impl<'a> PercentageViewImageU<'a> for ImageView2U16<'a> {
         self.image_size()
     }
 
-    fn u8_slice(&self) -> &[u8] {
+    fn raw_u8_slice(&self) -> &[u8] {
         bytemuck::cast_slice(self.as_scalar_slice())
     }
 }
 
-impl<'a> PercentageViewImageU<'a> for ImageView3U16<'a> {
+impl<'a> IntensityViewImageU<'a> for ImageView3U16<'a> {
     const COLOR_TYPE: png::ColorType = png::ColorType::Rgb;
     const BIT_DEPTH: png::BitDepth = png::BitDepth::Sixteen;
 
@@ -1367,12 +1421,12 @@ impl<'a> PercentageViewImageU<'a> for ImageView3U16<'a> {
         self.image_size()
     }
 
-    fn u8_slice(&self) -> &[u8] {
+    fn raw_u8_slice(&self) -> &[u8] {
         bytemuck::cast_slice(self.as_scalar_slice())
     }
 }
 
-impl<'a> PercentageViewImageU<'a> for ImageView4U16<'a> {
+impl<'a> IntensityViewImageU<'a> for ImageView4U16<'a> {
     const COLOR_TYPE: png::ColorType = png::ColorType::Rgba;
     const BIT_DEPTH: png::BitDepth = png::BitDepth::Sixteen;
 
@@ -1380,7 +1434,7 @@ impl<'a> PercentageViewImageU<'a> for ImageView4U16<'a> {
         self.image_size()
     }
 
-    fn u8_slice(&self) -> &[u8] {
+    fn raw_u8_slice(&self) -> &[u8] {
         bytemuck::cast_slice(self.as_scalar_slice())
     }
 }

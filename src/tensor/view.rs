@@ -9,191 +9,226 @@ use super::mut_tensor::MutTensor;
 use concat_arrays::concat_arrays;
 use std::marker::PhantomData;
 
-/// See MutTensor
+/// Tensor view
+///
+/// There are two ways of describing the tensor (TensorView as well as its siblings ArcTensor,
+/// MutTensor and MutTensorView):
+///
+///  1. A dynamic tensor of static tensors:
+///    * The dynamic tensor is of rank DRANK
+///      - ``self.dims()`` is used to access its dynamic dimensions of type
+///        ``[usize: DRANK]``.
+///      - an individual element (= static tensor) can be accessed with
+///        ``self.get(idx)``, where idx is f type ``[usize: DRANK]``.
+///      - Each element is of type ``STensor``.
+///    * Each static tensor is of SRANK. In particular we have.
+///      - rank 0: scalars of type ``Scalar`` (such as ``f64`` or ``u8``).
+///      - rank 1:
+///         * A batch scalar of type ``BatchScalar<Scalar, BATCH>`` with static
+///           batch size of BATCH_SIZE.
+///         * A column vector ``SVec<Scalar, ROWS>`` aka ``nalgebra::SVector<Scalar, ROWS>`` with
+///           number of ROWS.
+///      - rank 2:
+///         * A batch vector of type ``BatchVector<Scalar, BATCH_SIZE>`` with static
+///           shape (ROWS x BATCH_SIZE).
+///         * A matrix ``SMat<Scalar, ROWS, COLS>`` aka ``nalgebra::SMatrix<Scalar, ROWS, COLS>``
+///           with static shape (ROWS x COLS).
+///       - rank 3:
+///         * A batch matrix of type ``BatchMatrix<Scalar, ROWS, COLS, BATCH>`` with static
+///           shape (BATCH_SIZE x ROWS .x COLS).
+///  2. A scalar tensor of TOTAL_RANK = DRANK + SRANK.
+///    *  ``self.scalar_dims()`` is used to access its dimensions of type
+///        ``[usize: TOTAL_RANK]`` at runtime.
+///    *  - an individual element (= static tensor) can be accessed with
+///        ``self.scalar_get(idx)``, where idx is of type ``[usize: DRANK]``.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TensorView<
     'a,
-    const HYPER_SHAPE: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCHES> + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCH_SIZE> + 'static,
     const ROWS: usize,
     const COLS: usize,
-    const BATCHES: usize,
+    const BATCH_SIZE: usize,
 > where
     ndarray::Dim<[ndarray::Ix; DRANK]>: ndarray::Dimension,
-    ndarray::Dim<[ndarray::Ix; HYPER_SHAPE]>: ndarray::Dimension,
+    ndarray::Dim<[ndarray::Ix; TOTAL_RANK]>: ndarray::Dimension,
 {
+    /// Element view - an ndarray of static tensors with shape [D0, D1, ...]
     pub elem_view: ndarray::ArrayView<'a, STensor, ndarray::Dim<[ndarray::Ix; DRANK]>>,
-    pub scalar_view: ndarray::ArrayView<'a, Scalar, ndarray::Dim<[ndarray::Ix; HYPER_SHAPE]>>,
+    /// Scalar view - an ndarray of scalars with shape [D0, D1, ..., S0, S1, ...]
+    pub scalar_view: ndarray::ArrayView<'a, Scalar, ndarray::Dim<[ndarray::Ix; TOTAL_RANK]>>,
 }
 
+/// Tensor view of scalars
 pub type TensorViewX<'a, const DRANK: usize, Scalar> =
     TensorView<'a, DRANK, DRANK, 0, Scalar, Scalar, 1, 1, 1>;
 
+/// Tensor view of batched scalars
 pub type TensorViewXB<
     'a,
-    const HYPER_SHAPE: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar,
     const B: usize,
-> = TensorView<'a, HYPER_SHAPE, DRANK, SRANK, Scalar, BatchScalar<Scalar, B>, 1, 1, B>;
+> = TensorView<'a, TOTAL_RANK, DRANK, SRANK, Scalar, BatchScalar<Scalar, B>, 1, 1, B>;
 
+/// Tensor view of vectors with shape R
 pub type TensorViewXR<
     'a,
-    const HYPER_SHAPE: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar,
     const R: usize,
-> = TensorView<'a, HYPER_SHAPE, DRANK, SRANK, Scalar, SVec<Scalar, R>, R, 1, 1>;
+> = TensorView<'a, TOTAL_RANK, DRANK, SRANK, Scalar, SVec<Scalar, R>, R, 1, 1>;
 
+/// Tensor view of batched vectors with shape [R x B]
 pub type TensorViewXRB<
     'a,
-    const HYPER_SHAPE: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar,
     const R: usize,
     const B: usize,
-> = TensorView<'a, HYPER_SHAPE, DRANK, SRANK, Scalar, BatchVec<Scalar, R, B>, R, 1, B>;
+> = TensorView<'a, TOTAL_RANK, DRANK, SRANK, Scalar, BatchVec<Scalar, R, B>, R, 1, B>;
 
+/// Tensor view of matrices with shape [R x C]
 pub type TensorViewXRC<
     'a,
-    const HYPER_SHAPE: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar,
     const R: usize,
     const C: usize,
-> = TensorView<'a, HYPER_SHAPE, DRANK, SRANK, Scalar, SMat<Scalar, R, C>, R, C, 1>;
+> = TensorView<'a, TOTAL_RANK, DRANK, SRANK, Scalar, SMat<Scalar, R, C>, R, C, 1>;
 
+/// Tensor view of batched matrices with shape [R x C x B]
 pub type TensorViewXRCB<
     'a,
-    const HYPER_SHAPE: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar,
     const R: usize,
     const C: usize,
     const B: usize,
-> = TensorView<'a, HYPER_SHAPE, DRANK, SRANK, Scalar, BatchMat<Scalar, R, C, B>, R, C, B>;
+> = TensorView<'a, TOTAL_RANK, DRANK, SRANK, Scalar, BatchMat<Scalar, R, C, B>, R, C, B>;
 
-// rank 1 - D0
+/// rank-1 tensor view of scalars with shape D0
 pub type TensorViewD<'a, Scalar> = TensorViewX<'a, 1, Scalar>;
 
-// rank 2
-// D0 x D1
+/// rank-2 tensor view of scalars with shape [D0 x D1]
 pub type TensorViewDD<'a, Scalar> = TensorViewX<'a, 2, Scalar>;
 
-// rank 2
-// D0 x [B]
+/// rank-2 tensor view of batched scalars with shape [D0 x B]
 pub type TensorViewDB<'a, Scalar, const B: usize> = TensorViewXB<'a, 2, 1, 1, Scalar, B>;
 
-// rank 2
-// D0 x [R]
+/// rank-2 tensor view of vectors with shape [D0 x R]
 pub type TensorViewDR<'a, Scalar, const R: usize> = TensorViewXR<'a, 2, 1, 1, Scalar, R>;
 
-// rank 3
-// D0 x D1 x D2
-pub type TensorViewRRR<'a, Scalar> = TensorViewX<'a, 3, Scalar>;
+/// rank-3 tensor view of scalars with shape [D0 x R x B]
+pub type TensorViewDDD<'a, Scalar> = TensorViewX<'a, 3, Scalar>;
 
-// rank 3
-// D0 x D1 x [B]
+/// rank-3 tensor view of batched scalars with shape [D0 x D1 x B]
 pub type TensorViewDDB<'a, Scalar, const B: usize> = TensorViewXB<'a, 3, 2, 1, Scalar, B>;
 
-// rank 3
-// D0 x D1 x [R]
+/// rank-3 tensor view of vectors with shape [D0 x D1 x R]
 pub type TensorViewDDR<'a, Scalar, const R: usize> = TensorViewXR<'a, 3, 2, 1, Scalar, R>;
 
-// rank 3
-// D0 x [R x B]
+/// rank-3 tensor view of batched vectors with shape [D0 x R x B]
 pub type TensorViewDRB<'a, Scalar, const R: usize, const B: usize> =
     TensorViewXRB<'a, 3, 1, 2, Scalar, R, B>;
 
-// rank 3
-// D0 x [R x C]
+/// rank-3 tensor view of matrices with shape [D0 x R x C]
 pub type TensorViewDRC<'a, Scalar, const R: usize, const C: usize> =
     TensorViewXRC<'a, 3, 1, 2, Scalar, R, C>;
 
-// rank 4
-// srank 0, drank 4
+/// rank-4 tensor view of scalars with shape [D0 x D1 x D2 x D3]
 pub type TensorViewDDDD<'a, Scalar> = TensorViewX<'a, 4, Scalar>;
 
-// rank 4
-// D0 x D1 x D2 x [B]
+/// rank-4 tensor view of batched scalars with shape [D0 x D1 x D2 x B]
 pub type TensorViewDDDB<'a, Scalar, const B: usize> = TensorViewXB<'a, 4, 3, 1, Scalar, B>;
 
-// rank 4
-// D0 x D1 x D2 x [R]
+/// rank-4 tensor view of vectors with shape [D0 x D1 x D2 x R]
 pub type TensorViewDDDR<'a, Scalar, const R: usize> = TensorViewXR<'a, 4, 3, 1, Scalar, R>;
 
-// rank 4
-// D0 x D1 x [R x B]
+/// rank-4 tensor view of batched vectors with shape [D0 x D1 x R x B]
 pub type TensorViewDDRB<'a, Scalar, const R: usize, const B: usize> =
     TensorViewXRB<'a, 4, 2, 2, Scalar, R, B>;
 
-// rank 4
-// D0 x D1 x [R x C]
+/// rank-4 tensor view of matrices with shape [D0 x R x C x B]
 pub type TensorViewDDRC<'a, Scalar, const R: usize, const C: usize> =
     TensorViewXRC<'a, 4, 2, 2, Scalar, R, C>;
 
-// rank 4
-// D0 x [R x C x B]
+/// rank-4 tensor view of batched matrices with shape [D0 x R x C x B]
 pub type TensorViewDRCB<'a, Scalar, const R: usize, const C: usize, const B: usize> =
     TensorViewXRCB<'a, 4, 1, 3, Scalar, R, C, B>;
 
+/// Is a tensor-like object
 pub trait IsTensorLike<
     'a,
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCHES> + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCH_SIZE> + 'static,
     const ROWS: usize,
     const COLS: usize,
-    const BATCHES: usize,
+    const BATCH_SIZE: usize,
 > where
     ndarray::Dim<[ndarray::Ix; DRANK]>: ndarray::Dimension,
-    ndarray::Dim<[ndarray::Ix; SCALAR_RANK]>: ndarray::Dimension,
+    ndarray::Dim<[ndarray::Ix; TOTAL_RANK]>: ndarray::Dimension,
 {
+    /// Element view - that is a tensor view of static tensors
     fn elem_view<'b: 'a>(
         &'b self,
     ) -> ndarray::ArrayView<'a, STensor, ndarray::Dim<[ndarray::Ix; DRANK]>>;
 
+    /// Get the element at index idx
     fn get(&self, idx: [usize; DRANK]) -> STensor;
 
+    /// Get the dimensions of the tensor [D0, D1, ...]
     fn dims(&self) -> [usize; DRANK];
 
+    /// Scalar view - that is a tensor view of scalars
     fn scalar_view<'b: 'a>(
         &'b self,
-    ) -> ndarray::ArrayView<'a, Scalar, ndarray::Dim<[ndarray::Ix; SCALAR_RANK]>>;
+    ) -> ndarray::ArrayView<'a, Scalar, ndarray::Dim<[ndarray::Ix; TOTAL_RANK]>>;
 
-    fn scalar_get(&'a self, idx: [usize; SCALAR_RANK]) -> Scalar;
+    /// Get the scalar at index idx
+    fn scalar_get(&'a self, idx: [usize; TOTAL_RANK]) -> Scalar;
 
-    fn scalar_dims(&self) -> [usize; SCALAR_RANK];
+    /// Get the dimensions of the scalar view [D0, D1, ..., S0, S1, ...]
+    fn scalar_dims(&self) -> [usize; TOTAL_RANK];
 
-    fn to_mut_image(
+    /// Convert to a mutable tensor - this will copy the tensor
+    fn to_mut_tensor(
         &self,
-    ) -> MutTensor<SCALAR_RANK, DRANK, SRANK, Scalar, STensor, ROWS, COLS, BATCHES>;
+    ) -> MutTensor<TOTAL_RANK, DRANK, SRANK, Scalar, STensor, ROWS, COLS, BATCH_SIZE>;
 }
 
+/// Is a tensor view like object
 pub trait IsTensorView<
     'a,
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCHES> + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCH_SIZE> + 'static,
     const ROWS: usize,
     const COLS: usize,
-    const BATCHES: usize,
->: IsTensorLike<'a, SCALAR_RANK, DRANK, SRANK, Scalar, STensor, ROWS, COLS, BATCHES> where
+    const BATCH_SIZE: usize,
+>: IsTensorLike<'a, TOTAL_RANK, DRANK, SRANK, Scalar, STensor, ROWS, COLS, BATCH_SIZE> where
     ndarray::Dim<[ndarray::Ix; DRANK]>: ndarray::Dimension,
-    ndarray::Dim<[ndarray::Ix; SCALAR_RANK]>: ndarray::Dimension,
+    ndarray::Dim<[ndarray::Ix; TOTAL_RANK]>: ndarray::Dimension,
 {
+    /// return tensor view
     fn view<'b: 'a>(&'b self) -> Self;
 }
 
@@ -202,12 +237,13 @@ macro_rules! tensor_view_is_view {
         impl<
                 'a,
                 Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES>,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCH_SIZE>,
                 const ROWS: usize,
                 const COLS: usize,
-                const BATCHES: usize,
-            > TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+                const BATCH_SIZE: usize,
+            > TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
         {
+            /// Create a new tensor view from an ndarray of static tensors
             pub fn new(
                 elem_view: ndarray::ArrayView<'a, STensor, ndarray::Dim<[ndarray::Ix; $drank]>>,
             ) -> Self {
@@ -227,7 +263,7 @@ macro_rules! tensor_view_is_view {
 
                 assert_eq!(
                     std::mem::size_of::<STensor>(),
-                    std::mem::size_of::<Scalar>() * ROWS * COLS * BATCHES
+                    std::mem::size_of::<Scalar>() * ROWS * COLS * BATCH_SIZE
                 );
                 let scalar_view =
                     unsafe { ndarray::ArrayView::from_shape_ptr(shape.strides(strides), ptr) };
@@ -238,6 +274,7 @@ macro_rules! tensor_view_is_view {
                 }
             }
 
+            /// Create a new tensor view from a slice of static tensors
             pub fn from_shape_and_slice(shape: [usize; $drank], slice: &'a [STensor]) -> Self {
                 let elem_view = ndarray::ArrayView::from_shape(shape, slice).unwrap();
                 Self::new(elem_view)
@@ -247,12 +284,12 @@ macro_rules! tensor_view_is_view {
         impl<
                 'a,
                 Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCH_SIZE> + 'static,
                 const ROWS: usize,
                 const COLS: usize,
-                const BATCHES: usize,
-            > IsTensorLike<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
-            for TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+                const BATCH_SIZE: usize,
+            > IsTensorLike<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
+            for TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
         {
             fn elem_view<'b: 'a>(
                 &'b self,
@@ -282,9 +319,9 @@ macro_rules! tensor_view_is_view {
                 self.scalar_view.shape().try_into().unwrap()
             }
 
-            fn to_mut_image(
+            fn to_mut_tensor(
                 &self,
-            ) -> MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES> {
+            ) -> MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE> {
                 MutTensor {
                     mut_array: self.elem_view.to_owned(),
                     phantom: PhantomData::default(),
@@ -295,16 +332,16 @@ macro_rules! tensor_view_is_view {
         impl<
                 'a,
                 Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCH_SIZE> + 'static,
                 const ROWS: usize,
                 const COLS: usize,
-                const BATCHES: usize,
-            > IsTensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
-            for TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+                const BATCH_SIZE: usize,
+            > IsTensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
+            for TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
         {
             fn view<'b: 'a>(
                 &'b self,
-            ) -> TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+            ) -> TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
             {
                 *self
             }
@@ -313,11 +350,11 @@ macro_rules! tensor_view_is_view {
         impl<
                 'a,
                 Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCHES> + 'static,
-                const BATCHES: usize,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCH_SIZE> + 'static,
+                const BATCH_SIZE: usize,
                 const ROWS: usize,
                 const COLS: usize,
-            > TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+            > TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
         {
         }
     };
@@ -340,7 +377,6 @@ mod tests {
     #[test]
     fn view() {
         use super::*;
-        use crate::tensor::element::P1U8;
         use ndarray::ShapeBuilder;
         {
             let rank1_shape = [3];
@@ -405,7 +441,7 @@ mod tests {
                 27, 28,
             ];
 
-            let arr = raw_arr.map(P1U8::new);
+            let arr = raw_arr.map(SVec::<u8, 1>::new);
 
             let strides = [6, 3, 1];
             let ndview =

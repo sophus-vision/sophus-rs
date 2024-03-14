@@ -9,6 +9,9 @@ use crate::calculus::types::VecF64;
 use super::traits::IsCameraDistortionImpl;
 use crate::calculus::types::matrix::IsMatrix;
 
+/// Affine "distortion" implementation
+///
+/// This is not a distortion in the traditional sense, but rather a simple affine transformation
 #[derive(Debug, Clone, Copy)]
 pub struct AffineDistortionImpl<S: IsScalar> {
     phantom: PhantomData<S>,

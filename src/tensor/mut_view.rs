@@ -8,49 +8,56 @@ use super::element::IsStaticTensor;
 use super::element::IsTensorScalar;
 use std::marker::PhantomData;
 
-/// See MutTensor
+/// Mutable tensor view
+///
+/// See TensorView for more details of the tensor structure
 #[derive(Debug, PartialEq, Eq)]
 pub struct MutTensorView<
     'a,
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCHES> + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCH_SIZE> + 'static,
     const ROWS: usize,
     const COLS: usize,
-    const BATCHES: usize,
+    const BATCH_SIZE: usize,
 > where
     ndarray::Dim<[ndarray::Ix; DRANK]>: ndarray::Dimension,
-    ndarray::Dim<[ndarray::Ix; SCALAR_RANK]>: ndarray::Dimension,
+    ndarray::Dim<[ndarray::Ix; TOTAL_RANK]>: ndarray::Dimension,
 {
+    /// mutable ndarray view of the static tensors with shape [D1, D2, ...]
     pub elem_view_mut: ndarray::ArrayViewMut<'a, STensor, ndarray::Dim<[ndarray::Ix; DRANK]>>,
-    pub scalar_view_mut:
-        ndarray::ArrayViewMut<'a, Scalar, ndarray::Dim<[ndarray::Ix; SCALAR_RANK]>>,
+    /// mutable ndarray view of the scalars with shape [D1, D2, ..., S0, S1, ...]
+    pub scalar_view_mut: ndarray::ArrayViewMut<'a, Scalar, ndarray::Dim<[ndarray::Ix; TOTAL_RANK]>>,
 }
 
+/// A mutable tensor like object
 pub trait IsMutTensorLike<
     'a,
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCHES> + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCH_SIZE> + 'static,
     const ROWS: usize,
     const COLS: usize,
-    const BATCHES: usize,
->: IsTensorLike<'a, SCALAR_RANK, DRANK, SRANK, Scalar, STensor, ROWS, COLS, BATCHES> where
+    const BATCH_SIZE: usize,
+>: IsTensorLike<'a, TOTAL_RANK, DRANK, SRANK, Scalar, STensor, ROWS, COLS, BATCH_SIZE> where
     ndarray::Dim<[ndarray::Ix; DRANK]>: ndarray::Dimension,
-    ndarray::Dim<[ndarray::Ix; SCALAR_RANK]>: ndarray::Dimension,
+    ndarray::Dim<[ndarray::Ix; TOTAL_RANK]>: ndarray::Dimension,
 {
+    /// mutable ndarray view of the static tensors with shape [D1, D2, ...]
     fn elem_view_mut<'b: 'a>(
         &'b mut self,
     ) -> ndarray::ArrayViewMut<'a, STensor, ndarray::Dim<[ndarray::Ix; DRANK]>>;
 
+    /// mutable ndarray view of the scalars with shape [D1, D2, ..., S0, S1, ...]
     fn scalar_view_mut<'b: 'a>(
         &'b mut self,
-    ) -> ndarray::ArrayViewMut<'a, Scalar, ndarray::Dim<[ndarray::Ix; SCALAR_RANK]>>;
+    ) -> ndarray::ArrayViewMut<'a, Scalar, ndarray::Dim<[ndarray::Ix; TOTAL_RANK]>>;
 
+    /// mutable reference to the static tensor at index idx
     fn get_mut(&'a mut self, idx: [usize; DRANK]) -> &mut STensor;
 }
 
@@ -60,16 +67,17 @@ macro_rules! mut_view_is_view {
         impl<
                 'a,
                 Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
+                STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCH_SIZE> + 'static,
                 const ROWS: usize,
                 const COLS: usize,
-                const BATCHES: usize,
-            > MutTensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+                const BATCH_SIZE: usize,
+            > MutTensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
         {
 
+            /// Returns a tensor view
             pub fn view(
                 & self,
-            ) -> TensorView<'_, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+            ) -> TensorView<'_, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
             {
                let v =  TensorView {
                     elem_view: self.elem_view_mut.view(),
@@ -78,6 +86,7 @@ macro_rules! mut_view_is_view {
                 v
             }
 
+            /// new mutable tensor view from a mutable ndarray of static tensors
             pub fn new(
                 elem_view_mut: ndarray::ArrayViewMut<
                     'a,
@@ -99,7 +108,7 @@ macro_rules! mut_view_is_view {
                 let ptr = elem_view_mut.as_ptr() as *mut Scalar;
                 use ndarray::ShapeBuilder;
                 assert_eq!(std::mem::size_of::<STensor>(),
-                    std::mem::size_of::<Scalar>() * ROWS * COLS* BATCHES
+                    std::mem::size_of::<Scalar>() * ROWS * COLS* BATCH_SIZE
                 );
 
                 let scalar_view_mut =
@@ -111,12 +120,12 @@ macro_rules! mut_view_is_view {
                 }
             }
 
-
-
-            pub fn scalar_get_mut(&'a mut self, idx: [usize; $scalar_rank]) -> &mut Scalar{
+            /// get mutable reference to scalar at index idx
+            pub fn mut_scalar(&'a mut self, idx: [usize; $scalar_rank]) -> &mut Scalar{
                 &mut self.scalar_view_mut[idx]
             }
 
+            /// fills self using a unary operator applied to the elements of another tensor
             pub fn map<
                 'b,
                 const OTHER_HRANK: usize,
@@ -161,11 +170,11 @@ macro_rules! mut_view_is_view {
         impl<
         'a,
                 Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
+                STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCH_SIZE> + 'static,
                 const ROWS: usize,
                 const COLS: usize,
-                const BATCHES: usize,
-            > IsTensorLike<'a, $scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
+                const BATCH_SIZE: usize,
+            > IsTensorLike<'a, $scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCH_SIZE>
             for MutTensorView<
                 'a,
                 $scalar_rank,
@@ -175,7 +184,7 @@ macro_rules! mut_view_is_view {
                 STensor,
                 ROWS,
                 COLS,
-                BATCHES>
+                BATCH_SIZE>
         {
             fn elem_view<'b:'a>(
                 &'b self,
@@ -205,9 +214,9 @@ macro_rules! mut_view_is_view {
                 self.view().scalar_dims()
             }
 
-            fn to_mut_image(
+            fn to_mut_tensor(
                 &self,
-            ) -> MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES> {
+            ) -> MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCH_SIZE> {
                 MutTensor {
                     mut_array: self.view().elem_view.to_owned(),
                     phantom: PhantomData::default(),
@@ -218,10 +227,10 @@ macro_rules! mut_view_is_view {
         impl<
         'a,
                 Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
+                STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCH_SIZE> + 'static,
                 const ROWS: usize,
                 const COLS: usize,
-                const BATCHES: usize,
+                const BATCH_SIZE: usize,
             >
             IsMutTensorLike<'a,
                 $scalar_rank,
@@ -229,7 +238,7 @@ macro_rules! mut_view_is_view {
                 Scalar, STensor,
                 ROWS,
                 COLS,
-                BATCHES
+                BATCH_SIZE
             >
             for MutTensorView<'a,
                 $scalar_rank,
@@ -238,7 +247,7 @@ macro_rules! mut_view_is_view {
                 Scalar,
                 STensor,
                 ROWS, COLS,
-                BATCHES
+                BATCH_SIZE
             >
         {
             fn elem_view_mut<'b:'a>(

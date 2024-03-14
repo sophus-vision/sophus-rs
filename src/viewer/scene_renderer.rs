@@ -18,7 +18,7 @@ use super::DepthRenderer;
 use super::ViewerRenderState;
 use crate::calculus::region::IsRegion;
 use crate::image::arc_image::ArcImageF32;
-use crate::image::view::IsImageView;
+use crate::image::image_view::IsImageView;
 use crate::sensor::perspective_camera::KannalaBrandtCamera;
 use crate::tensor::view::IsTensorLike;
 
