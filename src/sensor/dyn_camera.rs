@@ -1,62 +1,76 @@
+use crate::image::image_view::ImageSize;
 use crate::image::mut_image::MutImage2F32;
-use crate::image::view::ImageSize;
 
 type V<const N: usize> = nalgebra::SVector<f64, N>;
 type M<const N: usize, const O: usize> = nalgebra::SMatrix<f64, N, O>;
-use super::any_camera::AnyProjCameraType;
-use super::perspective_camera::PerspectiveCameraType;
-use super::traits::DistortTable;
+use super::distortion_table::DistortTable;
+use super::general_camera::GeneralCameraEnum;
+use super::perspective_camera::PerspectiveCameraEnum;
 use super::traits::IsCameraEnum;
 
+/// Dynamic camera facade
 #[derive(Debug, Clone)]
 pub struct DynCameraFacade<CameraType: IsCameraEnum> {
     camera_type: CameraType,
 }
 
-pub type DynAnyProjCamera = DynCameraFacade<AnyProjCameraType>;
-pub type DynCamera = DynCameraFacade<PerspectiveCameraType>;
+/// Dynamic generalized camera (perspective or orthographic)
+pub type DynGeneralCamera = DynCameraFacade<GeneralCameraEnum>;
+/// Dynamic perspective camera
+pub type DynCamera = DynCameraFacade<PerspectiveCameraEnum>;
 
 impl<CameraType: IsCameraEnum> DynCameraFacade<CameraType> {
+    /// Create a new dynamic camera facade from a camera model
     pub fn from_model(camera_type: CameraType) -> Self {
         Self { camera_type }
     }
 
+    /// Create a pinhole camera instance
     pub fn new_pinhole(params: &V<4>, image_size: ImageSize) -> Self {
         Self::from_model(CameraType::new_pinhole(params, image_size))
     }
 
+    /// Create a Kannala-Brandt camera instance
     pub fn new_kannala_brandt(params: &V<8>, image_size: ImageSize) -> Self {
         Self::from_model(CameraType::new_kannala_brandt(params, image_size))
     }
 
+    /// Projects a 3D point in the camera frame to a pixel in the image
     pub fn cam_proj(&self, point_in_camera: &V<3>) -> V<2> {
         self.camera_type.cam_proj(point_in_camera)
     }
 
-    pub fn cam_unproj(&self, point_in_camera: &V<2>) -> V<3> {
-        self.cam_unproj_with_z(point_in_camera, 1.0)
+    /// Unprojects a pixel in the image to a 3D point in the camera frame - assuming z=1
+    pub fn cam_unproj(&self, pixel: &V<2>) -> V<3> {
+        self.cam_unproj_with_z(pixel, 1.0)
     }
 
-    pub fn cam_unproj_with_z(&self, point_in_camera: &V<2>, z: f64) -> V<3> {
-        self.camera_type.cam_unproj_with_z(point_in_camera, z)
+    /// Unprojects a pixel in the image to a 3D point in the camera frame
+    pub fn cam_unproj_with_z(&self, pixel: &V<2>, z: f64) -> V<3> {
+        self.camera_type.cam_unproj_with_z(pixel, z)
     }
 
-    pub fn distort(&self, point_in_camera: &V<2>) -> V<2> {
-        self.camera_type.distort(point_in_camera)
+    /// Distortion - maps a point in the camera z=1 plane to a distorted point
+    pub fn distort(&self, proj_point_in_camera_z1_plane: &V<2>) -> V<2> {
+        self.camera_type.distort(proj_point_in_camera_z1_plane)
     }
 
-    pub fn undistort(&self, point_in_camera: &V<2>) -> V<2> {
-        self.camera_type.undistort(point_in_camera)
+    /// Undistortion - maps a distorted pixel to a point in the camera z=1 plane
+    pub fn undistort(&self, pixel: &V<2>) -> V<2> {
+        self.camera_type.undistort(pixel)
     }
 
+    /// Derivative of the distortion w.r.t. the point in the camera z=1 plane
     pub fn dx_distort_x(&self, point_in_camera: &V<2>) -> M<2, 2> {
         self.camera_type.dx_distort_x(point_in_camera)
     }
 
+    /// Returns undistortion lookup table
     pub fn undistort_table(&self) -> MutImage2F32 {
         self.camera_type.undistort_table()
     }
 
+    /// Returns distortion lookup table
     pub fn distort_table(&self) -> DistortTable {
         self.camera_type.distort_table()
     }
@@ -70,11 +84,11 @@ mod tests {
         use approx::assert_relative_eq;
 
         use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
+        use crate::image::image_view::ImageSize;
+        use crate::image::image_view::IsImageView;
         use crate::image::interpolation::interpolate;
         use crate::image::mut_image::MutImage2F32;
-        use crate::image::view::ImageSize;
-        use crate::image::view::IsImageView;
-        use crate::sensor::traits::DistortTable;
+        use crate::sensor::distortion_table::DistortTable;
 
         use super::DynCamera;
         use super::V;

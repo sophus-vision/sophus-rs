@@ -123,7 +123,8 @@ impl<const ROWS: usize, const COLS: usize> DualM<ROWS, COLS> {
         }
     }
 
-    fn two_dx<const R1: usize, const C1: usize, const R2: usize, const C2: usize>(
+    /// derivatives
+    pub fn two_dx<const R1: usize, const C1: usize, const R2: usize, const C2: usize>(
         mut lhs_dx: Option<MutTensorDDRC<f64, R1, C1>>,
         mut rhs_dx: Option<MutTensorDDRC<f64, R2, C2>>,
     ) -> Option<DijPairM<R1, C1, R2, C2>> {
@@ -154,7 +155,8 @@ impl<const ROWS: usize, const COLS: usize> DualM<ROWS, COLS> {
         })
     }
 
-    fn two_dx_from_vec(
+    /// derivatives
+    pub fn two_dx_from_vec(
         mut lhs_dx: Option<MutTensorDDRC<f64, ROWS, COLS>>,
         mut rhs_dx: Option<MutTensorDDR<f64, COLS>>,
     ) -> Option<DijPairMV<ROWS, COLS>> {
@@ -488,7 +490,8 @@ impl<const ROWS: usize, const COLS: usize> Debug for DualM<ROWS, COLS> {
     }
 }
 
-struct DijPairM<const ROWS: usize, const COLS: usize, const ROWS2: usize, const COLS2: usize> {
+/// Pair of dual matrices
+pub struct DijPairM<const ROWS: usize, const COLS: usize, const ROWS2: usize, const COLS2: usize> {
     lhs: MutTensorDDRC<f64, ROWS, COLS>,
     rhs: MutTensorDDRC<f64, ROWS2, COLS2>,
 }
@@ -501,8 +504,11 @@ impl<const ROWS: usize, const COLS: usize, const ROWS2: usize, const COLS2: usiz
     }
 }
 
-struct DijPairMV<const ROWS: usize, const COLS: usize> {
+/// Pair of dual matrices
+pub struct DijPairMV<const ROWS: usize, const COLS: usize> {
+    /// left hand side
     pub lhs: MutTensorDDRC<f64, ROWS, COLS>,
+    /// right hand side
     pub rhs: MutTensorDDR<f64, COLS>,
 }
 

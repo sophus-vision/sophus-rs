@@ -22,7 +22,7 @@ impl IsVariable for PinholeCamera<f64> {
     const DOF: usize = 4;
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
-        let new_params = self.params().clone() + delta;
+        let new_params = *self.params() + delta;
         self.set_params(&new_params);
     }
 }
@@ -79,7 +79,7 @@ impl IsResidualFn<13, 3, (PinholeCamera<f64>, Isometry3<f64>, VecF64<3>), VecF64
             intrinsics,
             world_from_camera_pose,
             point_in_world,
-            uv_in_image.clone(),
+            *uv_in_image,
         );
 
         // calculate jacobian wrt intrinsics
@@ -88,41 +88,36 @@ impl IsResidualFn<13, 3, (PinholeCamera<f64>, Isometry3<f64>, VecF64<3>), VecF64
                 PinholeCamera::<Dual>::from_params_and_size(&x, intrinsics.image_size()),
                 world_from_camera_pose.to_dual_c(),
                 DualV::c(point_in_world),
-                DualV::c(uv_in_image.clone()),
+                DualV::c(*uv_in_image),
             )
         };
         // calculate jacobian wrt world_from_camera_pose
         let d1_res_fn = |x: DualV<6>| -> DualV<2> {
             res_fn(
                 PinholeCamera::<Dual>::from_params_and_size(
-                    &DualV::c(intrinsics.params().clone()),
+                    &DualV::c(*intrinsics.params()),
                     intrinsics.image_size(),
                 ),
                 Isometry3::<Dual>::exp(&x).group_mul(&world_from_camera_pose.to_dual_c()),
                 DualV::c(point_in_world),
-                DualV::c(uv_in_image.clone()),
+                DualV::c(*uv_in_image),
             )
         };
         // calculate jacobian wrt point_in_world
         let d2_res_fn = |x: DualV<3>| -> DualV<2> {
             res_fn(
                 PinholeCamera::<Dual>::from_params_and_size(
-                    &DualV::c(intrinsics.params().clone()),
+                    &DualV::c(*intrinsics.params()),
                     intrinsics.image_size(),
                 ),
                 world_from_camera_pose.to_dual_c(),
                 x,
-                DualV::c(uv_in_image.clone()),
+                DualV::c(*uv_in_image),
             )
         };
 
         (
-            || {
-                VectorValuedMapFromVector::static_fw_autodiff(
-                    d0_res_fn,
-                    intrinsics.params().clone(),
-                )
-            },
+            || VectorValuedMapFromVector::static_fw_autodiff(d0_res_fn, *intrinsics.params()),
             || VectorValuedMapFromVector::static_fw_autodiff(d1_res_fn, VecF64::<6>::zeros()),
             || VectorValuedMapFromVector::static_fw_autodiff(d2_res_fn, point_in_world),
         )

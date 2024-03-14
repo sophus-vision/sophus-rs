@@ -15,9 +15,12 @@ use crate::opt::variables::VarFamily;
 use crate::opt::variables::VarKind;
 use crate::opt::variables::VarPoolBuilder;
 
-struct SimpleIso2PriorProblem {
-    true_world_from_robot: Isometry2<f64>,
-    est_world_from_robot: Isometry2<f64>,
+/// Simple 2D isometry prior problem
+pub struct SimpleIso2PriorProblem {
+    /// True world from robot isometry
+    pub true_world_from_robot: Isometry2<f64>,
+    /// Estimated world from robot isometry
+    pub est_world_from_robot: Isometry2<f64>,
 }
 
 impl Default for SimpleIso2PriorProblem {
@@ -36,7 +39,8 @@ impl SimpleIso2PriorProblem {
         }
     }
 
-    fn test(&self) {
+    /// Test the simple 2D isometry prior problem
+    pub fn test(&self) {
         let cost_signature = vec![Isometry2PriorTermSignature {
             isometry_prior_mean: self.true_world_from_robot,
             entity_indices: [0],
@@ -80,9 +84,12 @@ impl SimpleIso2PriorProblem {
     }
 }
 
-struct SimpleIso3PriorProblem {
-    true_world_from_robot: Isometry3<f64>,
-    est_world_from_robot: Isometry3<f64>,
+/// Simple 3D isometry prior problem
+pub struct SimpleIso3PriorProblem {
+    /// True world from robot isometry
+    pub true_world_from_robot: Isometry3<f64>,
+    /// Estimated world from robot isometry
+    pub est_world_from_robot: Isometry3<f64>,
 }
 
 impl Default for SimpleIso3PriorProblem {
@@ -92,7 +99,7 @@ impl Default for SimpleIso3PriorProblem {
 }
 
 impl SimpleIso3PriorProblem {
-    pub fn new() -> Self {
+    fn new() -> Self {
         let p = VecF64::<6>::from_c_array([0.2, 0.0, 1.0, 0.2, 0.0, 1.0]);
         let true_world_from_robot = Isometry3::<f64>::exp(&p);
         Self {
@@ -101,6 +108,7 @@ impl SimpleIso3PriorProblem {
         }
     }
 
+    /// Test the simple 3D isometry prior problem
     pub fn test(&self) {
         let cost_signature = vec![Isometry3PriorTermSignature {
             isometry_prior: (self.true_world_from_robot, MatF64::<6, 6>::identity()),

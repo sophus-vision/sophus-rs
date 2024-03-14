@@ -6,7 +6,7 @@ use super::element::{IsScalar, IsStaticTensor};
 
 pub trait HasShape<const RANK: usize> {
     fn dims(&self) -> TensorShape<RANK>;
-    fn num_elements(&self) -> usize{
+    fn num_elements(&self) -> usize {
         self.dims().iter().product()
     }
 }
@@ -117,13 +117,13 @@ pub trait HasTensorLayout<const RANK: usize>: HasShape<RANK> {
 
     fn num_bytes_of_padded_area<
         Scalar: IsScalar + 'static,
-        const BATCHES: usize,
+        const BATCH_SIZE: usize,
         const ROWS: usize,
         const COLS: usize,
     >(
         &self,
     ) -> usize {
-        Self::padded_area(self) * std::mem::size_of::<Scalar>() * BATCHES * ROWS * COLS
+        Self::padded_area(self) * std::mem::size_of::<Scalar>() * BATCH_SIZE * ROWS * COLS
     }
 
     fn layout(&self) -> TensorLayout<RANK>;
@@ -221,7 +221,6 @@ mod tests {
             let rank1_shape = [3];
 
             let rank1_layout = TensorLayout1::rank(rank1_shape);
-           
 
             let arr = [4, 6, 7];
 

@@ -1,7 +1,8 @@
 use crate::tensor::element::SVec;
 
-use super::view::IsImageView;
+use super::image_view::IsImageView;
 
+/// Bilinear interpolated image lookup
 pub fn interpolate<
     'a,
     const ROWS: usize,

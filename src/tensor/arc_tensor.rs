@@ -16,130 +16,233 @@ use super::view::IsTensorLike;
 use super::view::IsTensorView;
 use super::view::TensorView;
 
-/// See Mutr
+/// Arc tensor - a tensor with shared ownership
+///
+/// See TensorView for more details of the tensor structure
 #[derive(Debug, Clone)]
 pub struct ArcTensor<
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCHES> + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCH_SIZE> + 'static,
     const ROWS: usize,
     const COLS: usize,
-    const BATCHES: usize,
+    const BATCH_SIZE: usize,
 > where
     ndarray::Dim<[ndarray::Ix; DRANK]>: Dimension,
 {
+    /// ndarray of tensors with shape [D1, D2, ...]
     pub array: ndarray::ArcArray<STensor, ndarray::Dim<[ndarray::Ix; DRANK]>>,
     phantom: PhantomData<(Scalar, STensor)>,
 }
 
+// /// Tensor view of scalars
+// pub type TensorViewX<'a, const DRANK: usize, Scalar> =
+//     TensorView<'a, DRANK, DRANK, 0, Scalar, Scalar, 1, 1, 1>;
+
+// /// Tensor view of batched scalars
+// pub type TensorViewXB<
+//     'a,
+//     const TOTAL_RANK: usize,
+//     const DRANK: usize,
+//     const SRANK: usize,
+//     Scalar,
+//     const B: usize,
+// > = TensorView<'a, TOTAL_RANK, DRANK, SRANK, Scalar, BatchScalar<Scalar, B>, 1, 1, B>;
+
+// /// Tensor view of vectors with shape [R]
+// pub type TensorViewXR<
+//     'a,
+//     const TOTAL_RANK: usize,
+//     const DRANK: usize,
+//     const SRANK: usize,
+//     Scalar,
+//     const R: usize,
+// > = TensorView<'a, TOTAL_RANK, DRANK, SRANK, Scalar, SVec<Scalar, R>, R, 1, 1>;
+
+// /// Tensor view of batched vectors with shape [R x B]
+// pub type TensorViewXRB<
+//     'a,
+//     const TOTAL_RANK: usize,
+//     const DRANK: usize,
+//     const SRANK: usize,
+//     Scalar,
+//     const R: usize,
+//     const B: usize,
+// > = TensorView<'a, TOTAL_RANK, DRANK, SRANK, Scalar, BatchVec<Scalar, R, B>, R, 1, B>;
+
+// /// Tensor view of matrices with shape [R x C]
+// pub type TensorViewXRC<
+//     'a,
+//     const TOTAL_RANK: usize,
+//     const DRANK: usize,
+//     const SRANK: usize,
+//     Scalar,
+//     const R: usize,
+//     const C: usize,
+// > = TensorView<'a, TOTAL_RANK, DRANK, SRANK, Scalar, SMat<Scalar, R, C>, R, C, 1>;
+
+// /// Tensor view of batched matrices with shape [R x C x B]
+// pub type TensorViewXRCB<
+//     'a,
+//     const TOTAL_RANK: usize,
+//     const DRANK: usize,
+//     const SRANK: usize,
+//     Scalar,
+//     const R: usize,
+//     const C: usize,
+//     const B: usize,
+// > = TensorView<'a, TOTAL_RANK, DRANK, SRANK, Scalar, BatchMat<Scalar, R, C, B>, R, C, B>;
+
+// /// rank-1 tensor view of scalars with shape [D0]
+// pub type TensorViewD<'a, Scalar> = TensorViewX<'a, 1, Scalar>;
+
+// /// rank-2 tensor view of scalars with shape [D0 x D1]
+// pub type TensorViewDD<'a, Scalar> = TensorViewX<'a, 2, Scalar>;
+
+// /// rank-2 tensor view of batched scalars with shape [D0 x B]
+// pub type TensorViewDB<'a, Scalar, const B: usize> = TensorViewXB<'a, 2, 1, 1, Scalar, B>;
+
+// /// rank-2 tensor view of vectors with shape [D0 x R]
+// pub type TensorViewDR<'a, Scalar, const R: usize> = TensorViewXR<'a, 2, 1, 1, Scalar, R>;
+
+// /// rank-3 tensor view of scalars with shape [D0 x R x B]
+// pub type TensorViewDDD<'a, Scalar> = TensorViewX<'a, 3, Scalar>;
+
+// /// rank-3 tensor view of batched scalars with shape [D0 x D1 x B]
+// pub type TensorViewDDB<'a, Scalar, const B: usize> = TensorViewXB<'a, 3, 2, 1, Scalar, B>;
+
+// /// rank-3 tensor view of vectors with shape [D0 x D1 x R]
+// pub type TensorViewDDR<'a, Scalar, const R: usize> = TensorViewXR<'a, 3, 2, 1, Scalar, R>;
+
+// /// rank-3 tensor view of batched vectors with shape [D0 x R x B]
+// pub type TensorViewDRB<'a, Scalar, const R: usize, const B: usize> =
+//     TensorViewXRB<'a, 3, 1, 2, Scalar, R, B>;
+
+// /// rank-3 tensor view of matrices with shape [D0 x R x C]
+// pub type TensorViewDRC<'a, Scalar, const R: usize, const C: usize> =
+//     TensorViewXRC<'a, 3, 1, 2, Scalar, R, C>;
+
+// /// rank-4 tensor view of scalars with shape [D0 x D1 x D2 x D3]
+// pub type TensorViewDDDD<'a, Scalar> = TensorViewX<'a, 4, Scalar>;
+
+// /// rank-4 tensor view of batched scalars with shape [D0 x D1 x D2 x B]
+// pub type TensorViewDDDB<'a, Scalar, const B: usize> = TensorViewXB<'a, 4, 3, 1, Scalar, B>;
+
+// /// rank-4 tensor view of vectors with shape [D0 x D1 x D2 x R]
+// pub type TensorViewDDDR<'a, Scalar, const R: usize> = TensorViewXR<'a, 4, 3, 1, Scalar, R>;
+
+// /// rank-4 tensor view of batched vectors with shape [D0 x D1 x R x B]
+// pub type TensorViewDDRB<'a, Scalar, const R: usize, const B: usize> =
+//     TensorViewXRB<'a, 4, 2, 2, Scalar, R, B>;
+
+// /// rank-4 tensor view of matrices with shape [D0 x R x C x B]
+// pub type TensorViewDDRC<'a, Scalar, const R: usize, const C: usize> =
+//     TensorViewXRC<'a, 4, 2, 2, Scalar, R, C>;
+
+// /// rank-4 tensor view of batched matrices with shape [D0 x R x C x B]
+// pub type TensorViewDRCB<'a, Scalar, const R: usize, const C: usize, const B: usize> =
+//     TensorViewXRCB<'a, 4, 1, 3, Scalar, R, C, B>;
+
+/// rank-1 tensor of scalars
 pub type ArcTensorX<const DRANK: usize, Scalar> =
     ArcTensor<DRANK, DRANK, 0, Scalar, Scalar, 1, 1, 1>;
 
+/// rank-2 tensor of batched scalars
 pub type ArcTensorXB<
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar,
     const B: usize,
-> = ArcTensor<SCALAR_RANK, DRANK, SRANK, Scalar, BatchScalar<Scalar, B>, 1, 1, B>;
+> = ArcTensor<TOTAL_RANK, DRANK, SRANK, Scalar, BatchScalar<Scalar, B>, 1, 1, B>;
 
+/// rank-2 tensor of vectors with shape R
 pub type ArcTensorXR<
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar,
     const R: usize,
-> = ArcTensor<SCALAR_RANK, DRANK, SRANK, Scalar, SVec<Scalar, R>, R, 1, 1>;
+> = ArcTensor<TOTAL_RANK, DRANK, SRANK, Scalar, SVec<Scalar, R>, R, 1, 1>;
 
+/// rank-2 tensor of batched vectors with shape [R x B]
 pub type ArcTensorXRB<
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar,
     const R: usize,
     const B: usize,
-> = ArcTensor<SCALAR_RANK, DRANK, SRANK, Scalar, BatchVec<Scalar, R, B>, R, 1, B>;
+> = ArcTensor<TOTAL_RANK, DRANK, SRANK, Scalar, BatchVec<Scalar, R, B>, R, 1, B>;
 
+/// rank-2 tensor of matrices with shape [R x C]
 pub type ArcTensorXRC<
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar,
     const R: usize,
     const C: usize,
-> = ArcTensor<SCALAR_RANK, DRANK, SRANK, Scalar, SMat<Scalar, R, C>, R, C, 1>;
+> = ArcTensor<TOTAL_RANK, DRANK, SRANK, Scalar, SMat<Scalar, R, C>, R, C, 1>;
 
+/// rank-2 tensor of batched matrices with shape [R x C x B]
 pub type ArcTensorXRCB<
-    const SCALAR_RANK: usize,
+    const TOTAL_RANK: usize,
     const DRANK: usize,
     const SRANK: usize,
     Scalar,
     const R: usize,
     const C: usize,
     const B: usize,
-> = ArcTensor<SCALAR_RANK, DRANK, SRANK, Scalar, BatchMat<Scalar, R, C, B>, R, C, B>;
+> = ArcTensor<TOTAL_RANK, DRANK, SRANK, Scalar, BatchMat<Scalar, R, C, B>, R, C, B>;
 
-// rank 1 - D0
+/// rank-1 tensor of scalars with shape D0
 pub type ArcTensorD<const DRANK: usize, Scalar> = ArcTensorX<DRANK, Scalar>;
 
-// rank 2
-// D0 x D1
+/// rank-2 tensor of scalars with shape [D0 x D1]
 pub type ArcTensorDD<Scalar> = ArcTensorX<2, Scalar>;
 
-// rank 2
-// D0 x [B]
+/// rank-2 tensor of batched scalars with shape [D0 x B]
 pub type ArcTensorDB<Scalar, const B: usize> = ArcTensorXB<2, 1, 1, Scalar, B>;
 
-// rank 2
-// D0 x [R]
+/// rank-2 tensor of vectors with shape [D0 x R]
 pub type ArcTensorDR<Scalar, const R: usize> = ArcTensorXR<2, 1, 1, Scalar, R>;
 
-// rank 3
-// D0 x D1 x D2
+/// rank-3 tensor of scalars with shape [D0 x D1 x D2]
 pub type ArcTensorRRR<Scalar> = ArcTensorX<3, Scalar>;
 
-// rank 3
-//  D0 x D1 x [B]
+/// rank-3 tensor of batched scalars with shape [D0 x D1 x B]
 pub type ArcTensorDDB<Scalar, const B: usize> = ArcTensorXB<3, 2, 1, Scalar, B>;
 
-// rank 3
-// D0 x D1 x [R]
+/// rank-3 tensor of vectors with shape [D0 x D1 x R]
 pub type ArcTensorDDR<Scalar, const R: usize> = ArcTensorXR<3, 2, 1, Scalar, R>;
 
-// rank 3
-// D0 x [R x B]
+/// rank-3 tensor of batched vectors with shape [D0 x R x B]
 pub type ArcTensorRBD<Scalar, const R: usize, const B: usize> = ArcTensorXRB<3, 1, 2, Scalar, R, B>;
 
-// rank 3
-// D0 x [R x C]
+/// rank-3 tensor of matrices with shape [D0 x R x C]
 pub type ArcTensorDRC<Scalar, const R: usize, const C: usize> = ArcTensorXRC<3, 1, 2, Scalar, R, C>;
 
-// rank 4
-// srank 0, drank 4
+/// rank-4 tensor of scalars with shape [D0 x D1 x D2 x D3]
 pub type ArcTensorDDDD<Scalar> = ArcTensorX<4, Scalar>;
 
-// rank 4
-// D0 x D1 x D2 x [B]
+/// rank-4 tensor of batched scalars with shape [D0 x D1 x D2 x B]
 pub type ArcTensorDDDB<Scalar, const B: usize> = ArcTensorXB<4, 3, 1, Scalar, B>;
 
-// rank 4
-// D0 x D1 x D2 x [R]
+/// rank-4 tensor of vectors with shape [D0 x D1 x D2 x R]
 pub type ArcTensorDDDR<Scalar, const R: usize> = ArcTensorXR<4, 3, 1, Scalar, R>;
 
-// rank 4
-// D0 x D1 x [R x B]
+/// rank-4 tensor of batched vectors with shape [D0 x D1 x R x B]
 pub type ArcTensorDDRB<Scalar, const R: usize, const B: usize> =
     ArcTensorXRB<4, 2, 2, Scalar, R, B>;
 
-// rank 4
-// D0 x D1 x [R x C]
+/// rank-4 tensor of matrices with shape [D0 x R x C x B]
 pub type ArcTensorDDRC<Scalar, const R: usize, const C: usize> =
     ArcTensorXRC<4, 2, 2, Scalar, R, C>;
 
-// rank 4
-// D0 x [R x C x B]
+/// rank-4 tensor of batched matrices with shape [D0 x R x C x B]
 pub type ArcTensorDRCB<Scalar, const R: usize, const C: usize, const B: usize> =
     ArcTensorXRCB<4, 1, 3, Scalar, R, C, B>;
 
@@ -150,13 +253,13 @@ macro_rules! arc_tensor_is_tensor_view {
         impl<
             'a,
             Scalar: IsTensorScalar + 'static,
-            STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
+            STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCH_SIZE> + 'static,
             const ROWS: usize,
             const COLS: usize,
-            const BATCHES: usize,
+            const BATCH_SIZE: usize,
         > IsTensorLike<
-            'a, $scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES
-        > for ArcTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
+            'a, $scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCH_SIZE
+        > for ArcTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCH_SIZE>
         {
             fn elem_view<'b:'a>(
                 &'b self,
@@ -186,9 +289,9 @@ macro_rules! arc_tensor_is_tensor_view {
                 self.view().scalar_dims()
             }
 
-            fn to_mut_image(
+            fn to_mut_tensor(
                 &self,
-            ) -> MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES> {
+            ) -> MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCH_SIZE> {
                 MutTensor {
                     mut_array: self.elem_view().to_owned(),
                     phantom: PhantomData::default(),
@@ -199,24 +302,26 @@ macro_rules! arc_tensor_is_tensor_view {
         impl<
             'a,
             Scalar: IsTensorScalar+ 'static,
-            STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCHES> + 'static,
+            STensor: IsStaticTensor<Scalar, $srank,  ROWS, COLS, BATCH_SIZE> + 'static,
             const ROWS: usize,
             const COLS: usize,
-            const BATCHES: usize,
+            const BATCH_SIZE: usize,
         >
-            ArcTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
+            ArcTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCH_SIZE>
         {
 
+            /// create a new tensor from a tensor view
             pub fn make_copy_from(
-                v: &TensorView<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES>
+                v: &TensorView<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
             ) -> Self
             {
-                Self::from_mut_tensor(IsTensorLike::to_mut_image(v))
+                Self::from_mut_tensor(IsTensorLike::to_mut_tensor(v))
             }
 
+            /// create a new tensor from a mutable tensor
            pub fn from_mut_tensor(
                 tensor:
-                MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>,
+                MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCH_SIZE>,
             ) -> Self {
                 Self {
                     array: tensor.mut_array.into(),
@@ -224,36 +329,39 @@ macro_rules! arc_tensor_is_tensor_view {
                 }
             }
 
+            /// create a new tensor from a shape - all elements are zero
             pub fn from_shape(size: [usize; $drank]) -> Self {
                 Self::from_mut_tensor(
                     MutTensor::<
-                        $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES
+                        $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE
                     >::from_shape(size))
             }
 
+            /// create a new tensor from a shape and a value
             pub fn from_shape_and_val(
                 shape: [usize; $drank],
                 val:STensor,
             ) -> Self {
                 Self::from_mut_tensor(
                     MutTensor::<
-                        $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES
+                        $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE
                     >::from_shape_and_val(shape, val),
                 )
             }
 
+            /// return a tensor view
             pub fn view<'b: 'a>(&'b self)
                 -> TensorView<
-                    'a, $scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCHES>
+                    'a, $scalar_rank, $drank, $srank, Scalar, STensor,  ROWS, COLS, BATCH_SIZE>
             {
                 TensorView::<
-                    'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES
+                    'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE
                 >::new(
                     self.array.view()
                 )
             }
 
-
+            /// create a new tensor from a unary operation applied to a tensor view
             pub fn from_map<
                 'b,
                 const OTHER_HRANK: usize, const OTHER_SRANK: usize,
@@ -280,11 +388,12 @@ macro_rules! arc_tensor_is_tensor_view {
             {
                 Self::from_mut_tensor(
                     MutTensor::<
-                        $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES
+                        $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE
                     >::from_map(view, op),
                 )
             }
 
+            /// create a new tensor from a binary operation applied to two tensor views
             pub fn from_map2<
                 'b,
                 const OTHER_HRANK: usize, const OTHER_SRANK: usize,
@@ -322,7 +431,7 @@ macro_rules! arc_tensor_is_tensor_view {
             {
                 Self::from_mut_tensor(
                     MutTensor::<
-                        $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCHES
+                        $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE
                     >::from_map2(view,view2, op),
                 )
             }
@@ -369,19 +478,19 @@ arc_tensor_is_tensor_view!(4, 3, 1);
 
 #[cfg(test)]
 mod tests {
+    use crate::tensor::element::SVec;
 
     #[test]
     fn from_mut_tensor() {
         use super::*;
 
-        use crate::tensor::element::P1F32;
         use crate::tensor::mut_tensor::MutTensorDDDR;
         use crate::tensor::mut_tensor::MutTensorDDR;
         use crate::tensor::mut_tensor::MutTensorDR;
 
         {
             let shape = [4];
-            let mut_img = MutTensorDR::from_shape_and_val(shape, P1F32::new(0.5f32));
+            let mut_img = MutTensorDR::from_shape_and_val(shape, SVec::<f32, 1>::new(0.5f32));
             let copy = MutTensorDR::make_copy_from(&mut_img.view());
             assert_eq!(copy.view().dims(), shape);
             let img = ArcTensorDR::from_mut_tensor(copy);
@@ -394,7 +503,7 @@ mod tests {
         }
         {
             let shape = [4, 2];
-            let mut_img = MutTensorDDR::from_shape_and_val(shape, P1F32::new(0.5f32));
+            let mut_img = MutTensorDDR::from_shape_and_val(shape, SVec::<f32, 1>::new(0.5f32));
             let copy = MutTensorDDR::make_copy_from(&mut_img.view());
             assert_eq!(copy.dims(), shape);
             let img = ArcTensorDDR::from_mut_tensor(copy);
@@ -406,7 +515,7 @@ mod tests {
         }
         {
             let shape = [3, 2, 7];
-            let mut_img = MutTensorDDDR::from_shape_and_val(shape, P1F32::new(0.5f32));
+            let mut_img = MutTensorDDDR::from_shape_and_val(shape, SVec::<f32, 1>::new(0.5f32));
             let copy = MutTensorDDDR::make_copy_from(&mut_img.view());
             assert_eq!(copy.dims(), shape);
             let img = ArcTensorDDDR::from_mut_tensor(copy);
@@ -422,86 +531,60 @@ mod tests {
     fn shared_ownership() {
         use super::*;
 
-        use crate::tensor::element::P1F32;
         use crate::tensor::mut_tensor::MutTensorDDDR;
         use crate::tensor::mut_tensor::MutTensorDDR;
         use crate::tensor::mut_tensor::MutTensorDR;
         {
             let shape = [4];
-            let mut_img = MutTensorDR::from_shape_and_val(shape, P1F32::new(0.5f32));
+            let mut_img = MutTensorDR::from_shape_and_val(shape, SVec::<f32, 1>::new(0.5f32));
             let img = ArcTensorDR::from_mut_tensor(mut_img);
 
-            let mut img2 = img.clone();
-            // assert_eq!(Arc::strong_count(&img.buffer), 2);
-            // assert_eq!(Arc::strong_count(&img2.buffer), 2);
-
+            let img2 = img.clone();
             assert_eq!(
                 img.view().elem_view().as_slice().unwrap(),
                 img2.view().elem_view().as_slice().unwrap()
             );
 
-            let mut_img2 = img2.to_mut_image();
-            //  assert_eq!(Arc::strong_count(&img2.buffer), 2);
+            let mut_img2 = img2.to_mut_tensor();
             assert_ne!(
                 mut_img2.view().elem_view().as_slice().unwrap().as_ptr(),
                 img2.view().elem_view().as_slice().unwrap().as_ptr()
             );
-
-            img2 = img.clone();
-            // assert_eq!(Arc::strong_count(&img.buffer), 2);
-            // assert_eq!(Arc::strong_count(&img2.buffer), 2);
         }
         {
             let shape = [4, 6];
-            let mut_img = MutTensorDDR::from_shape_and_val(shape, P1F32::new(0.5f32));
+            let mut_img = MutTensorDDR::from_shape_and_val(shape, SVec::<f32, 1>::new(0.5f32));
             let img = ArcTensorDDR::from_mut_tensor(mut_img);
 
-            let mut img2 = img.clone();
-            // assert_eq!(Arc::strong_count(&img.buffer), 2);
-            // assert_eq!(Arc::strong_count(&img2.buffer), 2);
-
-            let mut_img2 = img2.to_mut_image();
-            //  assert_eq!(Arc::strong_count(&img2.buffer), 2);
+            let img2 = img.clone();
+            let mut_img2 = img2.to_mut_tensor();
             assert_ne!(
                 mut_img2.view().elem_view().as_slice().unwrap().as_ptr(),
                 img2.view().elem_view().as_slice().unwrap().as_ptr()
             );
-
-            img2 = img.clone();
-            // assert_eq!(Arc::strong_count(&img.buffer), 2);
-            // assert_eq!(Arc::strong_count(&img2.buffer), 2);
         }
         {
             let shape = [4, 6, 7];
-            let mut_img = MutTensorDDDR::from_shape_and_val(shape, P1F32::new(0.5f32));
+            let mut_img = MutTensorDDDR::from_shape_and_val(shape, SVec::<f32, 1>::new(0.5f32));
             let img = ArcTensorDDDR::from_mut_tensor(mut_img);
 
-            let mut img2 = img.clone();
-            // assert_eq!(Arc::strong_count(&img.buffer), 2);
-            // assert_eq!(Arc::strong_count(&img2.buffer), 2);
-
-            let mut_img2 = img2.to_mut_image();
-            //  assert_eq!(Arc::strong_count(&img2.buffer), 2);
+            let img2 = img.clone();
+            let mut_img2 = img2.to_mut_tensor();
             assert_ne!(
                 mut_img2.view().elem_view().as_slice().unwrap().as_ptr(),
                 img2.view().elem_view().as_slice().unwrap().as_ptr()
             );
-
-            img2 = img.clone();
-            // assert_eq!(Arc::strong_count(&img.buffer), 2);
-            // assert_eq!(Arc::strong_count(&img2.buffer), 2);
         }
     }
 
     #[test]
     fn multi_threading() {
         use crate::tensor::arc_tensor::ArcTensorDDRC;
-        use crate::tensor::element::P3U16;
         use crate::tensor::mut_tensor::MutTensorDDRC;
         use std::thread;
 
         let shape = [4, 6];
-        let mut_img = MutTensorDDRC::from_shape_and_val(shape, P3U16::new(10, 20, 300));
+        let mut_img = MutTensorDDRC::from_shape_and_val(shape, SVec::<u16, 3>::new(10, 20, 300));
         let img = ArcTensorDDRC::from_mut_tensor(mut_img);
 
         thread::scope(|s| {

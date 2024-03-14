@@ -232,13 +232,13 @@ impl SparseLdlt {
             &mut l_values,
             ccs_perm_upper.as_ref(),
             faer::sparse::linalg::cholesky::LdltRegularization::default(),
-            &symbolic,
+            symbolic,
             faer::reborrow::ReborrowMut::rb_mut(&mut stack),
         );
 
         let ldlt =
             faer::sparse::linalg::cholesky::simplicial::SimplicialLdltRef::<'_, usize, f64>::new(
-                &symbolic, &l_values,
+                symbolic, &l_values,
             );
 
         let mut x = b.clone();

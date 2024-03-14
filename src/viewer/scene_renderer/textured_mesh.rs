@@ -15,13 +15,13 @@ pub struct TexturedMeshVertex3 {
     pub _tex: [f32; 2],
 }
 
-pub(crate) struct TexturedMeshes {
-    pub(crate) start_idx: u32,
-    pub(crate) end_idx: u32,
+// pub(crate) struct TexturedMeshes {
+//     pub(crate) start_idx: u32,
+//     pub(crate) end_idx: u32,
 
-    pub texture: wgpu::Texture,
-    pub bind_group: wgpu::BindGroup,
-}
+//     pub texture: wgpu::Texture,
+//     pub bind_group: wgpu::BindGroup,
+// }
 
 pub struct TexturedMeshRenderer {
     pub pipeline: wgpu::RenderPipeline,
@@ -29,7 +29,7 @@ pub struct TexturedMeshRenderer {
     pub vertex_buffer: wgpu::Buffer,
     pub mesh_table: BTreeMap<String, Vec<TexturedTriangle3>>,
     pub vertices: Vec<TexturedMeshVertex3>,
-    pub meshes: BTreeMap<String, TexturedMeshes>,
+    //pub meshes: BTreeMap<String, TexturedMeshes>,
 }
 
 impl TexturedMeshRenderer {
@@ -128,7 +128,7 @@ impl TexturedMeshRenderer {
             vertex_buffer,
             vertices: vec![],
             mesh_table: BTreeMap::new(),
-            meshes: BTreeMap::new(),
+            //meshes: BTreeMap::new(),
         }
     }
 

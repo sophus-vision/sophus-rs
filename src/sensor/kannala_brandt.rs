@@ -11,6 +11,7 @@ use crate::calculus::types::VecF64;
 use super::affine::AffineDistortionImpl;
 use super::traits::IsCameraDistortionImpl;
 
+/// Kannala-Brandt distortion implementation
 #[derive(Debug, Clone, Copy)]
 pub struct KannalaBrandtDistortionImpl<S: IsScalar> {
     phantom: PhantomData<S>,

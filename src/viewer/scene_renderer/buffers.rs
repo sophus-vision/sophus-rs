@@ -1,4 +1,4 @@
-use crate::sensor::traits::DistortTable;
+use crate::sensor::distortion_table::DistortTable;
 use crate::viewer::ViewerBuilder;
 use crate::viewer::ViewerRenderState;
 

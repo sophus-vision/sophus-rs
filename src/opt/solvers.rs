@@ -30,7 +30,7 @@ impl SparseNormalEquation {
 
         for evaluated_cost in costs.iter() {
             evaluated_cost.populate_normal_equation(
-                &variables,
+                variables,
                 nu,
                 &mut upper_hessian_triplet,
                 &mut neg_grad,
@@ -62,7 +62,7 @@ pub fn solve(variables: &VarPool, costs: Vec<Box<dyn IsCost>>, nu: f64) -> VarPo
         let mut sne = SparseNormalEquation::from_families_and_cost(variables, costs, nu);
         sne.solve();
         let delta = sne.solve();
-        variables.update(delta.into())
+        variables.update(delta)
     } else {
         todo!("Schur complement")
     }

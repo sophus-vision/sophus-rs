@@ -2,8 +2,8 @@ use eframe::egui::{self};
 
 use super::ViewerRenderState;
 use crate::image::arc_image::ArcImageF32;
-use crate::image::view::ImageSize;
-use crate::image::view::ImageViewF32;
+use crate::image::image_view::ImageSize;
+use crate::image::image_view::ImageViewF32;
 use crate::sensor::perspective_camera::KannalaBrandtCamera;
 
 #[derive(Debug)]
