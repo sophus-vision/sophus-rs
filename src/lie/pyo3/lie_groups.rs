@@ -1,4 +1,5 @@
 use numpy::PyArray1;
+use numpy::PyArray2;
 use pyo3::pyclass;
 use pyo3::pymethods;
 use pyo3::Py;
@@ -34,6 +35,7 @@ macro_rules! crate_py_lie_group_class {
 
             #[staticmethod]
             fn exp(py: Python, tangent: &PyArray1<f64>) -> Py<Self> {
+                assert_eq!(tangent.len(), $dof);
                 let read_only_tangent = tangent.readonly();
                 let tangent_slice = read_only_tangent.as_slice().unwrap();
                 let tangent_vec = nalgebra::SVector::<f64, $dof>::from_column_slice(tangent_slice);
@@ -49,6 +51,7 @@ macro_rules! crate_py_lie_group_class {
 
             #[staticmethod]
             fn from_params(py: Python, params: &PyArray1<f64>) -> Py<Self> {
+                assert_eq!(params.len(), $params);
                 let read_only_params = params.readonly();
                 let params_slice = read_only_params.as_slice().unwrap();
                 let params_vec = nalgebra::SVector::<f64, $params>::from_column_slice(params_slice);
@@ -63,6 +66,7 @@ macro_rules! crate_py_lie_group_class {
             }
 
             fn transform(&self, py: Python, point: &PyArray1<f64>) -> Py<PyArray1<f64>> {
+                assert_eq!(point.len(), $point);
                 let read_only_point = point.readonly();
                 let point_slice = read_only_point.as_slice().unwrap();
                 let point_vec = nalgebra::SVector::<f64, $point>::from_column_slice(point_slice);
@@ -83,14 +87,20 @@ macro_rules! crate_py_lie_group_class {
                 }
             }
 
-            fn compact(&self, py: Python) -> Py<PyArray1<f64>> {
+            fn compact(&self, py: Python) -> Py<PyArray2<f64>> {
                 let compact = self.inner.compact();
-                PyArray1::from_slice(py, compact.as_slice()).to_owned()
+                PyArray1::from_slice(py, compact.as_slice())
+                    .reshape([$point, $ambient])
+                    .unwrap()
+                    .to_owned()
             }
 
-            fn matrix(&self, py: Python) -> Py<PyArray1<f64>> {
+            fn matrix(&self, py: Python) -> Py<PyArray2<f64>> {
                 let matrix = self.inner.matrix();
-                PyArray1::from_slice(py, matrix.as_slice()).to_owned()
+                PyArray1::from_slice(py, matrix.as_slice())
+                    .reshape([$ambient, $ambient])
+                    .unwrap()
+                    .to_owned()
             }
 
             fn __str__(&self) -> String {
@@ -116,6 +126,7 @@ macro_rules! augment_py_product_group_class {
                 translation: &PyArray1<f64>,
                 rotation: $py_factor_group,
             ) -> Py<Self> {
+                assert_eq!(translation.len(), $point);
                 let read_only_translation = translation.readonly();
                 let translation_slice = read_only_translation.as_slice().unwrap();
                 let translation_vec =
