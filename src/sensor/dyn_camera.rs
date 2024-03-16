@@ -164,8 +164,8 @@ mod tests {
 
     #[test]
     fn camera_pinhole_distort_test() {
-        use approx::assert_relative_eq;
         use crate::image::view::ImageSize;
+        use approx::assert_relative_eq;
 
         use super::DynCamera;
         use super::V;
@@ -209,8 +209,8 @@ mod tests {
 
     #[test]
     fn camera_kannala_brandt_distort_test() {
-        use approx::assert_relative_eq;
         use crate::image::view::ImageSize;
+        use approx::assert_relative_eq;
 
         use super::DynCamera;
         use super::V;
@@ -251,5 +251,4 @@ mod tests {
             assert_relative_eq!(undistorted_pixel, *pixel, epsilon = 1e-6);
         }
     }
-
 }
