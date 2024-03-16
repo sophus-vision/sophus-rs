@@ -551,4 +551,19 @@ mod tests {
         let _tensor_batched_f32 =
             MutTensorDRCB::from_shape_and_val(shape, SMat::<AutoSimd<[f32; 8]>, 4, 4>::zeros());
     }
+
+    #[test]
+    pub fn from_raw_data() {
+        let shape = [1];
+        let data = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let data_mat = SMat::<f32, 3, 2>::from_vec(data.to_vec());
+        let tensor_f32 = MutTensorDRC::from_shape_and_val(shape, data_mat); // CxWxH
+        assert_eq!(tensor_f32.dims(), shape);
+        assert_eq!(tensor_f32.view().scalar_get([0, 0, 0]), data[0]);
+        assert_eq!(tensor_f32.view().scalar_get([0, 1, 0]), data[1]);
+        assert_eq!(tensor_f32.view().scalar_get([0, 2, 0]), data[2]);
+        assert_eq!(tensor_f32.view().scalar_get([0, 0, 1]), data[3]);
+        assert_eq!(tensor_f32.view().scalar_get([0, 1, 1]), data[4]);
+        assert_eq!(tensor_f32.view().scalar_get([0, 2, 1]), data[5]);
+    }
 }
