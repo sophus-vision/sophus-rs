@@ -164,7 +164,7 @@ mod tests {
 
     #[test]
     fn camera_pinhole_distort_test() {
-        use crate::image::view::ImageSize;
+        use crate::image::image_view::ImageSize;
         use approx::assert_relative_eq;
 
         use super::DynCamera;
@@ -177,7 +177,7 @@ mod tests {
             },
         );
 
-        let pixels_in_image = vec![
+        let point_in_z1_plane = vec![
             V::<2>::new(0.0, 0.0),
             V::<2>::new(1.0, 400.0),
             V::<2>::new(320.0, 240.0),
@@ -195,8 +195,9 @@ mod tests {
             V::<2>::new(383719.5, 287639.5),
         ];
 
-        for (pixel, expected_distorted_pixel) in
-            pixels_in_image.iter().zip(expected_distorted_pixels.iter())
+        for (pixel, expected_distorted_pixel) in point_in_z1_plane
+            .iter()
+            .zip(expected_distorted_pixels.iter())
         {
             let distorted_pixel = camera.distort(&pixel);
             // println!("distorted_pixel: {:?}", distorted_pixel);
@@ -209,7 +210,7 @@ mod tests {
 
     #[test]
     fn camera_kannala_brandt_distort_test() {
-        use crate::image::view::ImageSize;
+        use crate::image::image_view::ImageSize;
         use approx::assert_relative_eq;
 
         use super::DynCamera;
@@ -222,7 +223,7 @@ mod tests {
             },
         );
 
-        let pixels_in_image = vec![
+        let point_in_z1_plane = vec![
             V::<2>::new(0.0, 0.0),
             V::<2>::new(1.0, 400.0),
             V::<2>::new(320.0, 240.0),
@@ -240,8 +241,9 @@ mod tests {
             V::<2>::new(1984.8663275417607, 1527.9983895031353),
         ];
 
-        for (pixel, expected_distorted_pixel) in
-            pixels_in_image.iter().zip(expected_distorted_pixels.iter())
+        for (pixel, expected_distorted_pixel) in point_in_z1_plane
+            .iter()
+            .zip(expected_distorted_pixels.iter())
         {
             let distorted_pixel = camera.distort(&pixel);
             // println!("distorted_pixel: {:?}", distorted_pixel);
