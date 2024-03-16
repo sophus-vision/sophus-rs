@@ -2,8 +2,8 @@ use dyn_clone::DynClone;
 
 use crate::calculus::types::params::HasParams;
 use crate::calculus::types::VecF64;
-use crate::lie::rotation2::Isometry2;
-use crate::lie::rotation3::Isometry3;
+use crate::lie::isometry2::Isometry2;
+use crate::lie::isometry3::Isometry3;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::fmt::Debug;

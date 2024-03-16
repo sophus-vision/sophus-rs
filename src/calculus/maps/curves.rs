@@ -117,7 +117,7 @@ mod test {
             let a = 0.1 * (i as f64);
 
             // f(x) = x^2
-            fn square_fn<S: IsScalar>(x: S) -> S {
+            fn square_fn<S: IsScalar<1>>(x: S) -> S {
                 x.clone() * x
             }
             let finite_diff = ScalarValuedCurve::sym_diff_quotient(square_fn, a, 1e-6);
@@ -134,7 +134,7 @@ mod test {
             let a = 0.1 * (i as f64);
 
             // f(x) = [cos(x), sin(x)]
-            fn trig_fn<S: IsScalar, V2: IsVector<S, 2>>(x: S) -> V2 {
+            fn trig_fn<S: IsScalar<1>, V2: IsVector<S, 2, 1>>(x: S) -> V2 {
                 V2::from_array([x.clone().cos(), x.sin()])
             }
 
@@ -153,7 +153,7 @@ mod test {
 
             // f(x) = [[ cos(x), sin(x), 0],
             //         [-sin(x), cos(x), 0]]
-            fn fn_x<S: IsScalar, M23: IsMatrix<S, 2, 3>>(x: S) -> M23 {
+            fn fn_x<S: IsScalar<1>, M23: IsMatrix<S, 2, 3, 1>>(x: S) -> M23 {
                 let sin = x.clone().sin();
                 let cos = x.clone().cos();
 

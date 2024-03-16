@@ -5,7 +5,7 @@ use crate::calculus::types::params::HasParams;
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
 use crate::calculus::types::VecF64;
-use crate::lie::rotation2::Isometry2;
+use crate::lie::isometry2::Isometry2;
 use crate::opt::cost_fn::IsResidualFn;
 use crate::opt::cost_fn::IsTermSignature;
 use crate::opt::robust_kernel;
@@ -40,7 +40,7 @@ impl IsTermSignature<1> for Isometry2PriorTermSignature {
     const DOF_TUPLE: [i64; 1] = [3];
 }
 
-fn res_fn<Scalar: IsScalar>(
+fn res_fn<Scalar: IsScalar<1>>(
     isometry: Isometry2<Scalar>,
     isometry_prior_mean: Isometry2<Scalar>,
 ) -> Scalar::Vector<3> {

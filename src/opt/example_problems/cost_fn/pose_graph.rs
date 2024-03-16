@@ -1,5 +1,5 @@
 use crate::calculus::types::scalar::IsScalar;
-use crate::lie::rotation2::Isometry2;
+use crate::lie::isometry2::Isometry2;
 use crate::opt::cost_fn::IsResidualFn;
 use crate::opt::cost_fn::IsTermSignature;
 use crate::opt::robust_kernel;
@@ -8,7 +8,7 @@ use crate::opt::term::Term;
 use crate::opt::variables::VarKind;
 
 /// residual function for a pose-pose constraint
-pub fn res_fn<S: IsScalar>(
+pub fn res_fn<S: IsScalar<1>>(
     world_from_pose_a: Isometry2<S>,
     world_from_pose_b: Isometry2<S>,
     pose_a_from_pose_b: Isometry2<S>,

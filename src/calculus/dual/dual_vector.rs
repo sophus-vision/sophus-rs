@@ -194,7 +194,7 @@ impl<const ROWS: usize> IsVectorLike for DualV<ROWS> {
     }
 }
 
-impl<const ROWS: usize> IsVector<Dual, ROWS> for DualV<ROWS> {
+impl<const ROWS: usize> IsVector<Dual, ROWS, 1> for DualV<ROWS> {
     fn set_c(&mut self, idx: usize, v: f64) {
         self.val[idx] = v;
         if self.dij_val.is_some() {
@@ -368,7 +368,7 @@ mod test {
         for p in points.clone() {
             for p1 in points.clone() {
                 {
-                    fn dot_fn<S: IsScalar>(x: S::Vector<4>, y: S::Vector<4>) -> S {
+                    fn dot_fn<S: IsScalar<1>>(x: S::Vector<4>, y: S::Vector<4>) -> S {
                         x.dot(y)
                     }
                     let finite_diff = ScalarValuedMapFromVector::sym_diff_quotient(
@@ -383,7 +383,7 @@ mod test {
                     approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
                 }
 
-                fn dot_fn<S: IsScalar>(x: S::Vector<4>, s: S) -> S::Vector<4> {
+                fn dot_fn<S: IsScalar<1>>(x: S::Vector<4>, s: S) -> S::Vector<4> {
                     x.scaled(s)
                 }
                 let finite_diff = VectorValuedMapFromVector::sym_diff_quotient(

@@ -19,19 +19,24 @@ use crate::manifold::{self};
 /// POINT_DIM:
 /// N: dimension ambient the dimension
 pub trait IsLieGroupImpl<
-    S: IsScalar,
+    S: IsScalar<BATCH_SIZE>,
     const DOF: usize,
     const PARAMS: usize,
     const POINT: usize,
     const AMBIENT: usize,
->: ParamsImpl<S, PARAMS> + manifold::traits::TangentImpl<S, DOF> + Clone + Debug
+    const BATCH_SIZE: usize,
+>:
+    ParamsImpl<S, PARAMS, BATCH_SIZE>
+    + manifold::traits::TangentImpl<S, DOF, BATCH_SIZE>
+    + Clone
+    + Debug
 {
     /// Generic scalar, real scalar, and dual scalar
-    type GenG<S2: IsScalar>: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT>;
+    type GenG<S2: IsScalar<BATCH_SIZE>>: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>;
     /// Real scalar
-    type RealG: IsLieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT>;
+    type RealG: IsLieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT, 1>;
     /// Dual scalar - for automatic differentiation
-    type DualG: IsLieGroupImpl<Dual, DOF, PARAMS, POINT, AMBIENT>;
+    type DualG: IsLieGroupImpl<Dual, DOF, PARAMS, POINT, AMBIENT, 1>;
 
     /// is transformation origin preserving?
     const IS_ORIGIN_PRESERVING: bool;
@@ -101,7 +106,7 @@ pub trait IsF64LieGroupImpl<
     const PARAMS: usize,
     const POINT: usize,
     const AMBIENT: usize,
->: IsLieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT>
+>: IsLieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT, 1>
 {
     /// derivative of group multiplication with respect to the first argument
     fn da_a_mul_b(a: &VecF64<PARAMS>, b: &VecF64<PARAMS>) -> MatF64<PARAMS, PARAMS>;
@@ -126,18 +131,25 @@ pub trait IsF64LieGroupImpl<
 ///
 /// Can be a factor of a semi-direct product group
 pub trait IsLieFactorGroupImpl<
-    S: IsScalar,
+    S: IsScalar<BATCH_SIZE>,
     const DOF: usize,
     const PARAMS: usize,
     const POINT: usize,
->: IsLieGroupImpl<S, DOF, PARAMS, POINT, POINT>
+    const BATCH_SIZE: usize,
+>: IsLieGroupImpl<S, DOF, PARAMS, POINT, POINT, BATCH_SIZE>
 {
     /// Generic scalar, real scalar, and dual scalar
-    type GenFactorG<S2: IsScalar>: IsLieFactorGroupImpl<S2, DOF, PARAMS, POINT>;
+    type GenFactorG<S2: IsScalar<BATCH_SIZE>>: IsLieFactorGroupImpl<
+        S2,
+        DOF,
+        PARAMS,
+        POINT,
+        BATCH_SIZE,
+    >;
     /// Real scalar
-    type RealFactorG: IsLieFactorGroupImpl<f64, DOF, PARAMS, POINT>;
+    type RealFactorG: IsLieFactorGroupImpl<f64, DOF, PARAMS, POINT, 1>;
     /// Dual scalar - for automatic differentiation
-    type DualFactorG: IsLieFactorGroupImpl<Dual, DOF, PARAMS, POINT>;
+    type DualFactorG: IsLieFactorGroupImpl<Dual, DOF, PARAMS, POINT, 1>;
 
     /// V matrix - used by semi-direct product exponential
     fn mat_v(tangent: &S::Vector<DOF>) -> S::Matrix<POINT, POINT>;
@@ -157,8 +169,8 @@ pub trait IsLieFactorGroupImpl<
 
 /// Lie Factor Group implementation trait for real scalar, f64
 pub trait IsF64LieFactorGroupImpl<const DOF: usize, const PARAMS: usize, const POINT: usize>:
-    IsLieGroupImpl<f64, DOF, PARAMS, POINT, POINT>
-    + IsLieFactorGroupImpl<f64, DOF, PARAMS, POINT>
+    IsLieGroupImpl<f64, DOF, PARAMS, POINT, POINT, 1>
+    + IsLieFactorGroupImpl<f64, DOF, PARAMS, POINT, 1>
     + IsF64LieGroupImpl<DOF, PARAMS, POINT, POINT>
 {
     /// derivative of V matrix
@@ -176,47 +188,50 @@ pub trait IsF64LieFactorGroupImpl<const DOF: usize, const PARAMS: usize, const P
 
 /// Lie Group trait
 pub trait IsLieGroup<
-    S: IsScalar,
+    S: IsScalar<BATCH_SIZE>,
     const DOF: usize,
     const PARAMS: usize,
     const POINT: usize,
     const AMBIENT: usize,
->: TangentImpl<S, DOF> + HasParams<S, PARAMS>
+    const BATCH_SIZE: usize,
+>: TangentImpl<S, DOF, BATCH_SIZE> + HasParams<S, PARAMS, BATCH_SIZE>
 {
     /// This is the actual Lie Group implementation
-    type G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>;
+    type G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>;
     /// Lie Group implementation with generic scalar, real scalar, and dual scalar
-    type GenG<S2: IsScalar>: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT>;
+    type GenG<S2: IsScalar<BATCH_SIZE>>: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>;
     /// Lie Group implementation- with real scalar
-    type RealG: IsLieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT>;
+    type RealG: IsLieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT, 1>;
     /// Lie Group implementation with dual scalar - for automatic differentiation
-    type DualG: IsLieGroupImpl<Dual, DOF, PARAMS, POINT, AMBIENT>;
+    type DualG: IsLieGroupImpl<Dual, DOF, PARAMS, POINT, AMBIENT, 1>;
 
     /// Get the Lie Group
-    type GenGroup<S2: IsScalar, G2: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT>>: IsLieGroup<
+    type GenGroup<S2: IsScalar<BATCH_SIZE>, G2: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>>: IsLieGroup<
         S2,
         DOF,
         PARAMS,
         POINT,
         AMBIENT,
+        BATCH_SIZE
     >;
     /// Lie Group with real scalar
-    type RealGroup: IsLieGroup<f64, DOF, PARAMS, POINT, AMBIENT>;
+    type RealGroup: IsLieGroup<f64, DOF, PARAMS, POINT, AMBIENT, 1>;
     /// Lie Group with dual scalar - for automatic differentiation
-    type DualGroup: IsLieGroup<Dual, DOF, PARAMS, POINT, AMBIENT>;
+    type DualGroup: IsLieGroup<Dual, DOF, PARAMS, POINT, AMBIENT, 1>;
 }
 
 /// Lie Group trait for real scalar, f64
 pub trait IsTranslationProductGroup<
-    S: IsScalar,
+    S: IsScalar<BATCH_SIZE>,
     const DOF: usize,
     const PARAMS: usize,
     const POINT: usize,
     const AMBIENT: usize,
     const SDOF: usize,
     const SPARAMS: usize,
-    FactorGroup: IsLieGroup<S, SDOF, SPARAMS, POINT, POINT>,
->: IsLieGroup<S, DOF, PARAMS, POINT, AMBIENT>
+    const BATCH_SIZE: usize,
+    FactorGroup: IsLieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH_SIZE>,
+>: IsLieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>
 {
     /// This is the actual Lie Factor Group implementation
     type Impl;

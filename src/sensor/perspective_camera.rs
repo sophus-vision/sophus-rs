@@ -23,7 +23,7 @@ type M<const N: usize, const O: usize> = SMatrix<f64, N, O>;
 #[derive(Debug, Clone, Copy)]
 pub struct ProjectionZ1;
 
-impl<S: IsScalar> IsProjection<S> for ProjectionZ1 {
+impl<S: IsScalar<1>> IsProjection<S> for ProjectionZ1 {
     fn proj(point_in_camera: &S::Vector<3>) -> S::Vector<2> {
         S::Vector::<2>::from_array([
             point_in_camera.get(0) / point_in_camera.get(2),

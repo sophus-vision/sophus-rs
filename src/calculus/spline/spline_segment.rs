@@ -10,7 +10,7 @@ pub struct CubicBasisFunction<S> {
     phantom: PhantomData<S>,
 }
 
-impl<S: IsScalar> CubicBasisFunction<S> {
+impl<S: IsScalar<1>> CubicBasisFunction<S> {
     /// C matrix
     pub fn c() -> S::Matrix<3, 4> {
         S::Matrix::<3, 4>::from_c_array2([
@@ -41,11 +41,11 @@ impl<S: IsScalar> CubicBasisFunction<S> {
 }
 
 /// cubic B-spline function
-pub struct CubicBSplineFn<S: IsScalar, const DIMS: usize> {
+pub struct CubicBSplineFn<S: IsScalar<1>, const DIMS: usize> {
     phantom: PhantomData<S>,
 }
 
-impl<S: IsScalar, const DIMS: usize> CubicBSplineFn<S, DIMS> {
+impl<S: IsScalar<1>, const DIMS: usize> CubicBSplineFn<S, DIMS> {
     fn interpolate(
         control_point: S::Vector<DIMS>,
         control_points: [S::Vector<DIMS>; 3],
@@ -81,12 +81,12 @@ pub enum SegmentCase {
 
 /// Cubic B-spline segment
 #[derive(Clone, Debug)]
-pub struct CubicBSplineSegment<S: IsScalar, const DIMS: usize> {
+pub struct CubicBSplineSegment<S: IsScalar<1>, const DIMS: usize> {
     pub(crate) case: SegmentCase,
     pub(crate) control_points: [S::Vector<DIMS>; 4],
 }
 
-impl<S: IsScalar, const DIMS: usize> CubicBSplineSegment<S, DIMS> {
+impl<S: IsScalar<1>, const DIMS: usize> CubicBSplineSegment<S, DIMS> {
     /// Interpolate
     pub fn interpolate(&self, u: S) -> S::Vector<DIMS> {
         match self.case {

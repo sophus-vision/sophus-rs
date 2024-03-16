@@ -141,7 +141,7 @@ mod test {
     fn test_scalar_valued_map_from_vector() {
         let a = VecF64::<2>::new(0.1, 0.4);
 
-        fn f<S: IsScalar, V2: IsVector<S, 2>>(x: V2) -> S {
+        fn f<S: IsScalar<1>, V2: IsVector<S, 2, 1>>(x: V2) -> S {
             x.norm()
         }
 
@@ -156,7 +156,7 @@ mod test {
         //  det [[ c,   d ]] = ad - bc
         //      [[ e,   f ]]
 
-        fn determinant_fn<S: IsScalar, M32: IsMatrix<S, 3, 2>>(mat: M32) -> S {
+        fn determinant_fn<S: IsScalar<1>, M32: IsMatrix<S, 3, 2, 1>>(mat: M32) -> S {
             let a = mat.get((0, 0));
             let b = mat.get((0, 1));
 

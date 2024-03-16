@@ -13,11 +13,11 @@ use super::traits::IsCameraDistortionImpl;
 
 /// Kannala-Brandt distortion implementation
 #[derive(Debug, Clone, Copy)]
-pub struct KannalaBrandtDistortionImpl<S: IsScalar> {
+pub struct KannalaBrandtDistortionImpl<S: IsScalar<1>> {
     phantom: PhantomData<S>,
 }
 
-impl<S: IsScalar> ParamsImpl<S, 8> for KannalaBrandtDistortionImpl<S> {
+impl<S: IsScalar<1>> ParamsImpl<S, 8, 1> for KannalaBrandtDistortionImpl<S> {
     fn are_params_valid(params: &S::Vector<8>) -> bool {
         params.real()[0] != 0.0 && params.real()[1] != 0.0
     }
@@ -36,7 +36,7 @@ impl<S: IsScalar> ParamsImpl<S, 8> for KannalaBrandtDistortionImpl<S> {
     }
 }
 
-impl<S: IsScalar> IsCameraDistortionImpl<S, 4, 8> for KannalaBrandtDistortionImpl<S> {
+impl<S: IsScalar<1>> IsCameraDistortionImpl<S, 4, 8> for KannalaBrandtDistortionImpl<S> {
     fn distort(
         params: &S::Vector<8>,
         proj_point_in_camera_z1_plane: &S::Vector<2>,

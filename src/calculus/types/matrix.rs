@@ -6,8 +6,12 @@ use std::fmt::Debug;
 use std::ops::Mul;
 
 /// Matrix - either a real (f64) or a dual number matrix
-pub trait IsMatrix<S: IsScalar, const ROWS: usize, const COLS: usize>:
-    Debug + Clone + Sized + Mul<S::Vector<COLS>, Output = S::Vector<ROWS>> + IsVectorLike
+pub trait IsMatrix<
+    S: IsScalar<BATCH_SIZE>,
+    const ROWS: usize,
+    const COLS: usize,
+    const BATCH_SIZE: usize,
+>: Debug + Clone + Sized + Mul<S::Vector<COLS>, Output = S::Vector<ROWS>> + IsVectorLike
 {
     /// create a constant matrix
     fn c(val: MatF64<ROWS, COLS>) -> Self;
@@ -71,7 +75,7 @@ impl<const ROWS: usize, const COLS: usize> IsVectorLike for MatF64<ROWS, COLS> {
     }
 }
 
-impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS> for MatF64<ROWS, COLS> {
+impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF64<ROWS, COLS> {
     fn c(val: MatF64<ROWS, COLS>) -> Self {
         val
     }
@@ -142,8 +146,8 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS> for MatF64<
     }
 
     fn block_mat1x2<const C0: usize, const C1: usize>(
-        left_col: <f64 as IsScalar>::Matrix<ROWS, C0>,
-        righ_col: <f64 as IsScalar>::Matrix<ROWS, C1>,
+        left_col: <f64 as IsScalar<1>>::Matrix<ROWS, C0>,
+        righ_col: <f64 as IsScalar<1>>::Matrix<ROWS, C1>,
     ) -> Self {
         assert_eq!(COLS, C0 + C1);
         let mut m = Self::zero();

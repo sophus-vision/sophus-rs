@@ -11,7 +11,7 @@ use super::MatF64;
 use super::VecF64;
 
 /// Scalar - either a real (f64) or a dual number
-pub trait IsScalar:
+pub trait IsScalar<const BATCH_SIZE: usize>:
     PartialOrd
     + PartialEq
     + Debug
@@ -27,10 +27,10 @@ pub trait IsScalar:
     + From<f64>
 {
     /// Vector type
-    type Vector<const ROWS: usize>: IsVector<Self, ROWS>;
+    type Vector<const ROWS: usize>: IsVector<Self, ROWS, BATCH_SIZE>;
 
     /// Matrix type
-    type Matrix<const ROWS: usize, const COLS: usize>: IsMatrix<Self, ROWS, COLS>;
+    type Matrix<const ROWS: usize, const COLS: usize>: IsMatrix<Self, ROWS, COLS, BATCH_SIZE>;
 
     /// create a constant scalar
     fn c(val: f64) -> Self;
@@ -78,7 +78,7 @@ pub trait IsScalar:
     fn floor(&self) -> i64;
 }
 
-impl IsScalar for f64 {
+impl IsScalar<1> for f64 {
     type Vector<const ROWS: usize> = VecF64<ROWS>;
     type Matrix<const ROWS: usize, const COLS: usize> = MatF64<ROWS, COLS>;
 

@@ -11,11 +11,11 @@ use super::traits::IsProjection;
 
 /// Orthographic projection implementation
 #[derive(Debug, Clone)]
-pub struct ProjectionOrtho<S: IsScalar> {
+pub struct ProjectionOrtho<S: IsScalar<1>> {
     phantom: PhantomData<S>,
 }
 
-impl<S: IsScalar> IsProjection<S> for ProjectionOrtho<S> {
+impl<S: IsScalar<1>> IsProjection<S> for ProjectionOrtho<S> {
     fn proj(point_in_camera: &S::Vector<3>) -> S::Vector<2> {
         point_in_camera.get_fixed_rows::<2>(0)
     }

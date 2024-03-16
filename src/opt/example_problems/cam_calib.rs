@@ -1,7 +1,7 @@
 use crate::calculus::types::MatF64;
 use crate::calculus::types::VecF64;
 use crate::image::image_view::ImageSize;
-use crate::lie::rotation3::Isometry3;
+use crate::lie::isometry3::Isometry3;
 use crate::lie::rotation3::Rotation3;
 use crate::lie::traits::IsTranslationProductGroup;
 use crate::opt;

@@ -4,7 +4,7 @@ use super::types::vector::IsVectorLike;
 use super::types::VecF64;
 
 /// Example points
-pub fn example_points<S: IsScalar, const POINT: usize>() -> Vec<S::Vector<POINT>> {
+pub fn example_points<S: IsScalar<1>, const POINT: usize>() -> Vec<S::Vector<POINT>> {
     let points4 = vec![
         VecF64::<4>::from_array([0.1, 0.0, 0.0, 0.0]),
         VecF64::<4>::from_array([1.0, 4.0, 1.0, 0.5]),

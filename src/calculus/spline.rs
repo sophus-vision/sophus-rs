@@ -12,14 +12,14 @@ use assertables::assert_le_as_result;
 use nalgebra::Scalar;
 
 /// Cubic B-Spline implementation
-pub struct CubicBSplineImpl<S: IsScalar, const DIMS: usize> {
+pub struct CubicBSplineImpl<S: IsScalar<1>, const DIMS: usize> {
     /// Control points
     pub control_points: Vec<S::Vector<DIMS>>,
     /// delta between control points
     pub delta_t: S,
 }
 
-impl<S: IsScalar, const DIMS: usize> CubicBSplineImpl<S, DIMS> {
+impl<S: IsScalar<1>, const DIMS: usize> CubicBSplineImpl<S, DIMS> {
     /// indices involved
     pub fn idx_involved(&self, segment_idx: usize) -> Vec<usize> {
         let num = self.num_segments();
@@ -125,7 +125,7 @@ pub struct IndexAndU<S: Scalar> {
 }
 
 /// Cubic B-Spline
-pub struct CubicBSpline<S: IsScalar, const DIMS: usize> {
+pub struct CubicBSpline<S: IsScalar<1>, const DIMS: usize> {
     /// Cubic B-Spline implementation
     pub spline_impl: CubicBSplineImpl<S, DIMS>,
     /// start time t0
@@ -134,14 +134,14 @@ pub struct CubicBSpline<S: IsScalar, const DIMS: usize> {
 
 /// Cubic B-Spline parameters
 #[derive(Clone, Debug, Copy)]
-pub struct CubicBSplineParams<S: IsScalar + 'static> {
+pub struct CubicBSplineParams<S: IsScalar<1> + 'static> {
     /// delta between control points
     pub delta_t: S,
     /// start time t0
     pub t0: S,
 }
 
-impl<S: IsScalar + 'static, const DIMS: usize> CubicBSpline<S, DIMS> {
+impl<S: IsScalar<1> + 'static, const DIMS: usize> CubicBSpline<S, DIMS> {
     /// create a new cubic B-Spline
     pub fn new(control_points: Vec<S::Vector<DIMS>>, params: CubicBSplineParams<S>) -> Self {
         Self {

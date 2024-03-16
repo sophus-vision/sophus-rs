@@ -203,7 +203,7 @@ impl<const ROWS: usize, const COLS: usize> DualM<ROWS, COLS> {
     }
 }
 
-impl<const ROWS: usize, const COLS: usize> IsMatrix<Dual, ROWS, COLS> for DualM<ROWS, COLS> {
+impl<const ROWS: usize, const COLS: usize> IsMatrix<Dual, ROWS, COLS, 1> for DualM<ROWS, COLS> {
     fn mat_mul<const COLS2: usize>(&self, rhs: DualM<COLS, COLS2>) -> DualM<ROWS, COLS2> {
         DualM {
             val: self.val * rhs.val,
@@ -297,12 +297,12 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<Dual, ROWS, COLS> for DualM<
 
     fn block_mat2x2<const R0: usize, const R1: usize, const C0: usize, const C1: usize>(
         top_row: (
-            <Dual as crate::calculus::types::scalar::IsScalar>::Matrix<R0, C0>,
-            <Dual as crate::calculus::types::scalar::IsScalar>::Matrix<R0, C1>,
+            <Dual as crate::calculus::types::scalar::IsScalar<1>>::Matrix<R0, C0>,
+            <Dual as crate::calculus::types::scalar::IsScalar<1>>::Matrix<R0, C1>,
         ),
         bot_row: (
-            <Dual as crate::calculus::types::scalar::IsScalar>::Matrix<R1, C0>,
-            <Dual as crate::calculus::types::scalar::IsScalar>::Matrix<R1, C1>,
+            <Dual as crate::calculus::types::scalar::IsScalar<1>>::Matrix<R1, C0>,
+            <Dual as crate::calculus::types::scalar::IsScalar<1>>::Matrix<R1, C1>,
         ),
     ) -> Self {
         assert_eq!(R0 + R1, ROWS);
@@ -342,8 +342,8 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<Dual, ROWS, COLS> for DualM<
     }
 
     fn block_mat1x2<const C0: usize, const C1: usize>(
-        left_col: <Dual as crate::calculus::types::scalar::IsScalar>::Matrix<ROWS, C0>,
-        righ_col: <Dual as crate::calculus::types::scalar::IsScalar>::Matrix<ROWS, C1>,
+        left_col: <Dual as crate::calculus::types::scalar::IsScalar<1>>::Matrix<ROWS, C0>,
+        righ_col: <Dual as crate::calculus::types::scalar::IsScalar<1>>::Matrix<ROWS, C1>,
     ) -> Self {
         assert_eq!(C0 + C1, COLS);
         let maybe_dij = Self::two_dx(left_col.dij_val, righ_col.dij_val);
@@ -527,7 +527,7 @@ mod test {
         let m_2x4 = MatF64::<2, 4>::new_random();
         let m_4x1 = MatF64::<4, 1>::new_random();
 
-        fn mat_mul_fn<S: IsScalar>(x: S::Matrix<2, 4>, y: S::Matrix<4, 1>) -> S::Matrix<2, 1> {
+        fn mat_mul_fn<S: IsScalar<1>>(x: S::Matrix<2, 4>, y: S::Matrix<4, 1>) -> S::Matrix<2, 1> {
             x.mat_mul(y)
         }
         let finite_diff = MatrixValuedMapFromMatrix::sym_diff_quotient(
@@ -570,7 +570,7 @@ mod test {
             }
         }
 
-        fn mat_mul2_fn<S: IsScalar>(x: S::Matrix<4, 4>) -> S::Matrix<4, 4> {
+        fn mat_mul2_fn<S: IsScalar<1>>(x: S::Matrix<4, 4>) -> S::Matrix<4, 4> {
             x.mat_mul(x.clone())
         }
 

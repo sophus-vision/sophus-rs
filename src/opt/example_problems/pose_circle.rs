@@ -1,6 +1,6 @@
 use crate::calculus::types::vector::IsVector;
 use crate::calculus::types::VecF64;
-use crate::lie::rotation2::Isometry2;
+use crate::lie::isometry2::Isometry2;
 use crate::opt::cost_fn::CostFn;
 use crate::opt::cost_fn::CostSignature;
 use crate::opt::example_problems::cost_fn::pose_graph::PoseGraphCostTermSignature;
@@ -150,7 +150,7 @@ mod tests {
     #[test]
     fn simple_prior_opt_tests() {
         use super::PoseCircleProblem;
-        use crate::lie::rotation2::Isometry2;
+        use crate::lie::isometry2::Isometry2;
 
         let pose_graph = PoseCircleProblem::new(2500);
 

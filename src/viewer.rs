@@ -26,7 +26,7 @@ use self::scene_renderer::SceneRenderer;
 use crate::image::arc_image::ArcImage4U8;
 use crate::image::image_view::ImageSize;
 use crate::image::image_view::IsImageView;
-use crate::lie::rotation3::Isometry3;
+use crate::lie::isometry3::Isometry3;
 use crate::sensor::perspective_camera::KannalaBrandtCamera;
 use crate::tensor::view::IsTensorLike;
 use crate::viewer::pixel_renderer::LineVertex2;
