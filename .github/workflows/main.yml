@@ -20,10 +20,13 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y nasm
-          cargo check
-          cargo doc
+          cargo doc --no-deps
           cargo fmt --check
           cargo test --release
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          args: --release
      
 
 

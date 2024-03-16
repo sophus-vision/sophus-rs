@@ -4,7 +4,7 @@ use hollywood::actors::egui::EguiAppFromBuilder;
 use hollywood::actors::egui::GenericEguiBuilder;
 use hollywood::core::request::RequestMessage;
 
-use crate::lie::rotation3::Isometry3;
+use crate::lie::isometry3::Isometry3;
 use crate::sensor::perspective_camera::KannalaBrandtCamera;
 
 use super::scene_renderer::interaction::WgpuClippingPlanes;

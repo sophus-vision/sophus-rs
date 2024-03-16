@@ -1,8 +1,8 @@
 use crate::calculus::types::vector::IsVector;
 use crate::calculus::types::MatF64;
 use crate::calculus::types::VecF64;
-use crate::lie::rotation2::Isometry2;
-use crate::lie::rotation3::Isometry3;
+use crate::lie::isometry2::Isometry2;
+use crate::lie::isometry3::Isometry3;
 use crate::opt::cost_fn::CostFn;
 use crate::opt::cost_fn::CostSignature;
 use crate::opt::example_problems::cost_fn::isometry2_prior::Isometry2PriorCostFn;

@@ -1,7 +1,7 @@
 use super::scalar::IsScalar;
 
 /// Parameter implementation.
-pub trait ParamsImpl<S: IsScalar, const PARAMS: usize> {
+pub trait ParamsImpl<S: IsScalar<BATCH_SIZE>, const PARAMS: usize, const BATCH_SIZE: usize> {
     /// Is the parameter vector valid?
     fn are_params_valid(params: &S::Vector<PARAMS>) -> bool;
     /// Examples of valid parameter vectors.
@@ -11,7 +11,9 @@ pub trait ParamsImpl<S: IsScalar, const PARAMS: usize> {
 }
 
 /// A trait for types that have parameters.
-pub trait HasParams<S: IsScalar, const PARAMS: usize>: ParamsImpl<S, PARAMS> {
+pub trait HasParams<S: IsScalar<BATCH_SIZE>, const PARAMS: usize, const BATCH_SIZE: usize>:
+    ParamsImpl<S, PARAMS, BATCH_SIZE>
+{
     /// Create from parameters.
     fn from_params(params: &S::Vector<PARAMS>) -> Self;
     /// Set parameters.

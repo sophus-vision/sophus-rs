@@ -12,17 +12,15 @@ use crate::lie::traits::IsLieGroupImpl;
 use crate::manifold::{self};
 use std::marker::PhantomData;
 
-use super::traits::IsTranslationProductGroup;
-
 /// 2D rotation group implementation struct - SO(2)
 #[derive(Debug, Copy, Clone)]
-pub struct Rotation2Impl<S: IsScalar> {
+pub struct Rotation2Impl<S: IsScalar<1>> {
     phanton: PhantomData<S>,
 }
 
-impl<S: IsScalar> Rotation2Impl<S> {}
+impl<S: IsScalar<1>> Rotation2Impl<S> {}
 
-impl<S: IsScalar> ParamsImpl<S, 2> for Rotation2Impl<S> {
+impl<S: IsScalar<1>> ParamsImpl<S, 2, 1> for Rotation2Impl<S> {
     fn params_examples() -> Vec<S::Vector<2>> {
         let mut params = vec![];
         for i in 0..10 {
@@ -50,7 +48,7 @@ impl<S: IsScalar> ParamsImpl<S, 2> for Rotation2Impl<S> {
     }
 }
 
-impl<S: IsScalar> manifold::traits::TangentImpl<S, 1> for Rotation2Impl<S> {
+impl<S: IsScalar<1>> manifold::traits::TangentImpl<S, 1, 1> for Rotation2Impl<S> {
     fn tangent_examples() -> Vec<S::Vector<1>> {
         vec![
             S::Vector::<1>::from_array([0.0.into()]),
@@ -62,8 +60,8 @@ impl<S: IsScalar> manifold::traits::TangentImpl<S, 1> for Rotation2Impl<S> {
     }
 }
 
-impl<S: IsScalar> lie::traits::IsLieGroupImpl<S, 1, 2, 2, 2> for Rotation2Impl<S> {
-    type GenG<S2: IsScalar> = Rotation2Impl<S2>;
+impl<S: IsScalar<1>> lie::traits::IsLieGroupImpl<S, 1, 2, 2, 2, 1> for Rotation2Impl<S> {
+    type GenG<S2: IsScalar<1>> = Rotation2Impl<S2>;
     type RealG = Rotation2Impl<f64>;
     type DualG = Rotation2Impl<Dual>;
 
@@ -143,7 +141,7 @@ impl<S: IsScalar> lie::traits::IsLieGroupImpl<S, 1, 2, 2, 2> for Rotation2Impl<S
         S::Matrix::<1, 1>::zero()
     }
 
-    fn has_shortest_path_ambiguity(params: &<S as IsScalar>::Vector<2>) -> bool {
+    fn has_shortest_path_ambiguity(params: &<S as IsScalar<1>>::Vector<2>) -> bool {
         (Self::log(params).real()[0].abs() - std::f64::consts::PI).abs() < 1e-5
     }
 }
@@ -180,10 +178,10 @@ impl lie::traits::IsF64LieGroupImpl<1, 2, 2, 2> for Rotation2Impl<f64> {
 }
 
 /// 2d rotation group - SO(2)
-pub type Rotation2<S> = lie::lie_group::LieGroup<S, 1, 2, 2, 2, Rotation2Impl<S>>;
+pub type Rotation2<S> = lie::lie_group::LieGroup<S, 1, 2, 2, 2, 1, Rotation2Impl<S>>;
 
-impl<S: IsScalar> lie::traits::IsLieFactorGroupImpl<S, 1, 2, 2> for Rotation2Impl<S> {
-    type GenFactorG<S2: IsScalar> = Rotation2Impl<S2>;
+impl<S: IsScalar<1>> lie::traits::IsLieFactorGroupImpl<S, 1, 2, 2, 1> for Rotation2Impl<S> {
+    type GenFactorG<S2: IsScalar<1>> = Rotation2Impl<S2>;
     type RealFactorG = Rotation2Impl<f64>;
     type DualFactorG = Rotation2Impl<Dual>;
 
@@ -280,41 +278,6 @@ impl lie::traits::IsF64LieFactorGroupImpl<1, 2, 2> for Rotation2Impl<f64> {
     }
 }
 
-/// 2D isometry group implementation struct - SE(2)
-pub type Isometry2Impl<S> = lie::translation_product_product::TranslationProductGroupImpl<
-    S,
-    3,
-    4,
-    2,
-    3,
-    1,
-    2,
-    Rotation2Impl<S>,
->;
-
-/// 2D isometry group - SE(2)
-pub type Isometry2<S> = lie::lie_group::LieGroup<S, 3, 4, 2, 3, Isometry2Impl<S>>;
-
-impl<S: IsScalar> Isometry2<S> {
-    /// create isometry from translation and rotation
-    pub fn from_translation_and_rotation(
-        translation: &<S as IsScalar>::Vector<2>,
-        rotation: &Rotation2<S>,
-    ) -> Self {
-        Self::from_translation_and_factor(translation, rotation)
-    }
-
-    /// set rotation
-    pub fn set_rotation(&mut self, rotation: &Rotation2<S>) {
-        self.set_factor(rotation)
-    }
-
-    /// get rotation
-    pub fn rotation(&self) -> Rotation2<S> {
-        self.factor()
-    }
-}
-
 mod tests {
 
     #[test]
@@ -326,15 +289,5 @@ mod tests {
         Rotation2::<Dual>::test_suite();
         Rotation2::<f64>::real_test_suite();
         Rotation2::<f64>::real_factor_test_suite();
-    }
-
-    #[test]
-    fn isometry2_prop_tests() {
-        use super::Isometry2;
-        use crate::calculus::dual::dual_scalar::Dual;
-
-        Isometry2::<f64>::test_suite();
-        Isometry2::<Dual>::test_suite();
-        Isometry2::<f64>::real_test_suite();
     }
 }

@@ -18,7 +18,7 @@ use crate::image::mut_image_view::IsMutImageView;
 /// A generic camera model
 #[derive(Debug, Copy, Clone)]
 pub struct Camera<
-    S: IsScalar,
+    S: IsScalar<1>,
     const DISTORT: usize,
     const PARAMS: usize,
     Distort: IsCameraDistortionImpl<S, DISTORT, PARAMS>,
@@ -30,7 +30,7 @@ pub struct Camera<
 }
 
 impl<
-        S: IsScalar,
+        S: IsScalar<1>,
         const DISTORT: usize,
         const PARAMS: usize,
         Distort: IsCameraDistortionImpl<S, DISTORT, PARAMS>,
@@ -198,7 +198,7 @@ impl<
 }
 
 impl<
-        S: IsScalar,
+        S: IsScalar<1>,
         const DISTORT: usize,
         const PARAMS: usize,
         Distort: IsCameraDistortionImpl<S, DISTORT, PARAMS>,

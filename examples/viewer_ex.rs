@@ -10,7 +10,7 @@ use nalgebra::SVector;
 use sophus::calculus::types::vector::IsVector;
 use sophus::calculus::types::VecF64;
 use sophus::image::image_view::ImageSize;
-use sophus::lie::rotation3::Isometry3;
+use sophus::lie::isometry3::Isometry3;
 use sophus::lie::traits::IsTranslationProductGroup;
 use sophus::sensor::perspective_camera::KannalaBrandtCamera;
 

@@ -134,7 +134,7 @@ impl Debug for Dual {
     }
 }
 
-impl IsScalar for Dual {
+impl IsScalar<1> for Dual {
     type Vector<const ROWS: usize> = DualV<ROWS>;
     type Matrix<const ROWS: usize, const COLS: usize> = DualM<ROWS, COLS>;
 
@@ -405,7 +405,7 @@ mod test {
             let a = 0.1 * (i as f64);
 
             // f(x) = x^2
-            fn square_fn<S: IsScalar>(x: S) -> S {
+            fn square_fn<S: IsScalar<1>>(x: S) -> S {
                 x.clone() * x
             }
             let finite_diff = ScalarValuedCurve::sym_diff_quotient(square_fn, a, 1e-6);
@@ -413,7 +413,7 @@ mod test {
             approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
             {
-                fn add_fn<S: IsScalar>(x: S, y: S) -> S {
+                fn add_fn<S: IsScalar<1>>(x: S, y: S) -> S {
                     x + y
                 }
                 let b = 12.0;
@@ -432,7 +432,7 @@ mod test {
             }
 
             {
-                fn sub_fn<S: IsScalar>(x: S, y: S) -> S {
+                fn sub_fn<S: IsScalar<1>>(x: S, y: S) -> S {
                     x - y
                 }
                 let b = 12.0;
@@ -451,7 +451,7 @@ mod test {
             }
 
             {
-                fn mul_fn<S: IsScalar>(x: S, y: S) -> S {
+                fn mul_fn<S: IsScalar<1>>(x: S, y: S) -> S {
                     x * y
                 }
                 let b = 12.0;
@@ -470,7 +470,7 @@ mod test {
             }
 
             {
-                fn div_fn<S: IsScalar>(x: S, y: S) -> S {
+                fn div_fn<S: IsScalar<1>>(x: S, y: S) -> S {
                     x / y
                 }
                 let b = 12.0;

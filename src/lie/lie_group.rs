@@ -32,27 +32,30 @@ use super::traits::IsLieGroupImpl;
 /// Lie group
 #[derive(Debug, Copy, Clone)]
 pub struct LieGroup<
-    S: IsScalar,
+    S: IsScalar<BATCH_SIZE>,
     const DOF: usize,
     const PARAMS: usize,
     const POINT: usize,
     const AMBIENT: usize,
-    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>,
+    const BATCH_SIZE: usize,
+    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
 > {
     params: S::Vector<PARAMS>,
     phantom: std::marker::PhantomData<G>,
 }
 
 impl<
-        S: IsScalar,
+        S: IsScalar<BATCH_SIZE>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>,
-    > ParamsImpl<S, PARAMS> for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, G>
+        const BATCH_SIZE: usize,
+        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
+    > ParamsImpl<S, PARAMS, BATCH_SIZE>
+    for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
 {
-    fn are_params_valid(params: &<S as IsScalar>::Vector<PARAMS>) -> bool {
+    fn are_params_valid(params: &<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>) -> bool {
         G::are_params_valid(params)
     }
 
@@ -66,13 +69,14 @@ impl<
 }
 
 impl<
-        S: IsScalar,
+        S: IsScalar<BATCH_SIZE>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>,
-    > HasParams<S, PARAMS> for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, G>
+        const BATCH_SIZE: usize,
+        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
+    > HasParams<S, PARAMS, BATCH_SIZE> for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
 {
     fn from_params(params: &S::Vector<PARAMS>) -> Self {
         assert!(
@@ -96,47 +100,50 @@ impl<
 }
 
 impl<
-        S: IsScalar,
+        S: IsScalar<BATCH_SIZE>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>,
-    > TangentImpl<S, DOF> for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, G>
+        const BATCH_SIZE: usize,
+        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
+    > TangentImpl<S, DOF, BATCH_SIZE> for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
 {
-    fn tangent_examples() -> Vec<<S as IsScalar>::Vector<DOF>> {
+    fn tangent_examples() -> Vec<<S as IsScalar<BATCH_SIZE>>::Vector<DOF>> {
         G::tangent_examples()
     }
 }
 
 impl<
-        S: IsScalar,
+        S: IsScalar<1>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>,
-    > IsLieGroup<S, DOF, PARAMS, POINT, AMBIENT> for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, G>
+        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, 1>,
+    > IsLieGroup<S, DOF, PARAMS, POINT, AMBIENT, 1>
+    for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, 1, G>
 {
     type G = G;
-    type GenG<S2: IsScalar> = G::GenG<S2>;
+    type GenG<S2: IsScalar<1>> = G::GenG<S2>;
     type RealG = G::RealG;
     type DualG = G::DualG;
 
-    type GenGroup<S2: IsScalar, G2: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT>> =
-        LieGroup<S2, DOF, PARAMS, POINT, AMBIENT, G2>;
+    type GenGroup<S2: IsScalar<1>, G2: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT, 1>> =
+        LieGroup<S2, DOF, PARAMS, POINT, AMBIENT, 1, G2>;
     type RealGroup = Self::GenGroup<f64, G::RealG>;
     type DualGroup = Self::GenGroup<Dual, G::DualG>;
 }
 
 impl<
-        S: IsScalar,
+        S: IsScalar<BATCH_SIZE>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>,
-    > LieGroup<S, DOF, PARAMS, POINT, AMBIENT, G>
+        const BATCH_SIZE: usize,
+        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
+    > LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
 {
     /// group adjoint
     pub fn adj(&self) -> S::Matrix<DOF, DOF> {
@@ -354,83 +361,90 @@ impl<
 
 #[derive(Debug, Clone)]
 struct LeftGroupManifold<
-    S: IsScalar,
+    S: IsScalar<BATCH_SIZE>,
     const DOF: usize,
     const PARAMS: usize,
     const POINT: usize,
     const AMBIENT: usize,
-    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>,
+    const BATCH_SIZE: usize,
+    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
 > {
-    group: LieGroup<S, DOF, PARAMS, POINT, AMBIENT, G>,
+    group: LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>,
 }
 
 impl<
-        S: IsScalar,
+        S: IsScalar<BATCH_SIZE>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT> + Clone + Debug,
-    > ParamsImpl<S, PARAMS> for LeftGroupManifold<S, DOF, PARAMS, POINT, AMBIENT, G>
+        const BATCH_SIZE: usize,
+        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE> + Clone + Debug,
+    > ParamsImpl<S, PARAMS, BATCH_SIZE>
+    for LeftGroupManifold<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
 {
-    fn are_params_valid(params: &<S as IsScalar>::Vector<PARAMS>) -> bool {
+    fn are_params_valid(params: &<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>) -> bool {
         G::are_params_valid(params)
     }
 
-    fn params_examples() -> Vec<<S as IsScalar>::Vector<PARAMS>> {
+    fn params_examples() -> Vec<<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>> {
         G::params_examples()
     }
 
-    fn invalid_params_examples() -> Vec<<S as IsScalar>::Vector<PARAMS>> {
+    fn invalid_params_examples() -> Vec<<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>> {
         G::invalid_params_examples()
     }
 }
 
 impl<
-        S: IsScalar,
+        S: IsScalar<BATCH_SIZE>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT> + Clone + Debug,
-    > HasParams<S, PARAMS> for LeftGroupManifold<S, DOF, PARAMS, POINT, AMBIENT, G>
+        const BATCH_SIZE: usize,
+        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE> + Clone + Debug,
+    > HasParams<S, PARAMS, BATCH_SIZE>
+    for LeftGroupManifold<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
 {
-    fn from_params(params: &<S as IsScalar>::Vector<PARAMS>) -> Self {
+    fn from_params(params: &<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>) -> Self {
         Self {
             group: LieGroup::from_params(params),
         }
     }
 
-    fn set_params(&mut self, params: &<S as IsScalar>::Vector<PARAMS>) {
+    fn set_params(&mut self, params: &<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>) {
         self.group.set_params(params)
     }
 
-    fn params(&self) -> &<S as IsScalar>::Vector<PARAMS> {
+    fn params(&self) -> &<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS> {
         self.group.params()
     }
 }
 
 impl<
-        S: IsScalar,
+        S: IsScalar<BATCH_SIZE>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT> + Clone + Debug,
-    > IsManifold<S, PARAMS, DOF> for LeftGroupManifold<S, DOF, PARAMS, POINT, AMBIENT, G>
+        const BATCH_SIZE: usize,
+        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE> + Clone + Debug,
+    > IsManifold<S, PARAMS, DOF, BATCH_SIZE>
+    for LeftGroupManifold<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
 {
-    fn oplus(&self, tangent: &<S as IsScalar>::Vector<DOF>) -> Self {
+    fn oplus(&self, tangent: &<S as IsScalar<BATCH_SIZE>>::Vector<DOF>) -> Self {
         Self {
-            group: LieGroup::<S, DOF, PARAMS, POINT, AMBIENT, G>::exp(tangent)
+            group: LieGroup::<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>::exp(tangent)
                 .group_mul(&self.group),
         }
     }
 
-    fn ominus(&self, rhs: &Self) -> <S as IsScalar>::Vector<DOF> {
+    fn ominus(&self, rhs: &Self) -> <S as IsScalar<BATCH_SIZE>>::Vector<DOF> {
         self.group.inverse().group_mul(&rhs.group).log()
     }
 
-    fn params(&self) -> &<S as IsScalar>::Vector<PARAMS> {
+    fn params(&self) -> &<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS> {
         self.group.params()
     }
 }
@@ -441,7 +455,7 @@ impl<
         const POINT: usize,
         const AMBIENT: usize,
         G: IsF64LieGroupImpl<DOF, PARAMS, POINT, AMBIENT>,
-    > LieGroup<f64, DOF, PARAMS, POINT, AMBIENT, G>
+    > LieGroup<f64, DOF, PARAMS, POINT, AMBIENT, 1, G>
 {
     /// derivative of exponential map at the identity
     pub fn dx_exp_x_at_0() -> MatF64<PARAMS, DOF> {
@@ -464,7 +478,7 @@ impl<
     }
 
     /// dual representation of the group
-    pub fn to_dual_c(self) -> LieGroup<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG> {
+    pub fn to_dual_c(self) -> LieGroup<Dual, DOF, PARAMS, POINT, AMBIENT, 1, G::DualG> {
         let dual_params = DualV::<PARAMS>::c(self.params);
         LieGroup::from_params(&dual_params)
     }
@@ -519,28 +533,31 @@ impl<
                             //     &(&Self::hat(a) * Self::hat(&x) - Self::hat(&x) * &Self::hat(a)),
                             // )
                             let hat_x =
-                                <LieGroup<f64, DOF, PARAMS, POINT, AMBIENT, G> as IsLieGroup<
+                                <LieGroup<f64, DOF, PARAMS, POINT, AMBIENT, 1, G> as IsLieGroup<
                                     f64,
                                     DOF,
                                     PARAMS,
                                     POINT,
                                     AMBIENT,
+                                    1,
                                 >>::DualGroup::hat(&x);
                             let hat_a =
-                                <LieGroup<f64, DOF, PARAMS, POINT, AMBIENT, G> as IsLieGroup<
+                                <LieGroup<f64, DOF, PARAMS, POINT, AMBIENT, 1, G> as IsLieGroup<
                                     f64,
                                     DOF,
                                     PARAMS,
                                     POINT,
                                     AMBIENT,
+                                    1,
                                 >>::DualGroup::hat(&DualV::c(*a));
                             let mul = hat_a.mat_mul(hat_x.clone()) - hat_x.mat_mul(hat_a);
-                            <LieGroup<f64, DOF, PARAMS, POINT, AMBIENT, G> as IsLieGroup<
+                            <LieGroup<f64, DOF, PARAMS, POINT, AMBIENT, 1, G> as IsLieGroup<
                                 f64,
                                 DOF,
                                 PARAMS,
                                 POINT,
                                 AMBIENT,
+                                1,
                             >>::DualGroup::vee(&mul)
                             //hat_x
                         },
@@ -607,7 +624,7 @@ impl<
                 let b_dual = b.clone().to_dual_c();
 
                 let dual_mul_x = |vv: DualV<PARAMS>| -> DualV<PARAMS> {
-                    LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::from_params(&vv)
+                    LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, 1, G::DualG>::from_params(&vv)
                         .group_mul(&b_dual)
                         .params()
                         .clone()
@@ -621,7 +638,7 @@ impl<
                 let dual_mul_x = |vv: DualV<PARAMS>| -> DualV<PARAMS> {
                     a_dual
                         .group_mul(
-                            &LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::from_params(
+                            &LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT,1, G::DualG>::from_params(
                                 &vv,
                             ),
                         )
@@ -648,7 +665,7 @@ impl<
             {
                 let exp_t = |t: VecF64<DOF>| -> VecF64<PARAMS> { *Self::exp(&t).params() };
                 let dual_exp_t = |vv: DualV<DOF>| -> DualV<PARAMS> {
-                    LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::exp(&vv)
+                    LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, 1, G::DualG>::exp(&vv)
                         .params()
                         .clone()
                 };
@@ -668,7 +685,7 @@ impl<
         {
             let exp_t = |t: VecF64<DOF>| -> VecF64<PARAMS> { *Self::exp(&t).params() };
             let dual_exp_t = |vv: DualV<DOF>| -> DualV<PARAMS> {
-                LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::exp(&vv)
+                LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, 1, G::DualG>::exp(&vv)
                     .params()
                     .clone()
             };
@@ -686,7 +703,7 @@ impl<
         for point in example_points::<f64, POINT>() {
             let exp_t = |t: VecF64<DOF>| -> VecF64<POINT> { Self::exp(&t).transform(&point) };
             let dual_exp_t = |vv: DualV<DOF>| -> DualV<POINT> {
-                LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::exp(&vv)
+                LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, 1, G::DualG>::exp(&vv)
                     .transform(&DualV::c(point))
             };
 
@@ -712,11 +729,12 @@ impl<
                 let o = VecF64::zeros();
 
                 let dual_params = DualV::c(*g.params());
-                let dual_g = LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::from_params(
-                    &dual_params,
-                );
+                let dual_g =
+                    LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, 1, G::DualG>::from_params(
+                        &dual_params,
+                    );
                 let dual_log_x = |t: DualV<DOF>| -> DualV<DOF> {
-                    LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::exp(&t)
+                    LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, 1, G::DualG>::exp(&t)
                         .group_mul(&dual_g)
                         .log()
                 };
@@ -728,7 +746,8 @@ impl<
                 assert_relative_eq!(auto_diff, num_diff, epsilon = 0.001);
 
                 let dual_log_x = |g: DualV<PARAMS>| -> DualV<DOF> {
-                    LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::from_params(&g).log()
+                    LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, 1, G::DualG>::from_params(&g)
+                        .log()
                 };
 
                 let auto_diff =
@@ -745,18 +764,20 @@ impl<
             for b in Self::element_examples() {
                 println!("a: {:?}, b: {:?}", a, b);
                 let dual_params_a = DualV::c(*a.clone().params());
-                let dual_a = LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::from_params(
-                    &dual_params_a,
-                );
+                let dual_a =
+                    LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, 1, G::DualG>::from_params(
+                        &dual_params_a,
+                    );
 
                 let dual_params_b = DualV::c(*b.params());
-                let dual_b = LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::from_params(
-                    &dual_params_b,
-                );
+                let dual_b =
+                    LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, 1, G::DualG>::from_params(
+                        &dual_params_b,
+                    );
                 let dual_log_x = |t: DualV<DOF>| -> DualV<DOF> {
                     dual_a
                         .group_mul(
-                            &LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, G::DualG>::exp(&t)
+                            &LieGroup::<Dual, DOF, PARAMS, POINT, AMBIENT, 1, G::DualG>::exp(&t)
                                 .group_mul(&dual_b),
                         )
                         .log()
@@ -781,13 +802,14 @@ impl<
 }
 
 impl<
-        S: IsScalar,
+        S: IsScalar<BATCH_SIZE>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>,
-    > Display for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, G>
+        const BATCH_SIZE: usize,
+        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
+    > Display for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.compact().real())
@@ -799,7 +821,7 @@ impl<
         const PARAMS: usize,
         const POINT: usize,
         G: IsF64LieFactorGroupImpl<DOF, PARAMS, POINT>,
-    > LieGroup<f64, DOF, PARAMS, POINT, POINT, G>
+    > LieGroup<f64, DOF, PARAMS, POINT, POINT, 1, G>
 {
     /// V matrix - used in the exponential map
     pub fn mat_v(tangent: &VecF64<DOF>) -> MatF64<POINT, POINT> {
@@ -871,13 +893,14 @@ impl<
                 println!("a: {:?}", a);
                 println!("p: {:?}", p);
                 let dual_params_a = DualV::c(*a.clone().params());
-                let _dual_a = LieGroup::<Dual, DOF, PARAMS, POINT, POINT, G::DualG>::from_params(
+                let _dual_a = LieGroup::<Dual, DOF, PARAMS, POINT, POINT, 1, G::DualG>::from_params(
                     &dual_params_a,
                 );
                 let dual_p = DualV::c(p);
 
                 let dual_fn = |x: DualV<PARAMS>| -> DualV<POINT> {
-                    LieGroup::<Dual, DOF, PARAMS, POINT, POINT, G::DualG>::from_params(&x).matrix()
+                    LieGroup::<Dual, DOF, PARAMS, POINT, POINT, 1, G::DualG>::from_params(&x)
+                        .matrix()
                         * dual_p.clone()
                 };
 

@@ -17,7 +17,9 @@ pub trait IsVectorLike:
 }
 
 /// Vector - either a real (f64) or a dual number vector
-pub trait IsVector<S: IsScalar, const ROWS: usize>: IsVectorLike {
+pub trait IsVector<S: IsScalar<BATCH_SIZE>, const ROWS: usize, const BATCH_SIZE: usize>:
+    IsVectorLike
+{
     /// create a constant vector
     fn c(val: VecF64<ROWS>) -> Self;
 
@@ -64,7 +66,7 @@ pub trait IsVector<S: IsScalar, const ROWS: usize>: IsVectorLike {
     fn normalized(&self) -> Self;
 }
 
-impl<const ROWS: usize> IsVector<f64, ROWS> for VecF64<ROWS> {
+impl<const ROWS: usize> IsVector<f64, ROWS, 1> for VecF64<ROWS> {
     fn from_array(vals: [f64; ROWS]) -> VecF64<ROWS> {
         VecF64::<ROWS>::from_row_slice(&vals[..])
     }
@@ -131,7 +133,7 @@ impl<const ROWS: usize> IsVector<f64, ROWS> for VecF64<ROWS> {
 }
 
 /// cross product
-pub fn cross<S: IsScalar>(lhs: S::Vector<3>, rhs: S::Vector<3>) -> S::Vector<3> {
+pub fn cross<S: IsScalar<1>>(lhs: S::Vector<3>, rhs: S::Vector<3>) -> S::Vector<3> {
     let l0 = lhs.get(0);
     let l1 = lhs.get(1);
     let l2 = lhs.get(2);

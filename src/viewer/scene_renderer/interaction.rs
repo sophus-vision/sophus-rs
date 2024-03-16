@@ -3,7 +3,7 @@ use eframe::egui;
 use crate::calculus::types::VecF64;
 use crate::image::arc_image::ArcImageF32;
 use crate::image::image_view::IsImageView;
-use crate::lie::rotation3::Isometry3;
+use crate::lie::isometry3::Isometry3;
 use crate::lie::traits::IsTranslationProductGroup;
 use crate::sensor::perspective_camera::KannalaBrandtCamera;
 use crate::tensor::view::IsTensorLike;

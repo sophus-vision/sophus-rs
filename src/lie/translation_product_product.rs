@@ -25,27 +25,27 @@ use crate::manifold::{self};
 /// It is a semi-direct product of the commutative translation group (Euclidean vector space) and a factor group.
 #[derive(Debug, Copy, Clone)]
 pub struct TranslationProductGroupImpl<
-    S: IsScalar,
+    S: IsScalar<1>,
     const DOF: usize,
     const PARAMS: usize,
     const POINT: usize,
     const AMBIENT: usize,
     const SDOF: usize,
     const SPARAMS: usize,
-    F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT>,
+    F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, 1>,
 > {
     phantom: std::marker::PhantomData<(S, F)>,
 }
 
 impl<
-        S: IsScalar,
+        S: IsScalar<1>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
         const SDOF: usize,
         const SPARAMS: usize,
-        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT>,
+        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, 1>,
     > TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, F>
 {
     /// translation part of the group parameters
@@ -90,15 +90,15 @@ impl<
 }
 
 impl<
-        S: IsScalar,
+        S: IsScalar<1>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
         const SDOF: usize,
         const SPARAMS: usize,
-        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT>,
-    > ParamsImpl<S, PARAMS>
+        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, 1>,
+    > ParamsImpl<S, PARAMS, 1>
     for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, F>
 {
     fn are_params_valid(params: &S::Vector<PARAMS>) -> bool {
@@ -124,15 +124,15 @@ impl<
 }
 
 impl<
-        S: IsScalar,
+        S: IsScalar<1>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
         const SDOF: usize,
         const SPARAMS: usize,
-        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT>,
-    > manifold::traits::TangentImpl<S, DOF>
+        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, 1>,
+    > manifold::traits::TangentImpl<S, DOF, 1>
     for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, F>
 {
     fn tangent_examples() -> Vec<S::Vector<DOF>> {
@@ -149,15 +149,15 @@ impl<
 // TODO : Port to Rust
 
 impl<
-        S: IsScalar,
+        S: IsScalar<1>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
         const SDOF: usize,
         const SPARAMS: usize,
-        Factor: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT>,
-    > IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT>
+        Factor: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, 1>,
+    > IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, 1>
     for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, Factor>
 {
     const IS_ORIGIN_PRESERVING: bool = false;
@@ -281,7 +281,7 @@ impl<
         )
     }
 
-    type GenG<S2: IsScalar> = TranslationProductGroupImpl<
+    type GenG<S2: IsScalar<1>> = TranslationProductGroupImpl<
         S2,
         DOF,
         PARAMS,
@@ -314,7 +314,7 @@ impl<
         Factor::GenFactorG<Dual>,
     >;
 
-    fn has_shortest_path_ambiguity(params: &<S as IsScalar>::Vector<PARAMS>) -> bool {
+    fn has_shortest_path_ambiguity(params: &<S as IsScalar<1>>::Vector<PARAMS>) -> bool {
         Factor::has_shortest_path_ambiguity(&Self::factor_params(params))
     }
 }
@@ -427,14 +427,14 @@ impl<
 }
 
 impl<
-        S: IsScalar,
+        S: IsScalar<1>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
         const SDOF: usize,
         const SPARAMS: usize,
-        FactorImpl: lie::traits::IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT>,
+        FactorImpl: lie::traits::IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, 1>,
     >
     IsTranslationProductGroup<
         S,
@@ -444,7 +444,8 @@ impl<
         AMBIENT,
         SDOF,
         SPARAMS,
-        LieGroup<S, SDOF, SPARAMS, POINT, POINT, FactorImpl>,
+        1,
+        LieGroup<S, SDOF, SPARAMS, POINT, POINT, 1, FactorImpl>,
     >
     for lie::lie_group::LieGroup<
         S,
@@ -452,6 +453,7 @@ impl<
         PARAMS,
         POINT,
         AMBIENT,
+        1,
         TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, FactorImpl>,
     >
 {
@@ -459,30 +461,30 @@ impl<
         TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, FactorImpl>;
 
     fn from_translation_and_factor(
-        translation: &<S as IsScalar>::Vector<POINT>,
-        factor: &LieGroup<S, SDOF, SPARAMS, POINT, POINT, FactorImpl>,
+        translation: &<S as IsScalar<1>>::Vector<POINT>,
+        factor: &LieGroup<S, SDOF, SPARAMS, POINT, POINT, 1, FactorImpl>,
     ) -> Self {
         let params = Self::Impl::params_from(translation, factor.params());
         Self::from_params(&params)
     }
 
-    fn from_t(translation: &<S as IsScalar>::Vector<POINT>) -> Self {
+    fn from_t(translation: &<S as IsScalar<1>>::Vector<POINT>) -> Self {
         Self::from_translation_and_factor(translation, &LieGroup::identity())
     }
 
-    fn set_translation(&mut self, translation: &<S as IsScalar>::Vector<POINT>) {
+    fn set_translation(&mut self, translation: &<S as IsScalar<1>>::Vector<POINT>) {
         self.set_params(&Self::G::params_from(translation, self.factor().params()))
     }
 
-    fn translation(&self) -> <S as IsScalar>::Vector<POINT> {
+    fn translation(&self) -> <S as IsScalar<1>>::Vector<POINT> {
         Self::Impl::translation(self.params())
     }
 
-    fn set_factor(&mut self, factor: &LieGroup<S, SDOF, SPARAMS, POINT, POINT, FactorImpl>) {
+    fn set_factor(&mut self, factor: &LieGroup<S, SDOF, SPARAMS, POINT, POINT, 1, FactorImpl>) {
         self.set_params(&Self::G::params_from(&self.translation(), factor.params()))
     }
 
-    fn factor(&self) -> LieGroup<S, SDOF, SPARAMS, POINT, POINT, FactorImpl> {
+    fn factor(&self) -> LieGroup<S, SDOF, SPARAMS, POINT, POINT, 1, FactorImpl> {
         LieGroup::from_params(&Self::Impl::factor_params(self.params()))
     }
 }

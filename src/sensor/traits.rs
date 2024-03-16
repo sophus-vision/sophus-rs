@@ -10,8 +10,8 @@ use crate::image::mut_image::MutImage2F32;
 use super::distortion_table::DistortTable;
 
 /// Camera distortion implementation trait
-pub trait IsCameraDistortionImpl<S: IsScalar, const DISTORT: usize, const PARAMS: usize>:
-    ParamsImpl<S, PARAMS>
+pub trait IsCameraDistortionImpl<S: IsScalar<1>, const DISTORT: usize, const PARAMS: usize>:
+    ParamsImpl<S, PARAMS, 1>
 {
     /// identity parameters
     fn identity_params() -> S::Vector<PARAMS> {
@@ -38,7 +38,7 @@ pub trait IsCameraDistortionImpl<S: IsScalar, const DISTORT: usize, const PARAMS
 }
 
 /// Camera projection implementation trait
-pub trait IsProjection<S: IsScalar> {
+pub trait IsProjection<S: IsScalar<1>> {
     /// Projects a 3D point in the camera frame to a 2D point in the z=1 plane
     fn proj(point_in_camera: &S::Vector<3>) -> S::Vector<2>;
 

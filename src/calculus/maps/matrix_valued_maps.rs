@@ -157,7 +157,7 @@ mod test {
         //      [[ y ]]      [[                      ]]
         //      [[   ]]
         //      [[ z ]]
-        fn hat_fn<S: IsScalar, M34: IsMatrix<S, 3, 4>, V6: IsVector<S, 6>>(v: V6) -> M34 {
+        fn hat_fn<S: IsScalar<1>, M34: IsMatrix<S, 3, 4, 1>, V6: IsVector<S, 6, 1>>(v: V6) -> M34 {
             let i = v.get(0);
             let j = v.get(1);
             let k = v.get(2);
@@ -199,7 +199,7 @@ mod test {
         //  inv [[       ]] =  ------- [[        ]]
         //      [[ c   d ]]    ad - bc [[ -c   a ]]
 
-        fn f<S: IsScalar, M22: IsMatrix<S, 2, 2>>(m: M22) -> M22 {
+        fn f<S: IsScalar<1>, M22: IsMatrix<S, 2, 2, 1>>(m: M22) -> M22 {
             let a = m.get((0, 0));
             let b = m.get((0, 1));
 

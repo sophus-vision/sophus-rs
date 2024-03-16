@@ -182,7 +182,7 @@ mod test {
         //       [[ x ]]   [[ x / z ]]
         //  proj [[ y ]] = [[       ]]
         //       [[ z ]]   [[ y / z ]]
-        fn proj_fn<S: IsScalar, V2: IsVector<S, 2>, V3: IsVector<S, 3>>(v: V3) -> V2 {
+        fn proj_fn<S: IsScalar<1>, V2: IsVector<S, 2, 1>, V3: IsVector<S, 3, 1>>(v: V3) -> V2 {
             let x = v.get(0);
             let y = v.get(1);
             let z = v.get(2);
@@ -210,7 +210,7 @@ mod test {
         use crate::calculus::types::MatF64;
         use crate::tensor::view::IsTensorLike;
 
-        fn f<S: IsScalar, M32: IsMatrix<S, 3, 2>, V4: IsVector<S, 4>>(x: M32) -> V4 {
+        fn f<S: IsScalar<1>, M32: IsMatrix<S, 3, 2, 1>, V4: IsVector<S, 4, 1>>(x: M32) -> V4 {
             let a = x.get((0, 0));
             let b = x.get((0, 1));
             let c = x.get((1, 0));

@@ -16,15 +16,14 @@ use crate::manifold::{self};
 
 use super::lie_group::LieGroup;
 use super::traits::IsLieGroupImpl;
-use super::traits::IsTranslationProductGroup;
 
 /// 3d rotation implementation - SO(3)
 #[derive(Debug, Copy, Clone)]
-pub struct Rotation3Impl<S: IsScalar> {
+pub struct Rotation3Impl<S: IsScalar<1>> {
     phantom: PhantomData<S>,
 }
 
-impl<S: IsScalar> ParamsImpl<S, 4> for Rotation3Impl<S> {
+impl<S: IsScalar<1>> ParamsImpl<S, 4, 1> for Rotation3Impl<S> {
     fn params_examples() -> Vec<S::Vector<4>> {
         let mut params = vec![];
 
@@ -65,7 +64,7 @@ impl<S: IsScalar> ParamsImpl<S, 4> for Rotation3Impl<S> {
     }
 }
 
-impl<S: IsScalar> manifold::traits::TangentImpl<S, 3> for Rotation3Impl<S> {
+impl<S: IsScalar<1>> manifold::traits::TangentImpl<S, 3, 1> for Rotation3Impl<S> {
     fn tangent_examples() -> Vec<S::Vector<3>> {
         vec![
             S::Vector::<3>::from_c_array([0.0, 0.0, 0.0]),
@@ -78,7 +77,7 @@ impl<S: IsScalar> manifold::traits::TangentImpl<S, 3> for Rotation3Impl<S> {
     }
 }
 
-impl<S: IsScalar> IsLieGroupImpl<S, 3, 4, 3, 3> for Rotation3Impl<S> {
+impl<S: IsScalar<1>> IsLieGroupImpl<S, 3, 4, 3, 3, 1> for Rotation3Impl<S> {
     const IS_ORIGIN_PRESERVING: bool = true;
     const IS_AXIS_DIRECTION_PRESERVING: bool = false;
     const IS_DIRECTION_VECTOR_PRESERVING: bool = false;
@@ -215,7 +214,7 @@ impl<S: IsScalar> IsLieGroupImpl<S, 3, 4, 3, 3> for Rotation3Impl<S> {
         Self::hat(omega)
     }
 
-    type GenG<S2: IsScalar> = Rotation3Impl<S2>;
+    type GenG<S2: IsScalar<1>> = Rotation3Impl<S2>;
     type RealG = Rotation3Impl<f64>;
     type DualG = Rotation3Impl<Dual>;
 
@@ -239,7 +238,7 @@ impl<S: IsScalar> IsLieGroupImpl<S, 3, 4, 3, 3> for Rotation3Impl<S> {
         params
     }
 
-    fn has_shortest_path_ambiguity(params: &<S as IsScalar>::Vector<4>) -> bool {
+    fn has_shortest_path_ambiguity(params: &<S as IsScalar<1>>::Vector<4>) -> bool {
         let theta = Self::log(params).real().norm();
         (theta - std::f64::consts::PI).abs() < 1e-5
     }
@@ -349,8 +348,8 @@ impl lie::traits::IsF64LieGroupImpl<3, 4, 3, 3> for Rotation3Impl<f64> {
     }
 }
 
-impl<S: IsScalar> lie::traits::IsLieFactorGroupImpl<S, 3, 4, 3> for Rotation3Impl<S> {
-    type GenFactorG<S2: IsScalar> = Rotation3Impl<S2>;
+impl<S: IsScalar<1>> lie::traits::IsLieFactorGroupImpl<S, 3, 4, 3, 1> for Rotation3Impl<S> {
+    type GenFactorG<S2: IsScalar<1>> = Rotation3Impl<S2>;
     type RealFactorG = Rotation3Impl<f64>;
     type DualFactorG = Rotation3Impl<Dual>;
 
@@ -562,7 +561,7 @@ impl lie::traits::IsF64LieFactorGroupImpl<3, 4, 3> for Rotation3Impl<f64> {
 }
 
 /// 3d rotation group - SO(3)
-pub type Rotation3<S> = LieGroup<S, 3, 4, 3, 3, Rotation3Impl<S>>;
+pub type Rotation3<S> = LieGroup<S, 3, 4, 3, 3, 1, Rotation3Impl<S>>;
 
 /// 3d isometry implementation - SE(3)
 pub type Isometry3Impl<S> = lie::translation_product_product::TranslationProductGroupImpl<
@@ -576,35 +575,6 @@ pub type Isometry3Impl<S> = lie::translation_product_product::TranslationProduct
     Rotation3Impl<S>,
 >;
 
-/// 3d isometry group - SE(3)
-pub type Isometry3<S> = lie::lie_group::LieGroup<S, 6, 7, 3, 4, Isometry3Impl<S>>;
-
-impl<S: IsScalar> Isometry3<S> {
-    /// create isometry from translation and rotation
-    pub fn from_translation_and_rotation(
-        translation: &<S as IsScalar>::Vector<3>,
-        rotation: &Rotation3<S>,
-    ) -> Self {
-        Self::from_translation_and_factor(translation, rotation)
-    }
-
-    /// set rotation
-    pub fn set_rotation(&mut self, rotation: &Rotation3<S>) {
-        self.set_factor(rotation)
-    }
-
-    /// get translation
-    pub fn rotation(&self) -> Rotation3<S> {
-        self.factor()
-    }
-}
-
-impl Default for Isometry3<f64> {
-    fn default() -> Self {
-        Self::identity()
-    }
-}
-
 mod tests {
 
     #[test]
@@ -616,25 +586,5 @@ mod tests {
         Rotation3::<Dual>::test_suite();
         Rotation3::<f64>::real_test_suite();
         Rotation3::<f64>::real_factor_test_suite();
-    }
-
-    #[test]
-    fn isometry3_prop_tests() {
-        use super::Isometry3;
-        use crate::calculus::dual::dual_scalar::Dual;
-        use crate::lie::traits::IsTranslationProductGroup;
-
-        Isometry3::<f64>::test_suite();
-        Isometry3::<Dual>::test_suite();
-        Isometry3::<f64>::real_test_suite();
-
-        for g in Isometry3::<f64>::element_examples() {
-            let translation = g.translation();
-            let rotation = g.rotation();
-
-            let g2 = Isometry3::from_translation_and_rotation(&translation, &rotation);
-            assert_eq!(g2.translation(), translation);
-            assert_eq!(g2.rotation().matrix(), rotation.matrix());
-        }
     }
 }

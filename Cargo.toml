@@ -28,7 +28,7 @@ egui_extras = "0.26"
 env_logger = "0.11"
 faer = "0.18"
 hollywood = "0.5.0"
-image = {version = "0.24", features = [
+image = {version = "0.25", features = [
   "jpeg",
   "png",
   "tga",
@@ -44,6 +44,7 @@ log = "0.4.14"
 nalgebra = {version = "0.32", features = ["rand"]}
 ndarray = {version = "0.15.4", features = ["approx-0_5"]}
 num-traits = "0.2.15"
+numpy = "0.20"
 png = "0.17.11"
 rand = "0.8.5"
 simba = "0.8.1"
@@ -51,6 +52,11 @@ tokio = {version = "1", features = ["full"]}
 typenum = {version = "1.17.0", features = ["const-generics"]}
 wgpu = "0.19"
 winit = {version = "0.29", features = ["android-native-activity"]}
+
+[dependencies.pyo3]
+version = "0.20.0"
+# "abi3-py38" tells pyo3 (and maturin) to build using the stable ABI with minimum Python version 3.8
+features = ["abi3-py38", "multiple-pymethods"]
 
 [dev-dependencies.proptest]
 default-features = false

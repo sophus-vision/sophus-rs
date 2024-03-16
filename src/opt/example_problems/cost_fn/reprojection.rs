@@ -4,7 +4,7 @@ use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
 use crate::calculus::types::scalar::IsScalar;
 use crate::calculus::types::vector::IsVector;
 use crate::calculus::types::VecF64;
-use crate::lie::rotation3::Isometry3;
+use crate::lie::isometry3::Isometry3;
 use crate::opt::cost_fn::IsResidualFn;
 use crate::opt::cost_fn::IsTermSignature;
 use crate::opt::robust_kernel;
@@ -27,7 +27,7 @@ impl IsVariable for PinholeCamera<f64> {
     }
 }
 
-fn res_fn<Scalar: IsScalar>(
+fn res_fn<Scalar: IsScalar<1>>(
     intrinscs: PinholeCamera<Scalar>,
     world_from_camera: Isometry3<Scalar>,
     point_in_world: Scalar::Vector<3>,

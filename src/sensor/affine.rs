@@ -11,13 +11,13 @@ use crate::calculus::types::matrix::IsMatrix;
 
 /// Affine "distortion" implementation
 ///
-/// This is not a distortion in the traditional sense, but rather a simple affine transformation
+/// This is not a distortion in the traditional sense, but rather a simple affine transformation.
 #[derive(Debug, Clone, Copy)]
-pub struct AffineDistortionImpl<S: IsScalar> {
+pub struct AffineDistortionImpl<S: IsScalar<1>> {
     phantom: PhantomData<S>,
 }
 
-impl<S: IsScalar> ParamsImpl<S, 4> for AffineDistortionImpl<S> {
+impl<S: IsScalar<1>> ParamsImpl<S, 4, 1> for AffineDistortionImpl<S> {
     fn are_params_valid(params: &S::Vector<4>) -> bool {
         params.real()[0] != 0.0 && params.real()[1] != 0.0
     }
@@ -34,7 +34,7 @@ impl<S: IsScalar> ParamsImpl<S, 4> for AffineDistortionImpl<S> {
     }
 }
 
-impl<S: IsScalar> IsCameraDistortionImpl<S, 0, 4> for AffineDistortionImpl<S> {
+impl<S: IsScalar<1>> IsCameraDistortionImpl<S, 0, 4> for AffineDistortionImpl<S> {
     fn distort(
         params: &S::Vector<4>,
         proj_point_in_camera_z1_plane: &S::Vector<2>,
