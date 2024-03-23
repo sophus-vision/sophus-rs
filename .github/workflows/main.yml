@@ -27,6 +27,7 @@ jobs:
         with:
           command: build
           args: --release
+          working-directory: crates/sophus_pyo3
      
 
 
