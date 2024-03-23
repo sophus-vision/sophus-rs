@@ -1,5 +1,17 @@
-[package]
-description = "sophus - geometry for robotics and computer vision"
+[workspace]
+members = [
+  "crates/sophus_tensor",
+  "crates/sophus_calculus",
+  "crates/sophus_lie",
+  "crates/sophus_pyo3",
+  "crates/sophus_image",
+  "crates/sophus_sensor",
+  "crates/sophus_opt",
+  "crates/sophus",
+]
+resolver = "2"
+
+[workspace.package]
 edition = "2021"
 include = [
   "**/*.rs",
@@ -8,14 +20,18 @@ include = [
 ]
 keywords = ["robotics", "optimization"]
 license = "MIT OR Apache-2.0"
-name = "sophus"
-readme = "README.md"
 repository = "https://github.com/farm-ng/sophus-rs/"
-version = "0.3.1"
+version = "0.4.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace.dependencies]
+sophus = {path = "crates/sophus"}
+sophus_calculus = {path = "crates/sophus_calculus"}
+sophus_image = {path = "crates/sophus_image"}
+sophus_lie = {path = "crates/sophus_lie"}
+sophus_opt = {path = "crates/sophus_opt"}
+sophus_sensor = {path = "crates/sophus_sensor"}
+sophus_tensor = {path = "crates/sophus_tensor"}
 
-[dependencies]
 approx = {version = "0.5.1"}
 as-any = "0.3.1"
 assertables = "7.0.1"
@@ -52,16 +68,6 @@ tokio = {version = "1", features = ["full"]}
 typenum = {version = "1.17.0", features = ["const-generics"]}
 wgpu = "0.19"
 winit = {version = "0.29", features = ["android-native-activity"]}
-
-[dependencies.pyo3]
-version = "0.20.0"
-# "abi3-py38" tells pyo3 (and maturin) to build using the stable ABI with minimum Python version 3.8
-features = ["abi3-py38", "multiple-pymethods"]
-
-[dev-dependencies.proptest]
-default-features = false
-features = ["std"]
-version = "1.1.0"
 
 [profile.release]
 debug = 1
