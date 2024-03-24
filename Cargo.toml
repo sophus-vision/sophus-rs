@@ -24,13 +24,13 @@ repository = "https://github.com/farm-ng/sophus-rs/"
 version = "0.4.0"
 
 [workspace.dependencies]
-sophus = {path = "crates/sophus"}
-sophus_calculus = {path = "crates/sophus_calculus"}
-sophus_image = {path = "crates/sophus_image"}
-sophus_lie = {path = "crates/sophus_lie"}
-sophus_opt = {path = "crates/sophus_opt"}
-sophus_sensor = {path = "crates/sophus_sensor"}
-sophus_tensor = {path = "crates/sophus_tensor"}
+sophus = {path = "crates/sophus", version = "0.4.0"}
+sophus_calculus = {path = "crates/sophus_calculus", version = "0.4.0"}
+sophus_image = {path = "crates/sophus_image", version = "0.4.0"}
+sophus_lie = {path = "crates/sophus_lie", version = "0.4.0"}
+sophus_opt = {path = "crates/sophus_opt", version = "0.4.0"}
+sophus_sensor = {path = "crates/sophus_sensor", version = "0.4.0"}
+sophus_tensor = {path = "crates/sophus_tensor", version = "0.4.0"}
 
 approx = {version = "0.5.1"}
 as-any = "0.3.1"
