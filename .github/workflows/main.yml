@@ -13,21 +13,26 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: "recursive"
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+      - name: Run sccache stat for check before
+        shell: bash
+        run: ${SCCACHE_PATH} --show-stats
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
       - name: cargo
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
         run: |
           sudo apt-get update -y
           sudo apt-get install -y nasm
           cargo doc --no-deps
           cargo fmt --check
           cargo test --release
-      - uses: PyO3/maturin-action@v1
-        with:
-          command: build
-          args: --release
-          working-directory: crates/sophus_pyo3
-     
+      - name: Run sccache stat for check after
+        shell: bash
+        run: ${SCCACHE_PATH} --show-stats
 
 
