@@ -99,7 +99,7 @@ impl IsResidualFn<13, 3, (PinholeCamera<f64>, Isometry3<f64>, VecF64<3>), VecF64
                     &DualV::c(*intrinsics.params()),
                     intrinsics.image_size(),
                 ),
-                Isometry3::<Dual>::exp(&x).group_mul(&world_from_camera_pose.to_dual_c()),
+                Isometry3::<Dual>::exp(&x) * &world_from_camera_pose.to_dual_c(),
                 DualV::c(point_in_world),
                 DualV::c(*uv_in_image),
             )

@@ -93,7 +93,7 @@ macro_rules! crate_py_lie_group_class {
 
             fn group_mul(&self, other: &$py_group) -> Self {
                 Self {
-                    inner: self.inner.group_mul(&other.inner),
+                    inner: self.inner * &other.inner,
                 }
             }
 
@@ -197,6 +197,12 @@ macro_rules! crate_py_lie_group_class {
 
                 let result = <$rust_group>::vee(&omega_hat_mat);
                 Ok(PyArray1::from_slice(py, result.as_slice()).to_owned())
+            }
+
+            fn __mul__(&self, other: &$py_group) -> Self {
+                Self {
+                    inner: self.inner * &other.inner,
+                }
             }
 
             fn __str__(&self) -> String {

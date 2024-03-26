@@ -141,10 +141,7 @@ impl IsVariable for Isometry2<f64> {
         for d in 0..Self::DOF {
             delta_vec[d] = delta[d];
         }
-        self.set_params(
-            (Isometry2::<f64>::group_mul(&Isometry2::<f64>::exp(&delta_vec), &self.clone()))
-                .params(),
-        );
+        self.set_params((Isometry2::<f64>::exp(&delta_vec) * &self.clone()).params());
     }
 }
 

@@ -46,7 +46,7 @@ fn res_fn<Scalar: IsScalar<1>>(
     isometry: Isometry3<Scalar>,
     isometry_prior_mean: Isometry3<Scalar>,
 ) -> Scalar::Vector<6> {
-    Isometry3::<Scalar>::group_mul(&isometry, &isometry_prior_mean.inverse()).log()
+    (isometry * &isometry_prior_mean.inverse()).log()
 }
 
 impl IsResidualFn<6, 1, Isometry3<f64>, (Isometry3<f64>, MatF64<6, 6>)> for Isometry3PriorCostFn {
