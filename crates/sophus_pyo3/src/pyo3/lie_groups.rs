@@ -24,11 +24,11 @@ macro_rules! check_array1_dim {
 macro_rules! crate_py_lie_group_class {
     ($py_group: ident, $rust_group:ty, $name: literal,
       $dof:literal, $params:literal, $point:literal, $ambient:literal) => {
-        /// Python wrapper for 2D isometry group
+        /// Python wrapper for python group
         #[pyclass(name = $name)]
         #[derive(Debug, Clone)]
         pub struct $py_group {
-            /// 2D isometry group
+            /// wrapped rust group
             inner: $rust_group,
         }
 
@@ -66,6 +66,92 @@ macro_rules! crate_py_lie_group_class {
                     .reshape([$point, $ambient])
                     .unwrap()
                     .to_owned()
+            }
+
+            #[staticmethod]
+            fn da_a_mul_b(a: &Self, b: &Self, py: Python) -> Py<PyArray2<f64>> {
+                let result = <$rust_group>::da_a_mul_b(&a.inner, &b.inner);
+                PyArray1::from_slice(py, result.as_slice())
+                    .reshape([$params, $params])
+                    .unwrap()
+                    .to_owned()
+            }
+
+            #[staticmethod]
+            fn db_a_mul_b(a: &Self, b: &Self, py: Python) -> Py<PyArray2<f64>> {
+                let result = <$rust_group>::db_a_mul_b(&a.inner, &b.inner);
+                PyArray1::from_slice(py, result.as_slice())
+                    .reshape([$params, $params])
+                    .unwrap()
+                    .to_owned()
+            }
+
+            #[staticmethod]
+            fn dx_exp(
+                tangent: &PyArray1<f64>,
+                py: Python,
+            ) -> Result<Py<PyArray2<f64>>, PyArray1DimMismatch> {
+                check_array1_dim!(tangent, $dof)?;
+                let read_only_tangent = tangent.readonly();
+                let tangent_slice = read_only_tangent.as_slice().unwrap();
+                let tangent_vec = nalgebra::SVector::<f64, $dof>::from_column_slice(tangent_slice);
+
+                let result = <$rust_group>::dx_exp(&tangent_vec);
+                Ok(PyArray1::from_slice(py, result.as_slice())
+                    .reshape([$params, $dof])
+                    .unwrap()
+                    .to_owned())
+            }
+
+            #[staticmethod]
+            fn dx_exp_x_at_0(py: Python) -> Py<PyArray2<f64>> {
+                let result = <$rust_group>::dx_exp_x_at_0();
+                PyArray1::from_slice(py, result.as_slice())
+                    .reshape([$params, $dof])
+                    .unwrap()
+                    .to_owned()
+            }
+
+            #[staticmethod]
+            fn dx_exp_x_times_point_at_0(
+                point: &PyArray1<f64>,
+                py: Python,
+            ) -> Result<Py<PyArray2<f64>>, PyArray1DimMismatch> {
+                check_array1_dim!(point, $point)?;
+                let read_only_point = point.readonly();
+                let point_slice = read_only_point.as_slice().unwrap();
+                let point_vec = nalgebra::SVector::<f64, $point>::from_column_slice(point_slice);
+
+                let result = <$rust_group>::dx_exp_x_times_point_at_0(&point_vec);
+                Ok(PyArray1::from_slice(py, result.as_slice())
+                    .reshape([$params, $point])
+                    .unwrap()
+                    .to_owned())
+            }
+
+            #[staticmethod]
+            fn dx_log_a_exp_x_b_at_0(a: &Self, b: &Self, py: Python) -> Py<PyArray2<f64>> {
+                let result = <$rust_group>::dx_log_a_exp_x_b_at_0(&a.inner, &b.inner);
+                PyArray1::from_slice(py, result.as_slice())
+                    .reshape([$dof, $dof])
+                    .unwrap()
+                    .to_owned()
+            }
+
+            #[staticmethod]
+            fn dx_log_x(
+                params: &PyArray1<f64>,
+                py: Python,
+            ) -> Result<Py<PyArray2<f64>>, PyArray1DimMismatch> {
+                check_array1_dim!(params, $params)?;
+                let read_only_params = params.readonly();
+                let params_slice = read_only_params.as_slice().unwrap();
+                let params_vec = nalgebra::SVector::<f64, $params>::from_column_slice(params_slice);
+                let result = <$rust_group>::dx_log_x(&params_vec);
+                Ok(PyArray1::from_slice(py, result.as_slice())
+                    .reshape([$dof, $params])
+                    .unwrap()
+                    .to_owned())
             }
 
             #[staticmethod]

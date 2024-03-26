@@ -339,7 +339,7 @@ impl<
         )
     }
 
-    fn dx_exp_x_times_point_at_0(point: VecF64<POINT>) -> MatF64<POINT, DOF> {
+    fn dx_exp_x_times_point_at_0(point: &VecF64<POINT>) -> MatF64<POINT, DOF> {
         MatF64::block_mat1x2(
             MatF64::<POINT, POINT>::identity(),
             Factor::dx_exp_x_times_point_at_0(point),

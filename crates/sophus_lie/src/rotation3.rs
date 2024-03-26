@@ -281,7 +281,7 @@ impl crate::traits::IsF64LieGroupImpl<3, 4, 3, 3> for Rotation3Impl<f64> {
         ])
     }
 
-    fn dx_exp_x_times_point_at_0(point: sophus_calculus::types::VecF64<3>) -> MatF64<3, 3> {
+    fn dx_exp_x_times_point_at_0(point: &sophus_calculus::types::VecF64<3>) -> MatF64<3, 3> {
         Self::hat(&-point)
     }
 
