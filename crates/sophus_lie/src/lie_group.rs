@@ -359,6 +359,40 @@ impl<
     }
 }
 
+impl<
+        S: IsScalar<BATCH_SIZE>,
+        const DOF: usize,
+        const PARAMS: usize,
+        const POINT: usize,
+        const AMBIENT: usize,
+        const BATCH_SIZE: usize,
+        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
+    > std::ops::Mul<&Self> for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
+{
+    type Output = Self;
+
+    fn mul(self, rhs: &Self) -> Self {
+        self.group_mul(rhs)
+    }
+}
+
+// impl<
+//         const DOF: usize,
+//         const PARAMS: usize,
+//         const POINT: usize,
+//         const AMBIENT: usize,
+//         G: IsLieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT, 1>,
+//     > std::ops::Mul<&VecF64<POINT>> for LieGroup<f64, DOF, PARAMS, POINT, AMBIENT, 1, G>
+// {
+//     // TODO: More generic implementation for S::Vector<POINT>
+
+//     type Output = VecF64<POINT>;
+
+//     fn mul(self, rhs: &VecF64<POINT>) -> VecF64<POINT> {
+//         G::transform(&self.params, rhs)
+//     }
+// }
+
 #[derive(Debug, Clone)]
 struct LeftGroupManifold<
     S: IsScalar<BATCH_SIZE>,

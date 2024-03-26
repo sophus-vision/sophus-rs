@@ -14,10 +14,7 @@ pub fn res_fn<S: IsScalar<1>>(
     world_from_pose_b: Isometry2<S>,
     pose_a_from_pose_b: Isometry2<S>,
 ) -> S::Vector<3> {
-    (world_from_pose_a
-        .inverse()
-        .group_mul(&world_from_pose_b.group_mul(&pose_a_from_pose_b.inverse())))
-    .log()
+    (world_from_pose_a.inverse() * &world_from_pose_b * &pose_a_from_pose_b.inverse()).log()
 }
 
 /// Cost function for 2d pose graph
@@ -41,13 +38,13 @@ impl IsResidualFn<12, 2, (Isometry2<f64>, Isometry2<f64>), Isometry2<f64>> for P
             || {
                 -Isometry2::dx_log_a_exp_x_b_at_0(
                     &world_from_pose_a.inverse(),
-                    &world_from_pose_b.group_mul(&obs.inverse()),
+                    &(world_from_pose_b * &obs.inverse()),
                 )
             },
             || {
                 Isometry2::dx_log_a_exp_x_b_at_0(
                     &world_from_pose_a.inverse(),
-                    &world_from_pose_b.group_mul(&obs.inverse()),
+                    &(world_from_pose_b * &obs.inverse()),
                 )
             },
         )

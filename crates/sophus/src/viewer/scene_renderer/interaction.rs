@@ -120,11 +120,10 @@ impl Interaction {
             let delta =
                 0.01 * VecF64::<6>::new(0.0, 0.0, 0.0, -delta_y as f64, delta_x as f64, 0.0);
             let camera_from_scene_point = Isometry3::from_t(&cam.cam_unproj_with_z(&pixel, depth));
-            self.scene_from_camera =
-                self.scene_from_camera
-                    .group_mul(&camera_from_scene_point.group_mul(
-                        &Isometry3::exp(&delta).group_mul(&camera_from_scene_point.inverse()),
-                    ));
+            self.scene_from_camera = self.scene_from_camera
+                * &camera_from_scene_point
+                * &Isometry3::exp(&delta)
+                * &camera_from_scene_point.inverse();
         }
     }
 }

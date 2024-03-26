@@ -85,9 +85,8 @@ impl CamCalibProblem {
             let true_uv_in_img0_proof = true_intrinsics.cam_proj(&true_point_in_cam0);
             approx::assert_abs_diff_eq!(true_uv_in_img0, true_uv_in_img0_proof, epsilon = 0.1);
 
-            let true_cam1_from_cam0 = true_world_from_cameras[1]
-                .inverse()
-                .group_mul(&true_world_from_cameras[0]);
+            let true_cam1_from_cam0 =
+                true_world_from_cameras[1].inverse() * &true_world_from_cameras[0];
             let true_point_in_cam1 = true_cam1_from_cam0.transform(&true_point_in_cam0);
             let true_uv_in_img1 = true_intrinsics.cam_proj(&true_point_in_cam1);
             let img_noise = VecF64::<2>::new(rng.gen::<f64>() - 0.5, rng.gen::<f64>() - 0.5);
