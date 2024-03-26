@@ -150,7 +150,7 @@ impl crate::traits::IsF64LieGroupImpl<1, 2, 2, 2> for Rotation2Impl<f64> {
         MatF64::from_c_array2([[0.0], [1.0]])
     }
 
-    fn dx_exp_x_times_point_at_0(point: sophus_calculus::types::VecF64<2>) -> MatF64<2, 1> {
+    fn dx_exp_x_times_point_at_0(point: &sophus_calculus::types::VecF64<2>) -> MatF64<2, 1> {
         MatF64::from_array2([[-point[1]], [point[0]]])
     }
 

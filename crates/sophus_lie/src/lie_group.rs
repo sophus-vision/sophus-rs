@@ -491,14 +491,14 @@ impl<
         G: IsF64LieGroupImpl<DOF, PARAMS, POINT, AMBIENT>,
     > LieGroup<f64, DOF, PARAMS, POINT, AMBIENT, 1, G>
 {
-    /// derivative of exponential map at the identity
-    pub fn dx_exp_x_at_0() -> MatF64<PARAMS, DOF> {
-        G::dx_exp_x_at_0()
+    /// derivative of group multiplication with respect to the first argument
+    pub fn da_a_mul_b(a: &Self, b: &Self) -> MatF64<PARAMS, PARAMS> {
+        G::da_a_mul_b(a.params(), b.params())
     }
 
-    /// derivative of exponential map times point at the identity
-    pub fn dx_exp_x_times_point_at_0(point: VecF64<POINT>) -> MatF64<POINT, DOF> {
-        G::dx_exp_x_times_point_at_0(point)
+    /// derivative of group multiplication with respect to the second argument
+    pub fn db_a_mul_b(a: &Self, b: &Self) -> MatF64<PARAMS, PARAMS> {
+        G::db_a_mul_b(a.params(), b.params())
     }
 
     /// derivative of exponential map
@@ -506,15 +506,14 @@ impl<
         G::dx_exp(tangent)
     }
 
-    /// derivative of logarithmic map
-    pub fn dx_log_x(params: &VecF64<PARAMS>) -> MatF64<DOF, PARAMS> {
-        G::dx_log_x(params)
+    /// derivative of exponential map at the identity
+    pub fn dx_exp_x_at_0() -> MatF64<PARAMS, DOF> {
+        G::dx_exp_x_at_0()
     }
 
-    /// dual representation of the group
-    pub fn to_dual_c(self) -> LieGroup<Dual, DOF, PARAMS, POINT, AMBIENT, 1, G::DualG> {
-        let dual_params = DualV::<PARAMS>::c(self.params);
-        LieGroup::from_params(&dual_params)
+    /// derivative of exponential map times point at the identity
+    pub fn dx_exp_x_times_point_at_0(point: &VecF64<POINT>) -> MatF64<POINT, DOF> {
+        G::dx_exp_x_times_point_at_0(point)
     }
 
     /// derivative of log(exp(x)) at the identity
@@ -526,14 +525,15 @@ impl<
             * Self::adj(a)
     }
 
-    /// derivative of group multiplication with respect to the first argument
-    pub fn da_a_mul_b(a: &Self, b: &Self) -> MatF64<PARAMS, PARAMS> {
-        G::da_a_mul_b(a.params(), b.params())
+    /// derivative of logarithmic map
+    pub fn dx_log_x(params: &VecF64<PARAMS>) -> MatF64<DOF, PARAMS> {
+        G::dx_log_x(params)
     }
 
-    /// derivative of group multiplication with respect to the second argument
-    pub fn db_a_mul_b(a: &Self, b: &Self) -> MatF64<PARAMS, PARAMS> {
-        G::db_a_mul_b(a.params(), b.params())
+    /// dual representation of the group
+    pub fn to_dual_c(self) -> LieGroup<Dual, DOF, PARAMS, POINT, AMBIENT, 1, G::DualG> {
+        let dual_params = DualV::<PARAMS>::c(self.params);
+        LieGroup::from_params(&dual_params)
     }
 
     fn adjoint_jacobian_tests() {
@@ -741,7 +741,7 @@ impl<
                     .transform(&DualV::c(point))
             };
 
-            let analytic_diff = Self::dx_exp_x_times_point_at_0(point);
+            let analytic_diff = Self::dx_exp_x_times_point_at_0(&point);
             let num_diff =
                 VectorValuedMapFromVector::static_sym_diff_quotient(exp_t, VecF64::zeros(), 0.0001);
             let auto_diff =

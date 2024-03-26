@@ -124,7 +124,7 @@ pub trait IsF64LieGroupImpl<
     fn dx_log_x(params: &VecF64<PARAMS>) -> MatF64<DOF, PARAMS>;
 
     /// derivative of exponential map times a point at the identity
-    fn dx_exp_x_times_point_at_0(point: VecF64<POINT>) -> MatF64<POINT, DOF>;
+    fn dx_exp_x_times_point_at_0(point: &VecF64<POINT>) -> MatF64<POINT, DOF>;
 }
 
 /// Lie Factor Group
