@@ -1,6 +1,20 @@
 use nalgebra::SVector;
 use num_traits::Bounded;
 
+/// Floating-point interval
+#[derive(Debug, Copy, Clone)]
+pub struct Interval {
+    /// min and max of the interval
+    pub min_max: Option<(f64, f64)>,
+}
+
+/// Integer interval
+#[derive(Debug, Copy, Clone)]
+pub struct IInterval {
+    /// min and max of the interval
+    pub min_max: Option<(i64, i64)>,
+}
+
 /// Region - n-dimensional interval
 #[derive(Debug, Copy, Clone)]
 pub struct Region<const D: usize> {
@@ -30,7 +44,7 @@ impl<const D: usize> IRegion<D> {
 }
 
 /// Traits for points
-pub trait IsPoint<const D: usize>: Copy + Bounded + std::ops::Index<usize> {
+pub trait IsPoint<const D: usize>: Copy + Bounded {
     /// Point type
     type Point: Bounded;
 
@@ -49,6 +63,30 @@ pub trait IsPoint<const D: usize>: Copy + Bounded + std::ops::Index<usize> {
 
     /// check if point is less or equal to another point
     fn is_less_equal(&self, rhs: Self) -> bool;
+}
+
+impl IsPoint<1> for f64 {
+    type Point = f64;
+
+    fn clamp(&self, min: f64, max: f64) -> f64 {
+        f64::clamp(*self, min, max)
+    }
+
+    fn is_less_equal(&self, rhs: f64) -> bool {
+        self <= &rhs
+    }
+}
+
+impl IsPoint<1> for i64 {
+    type Point = i64;
+
+    fn clamp(&self, min: i64, max: i64) -> i64 {
+        Ord::clamp(*self, min, max)
+    }
+
+    fn is_less_equal(&self, rhs: i64) -> bool {
+        self <= &rhs
+    }
 }
 
 impl<const D: usize> IsPoint<D> for SVector<f64, D> {
@@ -161,6 +199,78 @@ pub trait IsRegion<const D: usize, P: IsPoint<D>> {
     fn mid(&self) -> P;
 }
 
+impl IsRegion<1, f64> for Interval {
+    type Region = Self;
+
+    fn unbounded() -> Self {
+        Self {
+            min_max: Option::Some((f64::NEG_INFINITY, f64::INFINITY)),
+        }
+    }
+
+    fn empty() -> Self::Region {
+        Self {
+            min_max: Option::None,
+        }
+    }
+
+    fn from_min_max(min: f64, max: f64) -> Self::Region {
+        Self {
+            min_max: Option::Some((min, max)),
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.min_max.is_none()
+    }
+
+    fn is_degenerated(&self) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+        self.min() == self.max()
+    }
+
+    fn is_unbounded(&self) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+        self.min() == f64::NEG_INFINITY && self.max() == f64::INFINITY
+    }
+
+    fn extend(&mut self, point: &f64) {
+        if self.is_empty() {
+            *self = Self::from_point(*point);
+        }
+        let (min, max) = (self.min().min(*point), self.max().max(*point));
+
+        *self = Self::from_min_max(min, max)
+    }
+
+    fn try_min(&self) -> Option<f64> {
+        Some(self.min_max?.0)
+    }
+
+    fn try_max(&self) -> Option<f64> {
+        Some(self.min_max?.1)
+    }
+
+    fn clamp(&self, p: f64) -> f64 {
+        p.clamp(self.min(), self.max())
+    }
+
+    fn range(&self) -> f64 {
+        if self.is_empty() {
+            return 0.0;
+        }
+        self.max() - self.min()
+    }
+
+    fn mid(&self) -> f64 {
+        self.min() + 0.5 * self.range()
+    }
+}
+
 impl<const D: usize> IsRegion<D, SVector<f64, D>> for Region<D> {
     type Region = Self;
 
@@ -232,6 +342,75 @@ impl<const D: usize> IsRegion<D, SVector<f64, D>> for Region<D> {
         let (min, max) = self.min().inf_sup(point);
 
         *self = Self::from_min_max(min, max)
+    }
+}
+
+impl IsRegion<1, i64> for IInterval {
+    type Region = Self;
+
+    fn unbounded() -> Self {
+        Self {
+            min_max: Option::Some((i64::MIN, i64::MAX)),
+        }
+    }
+
+    fn empty() -> Self::Region {
+        Self {
+            min_max: Option::None,
+        }
+    }
+
+    fn from_min_max(min: i64, max: i64) -> Self::Region {
+        Self {
+            min_max: Option::Some((min, max)),
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.min_max.is_none()
+    }
+
+    fn is_degenerated(&self) -> bool {
+        false
+    }
+
+    fn is_unbounded(&self) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+        self.min() == i64::MIN && self.max() == i64::MAX
+    }
+
+    fn extend(&mut self, point: &i64) {
+        if self.is_empty() {
+            *self = Self::from_point(*point);
+        }
+        let (min, max) = (self.min().min(*point), self.max().max(*point));
+
+        *self = Self::from_min_max(min, max)
+    }
+
+    fn try_min(&self) -> Option<i64> {
+        Some(self.min_max?.0)
+    }
+
+    fn try_max(&self) -> Option<i64> {
+        Some(self.min_max?.1)
+    }
+
+    fn clamp(&self, p: i64) -> i64 {
+        p.clamp(self.min(), self.max())
+    }
+
+    fn range(&self) -> i64 {
+        if self.is_empty() {
+            return 0;
+        }
+        self.max() - self.min()
+    }
+
+    fn mid(&self) -> i64 {
+        self.min() + self.range() / 2
     }
 }
 
@@ -313,13 +492,40 @@ mod tests {
 
     #[test]
     fn region() {
-        let empty_f64 = Region::<1>::empty();
+        let empty_f64 = Region::<2>::empty();
         assert!(empty_f64.is_empty());
         assert!(!empty_f64.is_degenerated());
         assert!(!empty_f64.is_proper());
         assert!(!empty_f64.is_unbounded());
 
-        let unbounded = Region::<1>::unbounded();
+        let unbounded = Region::<2>::unbounded();
+        assert!(!unbounded.is_empty());
+        assert!(!unbounded.is_degenerated());
+        assert!(unbounded.is_proper());
+        assert!(unbounded.is_unbounded());
+
+        let one_i64 = IRegion::<2>::from_point(SVector::<i64, 2>::repeat(1));
+        assert!(!one_i64.is_empty());
+        assert!(!one_i64.is_degenerated());
+        assert!(one_i64.is_proper());
+        assert!(!one_i64.is_unbounded());
+
+        let two_f64 = Region::<2>::from_point(SVector::<f64, 2>::repeat(2.0));
+        assert!(!two_f64.is_empty());
+        assert!(two_f64.is_degenerated());
+        assert!(!two_f64.is_proper());
+        assert!(!two_f64.is_unbounded());
+    }
+
+    #[test]
+    fn interval() {
+        let empty_f64 = Interval::empty();
+        assert!(empty_f64.is_empty());
+        assert!(!empty_f64.is_degenerated());
+        assert!(!empty_f64.is_proper());
+        assert!(!empty_f64.is_unbounded());
+
+        let unbounded = Interval::unbounded();
         assert!(!unbounded.is_empty());
         assert!(!unbounded.is_degenerated());
         assert!(unbounded.is_proper());
@@ -331,7 +537,7 @@ mod tests {
         assert!(one_i64.is_proper());
         assert!(!one_i64.is_unbounded());
 
-        let two_f64 = Region::<1>::from_point(SVector::<f64, 1>::repeat(2.0));
+        let two_f64 = Interval::from_point(2.0);
         assert!(!two_f64.is_empty());
         assert!(two_f64.is_degenerated());
         assert!(!two_f64.is_proper());
