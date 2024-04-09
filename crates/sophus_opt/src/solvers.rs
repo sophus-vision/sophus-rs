@@ -206,9 +206,6 @@ pub fn solve(variables: &VarPool, costs: Vec<Box<dyn IsCost>>, nu: f64) -> VarPo
 //         let inv_orig_marg_hessian = orig_marg_hessian.try_inverse().unwrap();
 //         track.delta = inv_orig_marg_hessian.clone() * track.gradient_free.clone();
 
-//         // Eigen::Matrix<double, kD2, kD2> inv_orig_marg_hessian = orig_marg_hessian.inverse();
-//         //     track.delta =   * track.gradient_free;
-
 //         // outer prod
 //         for j in 0..track.len {
 //             let j_term = &evaluated_cost.terms[track.start_idx + j];

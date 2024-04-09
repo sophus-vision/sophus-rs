@@ -1,17 +1,21 @@
+#![feature(portable_simd)]
 #![deny(missing_docs)]
 //! # Lie groups module
 
-/// 2d isometry
-pub mod isometry2;
-/// 3d  isometry
-pub mod isometry3;
+/// Lie groups
+pub mod groups;
+
 /// Lie groups
 pub mod lie_group;
-/// 2d rotation
-pub mod rotation2;
-/// 3d rotation
-pub mod rotation3;
+
+/// Lie groups
+pub mod factor_lie_group;
+
+/// Lie group as a manifold
+pub mod lie_group_manifold;
+
 /// Lie group traits
 pub mod traits;
-/// semi-direct product
-pub mod translation_product_product;
+
+/// Real lie group
+pub mod real_lie_group;

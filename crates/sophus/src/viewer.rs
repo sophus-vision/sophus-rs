@@ -4,18 +4,6 @@ pub mod pixel_renderer;
 pub mod renderable;
 pub mod scene_renderer;
 
-use eframe::egui::load::SizedTexture;
-use eframe::egui::Image;
-use eframe::egui::Sense;
-use eframe::egui::{self};
-use eframe::egui_wgpu::Renderer;
-use eframe::epaint::mutex::RwLock;
-use hollywood::actors::egui::EguiAppFromBuilder;
-use hollywood::actors::egui::Stream;
-use hollywood::compute::pipeline::CancelRequest;
-use hollywood::core::request::RequestMessage;
-use std::sync::Arc;
-
 use self::actor::ViewerBuilder;
 use self::offscreen::OffscreenTexture;
 use self::pixel_renderer::PixelRenderer;
@@ -26,14 +14,25 @@ use self::scene_renderer::SceneRenderer;
 use crate::image::arc_image::ArcImage4U8;
 use crate::image::image_view::ImageSize;
 use crate::image::image_view::IsImageView;
-use crate::lie::isometry3::Isometry3;
-use crate::sensor::perspective_camera::KannalaBrandtCamera;
-use crate::tensor::view::IsTensorLike;
 use crate::viewer::pixel_renderer::LineVertex2;
 use crate::viewer::pixel_renderer::PointVertex2;
 use crate::viewer::scene_renderer::line::LineVertex3;
 use crate::viewer::scene_renderer::mesh::MeshVertex3;
 use crate::viewer::scene_renderer::point::PointVertex3;
+use eframe::egui::load::SizedTexture;
+use eframe::egui::Image;
+use eframe::egui::Sense;
+use eframe::egui::{self};
+use eframe::egui_wgpu::Renderer;
+use eframe::epaint::mutex::RwLock;
+use hollywood::actors::egui::EguiAppFromBuilder;
+use hollywood::actors::egui::Stream;
+use hollywood::compute::pipeline::CancelRequest;
+use hollywood::core::request::RequestMessage;
+use sophus_core::tensor::tensor_view::IsTensorLike;
+use sophus_lie::groups::isometry3::Isometry3;
+use sophus_sensor::dyn_camera::DynCamera;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct ViewerRenderState {
@@ -88,13 +87,13 @@ impl BackgroundTexture {
 pub struct SimpleViewer {
     state: ViewerRenderState,
     offscreen: OffscreenTexture,
-    cam: KannalaBrandtCamera<f64>,
+    cam: DynCamera<f64, 1>,
     pixel: PixelRenderer,
     scene: SceneRenderer,
     background_image: Option<ArcImage4U8>,
     background_texture: Option<BackgroundTexture>,
     message_recv: std::sync::mpsc::Receiver<Stream<Vec<Renderable>>>,
-    request_recv: std::sync::mpsc::Receiver<RequestMessage<(), Isometry3<f64>>>,
+    request_recv: std::sync::mpsc::Receiver<RequestMessage<(), Isometry3<f64, 1>>>,
     cancel_request_sender: tokio::sync::mpsc::Sender<CancelRequest>,
 }
 
@@ -111,7 +110,7 @@ impl EguiAppFromBuilder<ViewerBuilder> for SimpleViewer {
         Box::new(SimpleViewer {
             state: render_state.clone(),
             offscreen: OffscreenTexture::new(&render_state, &builder.config.camera.intrinsics),
-            cam: builder.config.camera.intrinsics,
+            cam: builder.config.camera.intrinsics.clone(),
             pixel: PixelRenderer::new(&render_state, &builder, depth_stencil.clone()),
             scene: SceneRenderer::new(&render_state, &builder, depth_stencil),
             message_recv: builder.message_recv,

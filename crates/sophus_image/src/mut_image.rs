@@ -4,37 +4,36 @@ use crate::image_view::ImageSize;
 use crate::image_view::IsImageView;
 use crate::mut_image_view::IsMutImageView;
 
-use sophus_tensor::element::IsStaticTensor;
-use sophus_tensor::element::IsTensorScalar;
-use sophus_tensor::element::SVec;
-use sophus_tensor::mut_tensor::MutTensor;
-use sophus_tensor::mut_view::IsMutTensorLike;
-use sophus_tensor::view::IsTensorView;
-use sophus_tensor::view::TensorView;
+use sophus_core::linalg::scalar::IsCoreScalar;
+use sophus_core::linalg::SVec;
+use sophus_core::tensor::element::IsStaticTensor;
+use sophus_core::tensor::mut_tensor::MutTensor;
+use sophus_core::tensor::mut_tensor_view::IsMutTensorLike;
+use sophus_core::tensor::tensor_view::IsTensorView;
+use sophus_core::tensor::tensor_view::TensorView;
 
 /// Mutable image of static tensors
 #[derive(Debug, Clone, Default)]
 pub struct GenMutImage<
     const TOTAL_RANK: usize,
     const SRANK: usize,
-    Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCH_SIZE> + 'static,
+    Scalar: IsCoreScalar + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS> + 'static,
     const ROWS: usize,
     const COLS: usize,
-    const BATCH_SIZE: usize,
 > {
     /// underlying mutable tensor
-    pub mut_tensor: MutTensor<TOTAL_RANK, 2, SRANK, Scalar, STensor, ROWS, COLS, BATCH_SIZE>,
+    pub mut_tensor: MutTensor<TOTAL_RANK, 2, SRANK, Scalar, STensor, ROWS, COLS>,
 }
 
 /// Mutable image of scalar values
-pub type MutImage<Scalar> = GenMutImage<2, 0, Scalar, Scalar, 1, 1, 1>;
+pub type MutImage<Scalar> = GenMutImage<2, 0, Scalar, Scalar, 1, 1>;
 
 /// Mutable image of vector values
 ///
 /// Here, R indicates the number of rows in the vector
 pub type MutImageR<Scalar, const ROWS: usize> =
-    GenMutImage<3, 1, Scalar, SVec<Scalar, ROWS>, ROWS, 1, 1>;
+    GenMutImage<3, 1, Scalar, SVec<Scalar, ROWS>, ROWS, 1>;
 
 /// Mutable image of u8 scalars
 pub type MutImageU8 = MutImage<u8>;
@@ -66,11 +65,10 @@ pub trait IsMutImage<
     'a,
     const TOTAL_RANK: usize,
     const SRANK: usize,
-    Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCH_SIZE> + 'static,
+    Scalar: IsCoreScalar + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS> + 'static,
     const ROWS: usize,
     const COLS: usize,
-    const BATCH_SIZE: usize,
 > where
     ndarray::Dim<[ndarray::Ix; TOTAL_RANK]>: ndarray::Dimension,
 {
@@ -84,13 +82,13 @@ macro_rules! mut_image {
     ($scalar_rank:literal, $srank:literal) => {
         impl<
                 'a,
-                Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCH_SIZE> + 'static,
+                Scalar: IsCoreScalar + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
                 const ROWS: usize,
                 const COLS: usize,
-                const BATCH_SIZE: usize,
-            > IsImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
-            for GenMutImage<$scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
+
+            > IsImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
+            for GenMutImage<$scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
         where
             ndarray::Dim<[ndarray::Ix; $scalar_rank]>: ndarray::Dimension,
         {
@@ -103,15 +101,14 @@ macro_rules! mut_image {
                 Scalar,
                 STensor,
                 ROWS,
-                COLS,
-                BATCH_SIZE,
+                COLS
             > {
                 let v = self.mut_tensor.view();
                 GenImageView { tensor_view: v }
             }
 
             fn pixel(&'a self, u: usize, v: usize) -> STensor {
-                self.mut_tensor.mut_array[[v, u]]
+                self.mut_tensor.mut_array[[v, u]].clone()
             }
 
             fn image_size(&self) -> crate::image_view::ImageSize {
@@ -121,12 +118,12 @@ macro_rules! mut_image {
 
         impl<
                 'a,
-                Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCH_SIZE> + 'static,
+                Scalar: IsCoreScalar + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
                 const ROWS: usize,
                 const COLS: usize,
-                const BATCH_SIZE: usize,
-            > GenMutImage<$scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
+
+            > GenMutImage<$scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
         {
             /// creates a mutable image view from image size
             pub fn from_image_size(size: crate::image_view::ImageSize) -> Self {
@@ -138,10 +135,10 @@ macro_rules! mut_image {
                         Scalar,
                         STensor,
                         ROWS,
-                        COLS,
-                        BATCH_SIZE,
+                        COLS
                     >::from_shape(size.into()),
                 }
+
             }
 
             /// creates a mutable image from image size and value
@@ -154,15 +151,14 @@ macro_rules! mut_image {
                         Scalar,
                         STensor,
                         ROWS,
-                        COLS,
-                        BATCH_SIZE,
+                        COLS
                     >::from_shape_and_val(size.into(), val),
                 }
             }
 
             /// creates a mutable image from image view
             pub fn make_copy_from(
-                v: &GenImageView<$scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>,
+                v: &GenImageView<$scalar_rank, $srank, Scalar, STensor, ROWS, COLS>,
             ) -> Self {
                 Self {
                     mut_tensor: MutTensor::<
@@ -172,8 +168,7 @@ macro_rules! mut_image {
                         Scalar,
                         STensor,
                         ROWS,
-                        COLS,
-                        BATCH_SIZE,
+                        COLS
                     >::make_copy_from(&v.tensor_view),
                 }
             }
@@ -187,7 +182,6 @@ macro_rules! mut_image {
                         STensor,
                         ROWS,
                         COLS,
-                        BATCH_SIZE,
                     >::from_size_and_slice(image_size, slice))
 
             }
@@ -235,17 +229,15 @@ macro_rules! mut_image {
             'b,
             const OTHER_HRANK: usize,
             const OTHER_SRANK: usize,
-            OtherScalar: IsTensorScalar + 'static,
+            OtherScalar: IsCoreScalar + 'static,
             OtherSTensor: IsStaticTensor<
                 OtherScalar,
                 OTHER_SRANK,
                 OTHER_ROWS,
                 OTHER_COLS,
-                OTHER_BATCHES,
             > + 'static,
             const OTHER_ROWS: usize,
             const OTHER_COLS: usize,
-            const OTHER_BATCHES: usize,
             F: FnMut(&OtherSTensor)-> STensor
             >(
                 v: &'b  GenImageView::<
@@ -256,16 +248,15 @@ macro_rules! mut_image {
                 OtherSTensor,
                 OTHER_ROWS,
                 OTHER_COLS,
-                OTHER_BATCHES,
             >,
                 op: F,
 
             ) -> Self
               where ndarray::Dim<[ndarray::Ix; OTHER_HRANK]>: ndarray::Dimension,
                 TensorView<'b, OTHER_HRANK, 2, OTHER_SRANK, OtherScalar, OtherSTensor,
-                           OTHER_ROWS, OTHER_COLS, OTHER_BATCHES>:
+                           OTHER_ROWS, OTHER_COLS>:
                 IsTensorView<'b, OTHER_HRANK, 2, OTHER_SRANK, OtherScalar, OtherSTensor,
-                             OTHER_ROWS, OTHER_COLS, OTHER_BATCHES>,
+                             OTHER_ROWS, OTHER_COLS>,
 
             {
                 Self {
@@ -276,8 +267,7 @@ macro_rules! mut_image {
                         Scalar,
                         STensor,
                         ROWS,
-                        COLS,
-                        BATCH_SIZE,
+                        COLS
                     >::from_map(&v.tensor_view, op),
                 }
             }
@@ -291,8 +281,7 @@ macro_rules! mut_image {
                 Scalar,
                 STensor,
                 ROWS,
-                COLS,
-                BATCH_SIZE,
+                COLS
             > {
                 GenArcImage {
                     tensor: self.mut_tensor.to_shared(),
@@ -302,13 +291,13 @@ macro_rules! mut_image {
 
         impl<
                 'a,
-                Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCH_SIZE> + 'static,
+                Scalar: IsCoreScalar + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
                 const ROWS: usize,
                 const COLS: usize,
-                const BATCH_SIZE: usize,
-            > IsMutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
-            for GenMutImage<$scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
+
+            > IsMutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
+            for GenMutImage<$scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
         where
             ndarray::Dim<[ndarray::Ix; $scalar_rank]>: ndarray::Dimension,
         {
@@ -321,8 +310,7 @@ macro_rules! mut_image {
                 Scalar,
                 STensor,
                 ROWS,
-                COLS,
-                BATCH_SIZE,
+                COLS
             > {
                 crate::mut_image_view::GenMutImageView {
                     mut_tensor_view: self.mut_tensor.mut_view(),

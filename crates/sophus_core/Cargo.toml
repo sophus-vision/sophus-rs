@@ -1,0 +1,21 @@
+[package]
+description = "sophus - geometry for robotics and computer vision"
+name = "sophus_core"
+readme = "../../README.md"
+
+edition.workspace = true
+include.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+approx.workspace = true
+assertables.workspace = true
+concat-arrays.workspace = true
+nalgebra.workspace = true
+ndarray.workspace = true
+num-traits.workspace = true
+sleef.workspace = true
+typenum.workspace = true

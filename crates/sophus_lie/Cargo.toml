@@ -11,9 +11,9 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
-sophus_calculus.workspace = true
-sophus_tensor.workspace = true
+sophus_core.workspace = true
 
 approx.workspace = true
 assertables.workspace = true
 nalgebra.workspace = true
+num-traits.workspace = true

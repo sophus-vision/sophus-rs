@@ -40,10 +40,10 @@ use crate::mut_image::MutImageF32;
 use crate::mut_image::MutImageR;
 use crate::mut_image::MutImageU16;
 use crate::mut_image::MutImageU8;
+use sophus_core::linalg::scalar::IsCoreScalar;
 
-use sophus_tensor::element::IsStaticTensor;
-use sophus_tensor::element::IsTensorScalar;
-use sophus_tensor::element::SVec;
+use sophus_core::linalg::SVec;
+use sophus_core::tensor::element::IsStaticTensor;
 
 /// dynamic mutable intensity image of unsigned integer values
 pub enum DynIntensityMutImageU {
@@ -285,8 +285,8 @@ pub enum DynIntensityImageView<'a> {
 /// Hence it s a trait for grayscale (1-channel), grayscale+alpha (2-channel), RGB (3-channel), and
 /// RGBA images (4-channel).
 ///
-/// This trait provides methods for converting between different image types. As of now, three
-/// scalar types are supported: `u8`, `u16`, and `f32`:
+/// This trait provides methods for converting between different image type. As of now, three
+/// scalar type are supported: `u8`, `u16`, and `f32`:
 ///
 ///  - u8 images are in the range [0, 255], i.e. 100% intensity corresponds to 255.
 ///
@@ -295,24 +295,23 @@ pub enum DynIntensityImageView<'a> {
 ///  - f32 images shall be in the range [0.0, 1.0] and 100% intensity corresponds to 1.0.
 ///    If the f32 is outside this range, conversion results may be surprising.
 ///
-/// These are image types which typically used for computer vision and graphics applications.
+/// These are image type which typically used for computer vision and graphics applications.
 pub trait IntensityMutImage<
     const TOTAL_RANK: usize,
     const SRANK: usize,
-    Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCH_SIZE> + 'static,
+    Scalar: IsCoreScalar + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS> + 'static,
     const ROWS: usize,
     const COLS: usize,
-    const BATCH_SIZE: usize,
 >
 {
     /// Shared tensor type
-    type GenArcImage<S: IsTensorScalar>;
+    type GenArcImage<S: IsCoreScalar>;
     /// Mutable tensor type
-    type GenMutImage<S: IsTensorScalar>;
+    type GenMutImage<S: IsCoreScalar>;
 
     /// Pixel type
-    type Pixel<S: IsTensorScalar>;
+    type Pixel<S: IsCoreScalar>;
 
     /// Converts a pixel to a grayscale value.
     fn pixel_to_grayscale(pixel: &STensor) -> Scalar;
@@ -347,8 +346,8 @@ pub trait IntensityMutImage<
     fn try_into_dyn_image_view_u(img: Self) -> Option<DynIntensityMutImageU>;
 }
 
-impl<'a> IntensityMutImage<2, 0, u8, u8, 1, 1, 1> for MutImageU8 {
-    type Pixel<S: IsTensorScalar> = S;
+impl<'a> IntensityMutImage<2, 0, u8, u8, 1, 1> for MutImageU8 {
+    type Pixel<S: IsCoreScalar> = S;
 
     fn pixel_to_grayscale(pixel: &u8) -> u8 {
         *pixel
@@ -378,9 +377,9 @@ impl<'a> IntensityMutImage<2, 0, u8, u8, 1, 1, 1> for MutImageU8 {
         *p as f32 / 255.0
     }
 
-    type GenArcImage<S: IsTensorScalar> = ArcImage<S>;
+    type GenArcImage<S: IsCoreScalar> = ArcImage<S>;
 
-    type GenMutImage<S: IsTensorScalar> = MutImage<S>;
+    type GenMutImage<S: IsCoreScalar> = MutImage<S>;
 
     fn cast_u8(img: Self) -> Self::GenMutImage<u8> {
         img
@@ -399,8 +398,8 @@ impl<'a> IntensityMutImage<2, 0, u8, u8, 1, 1, 1> for MutImageU8 {
     }
 }
 
-impl IntensityMutImage<2, 0, u16, u16, 1, 1, 1> for MutImageU16 {
-    type Pixel<S: IsTensorScalar> = S;
+impl IntensityMutImage<2, 0, u16, u16, 1, 1> for MutImageU16 {
+    type Pixel<S: IsCoreScalar> = S;
 
     fn pixel_to_grayscale(pixel: &u16) -> u16 {
         *pixel
@@ -430,9 +429,9 @@ impl IntensityMutImage<2, 0, u16, u16, 1, 1, 1> for MutImageU16 {
         *p as f32 / 65535.0
     }
 
-    type GenArcImage<S: IsTensorScalar> = ArcImage<S>;
+    type GenArcImage<S: IsCoreScalar> = ArcImage<S>;
 
-    type GenMutImage<S: IsTensorScalar> = MutImage<S>;
+    type GenMutImage<S: IsCoreScalar> = MutImage<S>;
 
     fn cast_u8(img: Self) -> Self::GenMutImage<u8> {
         Self::GenMutImage::<u8>::from_map(&img.image_view(), |rgb: &u16| -> u8 {
@@ -451,8 +450,8 @@ impl IntensityMutImage<2, 0, u16, u16, 1, 1, 1> for MutImageU16 {
     }
 }
 
-impl IntensityMutImage<2, 0, f32, f32, 1, 1, 1> for MutImageF32 {
-    type Pixel<S: IsTensorScalar> = S;
+impl IntensityMutImage<2, 0, f32, f32, 1, 1> for MutImageF32 {
+    type Pixel<S: IsCoreScalar> = S;
 
     fn pixel_to_grayscale(pixel: &f32) -> f32 {
         *pixel
@@ -482,9 +481,9 @@ impl IntensityMutImage<2, 0, f32, f32, 1, 1, 1> for MutImageF32 {
         *p
     }
 
-    type GenArcImage<S: IsTensorScalar> = ArcImage<S>;
+    type GenArcImage<S: IsCoreScalar> = ArcImage<S>;
 
-    type GenMutImage<S: IsTensorScalar> = MutImage<S>;
+    type GenMutImage<S: IsCoreScalar> = MutImage<S>;
 
     fn cast_u8(img: Self) -> Self::GenMutImage<u8> {
         Self::GenMutImage::<u8>::from_map(&img.image_view(), |rgb: &f32| -> u8 {
@@ -503,8 +502,8 @@ impl IntensityMutImage<2, 0, f32, f32, 1, 1, 1> for MutImageF32 {
     }
 }
 
-impl IntensityMutImage<3, 1, u8, SVec<u8, 4>, 4, 1, 1> for MutImage4U8 {
-    type Pixel<S: IsTensorScalar> = SVec<S, 4>;
+impl IntensityMutImage<3, 1, u8, SVec<u8, 4>, 4, 1> for MutImage4U8 {
+    type Pixel<S: IsCoreScalar> = SVec<S, 4>;
 
     fn pixel_to_grayscale(pixel: &SVec<u8, 4>) -> u8 {
         pixel[0]
@@ -541,9 +540,9 @@ impl IntensityMutImage<3, 1, u8, SVec<u8, 4>, 4, 1, 1> for MutImage4U8 {
         )
     }
 
-    type GenArcImage<S: IsTensorScalar> = ArcImageR<S, 4>;
+    type GenArcImage<S: IsCoreScalar> = ArcImageR<S, 4>;
 
-    type GenMutImage<S: IsTensorScalar> = MutImageR<S, 4>;
+    type GenMutImage<S: IsCoreScalar> = MutImageR<S, 4>;
 
     fn cast_u8(img: Self) -> Self::GenMutImage<u8> {
         img
@@ -566,19 +565,18 @@ impl IntensityMutImage<3, 1, u8, SVec<u8, 4>, 4, 1, 1> for MutImage4U8 {
 pub trait IntensityArcImage<
     const TOTAL_RANK: usize,
     const SRANK: usize,
-    Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCH_SIZE> + 'static,
+    Scalar: IsCoreScalar + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS> + 'static,
     const ROWS: usize,
     const COLS: usize,
-    const BATCH_SIZE: usize,
 >
 {
     /// Shared tensor type
-    type GenArcImage<S: IsTensorScalar>;
+    type GenArcImage<S: IsCoreScalar>;
     /// Mutable tensor type
-    type GenMutImage<S: IsTensorScalar>;
+    type GenMutImage<S: IsCoreScalar>;
     /// Pixel type
-    type Pixel<S: IsTensorScalar>;
+    type Pixel<S: IsCoreScalar>;
 
     /// Converts a pixel to a grayscale value.
     fn pixel_to_grayscale(pixel: &STensor) -> Scalar;
@@ -617,8 +615,8 @@ pub trait IntensityArcImage<
     fn try_into_dyn_image_view_u(img: &Self) -> Option<DynIntensityArcImageU>;
 }
 
-impl IntensityArcImage<2, 0, u8, u8, 1, 1, 1> for ArcImageU8 {
-    type Pixel<S: IsTensorScalar> = S;
+impl IntensityArcImage<2, 0, u8, u8, 1, 1> for ArcImageU8 {
+    type Pixel<S: IsCoreScalar> = S;
 
     fn pixel_to_grayscale(pixel: &u8) -> u8 {
         *pixel
@@ -648,9 +646,9 @@ impl IntensityArcImage<2, 0, u8, u8, 1, 1, 1> for ArcImageU8 {
         *p as f32 / 255.0
     }
 
-    type GenArcImage<S: IsTensorScalar> = ArcImage<S>;
+    type GenArcImage<S: IsCoreScalar> = ArcImage<S>;
 
-    type GenMutImage<S: IsTensorScalar> = MutImage<S>;
+    type GenMutImage<S: IsCoreScalar> = MutImage<S>;
 
     fn cast_u8(img: &Self) -> Self::GenArcImage<u8> {
         img.clone()
@@ -669,8 +667,8 @@ impl IntensityArcImage<2, 0, u8, u8, 1, 1, 1> for ArcImageU8 {
     }
 }
 
-impl IntensityArcImage<2, 0, u16, u16, 1, 1, 1> for ArcImageU16 {
-    type Pixel<S: IsTensorScalar> = S;
+impl IntensityArcImage<2, 0, u16, u16, 1, 1> for ArcImageU16 {
+    type Pixel<S: IsCoreScalar> = S;
 
     fn pixel_to_grayscale(pixel: &u16) -> u16 {
         *pixel
@@ -702,9 +700,9 @@ impl IntensityArcImage<2, 0, u16, u16, 1, 1, 1> for ArcImageU16 {
         *p as f32 / 65535.0
     }
 
-    type GenArcImage<S: IsTensorScalar> = ArcImage<S>;
+    type GenArcImage<S: IsCoreScalar> = ArcImage<S>;
 
-    type GenMutImage<S: IsTensorScalar> = MutImage<S>;
+    type GenMutImage<S: IsCoreScalar> = MutImage<S>;
 
     fn cast_u8(img: &Self) -> Self::GenArcImage<u8> {
         Self::GenArcImage::<u8>::from_map(&img.image_view(), |rgb: &u16| -> u8 {
@@ -723,8 +721,8 @@ impl IntensityArcImage<2, 0, u16, u16, 1, 1, 1> for ArcImageU16 {
     }
 }
 
-impl IntensityArcImage<2, 0, f32, f32, 1, 1, 1> for ArcImageF32 {
-    type Pixel<S: IsTensorScalar> = S;
+impl IntensityArcImage<2, 0, f32, f32, 1, 1> for ArcImageF32 {
+    type Pixel<S: IsCoreScalar> = S;
 
     fn pixel_to_grayscale(pixel: &f32) -> f32 {
         *pixel
@@ -754,9 +752,9 @@ impl IntensityArcImage<2, 0, f32, f32, 1, 1, 1> for ArcImageF32 {
         *p
     }
 
-    type GenArcImage<S: IsTensorScalar> = ArcImage<S>;
+    type GenArcImage<S: IsCoreScalar> = ArcImage<S>;
 
-    type GenMutImage<S: IsTensorScalar> = MutImage<S>;
+    type GenMutImage<S: IsCoreScalar> = MutImage<S>;
 
     fn cast_u8(img: &Self) -> Self::GenArcImage<u8> {
         Self::GenArcImage::<u8>::from_map(&img.image_view(), |rgb: &f32| -> u8 {
@@ -775,8 +773,8 @@ impl IntensityArcImage<2, 0, f32, f32, 1, 1, 1> for ArcImageF32 {
     }
 }
 
-impl IntensityArcImage<3, 1, u8, SVec<u8, 2>, 2, 1, 1> for ArcImage2U8 {
-    type Pixel<S: IsTensorScalar> = SVec<S, 2>;
+impl IntensityArcImage<3, 1, u8, SVec<u8, 2>, 2, 1> for ArcImage2U8 {
+    type Pixel<S: IsCoreScalar> = SVec<S, 2>;
 
     fn pixel_to_grayscale(pixel: &SVec<u8, 2>) -> u8 {
         pixel[0]
@@ -808,9 +806,9 @@ impl IntensityArcImage<3, 1, u8, SVec<u8, 2>, 2, 1, 1> for ArcImage2U8 {
         SVec::<f32, 2>::new(p[0] as f32 / 255.0, p[1] as f32 / 255.0)
     }
 
-    type GenArcImage<S: IsTensorScalar> = ArcImageR<S, 2>;
+    type GenArcImage<S: IsCoreScalar> = ArcImageR<S, 2>;
 
-    type GenMutImage<S: IsTensorScalar> = MutImageR<S, 2>;
+    type GenMutImage<S: IsCoreScalar> = MutImageR<S, 2>;
 
     fn cast_u8(img: &Self) -> Self::GenArcImage<u8> {
         img.clone()
@@ -829,8 +827,8 @@ impl IntensityArcImage<3, 1, u8, SVec<u8, 2>, 2, 1, 1> for ArcImage2U8 {
     }
 }
 
-impl IntensityArcImage<3, 1, u8, SVec<u8, 3>, 3, 1, 1> for ArcImage3U8 {
-    type Pixel<S: IsTensorScalar> = SVec<S, 3>;
+impl IntensityArcImage<3, 1, u8, SVec<u8, 3>, 3, 1> for ArcImage3U8 {
+    type Pixel<S: IsCoreScalar> = SVec<S, 3>;
 
     fn pixel_to_grayscale(pixel: &SVec<u8, 3>) -> u8 {
         pixel[0]
@@ -866,9 +864,9 @@ impl IntensityArcImage<3, 1, u8, SVec<u8, 3>, 3, 1, 1> for ArcImage3U8 {
         )
     }
 
-    type GenArcImage<S: IsTensorScalar> = ArcImageR<S, 3>;
+    type GenArcImage<S: IsCoreScalar> = ArcImageR<S, 3>;
 
-    type GenMutImage<S: IsTensorScalar> = MutImageR<S, 3>;
+    type GenMutImage<S: IsCoreScalar> = MutImageR<S, 3>;
 
     fn cast_u8(img: &Self) -> Self::GenArcImage<u8> {
         img.clone()
@@ -887,8 +885,8 @@ impl IntensityArcImage<3, 1, u8, SVec<u8, 3>, 3, 1, 1> for ArcImage3U8 {
     }
 }
 
-impl IntensityArcImage<3, 1, u8, SVec<u8, 4>, 4, 1, 1> for ArcImage4U8 {
-    type Pixel<S: IsTensorScalar> = SVec<S, 4>;
+impl IntensityArcImage<3, 1, u8, SVec<u8, 4>, 4, 1> for ArcImage4U8 {
+    type Pixel<S: IsCoreScalar> = SVec<S, 4>;
 
     fn pixel_to_grayscale(pixel: &SVec<u8, 4>) -> u8 {
         pixel[0]
@@ -925,9 +923,9 @@ impl IntensityArcImage<3, 1, u8, SVec<u8, 4>, 4, 1, 1> for ArcImage4U8 {
         )
     }
 
-    type GenArcImage<S: IsTensorScalar> = ArcImageR<S, 4>;
+    type GenArcImage<S: IsCoreScalar> = ArcImageR<S, 4>;
 
-    type GenMutImage<S: IsTensorScalar> = MutImageR<S, 4>;
+    type GenMutImage<S: IsCoreScalar> = MutImageR<S, 4>;
 
     fn cast_u8(img: &Self) -> Self::GenArcImage<u8> {
         img.clone()
@@ -946,8 +944,8 @@ impl IntensityArcImage<3, 1, u8, SVec<u8, 4>, 4, 1, 1> for ArcImage4U8 {
     }
 }
 
-impl IntensityArcImage<3, 1, u16, SVec<u16, 2>, 2, 1, 1> for ArcImage2U16 {
-    type Pixel<S: IsTensorScalar> = SVec<S, 2>;
+impl IntensityArcImage<3, 1, u16, SVec<u16, 2>, 2, 1> for ArcImage2U16 {
+    type Pixel<S: IsCoreScalar> = SVec<S, 2>;
 
     fn pixel_to_grayscale(pixel: &SVec<u16, 2>) -> u16 {
         pixel[0]
@@ -982,9 +980,9 @@ impl IntensityArcImage<3, 1, u16, SVec<u16, 2>, 2, 1, 1> for ArcImage2U16 {
         SVec::<f32, 2>::new(p[0] as f32 / 65535.0, p[1] as f32 / 65535.0)
     }
 
-    type GenArcImage<S: IsTensorScalar> = ArcImageR<S, 2>;
+    type GenArcImage<S: IsCoreScalar> = ArcImageR<S, 2>;
 
-    type GenMutImage<S: IsTensorScalar> = MutImageR<S, 2>;
+    type GenMutImage<S: IsCoreScalar> = MutImageR<S, 2>;
 
     fn cast_u8(img: &Self) -> Self::GenArcImage<u8> {
         Self::GenArcImage::<u8>::from_map(&img.image_view(), |rgb: &SVec<u16, 2>| -> SVec<u8, 2> {
@@ -1004,8 +1002,8 @@ impl IntensityArcImage<3, 1, u16, SVec<u16, 2>, 2, 1, 1> for ArcImage2U16 {
     }
 }
 
-impl IntensityArcImage<3, 1, u16, SVec<u16, 3>, 3, 1, 1> for ArcImage3U16 {
-    type Pixel<S: IsTensorScalar> = SVec<S, 3>;
+impl IntensityArcImage<3, 1, u16, SVec<u16, 3>, 3, 1> for ArcImage3U16 {
+    type Pixel<S: IsCoreScalar> = SVec<S, 3>;
 
     fn pixel_to_grayscale(pixel: &SVec<u16, 3>) -> u16 {
         pixel[0]
@@ -1045,9 +1043,9 @@ impl IntensityArcImage<3, 1, u16, SVec<u16, 3>, 3, 1, 1> for ArcImage3U16 {
         )
     }
 
-    type GenArcImage<S: IsTensorScalar> = ArcImageR<S, 3>;
+    type GenArcImage<S: IsCoreScalar> = ArcImageR<S, 3>;
 
-    type GenMutImage<S: IsTensorScalar> = MutImageR<S, 3>;
+    type GenMutImage<S: IsCoreScalar> = MutImageR<S, 3>;
 
     fn cast_u8(img: &Self) -> Self::GenArcImage<u8> {
         Self::GenArcImage::<u8>::from_map(&img.image_view(), |rgb: &SVec<u16, 3>| -> SVec<u8, 3> {
@@ -1067,8 +1065,8 @@ impl IntensityArcImage<3, 1, u16, SVec<u16, 3>, 3, 1, 1> for ArcImage3U16 {
     }
 }
 
-impl IntensityArcImage<3, 1, u16, SVec<u16, 4>, 4, 1, 1> for ArcImage4U16 {
-    type Pixel<S: IsTensorScalar> = SVec<S, 4>;
+impl IntensityArcImage<3, 1, u16, SVec<u16, 4>, 4, 1> for ArcImage4U16 {
+    type Pixel<S: IsCoreScalar> = SVec<S, 4>;
 
     fn pixel_to_grayscale(pixel: &SVec<u16, 4>) -> u16 {
         pixel[0]
@@ -1110,9 +1108,9 @@ impl IntensityArcImage<3, 1, u16, SVec<u16, 4>, 4, 1, 1> for ArcImage4U16 {
         )
     }
 
-    type GenArcImage<S: IsTensorScalar> = ArcImageR<S, 4>;
+    type GenArcImage<S: IsCoreScalar> = ArcImageR<S, 4>;
 
-    type GenMutImage<S: IsTensorScalar> = MutImageR<S, 4>;
+    type GenMutImage<S: IsCoreScalar> = MutImageR<S, 4>;
 
     fn cast_u8(img: &Self) -> Self::GenArcImage<u8> {
         Self::GenArcImage::<u8>::from_map(&img.image_view(), |rgb: &SVec<u16, 4>| -> SVec<u8, 4> {
@@ -1132,8 +1130,8 @@ impl IntensityArcImage<3, 1, u16, SVec<u16, 4>, 4, 1, 1> for ArcImage4U16 {
     }
 }
 
-impl IntensityArcImage<3, 1, f32, SVec<f32, 2>, 2, 1, 1> for ArcImage2F32 {
-    type Pixel<S: IsTensorScalar> = SVec<S, 2>;
+impl IntensityArcImage<3, 1, f32, SVec<f32, 2>, 2, 1> for ArcImage2F32 {
+    type Pixel<S: IsCoreScalar> = SVec<S, 2>;
 
     fn pixel_to_grayscale(pixel: &SVec<f32, 2>) -> f32 {
         pixel[0]
@@ -1171,9 +1169,9 @@ impl IntensityArcImage<3, 1, f32, SVec<f32, 2>, 2, 1, 1> for ArcImage2F32 {
         *p
     }
 
-    type GenArcImage<S: IsTensorScalar> = ArcImageR<S, 2>;
+    type GenArcImage<S: IsCoreScalar> = ArcImageR<S, 2>;
 
-    type GenMutImage<S: IsTensorScalar> = MutImageR<S, 2>;
+    type GenMutImage<S: IsCoreScalar> = MutImageR<S, 2>;
 
     fn cast_u8(img: &Self) -> Self::GenArcImage<u8> {
         Self::GenArcImage::<u8>::from_map(&img.image_view(), |rgb: &SVec<f32, 2>| -> SVec<u8, 2> {
@@ -1193,8 +1191,8 @@ impl IntensityArcImage<3, 1, f32, SVec<f32, 2>, 2, 1, 1> for ArcImage2F32 {
     }
 }
 
-impl IntensityArcImage<3, 1, f32, SVec<f32, 3>, 3, 1, 1> for ArcImage3F32 {
-    type Pixel<S: IsTensorScalar> = SVec<S, 3>;
+impl IntensityArcImage<3, 1, f32, SVec<f32, 3>, 3, 1> for ArcImage3F32 {
+    type Pixel<S: IsCoreScalar> = SVec<S, 3>;
 
     fn pixel_to_grayscale(pixel: &SVec<f32, 3>) -> f32 {
         pixel[0]
@@ -1234,9 +1232,9 @@ impl IntensityArcImage<3, 1, f32, SVec<f32, 3>, 3, 1, 1> for ArcImage3F32 {
         *p
     }
 
-    type GenArcImage<S: IsTensorScalar> = ArcImageR<S, 3>;
+    type GenArcImage<S: IsCoreScalar> = ArcImageR<S, 3>;
 
-    type GenMutImage<S: IsTensorScalar> = MutImageR<S, 3>;
+    type GenMutImage<S: IsCoreScalar> = MutImageR<S, 3>;
 
     fn cast_u8(img: &Self) -> Self::GenArcImage<u8> {
         Self::GenArcImage::<u8>::from_map(&img.image_view(), |rgb: &SVec<f32, 3>| -> SVec<u8, 3> {
@@ -1256,8 +1254,8 @@ impl IntensityArcImage<3, 1, f32, SVec<f32, 3>, 3, 1, 1> for ArcImage3F32 {
     }
 }
 
-impl IntensityArcImage<3, 1, f32, SVec<f32, 4>, 4, 1, 1> for ArcImage4F32 {
-    type Pixel<S: IsTensorScalar> = SVec<S, 4>;
+impl IntensityArcImage<3, 1, f32, SVec<f32, 4>, 4, 1> for ArcImage4F32 {
+    type Pixel<S: IsCoreScalar> = SVec<S, 4>;
 
     fn pixel_to_grayscale(pixel: &SVec<f32, 4>) -> f32 {
         pixel[0]
@@ -1299,9 +1297,9 @@ impl IntensityArcImage<3, 1, f32, SVec<f32, 4>, 4, 1, 1> for ArcImage4F32 {
         *p
     }
 
-    type GenArcImage<S: IsTensorScalar> = ArcImageR<S, 4>;
+    type GenArcImage<S: IsCoreScalar> = ArcImageR<S, 4>;
 
-    type GenMutImage<S: IsTensorScalar> = MutImageR<S, 4>;
+    type GenMutImage<S: IsCoreScalar> = MutImageR<S, 4>;
 
     fn cast_u8(img: &Self) -> Self::GenArcImage<u8> {
         Self::GenArcImage::<u8>::from_map(&img.image_view(), |rgb: &SVec<f32, 4>| -> SVec<u8, 4> {

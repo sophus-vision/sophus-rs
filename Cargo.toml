@@ -1,13 +1,12 @@
 [workspace]
 members = [
-  "crates/sophus_tensor",
-  "crates/sophus_calculus",
+  "crates/sophus",
+  "crates/sophus_core",
   "crates/sophus_lie",
   "crates/sophus_pyo3",
   "crates/sophus_image",
   "crates/sophus_sensor",
   "crates/sophus_opt",
-  "crates/sophus",
 ]
 resolver = "2"
 
@@ -25,14 +24,14 @@ version = "0.4.0"
 
 [workspace.dependencies]
 sophus = {path = "crates/sophus", version = "0.4.0"}
-sophus_calculus = {path = "crates/sophus_calculus", version = "0.4.0"}
+sophus_core = {path = "crates/sophus_core", version = "0.4.0"}
 sophus_image = {path = "crates/sophus_image", version = "0.4.0"}
 sophus_lie = {path = "crates/sophus_lie", version = "0.4.0"}
 sophus_opt = {path = "crates/sophus_opt", version = "0.4.0"}
+sophus_pyo3 = {path = "crates/sophus_pyo3", version = "0.4.0"}
 sophus_sensor = {path = "crates/sophus_sensor", version = "0.4.0"}
-sophus_tensor = {path = "crates/sophus_tensor", version = "0.4.0"}
 
-approx = {version = "0.5.1"}
+approx = "0.5.1"
 as-any = "0.3.1"
 assertables = "7.0.1"
 async-trait = "0.1.77"
@@ -47,23 +46,16 @@ hollywood = "0.5.0"
 image = {version = "0.25", features = [
   "jpeg",
   "png",
-  "tga",
-  "gif",
-  "ico",
-  "bmp",
-  "hdr",
   "tiff",
-  "avif",
-  "webp",
 ]}
 log = "0.4.14"
 nalgebra = {version = "0.32", features = ["rand"]}
 ndarray = {version = "0.15.4", features = ["approx-0_5"]}
 num-traits = "0.2.15"
-numpy = "0.20"
+numpy = "0.21"
 png = "0.17.11"
 rand = "0.8.5"
-simba = "0.8.1"
+sleef = "0.3.2"
 tokio = {version = "1", features = ["full"]}
 typenum = {version = "1.17.0", features = ["const-generics"]}
 wgpu = "0.19"

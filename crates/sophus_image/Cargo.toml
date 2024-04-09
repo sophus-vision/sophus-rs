@@ -11,11 +11,12 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
-sophus_tensor.workspace = true
+sophus_core.workspace = true
 
 approx.workspace = true
 assertables.workspace = true
 bytemuck.workspace = true
 nalgebra.workspace = true
 ndarray.workspace = true
+num-traits.workspace = true
 png.workspace = true

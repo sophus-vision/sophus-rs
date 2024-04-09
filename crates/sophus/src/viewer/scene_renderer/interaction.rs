@@ -1,12 +1,11 @@
 use crate::image::arc_image::ArcImageF32;
 use crate::image::image_view::IsImageView;
-use crate::lie::isometry3::Isometry3;
 use crate::lie::traits::IsTranslationProductGroup;
-use crate::sensor::perspective_camera::KannalaBrandtCamera;
-use crate::tensor::view::IsTensorLike;
-
 use eframe::egui;
-use sophus_calculus::types::VecF64;
+use sophus_core::linalg::VecF64;
+use sophus_core::tensor::tensor_view::IsTensorLike;
+use sophus_lie::groups::isometry3::Isometry3;
+use sophus_sensor::dyn_camera::DynCamera;
 
 #[derive(Clone, Copy)]
 pub struct WgpuClippingPlanes {
@@ -35,7 +34,7 @@ pub struct InteractionState {
 pub struct Interaction {
     pub maybe_state: Option<InteractionState>,
     pub clipping_planes: WgpuClippingPlanes,
-    pub scene_from_camera: Isometry3<f64>,
+    pub scene_from_camera: Isometry3<f64, 1>,
 }
 
 impl Interaction {
@@ -62,7 +61,7 @@ impl Interaction {
 
     pub fn process_event(
         &mut self,
-        cam: &KannalaBrandtCamera<f64>,
+        cam: &DynCamera<f64, 1>,
         response: &egui::Response,
         z_buffer: ArcImageF32,
     ) {
@@ -120,10 +119,11 @@ impl Interaction {
             let delta =
                 0.01 * VecF64::<6>::new(0.0, 0.0, 0.0, -delta_y as f64, delta_x as f64, 0.0);
             let camera_from_scene_point = Isometry3::from_t(&cam.cam_unproj_with_z(&pixel, depth));
-            self.scene_from_camera = self.scene_from_camera
-                * &camera_from_scene_point
-                * &Isometry3::exp(&delta)
-                * &camera_from_scene_point.inverse();
+            self.scene_from_camera =
+                self.scene_from_camera
+                    .group_mul(&camera_from_scene_point.group_mul(
+                        &Isometry3::exp(&delta).group_mul(&camera_from_scene_point.inverse()),
+                    ));
         }
     }
 }

@@ -1,10 +1,9 @@
 use crate::image::arc_image::ArcImageF32;
 use crate::image::image_view::ImageSize;
 use crate::image::image_view::ImageViewF32;
-use crate::sensor::perspective_camera::KannalaBrandtCamera;
 use crate::viewer::ViewerRenderState;
-
 use eframe::egui::{self};
+use sophus_sensor::dyn_camera::DynCamera;
 
 #[derive(Debug)]
 pub(crate) struct OffscreenTexture {
@@ -16,10 +15,7 @@ pub(crate) struct OffscreenTexture {
 }
 
 impl OffscreenTexture {
-    pub(crate) fn new(
-        render_state: &ViewerRenderState,
-        intrinsics: &KannalaBrandtCamera<f64>,
-    ) -> Self {
+    pub(crate) fn new(render_state: &ViewerRenderState, intrinsics: &DynCamera<f64, 1>) -> Self {
         let w = intrinsics.image_size().width as f32;
         let h = intrinsics.image_size().height as f32;
 

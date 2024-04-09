@@ -1,13 +1,11 @@
 use std::fmt::Debug;
 
-use sophus_calculus::dual::dual_scalar::Dual;
-use sophus_calculus::manifold::traits::TangentImpl;
-use sophus_calculus::manifold::{self};
-use sophus_calculus::types::params::HasParams;
-use sophus_calculus::types::params::ParamsImpl;
-use sophus_calculus::types::scalar::IsScalar;
-use sophus_calculus::types::MatF64;
-use sophus_calculus::types::VecF64;
+use sophus_core::calculus::manifold::traits::TangentImpl;
+use sophus_core::calculus::manifold::{self};
+use sophus_core::linalg::scalar::IsRealScalar;
+use sophus_core::linalg::scalar::IsScalar;
+use sophus_core::params::HasParams;
+use sophus_core::params::ParamsImpl;
 
 /// Lie Group implementation trait
 ///
@@ -34,9 +32,9 @@ pub trait IsLieGroupImpl<
     /// Generic scalar, real scalar, and dual scalar
     type GenG<S2: IsScalar<BATCH_SIZE>>: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>;
     /// Real scalar
-    type RealG: IsLieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT, 1>;
-    /// Dual scalar - for automatic differentiation
-    type DualG: IsLieGroupImpl<Dual, DOF, PARAMS, POINT, AMBIENT, 1>;
+    type RealG: IsLieGroupImpl<S::RealScalar, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>;
+    /// DualScalar scalar - for automatic differentiation
+    type DualG: IsLieGroupImpl<S::DualScalar, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>;
 
     /// is transformation origin preserving?
     const IS_ORIGIN_PRESERVING: bool;
@@ -55,9 +53,6 @@ pub trait IsLieGroupImpl<
     fn identity_params() -> S::Vector<PARAMS>;
 
     // Manifold / Lie Group concepts
-
-    /// are there multiple shortest paths to the identity?
-    fn has_shortest_path_ambiguity(params: &S::Vector<PARAMS>) -> bool;
 
     /// group adjoint
     fn adj(params: &S::Vector<PARAMS>) -> S::Matrix<DOF, DOF>;
@@ -101,30 +96,35 @@ pub trait IsLieGroupImpl<
 }
 
 /// Lie Group implementation trait for real scalar, f64
-pub trait IsF64LieGroupImpl<
+pub trait IsRealLieGroupImpl<
+    S: IsRealScalar<BATCH_SIZE>,
     const DOF: usize,
     const PARAMS: usize,
     const POINT: usize,
     const AMBIENT: usize,
->: IsLieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT, 1>
+    const BATCH_SIZE: usize,
+>: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>
 {
     /// derivative of group multiplication with respect to the first argument
-    fn da_a_mul_b(a: &VecF64<PARAMS>, b: &VecF64<PARAMS>) -> MatF64<PARAMS, PARAMS>;
+    fn da_a_mul_b(a: &S::Vector<PARAMS>, b: &S::Vector<PARAMS>) -> S::Matrix<PARAMS, PARAMS>;
 
     /// derivative of group multiplication with respect to the second argument
-    fn db_a_mul_b(a: &VecF64<PARAMS>, b: &VecF64<PARAMS>) -> MatF64<PARAMS, PARAMS>;
+    fn db_a_mul_b(a: &S::Vector<PARAMS>, b: &S::Vector<PARAMS>) -> S::Matrix<PARAMS, PARAMS>;
 
     /// derivative of exponential map
-    fn dx_exp(tangent: &VecF64<DOF>) -> MatF64<PARAMS, DOF>;
+    fn dx_exp(tangent: &S::Vector<DOF>) -> S::Matrix<PARAMS, DOF>;
 
     /// derivative of exponential map at the identity
-    fn dx_exp_x_at_0() -> MatF64<PARAMS, DOF>;
+    fn dx_exp_x_at_0() -> S::Matrix<PARAMS, DOF>;
 
     /// derivative of logarithmic map
-    fn dx_log_x(params: &VecF64<PARAMS>) -> MatF64<DOF, PARAMS>;
+    fn dx_log_x(params: &S::Vector<PARAMS>) -> S::Matrix<DOF, PARAMS>;
 
     /// derivative of exponential map times a point at the identity
-    fn dx_exp_x_times_point_at_0(point: &VecF64<POINT>) -> MatF64<POINT, DOF>;
+    fn dx_exp_x_times_point_at_0(point: S::Vector<POINT>) -> S::Matrix<POINT, DOF>;
+
+    /// are there multiple shortest paths to the identity?
+    fn has_shortest_path_ambiguity(params: &S::Vector<PARAMS>) -> S::Mask;
 }
 
 /// Lie Factor Group
@@ -147,9 +147,9 @@ pub trait IsLieFactorGroupImpl<
         BATCH_SIZE,
     >;
     /// Real scalar
-    type RealFactorG: IsLieFactorGroupImpl<f64, DOF, PARAMS, POINT, 1>;
-    /// Dual scalar - for automatic differentiation
-    type DualFactorG: IsLieFactorGroupImpl<Dual, DOF, PARAMS, POINT, 1>;
+    type RealFactorG: IsLieFactorGroupImpl<S::RealScalar, DOF, PARAMS, POINT, BATCH_SIZE>;
+    /// DualScalar scalar - for automatic differentiation
+    type DualFactorG: IsLieFactorGroupImpl<S::DualScalar, DOF, PARAMS, POINT, BATCH_SIZE>;
 
     /// V matrix - used by semi-direct product exponential
     fn mat_v(tangent: &S::Vector<DOF>) -> S::Matrix<POINT, POINT>;
@@ -168,22 +168,28 @@ pub trait IsLieFactorGroupImpl<
 }
 
 /// Lie Factor Group implementation trait for real scalar, f64
-pub trait IsF64LieFactorGroupImpl<const DOF: usize, const PARAMS: usize, const POINT: usize>:
-    IsLieGroupImpl<f64, DOF, PARAMS, POINT, POINT, 1>
-    + IsLieFactorGroupImpl<f64, DOF, PARAMS, POINT, 1>
-    + IsF64LieGroupImpl<DOF, PARAMS, POINT, POINT>
+pub trait IsRealLieFactorGroupImpl<
+    S: IsRealScalar<BATCH_SIZE>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const BATCH_SIZE: usize,
+>:
+    IsLieGroupImpl<S, DOF, PARAMS, POINT, POINT, BATCH_SIZE>
+    + IsLieFactorGroupImpl<S, DOF, PARAMS, POINT, BATCH_SIZE>
+    + IsRealLieGroupImpl<S, DOF, PARAMS, POINT, POINT, BATCH_SIZE>
 {
     /// derivative of V matrix
-    fn dx_mat_v(tangent: &VecF64<DOF>) -> [MatF64<POINT, POINT>; DOF];
+    fn dx_mat_v(tangent: &S::Vector<DOF>) -> [S::Matrix<POINT, POINT>; DOF];
 
     /// derivative of V matrix inverse
-    fn dx_mat_v_inverse(tangent: &VecF64<DOF>) -> [MatF64<POINT, POINT>; DOF];
+    fn dx_mat_v_inverse(tangent: &S::Vector<DOF>) -> [S::Matrix<POINT, POINT>; DOF];
 
     /// derivative of group transformation times a point with respect to the group parameters
     fn dparams_matrix_times_point(
-        params: &VecF64<PARAMS>,
-        point: &VecF64<POINT>,
-    ) -> MatF64<POINT, PARAMS>;
+        params: &S::Vector<PARAMS>,
+        point: &S::Vector<POINT>,
+    ) -> S::Matrix<POINT, PARAMS>;
 }
 
 /// Lie Group trait
@@ -201,9 +207,18 @@ pub trait IsLieGroup<
     /// Lie Group implementation with generic scalar, real scalar, and dual scalar
     type GenG<S2: IsScalar<BATCH_SIZE>>: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>;
     /// Lie Group implementation- with real scalar
-    type RealG: IsLieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT, 1>;
+    type RealG: IsLieGroupImpl<S::RealScalar, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>;
     /// Lie Group implementation with dual scalar - for automatic differentiation
-    type DualG: IsLieGroupImpl<Dual, DOF, PARAMS, POINT, AMBIENT, 1>;
+    type DualG: IsLieGroupImpl<S::DualScalar, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>;
+
+    /// degree of freedom
+    const DOF: usize;
+    /// number of parameters
+    const PARAMS: usize;
+    /// point dimension
+    const POINT: usize;
+    /// ambient dimension
+    const AMBIENT: usize;
 
     /// Get the Lie Group
     type GenGroup<S2: IsScalar<BATCH_SIZE>, G2: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>>: IsLieGroup<
@@ -215,9 +230,9 @@ pub trait IsLieGroup<
         BATCH_SIZE
     >;
     /// Lie Group with real scalar
-    type RealGroup: IsLieGroup<f64, DOF, PARAMS, POINT, AMBIENT, 1>;
+    type RealGroup: IsLieGroup<S::RealScalar, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>;
     /// Lie Group with dual scalar - for automatic differentiation
-    type DualGroup: IsLieGroup<Dual, DOF, PARAMS, POINT, AMBIENT, 1>;
+    type DualGroup: IsLieGroup<S::DualScalar, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>;
 }
 
 /// Lie Group trait for real scalar, f64

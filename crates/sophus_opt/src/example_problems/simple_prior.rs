@@ -9,19 +9,18 @@ use crate::nlls::OptParams;
 use crate::variables::VarFamily;
 use crate::variables::VarKind;
 use crate::variables::VarPoolBuilder;
-
-use sophus_calculus::types::vector::IsVector;
-use sophus_calculus::types::MatF64;
-use sophus_calculus::types::VecF64;
-use sophus_lie::isometry2::Isometry2;
-use sophus_lie::isometry3::Isometry3;
+use sophus_core::linalg::vector::IsVector;
+use sophus_core::linalg::MatF64;
+use sophus_core::linalg::VecF64;
+use sophus_lie::groups::isometry2::Isometry2;
+use sophus_lie::groups::isometry3::Isometry3;
 
 /// Simple 2D isometry prior problem
 pub struct SimpleIso2PriorProblem {
     /// True world from robot isometry
-    pub true_world_from_robot: Isometry2<f64>,
+    pub true_world_from_robot: Isometry2<f64, 1>,
     /// Estimated world from robot isometry
-    pub est_world_from_robot: Isometry2<f64>,
+    pub est_world_from_robot: Isometry2<f64, 1>,
 }
 
 impl Default for SimpleIso2PriorProblem {
@@ -32,11 +31,11 @@ impl Default for SimpleIso2PriorProblem {
 
 impl SimpleIso2PriorProblem {
     fn new() -> Self {
-        let p = VecF64::<3>::from_c_array([0.2, 0.0, 1.0]);
-        let true_world_from_robot = Isometry2::<f64>::exp(&p);
+        let p = VecF64::<3>::from_f64_array([0.2, 0.0, 1.0]);
+        let true_world_from_robot = Isometry2::<f64, 1>::exp(&p);
         Self {
             true_world_from_robot,
-            est_world_from_robot: Isometry2::<f64>::identity(),
+            est_world_from_robot: Isometry2::<f64, 1>::identity(),
         }
     }
 
@@ -48,12 +47,12 @@ impl SimpleIso2PriorProblem {
         }];
 
         let obs_pose_a_from_pose_b_poses =
-            CostSignature::<1, Isometry2<f64>, Isometry2PriorTermSignature> {
+            CostSignature::<1, Isometry2<f64, 1>, Isometry2PriorTermSignature> {
                 family_names: ["poses".into()],
                 terms: cost_signature,
             };
 
-        let family: VarFamily<Isometry2<f64>> =
+        let family: VarFamily<Isometry2<f64, 1>> =
             VarFamily::new(VarKind::Free, vec![self.est_world_from_robot]);
 
         let families = VarPoolBuilder::new().add_family("poses", family).build();
@@ -75,7 +74,7 @@ impl SimpleIso2PriorProblem {
                 initial_lm_nu: 1e-6, // if lm prior param is tiny
             },
         );
-        let refined_world_from_robot = up_families.get_members::<Isometry2<f64>>("poses".into());
+        let refined_world_from_robot = up_families.get_members::<Isometry2<f64, 1>>("poses".into());
 
         approx::assert_abs_diff_eq!(
             self.true_world_from_robot.compact(),
@@ -88,9 +87,9 @@ impl SimpleIso2PriorProblem {
 /// Simple 3D isometry prior problem
 pub struct SimpleIso3PriorProblem {
     /// True world from robot isometry
-    pub true_world_from_robot: Isometry3<f64>,
+    pub true_world_from_robot: Isometry3<f64, 1>,
     /// Estimated world from robot isometry
-    pub est_world_from_robot: Isometry3<f64>,
+    pub est_world_from_robot: Isometry3<f64, 1>,
 }
 
 impl Default for SimpleIso3PriorProblem {
@@ -101,11 +100,11 @@ impl Default for SimpleIso3PriorProblem {
 
 impl SimpleIso3PriorProblem {
     fn new() -> Self {
-        let p = VecF64::<6>::from_c_array([0.2, 0.0, 1.0, 0.2, 0.0, 1.0]);
-        let true_world_from_robot = Isometry3::<f64>::exp(&p);
+        let p = VecF64::<6>::from_real_array([0.2, 0.0, 1.0, 0.2, 0.0, 1.0]);
+        let true_world_from_robot = Isometry3::<f64, 1>::exp(&p);
         Self {
             true_world_from_robot,
-            est_world_from_robot: Isometry3::<f64>::identity(),
+            est_world_from_robot: Isometry3::<f64, 1>::identity(),
         }
     }
 
@@ -117,12 +116,12 @@ impl SimpleIso3PriorProblem {
         }];
 
         let obs_pose_a_from_pose_b_poses =
-            CostSignature::<1, (Isometry3<f64>, MatF64<6, 6>), Isometry3PriorTermSignature> {
+            CostSignature::<1, (Isometry3<f64, 1>, MatF64<6, 6>), Isometry3PriorTermSignature> {
                 family_names: ["poses".into()],
                 terms: cost_signature,
             };
 
-        let family: VarFamily<Isometry3<f64>> =
+        let family: VarFamily<Isometry3<f64, 1>> =
             VarFamily::new(VarKind::Free, vec![self.est_world_from_robot]);
 
         let families = VarPoolBuilder::new().add_family("poses", family).build();
@@ -144,7 +143,7 @@ impl SimpleIso3PriorProblem {
                 initial_lm_nu: 1e-6, // if lm prior param is tiny
             },
         );
-        let refined_world_from_robot = up_families.get_members::<Isometry3<f64>>("poses".into());
+        let refined_world_from_robot = up_families.get_members::<Isometry3<f64, 1>>("poses".into());
 
         approx::assert_abs_diff_eq!(
             self.true_world_from_robot.compact(),
@@ -154,14 +153,8 @@ impl SimpleIso3PriorProblem {
     }
 }
 
-mod tests {
-
-    #[test]
-    fn simple_prior_opt_tests() {
-        use super::SimpleIso2PriorProblem;
-        use super::SimpleIso3PriorProblem;
-
-        SimpleIso2PriorProblem::new().test();
-        SimpleIso3PriorProblem::new().test();
-    }
+#[test]
+fn simple_prior_opt_tests() {
+    SimpleIso2PriorProblem::new().test();
+    SimpleIso3PriorProblem::new().test();
 }

@@ -1,17 +1,11 @@
 use hollywood::actors::egui::EguiActor;
-
 use hollywood::actors::egui::Stream;
 pub use hollywood::compute::Context;
 pub use hollywood::core::*;
 use hollywood::macros::*;
-use sophus::calculus::types::vector::IsVector;
-use sophus::calculus::types::VecF64;
 use sophus::image::image_view::ImageSize;
-use sophus::lie::isometry2::Isometry2;
-use sophus::lie::isometry3::Isometry3;
 use sophus::lie::traits::IsTranslationProductGroup;
 use sophus::opt::example_problems::pose_circle::PoseCircleProblem;
-use sophus::sensor::perspective_camera::KannalaBrandtCamera;
 use sophus::viewer::actor::run_viewer_on_main_thread;
 use sophus::viewer::actor::ViewerBuilder;
 use sophus::viewer::actor::ViewerCamera;
@@ -19,6 +13,13 @@ use sophus::viewer::actor::ViewerConfig;
 use sophus::viewer::renderable::*;
 use sophus::viewer::scene_renderer::interaction::WgpuClippingPlanes;
 use sophus::viewer::SimpleViewer;
+use sophus_core::linalg::vector::IsVector;
+use sophus_core::linalg::VecF64;
+use sophus_lie::groups::isometry2::Isometry2;
+use sophus_lie::groups::isometry3::Isometry3;
+use sophus_sensor::camera_enum::perspective_camera::KannalaBrandtCamera;
+use sophus_sensor::camera_enum::perspective_camera::PerspectiveCameraEnum;
+use sophus_sensor::dyn_camera::DynCamera;
 
 #[actor(ContentGeneratorMessage)]
 type ContentGenerator = Actor<
@@ -47,7 +48,7 @@ pub struct ContentGeneratorOutbound {
     pub packets: OutboundChannel<Stream<Vec<Renderable>>>,
 }
 
-fn make_axes(world_from_local_poses: Vec<Isometry2<f64>>) -> Vec<Line3> {
+fn make_axes(world_from_local_poses: Vec<Isometry2<f64, 1>>) -> Vec<Line3> {
     let zero_in_local = VecF64::<2>::zeros();
     let x_axis_local = VecF64::<2>::new(1.0, 0.0);
     let y_axis_local = VecF64::<2>::new(0.0, 1.0);
@@ -124,7 +125,7 @@ impl InboundMessageNew<f64> for ContentGeneratorMessage {
 
 pub async fn run_viewer_example() {
     // Camera / view pose parameters
-    let intrinsics = KannalaBrandtCamera::<f64>::new(
+    let intrinsics = KannalaBrandtCamera::<f64, 1>::new(
         &VecF64::<8>::from_array([600.0, 600.0, 320.0, 240.0, 0.0, 0.0, 0.0, 0.0]),
         ImageSize {
             width: 640,
@@ -137,7 +138,9 @@ pub async fn run_viewer_example() {
         far: 1000.0,
     };
     let camera = ViewerCamera {
-        intrinsics,
+        intrinsics: DynCamera::<f64, 1>::from_model(PerspectiveCameraEnum::KannalaBrandt(
+            intrinsics,
+        )),
         clipping_planes,
         scene_from_camera,
     };
@@ -157,7 +160,7 @@ pub async fn run_viewer_example() {
         );
         // 3. The viewer actor
         let mut viewer =
-            EguiActor::<Vec<Renderable>, (), Isometry3<f64>>::from_builder(context, &builder);
+            EguiActor::<Vec<Renderable>, (), Isometry3<f64, 1>>::from_builder(context, &builder);
 
         // Pipeline connections:
         timer

@@ -7,14 +7,8 @@ pub use hollywood::core::request::RequestHub;
 pub use hollywood::core::*;
 use hollywood::macros::*;
 use nalgebra::SVector;
-use sophus::calculus::types::vector::IsVector;
-use sophus::calculus::types::VecF64;
-use sophus::image::image_view::ImageSize;
-use sophus::lie::isometry3::Isometry3;
-use sophus::lie::traits::IsTranslationProductGroup;
-use sophus::sensor::perspective_camera::KannalaBrandtCamera;
-
 use sophus::image::arc_image::ArcImage4F32;
+use sophus::image::image_view::ImageSize;
 use sophus::viewer::actor::run_viewer_on_main_thread;
 use sophus::viewer::actor::ViewerBuilder;
 use sophus::viewer::actor::ViewerCamera;
@@ -22,6 +16,11 @@ use sophus::viewer::actor::ViewerConfig;
 use sophus::viewer::renderable::*;
 use sophus::viewer::scene_renderer::interaction::WgpuClippingPlanes;
 use sophus::viewer::SimpleViewer;
+use sophus_core::linalg::vector::IsVector;
+use sophus_core::linalg::VecF64;
+use sophus_lie::groups::isometry3::Isometry3;
+use sophus_lie::traits::IsTranslationProductGroup;
+use sophus_sensor::dyn_camera::DynCamera;
 
 #[actor(ContentGeneratorMessage)]
 type ContentGenerator = Actor<
@@ -38,13 +37,13 @@ type ContentGenerator = Actor<
 pub enum ContentGeneratorMessage {
     /// in seconds
     ClockTick(f64),
-    SceneFromCamera(ReplyMessage<Isometry3<f64>>),
+    SceneFromCamera(ReplyMessage<Isometry3<f64, 1>>),
 }
 
 /// Request of the simulation actor.
 pub struct ContentGeneratorRequest {
     /// Check time-stamp of receiver
-    pub scene_from_camera_request: RequestChannel<(), Isometry3<f64>, ContentGeneratorMessage>,
+    pub scene_from_camera_request: RequestChannel<(), Isometry3<f64, 1>, ContentGeneratorMessage>,
 }
 
 impl RequestHub<ContentGeneratorMessage> for ContentGeneratorRequest {
@@ -78,8 +77,8 @@ impl Activate for ContentGeneratorRequest {
 pub struct ContentGeneratorState {
     pub counter: u32,
     pub show: bool,
-    pub intrinsics: KannalaBrandtCamera<f64>,
-    pub scene_from_camera: Isometry3<f64>,
+    pub intrinsics: DynCamera<f64, 1>,
+    pub scene_from_camera: Isometry3<f64, 1>,
 }
 
 impl Default for ContentGeneratorState {
@@ -87,7 +86,7 @@ impl Default for ContentGeneratorState {
         ContentGeneratorState {
             counter: 0,
             show: false,
-            intrinsics: KannalaBrandtCamera::<f64>::new(
+            intrinsics: DynCamera::new_kannala_brandt(
                 &VecF64::<8>::from_array([600.0, 600.0, 320.0, 240.0, 0.0, 0.0, 0.0, 0.0]),
                 ImageSize {
                     width: 640,
@@ -422,15 +421,15 @@ impl InboundMessageNew<f64> for ContentGeneratorMessage {
     }
 }
 
-impl InboundMessageNew<ReplyMessage<Isometry3<f64>>> for ContentGeneratorMessage {
-    fn new(_inbound_name: String, scene_from_camera: ReplyMessage<Isometry3<f64>>) -> Self {
+impl InboundMessageNew<ReplyMessage<Isometry3<f64, 1>>> for ContentGeneratorMessage {
+    fn new(_inbound_name: String, scene_from_camera: ReplyMessage<Isometry3<f64, 1>>) -> Self {
         ContentGeneratorMessage::SceneFromCamera(scene_from_camera)
     }
 }
 
 pub async fn run_viewer_example() {
     // Camera / view pose parameters
-    let intrinsics = KannalaBrandtCamera::<f64>::new(
+    let intrinsics = DynCamera::new_kannala_brandt(
         &VecF64::<8>::from_array([600.0, 600.0, 320.0, 240.0, 0.0, 0.0, 0.0, 0.0]),
         ImageSize {
             width: 640,
@@ -443,7 +442,7 @@ pub async fn run_viewer_example() {
         far: 1000.0,
     };
     let camera = ViewerCamera {
-        intrinsics,
+        intrinsics: intrinsics.clone(),
         clipping_planes,
         scene_from_camera,
     };
@@ -462,13 +461,13 @@ pub async fn run_viewer_example() {
             ContentGeneratorState {
                 counter: 0,
                 show: false,
-                intrinsics,
+                intrinsics: intrinsics.clone(),
                 scene_from_camera,
             },
         );
         // 3. The viewer actor
         let mut viewer =
-            EguiActor::<Vec<Renderable>, (), Isometry3<f64>>::from_builder(context, &builder);
+            EguiActor::<Vec<Renderable>, (), Isometry3<f64, 1>>::from_builder(context, &builder);
 
         // Pipeline connections:
         timer

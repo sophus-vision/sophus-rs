@@ -1,9 +1,9 @@
-use sophus_tensor::element::IsStaticTensor;
-use sophus_tensor::element::IsTensorScalar;
-use sophus_tensor::element::SVec;
-use sophus_tensor::view::IsTensorLike;
-use sophus_tensor::view::IsTensorView;
-use sophus_tensor::view::TensorView;
+use sophus_core::linalg::scalar::IsCoreScalar;
+use sophus_core::linalg::SVec;
+use sophus_core::tensor::element::IsStaticTensor;
+use sophus_core::tensor::tensor_view::IsTensorLike;
+use sophus_core::tensor::tensor_view::IsTensorView;
+use sophus_core::tensor::tensor_view::TensorView;
 
 /// Image size
 #[derive(Debug, Copy, Clone, Default)]
@@ -51,26 +51,25 @@ pub struct GenImageView<
     'a,
     const TOTAL_RANK: usize,
     const SRANK: usize,
-    Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCH_SIZE> + 'static,
+    Scalar: IsCoreScalar + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS> + 'static,
     const ROWS: usize,
     const COLS: usize,
-    const BATCH_SIZE: usize,
 > where
     ndarray::Dim<[ndarray::Ix; TOTAL_RANK]>: ndarray::Dimension,
 {
     /// underlying tensor view
-    pub tensor_view: TensorView<'a, TOTAL_RANK, 2, SRANK, Scalar, STensor, ROWS, COLS, BATCH_SIZE>,
+    pub tensor_view: TensorView<'a, TOTAL_RANK, 2, SRANK, Scalar, STensor, ROWS, COLS>,
 }
 
 /// Image view of scalar values
-pub type ImageView<'a, Scalar> = GenImageView<'a, 2, 0, Scalar, Scalar, 1, 1, 1>;
+pub type ImageView<'a, Scalar> = GenImageView<'a, 2, 0, Scalar, Scalar, 1, 1>;
 
 /// Image view of vector values
 ///
 /// Here, R indicates the number of rows in the vector
 pub type ImageViewR<'a, Scalar, const ROWS: usize> =
-    GenImageView<'a, 3, 1, Scalar, SVec<Scalar, ROWS>, ROWS, 1, 1>;
+    GenImageView<'a, 3, 1, Scalar, SVec<Scalar, ROWS>, ROWS, 1>;
 
 /// Image view of u8 values
 pub type ImageViewU8<'a> = ImageView<'a, u8>;
@@ -102,18 +101,15 @@ pub trait IsImageView<
     'a,
     const TOTAL_RANK: usize,
     const SRANK: usize,
-    Scalar: IsTensorScalar + 'static,
-    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS, BATCH_SIZE> + 'static,
+    Scalar: IsCoreScalar + 'static,
+    STensor: IsStaticTensor<Scalar, SRANK, ROWS, COLS> + 'static,
     const ROWS: usize,
     const COLS: usize,
-    const BATCH_SIZE: usize,
 > where
     ndarray::Dim<[ndarray::Ix; TOTAL_RANK]>: ndarray::Dimension,
 {
     /// Get the image view
-    fn image_view(
-        &'a self,
-    ) -> GenImageView<'a, TOTAL_RANK, SRANK, Scalar, STensor, ROWS, COLS, BATCH_SIZE>;
+    fn image_view(&'a self) -> GenImageView<'a, TOTAL_RANK, SRANK, Scalar, STensor, ROWS, COLS>;
 
     /// Get the row stride of the image
     fn stride(&'a self) -> usize {
@@ -132,15 +128,14 @@ macro_rules! image_view {
     ($scalar_rank:literal, $srank:literal) => {
         impl<
                 'a,
-                Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCH_SIZE> + 'static,
+                Scalar: IsCoreScalar + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
                 const ROWS: usize,
                 const COLS: usize,
-                const BATCH_SIZE: usize,
-            > GenImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
+            > GenImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
         where
-            TensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>:
-                IsTensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>,
+            TensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS>:
+                IsTensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS>,
             ndarray::Dim<[ndarray::Ix; $scalar_rank]>: ndarray::Dimension,
         {
             /// Create a new image view from an image size and a slice of data
@@ -155,7 +150,6 @@ macro_rules! image_view {
                         STensor,
                         ROWS,
                         COLS,
-                        BATCH_SIZE,
                     >::from_shape_and_slice(
                         [image_size.height, image_size.width], slice
                     ),
@@ -184,7 +178,6 @@ macro_rules! image_view {
                         STensor,
                         ROWS,
                         COLS,
-                        BATCH_SIZE,
                     >::new(self.tensor_view.elem_view.slice(ndarray::s![
                         start[0]..start[0] + size[0],
                         start[1]..start[1] + size[1]
@@ -195,16 +188,15 @@ macro_rules! image_view {
 
         impl<
                 'a,
-                Scalar: IsTensorScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS, BATCH_SIZE> + 'static,
+                Scalar: IsCoreScalar + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
                 const ROWS: usize,
                 const COLS: usize,
-                const BATCH_SIZE: usize,
-            > IsImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
-            for GenImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
+            > IsImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
+            for GenImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
         where
-            TensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>:
-                IsTensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>,
+            TensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS>:
+                IsTensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS>,
             ndarray::Dim<[ndarray::Ix; $scalar_rank]>: ndarray::Dimension,
         {
             fn pixel(&'a self, u: usize, v: usize) -> STensor {
@@ -216,10 +208,9 @@ macro_rules! image_view {
 
             fn image_view(
                 &'a self,
-            ) -> GenImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS, BATCH_SIZE>
-            {
+            ) -> GenImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS> {
                 Self {
-                    tensor_view: self.tensor_view,
+                    tensor_view: self.tensor_view.clone(),
                 }
             }
 
