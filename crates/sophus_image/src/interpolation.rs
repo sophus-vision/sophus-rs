@@ -1,12 +1,11 @@
 use crate::image_view::IsImageView;
-
-use sophus_tensor::element::SVec;
+use sophus_core::linalg::SVec;
 
 /// Bilinear interpolated image lookup
 pub fn interpolate<
     'a,
     const ROWS: usize,
-    I: IsImageView<'a, 3, 1, f32, SVec<f32, ROWS>, ROWS, 1, 1>,
+    I: IsImageView<'a, 3, 1, f32, SVec<f32, ROWS>, ROWS, 1>,
 >(
     img: &'a I,
     uv: nalgebra::Vector2<f32>,

@@ -1,99 +1,111 @@
-use crate::distortion_table::DistortTable;
-use crate::general_camera::GeneralCameraEnum;
-use crate::perspective_camera::PerspectiveCameraEnum;
+use crate::camera_enum::general_camera::GeneralCameraEnum;
+use crate::camera_enum::perspective_camera::PerspectiveCameraEnum;
 use crate::traits::IsCameraEnum;
-
-use sophus_calculus::types::MatF64;
-use sophus_calculus::types::VecF64;
+use crate::traits::IsPerspectiveCameraEnum;
+use sophus_core::linalg::scalar::IsScalar;
 use sophus_image::image_view::ImageSize;
-use sophus_image::mut_image::MutImage2F32;
 
 /// Dynamic camera facade
 #[derive(Debug, Clone)]
-pub struct DynCameraFacade<CameraType: IsCameraEnum> {
+pub struct DynCameraFacade<
+    S: IsScalar<BATCH>,
+    const BATCH: usize,
+    CameraType: IsCameraEnum<S, BATCH>,
+> {
     camera_type: CameraType,
+    phantom: std::marker::PhantomData<S>,
 }
 
 /// Dynamic generalized camera (perspective or orthographic)
-pub type DynGeneralCamera = DynCameraFacade<GeneralCameraEnum>;
+pub type DynGeneralCamera<S, const BATCH: usize> =
+    DynCameraFacade<S, BATCH, GeneralCameraEnum<S, BATCH>>;
 /// Dynamic perspective camera
-pub type DynCamera = DynCameraFacade<PerspectiveCameraEnum>;
+pub type DynCamera<S, const BATCH: usize> =
+    DynCameraFacade<S, BATCH, PerspectiveCameraEnum<S, BATCH>>;
 
-impl<CameraType: IsCameraEnum> DynCameraFacade<CameraType> {
+impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
+    DynCameraFacade<S, BATCH, CameraType>
+{
     /// Create a new dynamic camera facade from a camera model
     pub fn from_model(camera_type: CameraType) -> Self {
-        Self { camera_type }
+        Self {
+            camera_type,
+            phantom: std::marker::PhantomData,
+        }
     }
 
     /// Create a pinhole camera instance
-    pub fn new_pinhole(params: &VecF64<4>, image_size: ImageSize) -> Self {
+    pub fn new_pinhole(params: &S::Vector<4>, image_size: ImageSize) -> Self {
         Self::from_model(CameraType::new_pinhole(params, image_size))
     }
 
     /// Create a Kannala-Brandt camera instance
-    pub fn new_kannala_brandt(params: &VecF64<8>, image_size: ImageSize) -> Self {
+    pub fn new_kannala_brandt(params: &S::Vector<8>, image_size: ImageSize) -> Self {
         Self::from_model(CameraType::new_kannala_brandt(params, image_size))
     }
 
     /// Projects a 3D point in the camera frame to a pixel in the image
-    pub fn cam_proj(&self, point_in_camera: &VecF64<3>) -> VecF64<2> {
+    pub fn cam_proj(&self, point_in_camera: &S::Vector<3>) -> S::Vector<2> {
         self.camera_type.cam_proj(point_in_camera)
     }
 
     /// Unprojects a pixel in the image to a 3D point in the camera frame - assuming z=1
-    pub fn cam_unproj(&self, pixel: &VecF64<2>) -> VecF64<3> {
-        self.cam_unproj_with_z(pixel, 1.0)
+    pub fn cam_unproj(&self, pixel: &S::Vector<2>) -> S::Vector<3> {
+        self.cam_unproj_with_z(pixel, S::ones())
     }
 
     /// Unprojects a pixel in the image to a 3D point in the camera frame
-    pub fn cam_unproj_with_z(&self, pixel: &VecF64<2>, z: f64) -> VecF64<3> {
+    pub fn cam_unproj_with_z(&self, pixel: &S::Vector<2>, z: S) -> S::Vector<3> {
         self.camera_type.cam_unproj_with_z(pixel, z)
     }
 
     /// Distortion - maps a point in the camera z=1 plane to a distorted point
-    pub fn distort(&self, proj_point_in_camera_z1_plane: &VecF64<2>) -> VecF64<2> {
+    pub fn distort(&self, proj_point_in_camera_z1_plane: &S::Vector<2>) -> S::Vector<2> {
         self.camera_type.distort(proj_point_in_camera_z1_plane)
     }
 
     /// Undistortion - maps a distorted pixel to a point in the camera z=1 plane
-    pub fn undistort(&self, pixel: &VecF64<2>) -> VecF64<2> {
+    pub fn undistort(&self, pixel: &S::Vector<2>) -> S::Vector<2> {
         self.camera_type.undistort(pixel)
     }
 
     /// Derivative of the distortion w.r.t. the point in the camera z=1 plane
-    pub fn dx_distort_x(&self, point_in_camera: &VecF64<2>) -> MatF64<2, 2> {
+    pub fn dx_distort_x(&self, point_in_camera: &S::Vector<2>) -> S::Matrix<2, 2> {
         self.camera_type.dx_distort_x(point_in_camera)
     }
 
-    /// Returns undistortion lookup table
-    pub fn undistort_table(&self) -> MutImage2F32 {
-        self.camera_type.undistort_table()
-    }
-
-    /// Returns distortion lookup table
-    pub fn distort_table(&self) -> DistortTable {
-        self.camera_type.distort_table()
+    /// Returns the image size
+    pub fn image_size(&self) -> ImageSize {
+        self.camera_type.image_size()
     }
 }
 
-mod tests {
+impl<S: IsScalar<BATCH>, const BATCH: usize> DynCamera<S, BATCH> {
+    /// Returns the pinhole parameters
+    pub fn pinhole_params(&self) -> S::Vector<4> {
+        self.camera_type.pinhole_params()
+    }
+}
 
-    #[test]
-    fn camera_prop_tests() {
-        use approx::assert_abs_diff_eq;
-        use approx::assert_relative_eq;
+#[test]
+fn dyn_camera_tests() {
+    use crate::distortion_table::distort_table;
+    use crate::distortion_table::undistort_table;
+    use crate::distortion_table::DistortTable;
+    use approx::assert_abs_diff_eq;
+    use approx::assert_relative_eq;
+    use sophus_core::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
+    use sophus_core::linalg::VecF64;
+    use sophus_image::image_view::ImageSize;
+    use sophus_image::image_view::IsImageView;
+    use sophus_image::interpolation::interpolate;
+    use sophus_image::mut_image::MutImage2F32;
 
-        use crate::distortion_table::DistortTable;
-        use sophus_calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
-        use sophus_image::image_view::ImageSize;
-        use sophus_image::image_view::IsImageView;
-        use sophus_image::interpolation::interpolate;
-        use sophus_image::mut_image::MutImage2F32;
+    type DynCameraF64 = DynCamera<f64, 1>;
 
-        use super::DynCamera;
-        use super::VecF64;
-        let mut cameras: Vec<DynCamera> = vec![];
-        cameras.push(DynCamera::new_pinhole(
+    {
+        let mut cameras: Vec<DynCameraF64> = vec![];
+        cameras.push(DynCameraF64::new_pinhole(
             &VecF64::<4>::new(600.0, 600.0, 319.5, 239.5),
             ImageSize {
                 width: 640,
@@ -119,7 +131,7 @@ mod tests {
                 VecF64::<2>::new(639.0, 479.0),
             ];
 
-            let table: MutImage2F32 = camera.undistort_table();
+            let table: MutImage2F32 = undistort_table(&camera);
 
             for pixel in pixels_in_image.clone() {
                 for d in [1.0, 0.1, 0.5, 1.1, 3.0, 15.0] {
@@ -147,7 +159,7 @@ mod tests {
                 assert_relative_eq!(dx, numeric_dx, epsilon = 1e-4);
             }
 
-            let table: DistortTable = camera.distort_table();
+            let table: DistortTable = distort_table(&camera);
 
             for pixel in pixels_in_image {
                 let proj = camera.undistort(&pixel);
@@ -162,14 +174,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn camera_pinhole_distort_test() {
-        use approx::assert_relative_eq;
-        use sophus_image::image_view::ImageSize;
-
-        use super::DynCamera;
-        use super::VecF64;
-        let camera: DynCamera = DynCamera::new_pinhole(
+    {
+        let camera: DynCameraF64 = DynCameraF64::new_pinhole(
             &VecF64::<4>::new(600.0, 600.0, 319.5, 239.5),
             ImageSize {
                 width: 640,
@@ -208,14 +214,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn camera_kannala_brandt_distort_test() {
-        use approx::assert_relative_eq;
-        use sophus_image::image_view::ImageSize;
-
-        use super::DynCamera;
-        use super::VecF64;
-        let camera: DynCamera = DynCamera::new_kannala_brandt(
+    {
+        let camera: DynCameraF64 = DynCameraF64::new_kannala_brandt(
             &VecF64::<8>::from_vec(vec![1000.0, 1000.0, 320.0, 280.0, 0.1, 0.01, 0.001, 0.0001]),
             ImageSize {
                 width: 640,

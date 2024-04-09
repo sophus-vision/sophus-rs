@@ -3,9 +3,8 @@ use crate::block::NewBlockMatrix;
 use crate::robust_kernel;
 use crate::robust_kernel::IsRobustKernel;
 use crate::variables::VarKind;
-
-use sophus_calculus::types::MatF64;
-use sophus_calculus::types::VecF64;
+use sophus_core::linalg::MatF64;
+use sophus_core::linalg::VecF64;
 
 /// Evaluated cost term
 #[derive(Debug, Clone)]

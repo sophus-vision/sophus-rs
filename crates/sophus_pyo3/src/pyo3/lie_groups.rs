@@ -1,19 +1,17 @@
 use crate::pyo3::errors::check_array1_dim_impl;
 use crate::pyo3::errors::PyArray1DimMismatch;
-
-use sophus_calculus::types::params::HasParams;
-use sophus_lie::isometry2::Isometry2;
-use sophus_lie::isometry3::Isometry3;
-use sophus_lie::rotation2::Rotation2;
-use sophus_lie::rotation3::Rotation3;
-use sophus_lie::traits::IsTranslationProductGroup;
-
 use numpy::PyArray1;
 use numpy::PyArray2;
 use pyo3::pyclass;
 use pyo3::pymethods;
 use pyo3::Py;
 use pyo3::Python;
+use sophus_core::params::HasParams;
+use sophus_lie::groups::isometry2::Isometry2;
+use sophus_lie::groups::isometry3::Isometry3;
+use sophus_lie::groups::rotation2::Rotation2;
+use sophus_lie::groups::rotation3::Rotation3;
+use sophus_lie::traits::IsTranslationProductGroup;
 
 macro_rules! check_array1_dim {
     ($array:expr, $expected:expr) => {
@@ -122,7 +120,7 @@ macro_rules! crate_py_lie_group_class {
                 let point_slice = read_only_point.as_slice().unwrap();
                 let point_vec = nalgebra::SVector::<f64, $point>::from_column_slice(point_slice);
 
-                let result = <$rust_group>::dx_exp_x_times_point_at_0(&point_vec);
+                let result = <$rust_group>::dx_exp_x_times_point_at_0(point_vec);
                 Ok(PyArray1::from_slice(py, result.as_slice())
                     .reshape([$params, $point])
                     .unwrap()
@@ -179,7 +177,7 @@ macro_rules! crate_py_lie_group_class {
 
             fn group_mul(&self, other: &$py_group) -> Self {
                 Self {
-                    inner: self.inner * &other.inner,
+                    inner: self.inner.group_mul(&other.inner),
                 }
             }
 
@@ -287,7 +285,7 @@ macro_rules! crate_py_lie_group_class {
 
             fn __mul__(&self, other: &$py_group) -> Self {
                 Self {
-                    inner: self.inner * &other.inner,
+                    inner: self.inner.group_mul(&other.inner),
                 }
             }
 
@@ -298,10 +296,10 @@ macro_rules! crate_py_lie_group_class {
     };
 }
 
-crate_py_lie_group_class!(PyRotation2, Rotation2::<f64>, "Rotation2", 1, 2, 2, 2);
-crate_py_lie_group_class!(PyIsometry2, Isometry2::<f64>, "Isometry2", 3, 4, 2, 3);
-crate_py_lie_group_class!(PyRotation3, Rotation3::<f64>, "Rotation3", 3, 4, 3, 3);
-crate_py_lie_group_class!(PyIsometry3, Isometry3::<f64>, "Isometry3", 6, 7, 3, 4);
+crate_py_lie_group_class!(PyRotation2, Rotation2::<f64, 1>, "Rotation2", 1, 2, 2, 2);
+crate_py_lie_group_class!(PyIsometry2, Isometry2::<f64, 1>, "Isometry2", 3, 4, 2, 3);
+crate_py_lie_group_class!(PyRotation3, Rotation3::<f64, 1>, "Rotation3", 3, 4, 3, 3);
+crate_py_lie_group_class!(PyIsometry3, Isometry3::<f64, 1>, "Isometry3", 6, 7, 3, 4);
 
 macro_rules! augment_py_product_group_class {
     ($py_product_group: ident,  $rust_group:ty, $py_factor_group: ident, $point:literal) => {
@@ -361,5 +359,5 @@ macro_rules! augment_py_product_group_class {
     };
 }
 
-augment_py_product_group_class!(PyIsometry2, Isometry2<f64>, PyRotation2, 2);
-augment_py_product_group_class!(PyIsometry3, Isometry3<f64>, PyRotation3, 3);
+augment_py_product_group_class!(PyIsometry2, Isometry2<f64, 1>, PyRotation2, 2);
+augment_py_product_group_class!(PyIsometry3, Isometry3<f64, 1>, PyRotation3, 3);

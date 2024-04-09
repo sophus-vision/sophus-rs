@@ -97,10 +97,10 @@ impl SceneRenderBuffers {
             height: builder.config.camera.intrinsics.image_size().height as f32,
             near: 0.1,
             far: 1000.0,
-            fx: builder.config.camera.intrinsics.params()[0] as f32,
-            fy: builder.config.camera.intrinsics.params()[1] as f32,
-            px: builder.config.camera.intrinsics.params()[2] as f32,
-            py: builder.config.camera.intrinsics.params()[3] as f32,
+            fx: builder.config.camera.intrinsics.pinhole_params()[0] as f32,
+            fy: builder.config.camera.intrinsics.pinhole_params()[1] as f32,
+            px: builder.config.camera.intrinsics.pinhole_params()[2] as f32,
+            py: builder.config.camera.intrinsics.pinhole_params()[3] as f32,
         };
 
         let transform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {

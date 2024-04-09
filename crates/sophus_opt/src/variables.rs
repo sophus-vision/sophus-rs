@@ -1,9 +1,8 @@
-use sophus_calculus::types::params::HasParams;
-use sophus_calculus::types::VecF64;
-use sophus_lie::isometry2::Isometry2;
-use sophus_lie::isometry3::Isometry3;
-
 use dyn_clone::DynClone;
+use sophus_core::linalg::VecF64;
+use sophus_core::params::HasParams;
+use sophus_lie::groups::isometry2::Isometry2;
+use sophus_lie::groups::isometry3::Isometry3;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -133,7 +132,7 @@ impl<const N: usize> IsVariable for VecF64<N> {
     }
 }
 
-impl IsVariable for Isometry2<f64> {
+impl IsVariable for Isometry2<f64, 1> {
     const DOF: usize = 3;
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
@@ -141,11 +140,14 @@ impl IsVariable for Isometry2<f64> {
         for d in 0..Self::DOF {
             delta_vec[d] = delta[d];
         }
-        self.set_params((Isometry2::<f64>::exp(&delta_vec) * &self.clone()).params());
+        self.set_params(
+            (Isometry2::<f64, 1>::group_mul(&Isometry2::<f64, 1>::exp(&delta_vec), &self.clone()))
+                .params(),
+        );
     }
 }
 
-impl IsVariable for Isometry3<f64> {
+impl IsVariable for Isometry3<f64, 1> {
     const DOF: usize = 6;
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
@@ -154,7 +156,7 @@ impl IsVariable for Isometry3<f64> {
             delta_vec[d] = delta[d];
         }
         self.set_params(
-            (Isometry3::<f64>::group_mul(&Isometry3::<f64>::exp(&delta_vec), &self.clone()))
+            (Isometry3::<f64, 1>::group_mul(&Isometry3::<f64, 1>::exp(&delta_vec), &self.clone()))
                 .params(),
         );
     }

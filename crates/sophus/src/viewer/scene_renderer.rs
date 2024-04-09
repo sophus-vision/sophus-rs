@@ -6,20 +6,20 @@ pub mod mesh;
 pub mod point;
 pub mod textured_mesh;
 
-use crate::calculus::region::IsRegion;
-use crate::image::arc_image::ArcImageF32;
-use crate::image::image_view::IsImageView;
-use crate::sensor::perspective_camera::KannalaBrandtCamera;
-use crate::tensor::view::IsTensorLike;
-use crate::viewer::actor::ViewerBuilder;
-use crate::viewer::DepthRenderer;
-use crate::viewer::ViewerRenderState;
-
 use self::buffers::SceneRenderBuffers;
 use self::interaction::Interaction;
 use self::mesh::MeshRenderer;
 use self::point::ScenePointRenderer;
+use crate::image::arc_image::ArcImageF32;
+use crate::viewer::actor::ViewerBuilder;
+use crate::viewer::DepthRenderer;
+use crate::viewer::ViewerRenderState;
 use eframe::egui;
+use sophus_core::calculus::region::IsRegion;
+use sophus_core::tensor::tensor_view::IsTensorLike;
+use sophus_image::image_view::IsImageView;
+use sophus_sensor::distortion_table::distort_table;
+use sophus_sensor::dyn_camera::DynCamera;
 use wgpu::DepthStencilState;
 
 pub struct SceneRenderer {
@@ -137,7 +137,7 @@ impl SceneRenderer {
 
     pub fn process_event(
         &mut self,
-        cam: &KannalaBrandtCamera<f64>,
+        cam: &DynCamera<f64, 1>,
         response: &egui::Response,
         z_buffer: ArcImageF32,
     ) {
@@ -244,7 +244,7 @@ impl SceneRenderer {
         self.textured_mesh_renderer.vertices.clear();
     }
 
-    pub fn prepare(&self, state: &ViewerRenderState, intrinsics: &KannalaBrandtCamera<f64>) {
+    pub fn prepare(&self, state: &ViewerRenderState, intrinsics: &DynCamera<f64, 1>) {
         state.queue.write_buffer(
             &self.point_renderer.vertex_buffer,
             0,
@@ -282,7 +282,7 @@ impl SceneRenderer {
         // distortion table
         let mut maybe_dist_lut = self.buffers.distortion_lut.lock().unwrap();
         if maybe_dist_lut.is_none() {
-            let distort_lut = &intrinsics.distort_table();
+            let distort_lut = distort_table(intrinsics);
             *maybe_dist_lut = Some(distort_lut.clone());
 
             state.queue.write_texture(

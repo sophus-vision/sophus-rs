@@ -1,3 +1,4 @@
+#![feature(portable_simd)]
 #![deny(missing_docs)]
 
 //! # Non-linear least squares optimization module

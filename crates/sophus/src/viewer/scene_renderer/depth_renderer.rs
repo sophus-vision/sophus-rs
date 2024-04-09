@@ -1,6 +1,5 @@
-use crate::sensor::perspective_camera::KannalaBrandtCamera;
 use crate::viewer::ViewerRenderState;
-
+use sophus_sensor::dyn_camera::DynCamera;
 use wgpu::DepthStencilState;
 
 pub struct DepthRenderer {
@@ -13,7 +12,7 @@ pub struct DepthRenderer {
 impl DepthRenderer {
     pub fn new(
         state: &ViewerRenderState,
-        cam: &KannalaBrandtCamera<f64>,
+        cam: &DynCamera<f64, 1>,
         depth_stencil: Option<DepthStencilState>,
     ) -> Self {
         pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;

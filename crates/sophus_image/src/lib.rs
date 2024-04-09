@@ -1,3 +1,4 @@
+#![feature(portable_simd)]
 #![deny(missing_docs)]
 //! # image module
 

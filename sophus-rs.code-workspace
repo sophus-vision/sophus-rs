@@ -6,7 +6,11 @@
 	],
 	"settings": {
 		"rust-analyzer.linkedProjects": [
-			"./Cargo.toml"
-		]
+			"./Cargo.toml",
+		],
+		"rust-analyzer.cargo.target": null,
+		"rust-analyzer.diagnostics.styleLints.enable": true,
+		"rust-analyzer.imports.granularity.group": "item",
+		"rust-analyzer.imports.prefix": "crate",
 	}
 }

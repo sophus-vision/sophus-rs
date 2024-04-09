@@ -1,5 +1,6 @@
 use numpy::PyArray1;
-use pyo3::{exceptions::PyOSError, PyErr};
+use pyo3::exceptions::PyOSError;
+use pyo3::PyErr;
 use std::fmt;
 
 /// Error for mismatched array dimensions

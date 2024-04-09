@@ -5,21 +5,21 @@ use crate::term::MakeTerm;
 use crate::term::Term;
 use crate::variables::IsVariable;
 use crate::variables::VarKind;
-
-use sophus_calculus::dual::dual_scalar::Dual;
-use sophus_calculus::dual::dual_vector::DualV;
-use sophus_calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
-use sophus_calculus::types::scalar::IsScalar;
-use sophus_calculus::types::vector::IsVector;
-use sophus_calculus::types::VecF64;
-use sophus_lie::isometry3::Isometry3;
-use sophus_sensor::perspective_camera::PinholeCamera;
+use sophus_core::calculus::dual::dual_scalar::DualScalar;
+use sophus_core::calculus::dual::dual_vector::DualVector;
+use sophus_core::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
+use sophus_core::linalg::scalar::IsScalar;
+use sophus_core::linalg::scalar::IsSingleScalar;
+use sophus_core::linalg::vector::IsVector;
+use sophus_core::linalg::VecF64;
+use sophus_lie::groups::isometry3::Isometry3;
+use sophus_sensor::camera_enum::perspective_camera::PinholeCamera;
 
 /// Camera re-projection cost function
 #[derive(Copy, Clone)]
 pub struct ReprojectionCostFn {}
 
-impl IsVariable for PinholeCamera<f64> {
+impl IsVariable for PinholeCamera<f64, 1> {
     const DOF: usize = 4;
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
@@ -28,13 +28,15 @@ impl IsVariable for PinholeCamera<f64> {
     }
 }
 
-fn res_fn<Scalar: IsScalar<1>>(
-    intrinscs: PinholeCamera<Scalar>,
-    world_from_camera: Isometry3<Scalar>,
+fn res_fn<Scalar: IsSingleScalar + IsScalar<1>>(
+    intrinscs: PinholeCamera<Scalar, 1>,
+    world_from_camera: Isometry3<Scalar, 1>,
     point_in_world: Scalar::Vector<3>,
     uv_in_image: Scalar::Vector<2>,
 ) -> Scalar::Vector<2> {
-    let point_in_cam = world_from_camera.inverse().transform(&point_in_world);
+    let point_in_cam = world_from_camera
+        .inverse()
+        .transform(&point_in_world.vector());
     uv_in_image - intrinscs.cam_proj(&point_in_cam)
 }
 
@@ -61,14 +63,14 @@ impl IsTermSignature<3> for ReprojTermSignature {
     const DOF_TUPLE: [i64; 3] = [4, 6, 3];
 }
 
-impl IsResidualFn<13, 3, (PinholeCamera<f64>, Isometry3<f64>, VecF64<3>), VecF64<2>>
+impl IsResidualFn<13, 3, (PinholeCamera<f64, 1>, Isometry3<f64, 1>, VecF64<3>), VecF64<2>>
     for ReprojectionCostFn
 {
     fn eval(
         &self,
         (intrinsics, world_from_camera_pose, point_in_world): (
-            PinholeCamera<f64>,
-            Isometry3<f64>,
+            PinholeCamera<f64, 1>,
+            Isometry3<f64, 1>,
             VecF64<3>,
         ),
         var_kinds: [VarKind; 3],
@@ -84,43 +86,58 @@ impl IsResidualFn<13, 3, (PinholeCamera<f64>, Isometry3<f64>, VecF64<3>), VecF64
         );
 
         // calculate jacobian wrt intrinsics
-        let d0_res_fn = |x: DualV<4>| -> DualV<2> {
+        let d0_res_fn = |x: DualVector<4>| -> DualVector<2> {
             res_fn(
-                PinholeCamera::<Dual>::from_params_and_size(&x, intrinsics.image_size()),
+                PinholeCamera::<DualScalar, 1>::from_params_and_size(&x, intrinsics.image_size()),
                 world_from_camera_pose.to_dual_c(),
-                DualV::c(point_in_world),
-                DualV::c(*uv_in_image),
+                DualVector::from_real_vector(point_in_world),
+                DualVector::from_real_vector(*uv_in_image),
             )
         };
         // calculate jacobian wrt world_from_camera_pose
-        let d1_res_fn = |x: DualV<6>| -> DualV<2> {
+        let d1_res_fn = |x: DualVector<6>| -> DualVector<2> {
             res_fn(
-                PinholeCamera::<Dual>::from_params_and_size(
-                    &DualV::c(*intrinsics.params()),
+                PinholeCamera::<DualScalar, 1>::from_params_and_size(
+                    &DualVector::from_real_vector(*intrinsics.params()),
                     intrinsics.image_size(),
                 ),
-                Isometry3::<Dual>::exp(&x) * &world_from_camera_pose.to_dual_c(),
-                DualV::c(point_in_world),
-                DualV::c(*uv_in_image),
+                Isometry3::<DualScalar, 1>::exp(&x).group_mul(&world_from_camera_pose.to_dual_c()),
+                DualVector::from_real_vector(point_in_world),
+                DualVector::from_real_vector(*uv_in_image),
             )
         };
         // calculate jacobian wrt point_in_world
-        let d2_res_fn = |x: DualV<3>| -> DualV<2> {
+        let d2_res_fn = |x: DualVector<3>| -> DualVector<2> {
             res_fn(
-                PinholeCamera::<Dual>::from_params_and_size(
-                    &DualV::c(*intrinsics.params()),
+                PinholeCamera::<DualScalar, 1>::from_params_and_size(
+                    &DualVector::from_real_vector(*intrinsics.params()),
                     intrinsics.image_size(),
                 ),
                 world_from_camera_pose.to_dual_c(),
                 x,
-                DualV::c(*uv_in_image),
+                DualVector::from_real_vector(*uv_in_image),
             )
         };
 
         (
-            || VectorValuedMapFromVector::static_fw_autodiff(d0_res_fn, *intrinsics.params()),
-            || VectorValuedMapFromVector::static_fw_autodiff(d1_res_fn, VecF64::<6>::zeros()),
-            || VectorValuedMapFromVector::static_fw_autodiff(d2_res_fn, point_in_world),
+            || {
+                VectorValuedMapFromVector::<DualScalar, 1>::static_fw_autodiff(
+                    d0_res_fn,
+                    *intrinsics.params(),
+                )
+            },
+            || {
+                VectorValuedMapFromVector::<DualScalar, 1>::static_fw_autodiff(
+                    d1_res_fn,
+                    VecF64::<6>::zeros(),
+                )
+            },
+            || {
+                VectorValuedMapFromVector::<DualScalar, 1>::static_fw_autodiff(
+                    d2_res_fn,
+                    point_in_world,
+                )
+            },
         )
             .make_term(var_kinds, residual, robust_kernel, None)
     }
