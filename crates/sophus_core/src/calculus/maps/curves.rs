@@ -1,11 +1,5 @@
-use crate::calculus::dual::dual_matrix::IsDualMatrix;
-use crate::calculus::dual::dual_scalar::IsDualScalar;
-use crate::calculus::dual::dual_vector::IsDualVector;
-use crate::linalg::matrix::IsMatrix;
-use crate::linalg::scalar::IsScalar;
-use crate::linalg::vector::IsVector;
 use crate::linalg::SMat;
-use crate::tensor::tensor_view::IsTensorLike;
+use crate::prelude::*;
 use nalgebra::SVector;
 
 /// A smooth curve in ℝ.
@@ -36,7 +30,11 @@ impl<D: IsDualScalar<BATCH>, const BATCH: usize> ScalarValuedCurve<D, BATCH> {
     where
         TFn: Fn(D) -> D,
     {
-        curve(D::new(a)).dij_val().clone().unwrap().get([0, 0])
+        curve(D::new_with_dij(a))
+            .dij_val()
+            .clone()
+            .unwrap()
+            .get([0, 0])
     }
 }
 
@@ -72,7 +70,7 @@ impl<D: IsDualScalar<BATCH>, const BATCH: usize> VectorValuedCurve<D, BATCH> {
         TFn: Fn(D) -> D::Vector<ROWS>,
         D::Vector<ROWS>: IsDualVector<D, ROWS, BATCH>,
     {
-        curve(D::new(a)).dij_val().unwrap().get([0, 0])
+        curve(D::new_with_dij(a)).dij_val().unwrap().get([0, 0])
     }
 }
 
@@ -111,7 +109,7 @@ impl<D: IsDualScalar<BATCH>, const BATCH: usize> MatrixValuedCurve<D, BATCH> {
         TFn: Fn(D) -> D::Matrix<ROWS, COLS>,
         D::Matrix<ROWS, COLS>: IsDualMatrix<D, ROWS, COLS, BATCH>,
     {
-        curve(D::new(a)).dij_val().unwrap().get([0, 0])
+        curve(D::new_with_dij(a)).dij_val().unwrap().get([0, 0])
     }
 }
 
@@ -131,7 +129,6 @@ fn curve_test() {
     ) => {
             impl CurveTest for $dual_scalar {
                 fn run_curve_test() {
-                    use crate::linalg::matrix::IsMatrix;
                     use crate::linalg::vector::IsVector;
 
                     for i in 0..10 {

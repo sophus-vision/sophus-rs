@@ -1,9 +1,7 @@
-use crate::camera_enum::general_camera::GeneralCameraEnum;
-use crate::camera_enum::perspective_camera::PerspectiveCameraEnum;
-use crate::traits::IsCameraEnum;
-use crate::traits::IsPerspectiveCameraEnum;
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_image::image_view::ImageSize;
+use crate::camera_enum::GeneralCameraEnum;
+use crate::camera_enum::PerspectiveCameraEnum;
+use crate::prelude::*;
+use sophus_image::ImageSize;
 
 /// Dynamic camera facade
 #[derive(Debug, Clone)]
@@ -96,10 +94,10 @@ fn dyn_camera_tests() {
     use approx::assert_relative_eq;
     use sophus_core::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
     use sophus_core::linalg::VecF64;
-    use sophus_image::image_view::ImageSize;
     use sophus_image::image_view::IsImageView;
     use sophus_image::interpolation::interpolate;
     use sophus_image::mut_image::MutImage2F32;
+    use sophus_image::ImageSize;
 
     type DynCameraF64 = DynCamera<f64, 1>;
 

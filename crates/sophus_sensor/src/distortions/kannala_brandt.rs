@@ -1,8 +1,5 @@
+use crate::prelude::*;
 use crate::traits::IsCameraDistortionImpl;
-use sophus_core::linalg::bool_mask::BoolMask;
-use sophus_core::linalg::matrix::IsMatrix;
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_core::linalg::vector::IsVector;
 use sophus_core::params::ParamsImpl;
 use std::marker::PhantomData;
 
@@ -158,7 +155,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 4, 8, BAT
         let fx = params.get_elem(0);
         let fy = params.get_elem(1);
 
-        let k = params.get_fixed_rows::<4>(4);
+        let k = params.get_fixed_subvec::<4>(4);
 
         let radius_sq = a.clone() * a.clone() + b.clone() * b.clone();
 

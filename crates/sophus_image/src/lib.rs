@@ -1,6 +1,6 @@
 #![feature(portable_simd)]
 #![deny(missing_docs)]
-//! # image module
+//! image crate - part of the sophus-rs project
 
 /// image with shared ownership
 pub mod arc_image;
@@ -16,3 +16,59 @@ pub mod mut_image;
 pub mod mut_image_view;
 /// png image io
 pub mod png;
+
+pub use crate::arc_image::ArcImage;
+pub use crate::image_view::ImageView;
+pub use crate::interpolation::interpolate;
+pub use crate::mut_image::MutImage;
+pub use crate::mut_image_view::MutImageView;
+
+/// Image size
+#[derive(Debug, Copy, Clone, Default)]
+pub struct ImageSize {
+    /// Width of the image - number of columns
+    pub width: usize,
+    /// Height of the image - number of rows
+    pub height: usize,
+}
+
+impl ImageSize {
+    /// Create a new image size from width and height
+    pub fn new(width: usize, height: usize) -> Self {
+        Self { width, height }
+    }
+
+    /// Get the area of the image - width * height
+    pub fn area(&self) -> usize {
+        self.width * self.height
+    }
+}
+
+impl From<[usize; 2]> for ImageSize {
+    /// We are converting from Tensor (and matrix) convention (d0 = rows, d1 = cols)
+    /// to Matrix convention (d0 = width = cols, d1 = height = rows)
+    fn from(rows_cols: [usize; 2]) -> Self {
+        ImageSize {
+            width: rows_cols[1],
+            height: rows_cols[0],
+        }
+    }
+}
+
+impl From<ImageSize> for [usize; 2] {
+    /// We are converting from Image Indexing Convention (d0 = width = cols, d1 = height = rows)
+    /// to tensor (and matrix) convention  (d0 = rows, d1 = cols).
+    fn from(image_size: ImageSize) -> Self {
+        [image_size.height, image_size.width]
+    }
+}
+
+/// sophus_image prelude
+pub mod prelude {
+    pub use crate::image_view::IsImageView;
+    pub use crate::intensity_image::IsIntensityArcImage;
+    pub use crate::intensity_image::IsIntensityMutImage;
+    pub use crate::intensity_image::IsIntensityViewImageU;
+    pub use crate::mut_image_view::IsMutImageView;
+    pub use sophus_core::prelude::*;
+}

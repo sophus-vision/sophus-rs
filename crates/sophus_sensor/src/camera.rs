@@ -1,8 +1,6 @@
 use super::traits::IsCameraDistortionImpl;
-use super::traits::IsProjection;
-use sophus_core::linalg::bool_mask::BoolMask;
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_image::image_view::ImageSize;
+use crate::prelude::*;
+use sophus_image::ImageSize;
 
 /// A generic camera model
 #[derive(Debug, Copy, Clone)]

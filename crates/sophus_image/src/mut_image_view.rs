@@ -1,12 +1,7 @@
 use crate::image_view::GenImageView;
-use crate::image_view::ImageSize;
-use crate::image_view::IsImageView;
-
-use sophus_core::linalg::scalar::IsCoreScalar;
-use sophus_core::tensor::element::IsStaticTensor;
-use sophus_core::tensor::mut_tensor_view::IsMutTensorLike;
+use crate::prelude::*;
+use crate::ImageSize;
 use sophus_core::tensor::mut_tensor_view::MutTensorView;
-use sophus_core::tensor::tensor_view::IsTensorLike;
 
 /// Mutable image view of a static tensors
 #[derive(Debug, PartialEq)]
@@ -24,6 +19,9 @@ pub struct GenMutImageView<
     /// underlying mutable tensor view
     pub mut_tensor_view: MutTensorView<'a, TOTAL_RANK, 2, SRANK, Scalar, STensor, ROWS, COLS>,
 }
+
+/// Mutable image view of scalar values
+pub type MutImageView<'a, Scalar> = GenMutImageView<'a, 2, 0, Scalar, Scalar, 1, 1>;
 
 macro_rules! mut_image_view {
     ($scalar_rank:literal, $srank:literal) => {

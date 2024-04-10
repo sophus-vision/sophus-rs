@@ -1,25 +1,16 @@
-use super::bool_mask::BoolMask;
-use super::matrix::IsRealMatrix;
-use super::vector::IsRealVector;
-use crate::calculus::dual::dual_matrix::DualBatchMatrix;
-use crate::calculus::dual::dual_matrix::DualMatrix;
-use crate::calculus::dual::dual_matrix::IsDualMatrix;
-use crate::calculus::dual::dual_scalar::DualBatchScalar;
-use crate::calculus::dual::dual_scalar::DualScalar;
-use crate::calculus::dual::dual_scalar::IsDualScalar;
-use crate::calculus::dual::dual_vector::DualBatchVector;
-use crate::calculus::dual::dual_vector::DualVector;
-use crate::calculus::dual::dual_vector::IsDualVector;
-use crate::linalg::matrix::IsMatrix;
-use crate::linalg::matrix::IsSingleMatrix;
-use crate::linalg::vector::IsSingleVector;
-use crate::linalg::vector::IsVector;
+use crate::calculus::dual::DualBatchMatrix;
+use crate::calculus::dual::DualBatchScalar;
+use crate::calculus::dual::DualBatchVector;
+use crate::calculus::dual::DualMatrix;
+use crate::calculus::dual::DualScalar;
+use crate::calculus::dual::DualVector;
 use crate::linalg::BatchMatF64;
 use crate::linalg::BatchScalar;
 use crate::linalg::BatchScalarF64;
 use crate::linalg::BatchVecF64;
 use crate::linalg::MatF64;
 use crate::linalg::VecF64;
+use crate::prelude::*;
 use approx::assert_abs_diff_eq;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
@@ -95,7 +86,10 @@ where
     }
 }
 
-/// Scalar - either a real (f64) or a dual number
+/// Scalar trait
+///
+///  - either a real (f64) or a dual number
+///  - either a single scalar or a batch scalar
 pub trait IsScalar<const BATCH_SIZE: usize>:
     PartialEq
     + Debug
@@ -124,7 +118,8 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
     /// Dual scalar type
     type DualScalar: IsDualScalar<BATCH_SIZE>;
 
-    type Mask: BoolMask;
+    /// Mask type
+    type Mask: IsBoolMask;
 
     /// Vector type
     type RealMatrix<const ROWS: usize, const COLS: usize>: IsRealMatrix<
@@ -154,12 +149,6 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
         BATCH_SIZE,
     >;
 
-    fn select(self, mask: &Self::Mask, other: Self) -> Self;
-
-    fn less_equal(&self, rhs: &Self) -> Self::Mask;
-
-    fn greater_equal(&self, rhs: &Self) -> Self::Mask;
-
     /// absolute value
     fn abs(self) -> Self;
 
@@ -175,11 +164,11 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
     /// arctangent2
     fn atan2(self, x: Self) -> Self;
 
-    /// signum
-    fn signum(&self) -> Self;
-
     /// cosine
     fn cos(self) -> Self;
+
+    /// Returns value of single lane
+    fn extract_single(&self, i: usize) -> Self::SingleScalar;
 
     /// floor
     fn floor(&self) -> Self::RealScalar;
@@ -187,16 +176,51 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
     /// fractional part
     fn fract(self) -> Self;
 
-    /// create a constant scalar
+    /// Creates a scalar with all real lanes set the given value
+    ///
+    /// If self is a dual number, the infinitesimal part is set to zero
+    fn from_f64(val: f64) -> Self;
+
+    /// Creates a scalar from an array of real values
+    ///
+    ///  - If self is a single scalar, the array must have one element
+    ///  - If self is a batch scalar, the array must have BATCH_SIZE elements
+    ///  - If self is a dual number, the infinitesimal part is set to zero    
+    fn from_real_array(arr: [f64; BATCH_SIZE]) -> Self;
+
+    /// creates scalar from real scalar
+    ///
+    /// for dual numbers, the infinitesimal part is set to zero
     fn from_real_scalar(val: Self::RealScalar) -> Self;
 
-    /// create a constant scalar
-    fn from_f64(val: f64) -> Self;
+    /// Greater or equal comparison
+    fn greater_equal(&self, rhs: &Self) -> Self::Mask;
+
+    /// Less or equal comparison
+    fn less_equal(&self, rhs: &Self) -> Self::Mask;
+
+    /// ones
+    fn ones() -> Self {
+        Self::from_f64(1.0)
+    }
 
     /// return the real part
     fn real_part(&self) -> Self::RealScalar;
 
-    fn to_dual(self) -> Self::DualScalar;
+    /// return examples of scalar values
+    fn scalar_examples() -> Vec<Self>;
+
+    /// Return the self if the mask is true, otherwise the other value
+    ///
+    /// This is a lane-wise operation
+    fn select(self, mask: &Self::Mask, other: Self) -> Self;
+
+    /// Return the sign of the scalar
+    ///
+    /// -1 if negative including -0,
+    /// 1 if positive, including +0,
+    /// NaN if NaN
+    fn signum(&self) -> Self;
 
     /// sine
     fn sin(self) -> Self;
@@ -204,31 +228,21 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
     /// square root
     fn sqrt(self) -> Self;
 
+    /// Returns dual number representation
+    ///
+    /// If self is a real number, the infinitesimal part is zero: (self, 0ϵ)
+    fn to_dual(self) -> Self::DualScalar;
+
+    /// Return as a real array
+    ///
+    /// If self is a dual number, the infinitesimal part is omitted
+    fn to_real_array(&self) -> [f64; BATCH_SIZE];
+
     /// tangent
     fn tan(self) -> Self;
 
     /// return as a vector
     fn to_vec(self) -> Self::Vector<1>;
-
-    /// value
-    fn scalar(self) -> Self {
-        self
-    }
-
-    fn from_real_array(arr: [f64; BATCH_SIZE]) -> Self;
-
-    fn real_array(&self) -> [f64; BATCH_SIZE];
-
-    /// value
-    fn scalar_examples() -> Vec<Self>;
-
-    /// get item
-    fn extract_single(&self, i: usize) -> Self::SingleScalar;
-
-    /// ones
-    fn ones() -> Self {
-        Self::from_f64(1.0)
-    }
 
     /// zeros
     fn zeros() -> Self {
@@ -333,7 +347,7 @@ impl IsScalar<1> for f64 {
         arr[0]
     }
 
-    fn real_array(&self) -> [Self::RealScalar; 1] {
+    fn to_real_array(&self) -> [Self::RealScalar; 1] {
         [*self]
     }
 
@@ -607,7 +621,7 @@ where
         }
     }
 
-    fn real_array(&self) -> [f64; BATCH] {
+    fn to_real_array(&self) -> [f64; BATCH] {
         self.0.to_array()
     }
 

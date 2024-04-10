@@ -1,15 +1,11 @@
-use ndarray::Dimension;
-
-use crate::linalg::scalar::IsCoreScalar;
 use crate::linalg::SMat;
 use crate::linalg::SVec;
-use crate::tensor::element::IsStaticTensor;
+use crate::prelude::*;
 use crate::tensor::mut_tensor::InnerScalarToVec;
 use crate::tensor::mut_tensor::InnerVecToMat;
-use crate::tensor::mut_tensor::MutTensor;
-use crate::tensor::tensor_view::IsTensorLike;
-use crate::tensor::tensor_view::IsTensorView;
-use crate::tensor::tensor_view::TensorView;
+use crate::tensor::MutTensor;
+use crate::tensor::TensorView;
+use ndarray::Dimension;
 
 use std::marker::PhantomData;
 

@@ -3,9 +3,8 @@ use hollywood::actors::egui::Stream;
 pub use hollywood::compute::Context;
 pub use hollywood::core::*;
 use hollywood::macros::*;
-use sophus::image::image_view::ImageSize;
-use sophus::lie::traits::IsTranslationProductGroup;
 use sophus::opt::example_problems::pose_circle::PoseCircleProblem;
+use sophus::prelude::*;
 use sophus::viewer::actor::run_viewer_on_main_thread;
 use sophus::viewer::actor::ViewerBuilder;
 use sophus::viewer::actor::ViewerCamera;
@@ -13,13 +12,13 @@ use sophus::viewer::actor::ViewerConfig;
 use sophus::viewer::renderable::*;
 use sophus::viewer::scene_renderer::interaction::WgpuClippingPlanes;
 use sophus::viewer::SimpleViewer;
-use sophus_core::linalg::vector::IsVector;
 use sophus_core::linalg::VecF64;
-use sophus_lie::groups::isometry2::Isometry2;
-use sophus_lie::groups::isometry3::Isometry3;
-use sophus_sensor::camera_enum::perspective_camera::KannalaBrandtCamera;
+use sophus_image::ImageSize;
+use sophus_lie::Isometry2;
+use sophus_lie::Isometry3;
 use sophus_sensor::camera_enum::perspective_camera::PerspectiveCameraEnum;
 use sophus_sensor::dyn_camera::DynCamera;
+use sophus_sensor::KannalaBrandtCamera;
 
 #[actor(ContentGeneratorMessage)]
 type ContentGenerator = Actor<
@@ -100,16 +99,16 @@ impl OnMessage for ContentGeneratorMessage {
             ContentGeneratorMessage::ClockTick(_time_in_seconds) => {
                 let pose_graph = PoseCircleProblem::new(25);
 
-                let mut renderables = vec![];
-
-                renderables.push(Renderable::Lines3(Lines3 {
-                    name: "true".into(),
-                    lines: make_axes(pose_graph.true_world_from_robot.clone()),
-                }));
-                renderables.push(Renderable::Lines3(Lines3 {
-                    name: "est".into(),
-                    lines: make_axes(pose_graph.est_world_from_robot.clone()),
-                }));
+                let renderables = vec![
+                    Renderable::Lines3(Lines3 {
+                        name: "true".into(),
+                        lines: make_axes(pose_graph.true_world_from_robot.clone()),
+                    }),
+                    Renderable::Lines3(Lines3 {
+                        name: "est".into(),
+                        lines: make_axes(pose_graph.est_world_from_robot.clone()),
+                    }),
+                ];
 
                 outbound.packets.send(Stream { msg: renderables });
             }

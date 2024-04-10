@@ -3,16 +3,28 @@ use std::simd::Mask;
 use std::simd::MaskElement;
 use std::simd::SupportedLaneCount;
 
-pub trait BoolMask {
+/// Boolean mask - generalization of boolean comparison to SIMDs
+pub trait IsBoolMask {
+    /// Mask with all lanes set to true
     fn all_true() -> Self;
+
+    /// Mask with all lanes set to false
     fn all_false() -> Self;
+
+    /// Returns true if all lanes are true
     fn all(&self) -> bool;
+
+    /// Returns true if any lane is true
     fn any(&self) -> bool;
+
+    /// Returns the number of lanes that are true
     fn count(&self) -> usize;
+
+    /// Returns the number of lanes
     fn lanes(&self) -> usize;
 }
 
-impl BoolMask for bool {
+impl IsBoolMask for bool {
     fn all_true() -> bool {
         true
     }
@@ -40,7 +52,7 @@ impl BoolMask for bool {
     }
 }
 
-impl<const BATCH: usize, T> BoolMask for Mask<T, BATCH>
+impl<const BATCH: usize, T> IsBoolMask for Mask<T, BATCH>
 where
     T: MaskElement,
     LaneCount<BATCH>: SupportedLaneCount,

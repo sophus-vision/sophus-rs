@@ -1,13 +1,8 @@
 use super::traits::IsLieGroupImpl;
-use crate::traits::IsLieGroup;
+use crate::prelude::*;
 use approx::assert_relative_eq;
 use assertables::assert_le_as_result;
-use sophus_core::calculus::manifold::traits::TangentImpl;
-use sophus_core::linalg::bool_mask::BoolMask;
-use sophus_core::linalg::matrix::IsMatrix;
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_core::linalg::vector::IsVector;
-use sophus_core::params::HasParams;
+use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
 use std::fmt::Debug;
 

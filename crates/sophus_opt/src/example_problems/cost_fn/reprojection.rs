@@ -1,19 +1,17 @@
 use crate::cost_fn::IsResidualFn;
 use crate::cost_fn::IsTermSignature;
+use crate::prelude::*;
 use crate::robust_kernel;
 use crate::term::MakeTerm;
 use crate::term::Term;
 use crate::variables::IsVariable;
 use crate::variables::VarKind;
-use sophus_core::calculus::dual::dual_scalar::DualScalar;
-use sophus_core::calculus::dual::dual_vector::DualVector;
-use sophus_core::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_core::linalg::scalar::IsSingleScalar;
-use sophus_core::linalg::vector::IsVector;
+use sophus_core::calculus::dual::DualScalar;
+use sophus_core::calculus::dual::DualVector;
+use sophus_core::calculus::maps::VectorValuedMapFromVector;
 use sophus_core::linalg::VecF64;
-use sophus_lie::groups::isometry3::Isometry3;
-use sophus_sensor::camera_enum::perspective_camera::PinholeCamera;
+use sophus_lie::Isometry3;
+use sophus_sensor::PinholeCamera;
 
 /// Camera re-projection cost function
 #[derive(Copy, Clone)]
@@ -34,9 +32,7 @@ fn res_fn<Scalar: IsSingleScalar + IsScalar<1>>(
     point_in_world: Scalar::Vector<3>,
     uv_in_image: Scalar::Vector<2>,
 ) -> Scalar::Vector<2> {
-    let point_in_cam = world_from_camera
-        .inverse()
-        .transform(&point_in_world.vector());
+    let point_in_cam = world_from_camera.inverse().transform(&point_in_world);
     uv_in_image - intrinscs.cam_proj(&point_in_cam)
 }
 

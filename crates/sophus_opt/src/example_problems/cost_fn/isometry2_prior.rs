@@ -1,18 +1,15 @@
 use crate::cost_fn::IsResidualFn;
 use crate::cost_fn::IsTermSignature;
+use crate::prelude::*;
 use crate::robust_kernel;
 use crate::term::MakeTerm;
 use crate::term::Term;
 use crate::variables::VarKind;
-use sophus_core::calculus::dual::dual_scalar::DualScalar;
-use sophus_core::calculus::dual::dual_vector::DualVector;
-use sophus_core::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_core::linalg::scalar::IsSingleScalar;
-use sophus_core::linalg::vector::IsVector;
+use sophus_core::calculus::dual::DualScalar;
+use sophus_core::calculus::dual::DualVector;
+use sophus_core::calculus::maps::VectorValuedMapFromVector;
 use sophus_core::linalg::VecF64;
-use sophus_core::params::HasParams;
-use sophus_lie::groups::isometry2::Isometry2;
+use sophus_lie::Isometry2;
 
 /// Cost function for a prior on an 2d isometry
 #[derive(Copy, Clone)]

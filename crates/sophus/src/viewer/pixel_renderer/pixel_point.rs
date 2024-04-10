@@ -1,7 +1,6 @@
 use crate::viewer::renderable::Point2;
 use crate::viewer::PointVertex2;
 use crate::viewer::ViewerRenderState;
-
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use std::collections::BTreeMap;
 use std::sync::Mutex;

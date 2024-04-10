@@ -1,17 +1,10 @@
-use std::vec;
-
 use crate::lie_group::LieGroup;
+use crate::prelude::*;
 use crate::traits::IsLieFactorGroupImpl;
 use crate::traits::IsLieGroupImpl;
 use crate::traits::IsRealLieFactorGroupImpl;
 use crate::traits::IsRealLieGroupImpl;
-use crate::traits::IsTranslationProductGroup;
-use sophus_core::calculus::manifold;
-use sophus_core::linalg::matrix::IsMatrix;
-use sophus_core::linalg::scalar::IsRealScalar;
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_core::linalg::vector::IsVector;
-use sophus_core::params::HasParams;
+use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
 use sophus_core::points::example_points;
 
@@ -47,12 +40,12 @@ impl<
 {
     /// translation part of the group parameters
     pub fn translation(params: &S::Vector<PARAMS>) -> S::Vector<POINT> {
-        params.get_fixed_rows::<POINT>(0)
+        params.get_fixed_subvec::<POINT>(0)
     }
 
     /// factor part of the group parameters
     pub fn factor_params(params: &S::Vector<PARAMS>) -> S::Vector<SPARAMS> {
-        params.get_fixed_rows::<SPARAMS>(POINT)
+        params.get_fixed_subvec::<SPARAMS>(POINT)
     }
 
     /// create group parameters from translation and factor parameters
@@ -65,12 +58,12 @@ impl<
 
     /// translation part of the tangent vector
     fn translation_tangent(tangent: &S::Vector<DOF>) -> S::Vector<POINT> {
-        tangent.get_fixed_rows::<POINT>(0)
+        tangent.get_fixed_subvec::<POINT>(0)
     }
 
     /// factor part of the tangent vector
     fn factor_tangent(tangent: &S::Vector<DOF>) -> S::Vector<SDOF> {
-        tangent.get_fixed_rows::<SDOF>(POINT)
+        tangent.get_fixed_subvec::<SDOF>(POINT)
     }
 
     /// create tangent vector from translation and factor tangent
@@ -131,7 +124,7 @@ impl<
         const SPARAMS: usize,
         const BATCH: usize,
         F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH>,
-    > manifold::traits::TangentImpl<S, DOF, BATCH>
+    > TangentImpl<S, DOF, BATCH>
     for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, F>
 {
     fn tangent_examples() -> Vec<S::Vector<DOF>> {

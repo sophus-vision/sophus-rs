@@ -7,15 +7,15 @@ use std::marker::PhantomData;
 
 /// Orthographic projection implementation
 #[derive(Debug, Clone)]
-pub struct OrthographisProjection<S: IsScalar<BATCH>, const BATCH: usize> {
+pub struct OrthographisProjectionImpl<S: IsScalar<BATCH>, const BATCH: usize> {
     phantom: PhantomData<S>,
 }
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> IsProjection<S, BATCH>
-    for OrthographisProjection<S, BATCH>
+    for OrthographisProjectionImpl<S, BATCH>
 {
     fn proj(point_in_camera: &S::Vector<3>) -> S::Vector<2> {
-        point_in_camera.get_fixed_rows::<2>(0)
+        point_in_camera.get_fixed_subvec::<2>(0)
     }
 
     fn unproj(point_in_camera: &S::Vector<2>, extension: S) -> S::Vector<3> {
@@ -33,4 +33,4 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsProjection<S, BATCH>
 
 /// Orthographic camera
 pub type OrthographicCamera<S, const BATCH: usize> =
-    Camera<S, 0, 4, BATCH, AffineDistortionImpl<S, BATCH>, OrthographisProjection<S, BATCH>>;
+    Camera<S, 0, 4, BATCH, AffineDistortionImpl<S, BATCH>, OrthographisProjectionImpl<S, BATCH>>;

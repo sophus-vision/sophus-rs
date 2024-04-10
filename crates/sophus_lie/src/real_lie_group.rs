@@ -1,24 +1,19 @@
 use super::traits::IsLieGroupImpl;
 use super::traits::IsRealLieGroupImpl;
-use crate::groups::isometry2::Isometry2;
-use crate::groups::isometry3::Isometry3;
-use crate::groups::rotation2::Rotation2;
-use crate::groups::rotation3::Rotation3;
 use crate::lie_group::LieGroup;
+use crate::prelude::*;
+use crate::Isometry2;
+use crate::Isometry3;
+use crate::Rotation2;
+use crate::Rotation3;
 use approx::assert_relative_eq;
 use nalgebra::SVector;
-use sophus_core::calculus::dual::dual_scalar::DualBatchScalar;
-use sophus_core::calculus::dual::dual_scalar::DualScalar;
-use sophus_core::calculus::maps::matrix_valued_maps::MatrixValuedMapFromVector;
-use sophus_core::calculus::maps::vector_valued_maps::VectorValuedMapFromMatrix;
-use sophus_core::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
-use sophus_core::linalg::matrix::IsMatrix;
-use sophus_core::linalg::scalar::IsRealScalar;
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_core::linalg::vector::IsVector;
+use sophus_core::calculus::dual::DualBatchScalar;
+use sophus_core::calculus::dual::DualScalar;
+use sophus_core::calculus::maps::MatrixValuedMapFromVector;
+use sophus_core::calculus::maps::VectorValuedMapFromMatrix;
+use sophus_core::calculus::maps::VectorValuedMapFromVector;
 use sophus_core::linalg::BatchScalarF64;
-use sophus_core::params::HasParams;
-use sophus_core::tensor::tensor_view::IsTensorLike;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
@@ -136,7 +131,7 @@ macro_rules! def_real_group_test_template {
             fn adjoint_jacobian_tests() {
                 use crate::traits::IsLieGroup;
                 const DOF: usize = <$group>::DOF;
-                use sophus_core::calculus::manifold::traits::TangentImpl;
+                use sophus_core::manifold::traits::TangentImpl;
 
                 let tangent_examples: Vec<<$scalar as IsScalar<$batch>>::Vector<DOF>>
                     = <$group>::tangent_examples();
@@ -206,7 +201,7 @@ macro_rules! def_real_group_test_template {
                 const POINT: usize = <$group>::POINT;
                 const PARAMS: usize = <$group>::PARAMS;
 
-                use sophus_core::calculus::manifold::traits::TangentImpl;
+                use sophus_core::manifold::traits::TangentImpl;
                 use sophus_core::points::example_points;
 
                 for t in <$group>::tangent_examples() {
@@ -311,7 +306,6 @@ macro_rules! def_real_group_test_template {
                 for g in Self::element_examples() {
                     // dx log(y)
                     {
-                        use sophus_core::linalg::bool_mask::BoolMask;
                         if g.has_shortest_path_ambiguity().any() {
                             // jacobian not uniquely defined, let's skip these cases
                             continue;
@@ -397,7 +391,7 @@ macro_rules! def_real_group_test_template {
 
             fn hat_jacobians_tests() {
                 use crate::traits::IsLieGroup;
-                use sophus_core::calculus::manifold::traits::TangentImpl;
+                use sophus_core::manifold::traits::TangentImpl;
                 const DOF: usize = <$group>::DOF;
                 const AMBIENT: usize = <$group>::AMBIENT;
 

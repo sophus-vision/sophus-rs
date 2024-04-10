@@ -1,7 +1,6 @@
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_core::linalg::vector::IsVector;
+use crate::prelude::*;
 use sophus_core::params::ParamsImpl;
-use sophus_image::image_view::ImageSize;
+use sophus_image::ImageSize;
 
 /// Camera distortion implementation trait
 pub trait IsCameraDistortionImpl<

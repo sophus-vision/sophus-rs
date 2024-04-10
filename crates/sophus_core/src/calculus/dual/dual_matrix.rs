@@ -1,23 +1,16 @@
-use super::dual_scalar::IsDual;
-use super::dual_scalar::IsDualScalar;
-use super::dual_vector::DualVector;
-use crate::calculus::dual::dual_scalar::DualBatchScalar;
-use crate::calculus::dual::dual_scalar::DualScalar;
-use crate::calculus::dual::dual_vector::DualBatchVector;
-use crate::linalg::matrix::IsMatrix;
-use crate::linalg::matrix::IsSingleMatrix;
-use crate::linalg::scalar::IsCoreScalar;
-use crate::linalg::scalar::IsScalar;
+use crate::calculus::dual::DualBatchScalar;
+use crate::calculus::dual::DualBatchVector;
+use crate::calculus::dual::DualScalar;
+use crate::calculus::dual::DualVector;
 use crate::linalg::BatchMatF64;
 use crate::linalg::BatchScalarF64;
 use crate::linalg::BatchVecF64;
 use crate::linalg::MatF64;
 use crate::linalg::VecF64;
+use crate::prelude::*;
 use crate::tensor::mut_tensor::MutTensorDD;
 use crate::tensor::mut_tensor::MutTensorDDR;
 use crate::tensor::mut_tensor::MutTensorDDRC;
-use crate::tensor::mut_tensor_view::IsMutTensorLike;
-use crate::tensor::tensor_view::IsTensorLike;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
 use num_traits::Zero;
@@ -33,10 +26,10 @@ use std::simd::SupportedLaneCount;
 /// DualScalarLike matrix
 #[derive(Clone)]
 pub struct DualMatrix<const ROWS: usize, const COLS: usize> {
-    /// value - real matrix
-    pub val: MatF64<ROWS, COLS>,
-    /// derivative - infinitesimal matrix
-    pub dij_val: Option<MutTensorDDRC<f64, ROWS, COLS>>,
+    /// real part
+    pub real_part: MatF64<ROWS, COLS>,
+    /// infinitesimal part - represents derivative
+    pub dij_part: Option<MutTensorDDRC<f64, ROWS, COLS>>,
 }
 
 /// DualScalarLike matrix
@@ -46,10 +39,10 @@ where
     BatchScalarF64<BATCH>: IsCoreScalar,
     LaneCount<BATCH>: SupportedLaneCount,
 {
-    /// value - real matrix
-    pub val: BatchMatF64<ROWS, COLS, BATCH>,
-    /// derivative - infinitesimal matrix
-    pub dij_val: Option<MutTensorDDRC<BatchScalarF64<BATCH>, ROWS, COLS>>,
+    /// real part
+    pub real_part: BatchMatF64<ROWS, COLS, BATCH>,
+    /// infinitesimal part - represents derivative
+    pub dij_part: Option<MutTensorDDRC<BatchScalarF64<BATCH>, ROWS, COLS>>,
 }
 
 impl<const ROWS: usize, const COLS: usize> IsSingleMatrix<DualScalar, ROWS, COLS>
@@ -65,8 +58,14 @@ pub trait IsDualMatrix<
     const BATCH: usize,
 >: IsMatrix<S, ROWS, COLS, BATCH> + IsDual
 {
-    /// Create a new dual number
-    fn new(val: S::RealMatrix<ROWS, COLS>) -> Self;
+    /// Create a new dual matrix from a real matrix for auto-differentiation with respect to self
+    ///
+    /// Typically this is not called directly, but through using a map auto-differentiation call:
+    ///
+    ///  - ScalarValuedMapFromMatrix::fw_autodiff(...);
+    ///  - VectorValuedMapFromMatrix::fw_autodiff(...);
+    ///  - MatrixValuedMapFromMatrix::fw_autodiff(...);
+    fn new_with_dij(val: S::RealMatrix<ROWS, COLS>) -> Self;
 
     /// Get the derivative
     fn dij_val(self) -> Option<MutTensorDDRC<S::RealScalar, ROWS, COLS>>;
@@ -78,13 +77,23 @@ impl<const ROWS: usize, const COLS: usize> IsDualMatrix<DualScalar, ROWS, COLS, 
     for DualMatrix<ROWS, COLS>
 {
     /// Create a new dual number
-    fn new(val: MatF64<ROWS, COLS>) -> Self {
-        DualMatrix { val, dij_val: None }
+    fn new_with_dij(val: MatF64<ROWS, COLS>) -> Self {
+        let mut dij_val = MutTensorDDRC::<f64, ROWS, COLS>::from_shape([ROWS, COLS]);
+        for i in 0..ROWS {
+            for j in 0..COLS {
+                dij_val.mut_view().get_mut([i, j])[(i, j)] = 1.0;
+            }
+        }
+
+        Self {
+            real_part: val,
+            dij_part: Some(dij_val),
+        }
     }
 
     /// Get the derivative
     fn dij_val(self) -> Option<MutTensorDDRC<f64, ROWS, COLS>> {
-        self.dij_val
+        self.dij_part
     }
 }
 
@@ -281,26 +290,11 @@ impl<const ROWS: usize, const COLS: usize> DualMatrix<ROWS, COLS> {
             rhs: rhs_dx.unwrap(),
         })
     }
-
-    /// Create a dual matrix
-    pub fn v(val: MatF64<ROWS, COLS>) -> Self {
-        let mut dij_val = MutTensorDDRC::<f64, ROWS, COLS>::from_shape([ROWS, COLS]);
-        for i in 0..ROWS {
-            for j in 0..COLS {
-                dij_val.mut_view().get_mut([i, j])[(i, j)] = 1.0;
-            }
-        }
-
-        Self {
-            val,
-            dij_val: Some(dij_val),
-        }
-    }
 }
 
 impl<const ROWS: usize, const COLS: usize> PartialEq for DualMatrix<ROWS, COLS> {
     fn eq(&self, other: &Self) -> bool {
-        self.val == other.val && self.dij_val == other.dij_val
+        self.real_part == other.real_part && self.dij_part == other.dij_part
     }
 }
 
@@ -312,7 +306,7 @@ impl<const ROWS: usize, const COLS: usize> AbsDiffEq for DualMatrix<ROWS, COLS> 
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        self.val.abs_diff_eq(&other.val, epsilon)
+        self.real_part.abs_diff_eq(&other.real_part, epsilon)
     }
 }
 
@@ -327,7 +321,8 @@ impl<const ROWS: usize, const COLS: usize> RelativeEq for DualMatrix<ROWS, COLS>
         epsilon: Self::Epsilon,
         max_relative: Self::Epsilon,
     ) -> bool {
-        self.val.relative_eq(&other.val, epsilon, max_relative)
+        self.real_part
+            .relative_eq(&other.real_part, epsilon, max_relative)
     }
 }
 
@@ -336,37 +331,40 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
 {
     fn mat_mul<const COLS2: usize>(&self, rhs: DualMatrix<COLS, COLS2>) -> DualMatrix<ROWS, COLS2> {
         DualMatrix {
-            val: self.val * rhs.val,
-            dij_val: DualMatrix::binary_mm_dij(
-                &self.dij_val,
-                &rhs.dij_val,
-                |l_dij| l_dij * rhs.val,
-                |r_dij| self.val * r_dij,
+            real_part: self.real_part * rhs.real_part,
+            dij_part: DualMatrix::binary_mm_dij(
+                &self.dij_part,
+                &rhs.dij_part,
+                |l_dij| l_dij * rhs.real_part,
+                |r_dij| self.real_part * r_dij,
             ),
         }
     }
 
     fn from_scalar(val: DualScalar) -> Self {
         DualMatrix {
-            val: MatF64::<ROWS, COLS>::from_scalar(val.val),
-            dij_val: val.dij_val.map(|dij_val| {
+            real_part: MatF64::<ROWS, COLS>::from_scalar(val.real_part),
+            dij_part: val.dij_part.map(|dij_val| {
                 MutTensorDDRC::from_map(&dij_val.view(), |v| MatF64::<ROWS, COLS>::from_scalar(*v))
             }),
         }
     }
 
     fn from_real_matrix(val: MatF64<ROWS, COLS>) -> Self {
-        Self { val, dij_val: None }
+        Self {
+            real_part: val,
+            dij_part: None,
+        }
     }
 
     fn scaled(&self, s: DualScalar) -> Self {
         DualMatrix {
-            val: self.val * s.val,
-            dij_val: DualMatrix::binary_ms_dij(
-                &self.dij_val,
-                &s.dij_val,
-                |l_dij| l_dij * s.val,
-                |r_dij| self.val * *r_dij,
+            real_part: self.real_part * s.real_part,
+            dij_part: DualMatrix::binary_ms_dij(
+                &self.dij_part,
+                &s.dij_part,
+                |l_dij| l_dij * s.real_part,
+                |r_dij| self.real_part * *r_dij,
             ),
         }
     }
@@ -377,9 +375,9 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
 
     fn get_elem(&self, idx: [usize; 2]) -> DualScalar {
         DualScalar {
-            val: self.val.get_elem(idx),
-            dij_val: self
-                .dij_val
+            real_part: self.real_part.get_elem(idx),
+            dij_part: self
+                .dij_part
                 .clone()
                 .map(|dij_val| MutTensorDD::from_map(&dij_val.view(), |v| v[(idx[0], idx[1])])),
         }
@@ -393,17 +391,17 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
             for j in 0..d_rows.len() {
                 let d = d_rows.clone()[j].clone();
 
-                val_mat[(i, j)] = d.val;
-                if d.dij_val.is_some() {
-                    shape = Some(d.dij_val.clone().unwrap().dims());
+                val_mat[(i, j)] = d.real_part;
+                if d.dij_part.is_some() {
+                    shape = Some(d.dij_part.clone().unwrap().dims());
                 }
             }
         }
 
         if shape.is_none() {
             return DualMatrix {
-                val: val_mat,
-                dij_val: None,
+                real_part: val_mat,
+                dij_part: None,
             };
         }
         let shape = shape.unwrap();
@@ -414,24 +412,24 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
             let d_rows = duals[i].clone();
             for j in 0..d_rows.len() {
                 let d = d_rows.clone()[j].clone();
-                if d.dij_val.is_some() {
+                if d.dij_part.is_some() {
                     for d0 in 0..shape[0] {
                         for d1 in 0..shape[1] {
                             r.mut_view().get_mut([d0, d1])[(i, j)] =
-                                d.dij_val.clone().unwrap().get([d0, d1]);
+                                d.dij_part.clone().unwrap().get([d0, d1]);
                         }
                     }
                 }
             }
         }
         DualMatrix {
-            val: val_mat,
-            dij_val: Some(r),
+            real_part: val_mat,
+            dij_part: Some(r),
         }
     }
 
     fn real_matrix(&self) -> &MatF64<ROWS, COLS> {
-        &self.val
+        &self.real_part
     }
 
     fn block_mat2x2<const R0: usize, const R1: usize, const C0: usize, const C1: usize>(
@@ -452,11 +450,11 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
         bot_row: DualMatrix<R1, COLS>,
     ) -> Self {
         assert_eq!(R0 + R1, ROWS);
-        let maybe_dij = Self::two_dx(top_row.dij_val, bot_row.dij_val);
+        let maybe_dij = Self::two_dx(top_row.dij_part, bot_row.dij_part);
 
         Self {
-            val: MatF64::<ROWS, COLS>::block_mat2x1(top_row.val, bot_row.val),
-            dij_val: match maybe_dij {
+            real_part: MatF64::<ROWS, COLS>::block_mat2x1(top_row.real_part, bot_row.real_part),
+            dij_part: match maybe_dij {
                 Some(dij_val) => {
                     let mut r = MutTensorDDRC::<f64, ROWS, COLS>::from_shape(dij_val.shape());
                     for d0 in 0..dij_val.shape()[0] {
@@ -479,11 +477,11 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
         righ_col: DualMatrix<ROWS, C1>,
     ) -> Self {
         assert_eq!(C0 + C1, COLS);
-        let maybe_dij = Self::two_dx(left_col.dij_val, righ_col.dij_val);
+        let maybe_dij = Self::two_dx(left_col.dij_part, righ_col.dij_part);
 
         Self {
-            val: MatF64::<ROWS, COLS>::block_mat1x2(left_col.val, righ_col.val),
-            dij_val: match maybe_dij {
+            real_part: MatF64::<ROWS, COLS>::block_mat1x2(left_col.real_part, righ_col.real_part),
+            dij_part: match maybe_dij {
                 Some(dij_val) => {
                     let mut r = MutTensorDDRC::<f64, ROWS, COLS>::from_shape(dij_val.shape());
                     for d0 in 0..dij_val.shape()[0] {
@@ -507,8 +505,8 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
         start_c: usize,
     ) -> DualMatrix<R, C> {
         DualMatrix {
-            val: self.val.get_fixed_submat(start_r, start_c),
-            dij_val: self.dij_val.clone().map(|dij_val| {
+            real_part: self.real_part.get_fixed_submat(start_r, start_c),
+            dij_part: self.dij_part.clone().map(|dij_val| {
                 MutTensorDDRC::from_map(&dij_val.view(), |v| v.get_fixed_submat(start_r, start_c))
             }),
         }
@@ -516,9 +514,9 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
 
     fn get_col_vec(&self, start_r: usize) -> DualVector<ROWS> {
         DualVector {
-            val: self.val.get_col_vec(start_r),
-            dij_val: self
-                .dij_val
+            real_part: self.real_part.get_col_vec(start_r),
+            dij_part: self
+                .dij_part
                 .clone()
                 .map(|dij_val| MutTensorDDR::from_map(&dij_val.view(), |v| v.get_col_vec(start_r))),
         }
@@ -526,37 +524,37 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
 
     fn get_row_vec(&self, c: usize) -> DualVector<COLS> {
         DualVector {
-            val: self.val.get_row_vec(c),
-            dij_val: self
-                .dij_val
+            real_part: self.real_part.get_row_vec(c),
+            dij_part: self
+                .dij_part
                 .clone()
                 .map(|dij_val| MutTensorDDR::from_map(&dij_val.view(), |v| v.get_row_vec(c))),
         }
     }
 
-    fn from_real_array2(vals: [[f64; COLS]; ROWS]) -> Self {
+    fn from_real_scalar_array2(vals: [[f64; COLS]; ROWS]) -> Self {
         DualMatrix {
-            val: MatF64::from_real_array2(vals),
-            dij_val: None,
+            real_part: MatF64::from_real_scalar_array2(vals),
+            dij_part: None,
         }
     }
 
     fn from_f64_array2(vals: [[f64; COLS]; ROWS]) -> Self {
         DualMatrix {
-            val: MatF64::from_real_array2(vals),
-            dij_val: None,
+            real_part: MatF64::from_real_scalar_array2(vals),
+            dij_part: None,
         }
     }
 
     fn from_f64(val: f64) -> Self {
         DualMatrix {
-            val: MatF64::<ROWS, COLS>::from_f64(val),
-            dij_val: None,
+            real_part: MatF64::<ROWS, COLS>::from_f64(val),
+            dij_part: None,
         }
     }
 
     fn set_col_vec(&mut self, c: usize, v: DualVector<ROWS>) {
-        self.val.set_col_vec(c, v.val);
+        self.real_part.set_col_vec(c, v.real_part);
         todo!();
     }
 
@@ -573,13 +571,13 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
     }
 
     fn set_elem(&mut self, idx: [usize; 2], val: DualScalar) {
-        self.val.set_elem(idx, val.val);
-        if self.dij_val.is_some() {
-            let dij = &mut self.dij_val.as_mut().unwrap();
+        self.real_part.set_elem(idx, val.real_part);
+        if self.dij_part.is_some() {
+            let dij = &mut self.dij_part.as_mut().unwrap();
             for i in 0..dij.dims()[0] {
                 for j in 0..dij.dims()[1] {
                     dij.mut_view().get_mut([i, j])[(idx[0], idx[1])] =
-                        val.dij_val.clone().unwrap().get([i, j]);
+                        val.dij_part.clone().unwrap().get([i, j]);
                 }
             }
         }
@@ -591,10 +589,10 @@ impl<const ROWS: usize, const COLS: usize> Add for DualMatrix<ROWS, COLS> {
 
     fn add(self, rhs: Self) -> Self::Output {
         DualMatrix {
-            val: self.val + rhs.val,
-            dij_val: Self::binary_mm_dij(
-                &self.dij_val,
-                &rhs.dij_val,
+            real_part: self.real_part + rhs.real_part,
+            dij_part: Self::binary_mm_dij(
+                &self.dij_part,
+                &rhs.dij_part,
                 |l_dij| *l_dij,
                 |r_dij| *r_dij,
             ),
@@ -607,10 +605,10 @@ impl<const ROWS: usize, const COLS: usize> Sub for DualMatrix<ROWS, COLS> {
 
     fn sub(self, rhs: Self) -> Self::Output {
         DualMatrix {
-            val: self.val - rhs.val,
-            dij_val: Self::binary_mm_dij(
-                &self.dij_val,
-                &rhs.dij_val,
+            real_part: self.real_part - rhs.real_part,
+            dij_part: Self::binary_mm_dij(
+                &self.dij_part,
+                &rhs.dij_part,
                 |l_dij| *l_dij,
                 |r_dij| -r_dij,
             ),
@@ -623,9 +621,9 @@ impl<const ROWS: usize, const COLS: usize> Neg for DualMatrix<ROWS, COLS> {
 
     fn neg(self) -> Self::Output {
         DualMatrix {
-            val: -self.val,
-            dij_val: self
-                .dij_val
+            real_part: -self.real_part,
+            dij_part: self
+                .dij_part
                 .clone()
                 .map(|dij_val| MutTensorDDRC::from_map(&dij_val.view(), |v| -v)),
         }
@@ -638,7 +636,7 @@ impl<const ROWS: usize, const COLS: usize> Zero for DualMatrix<ROWS, COLS> {
     }
 
     fn is_zero(&self) -> bool {
-        self.val.is_zero()
+        self.real_part.is_zero()
     }
 }
 
@@ -647,12 +645,12 @@ impl<const ROWS: usize, const COLS: usize> Mul<DualVector<COLS>> for DualMatrix<
 
     fn mul(self, rhs: DualVector<COLS>) -> Self::Output {
         Self::Output {
-            val: self.val * rhs.val,
-            dij_val: Self::binary_mv_dij(
-                &self.dij_val,
-                &rhs.dij_val,
-                |l_dij| l_dij * rhs.val,
-                |r_dij| self.val * r_dij,
+            real_part: self.real_part * rhs.real_part,
+            dij_part: Self::binary_mv_dij(
+                &self.dij_part,
+                &rhs.dij_part,
+                |l_dij| l_dij * rhs.real_part,
+                |r_dij| self.real_part * r_dij,
             ),
         }
     }
@@ -660,14 +658,14 @@ impl<const ROWS: usize, const COLS: usize> Mul<DualVector<COLS>> for DualMatrix<
 
 impl<const ROWS: usize, const COLS: usize> Debug for DualMatrix<ROWS, COLS> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.dij_val.is_some() {
+        if self.dij_part.is_some() {
             f.debug_struct("DualScalarLike")
-                .field("val", &self.val)
-                .field("dij_val", &self.dij_val.as_ref().unwrap().elem_view())
+                .field("val", &self.real_part)
+                .field("dij_val", &self.dij_part.as_ref().unwrap().elem_view())
                 .finish()
         } else {
             f.debug_struct("DualScalarLike")
-                .field("val", &self.val)
+                .field("val", &self.real_part)
                 .finish()
         }
     }
@@ -686,13 +684,24 @@ where
     LaneCount<BATCH>: SupportedLaneCount,
 {
     /// Create a new dual number
-    fn new(val: BatchMatF64<ROWS, COLS, BATCH>) -> Self {
-        DualBatchMatrix { val, dij_val: None }
+    fn new_with_dij(val: BatchMatF64<ROWS, COLS, BATCH>) -> Self {
+        let mut dij_val =
+            MutTensorDDRC::<BatchScalarF64<BATCH>, ROWS, COLS>::from_shape([ROWS, COLS]);
+        for i in 0..ROWS {
+            for j in 0..COLS {
+                dij_val.mut_view().get_mut([i, j])[(i, j)] = BatchScalarF64::<BATCH>::from_f64(1.0);
+            }
+        }
+
+        Self {
+            real_part: val,
+            dij_part: Some(dij_val),
+        }
     }
 
     /// Get the derivative
     fn dij_val(self) -> Option<MutTensorDDRC<BatchScalarF64<BATCH>, ROWS, COLS>> {
-        self.dij_val
+        self.dij_part
     }
 }
 
@@ -861,22 +870,6 @@ where
             rhs: rhs_dx.unwrap(),
         })
     }
-
-    /// Create a dual matrix
-    pub fn v(val: BatchMatF64<ROWS, COLS, BATCH>) -> Self {
-        let mut dij_val =
-            MutTensorDDRC::<BatchScalarF64<BATCH>, ROWS, COLS>::from_shape([ROWS, COLS]);
-        for i in 0..ROWS {
-            for j in 0..COLS {
-                dij_val.mut_view().get_mut([i, j])[(i, j)] = BatchScalarF64::<BATCH>::from_f64(1.0);
-            }
-        }
-
-        Self {
-            val,
-            dij_val: Some(dij_val),
-        }
-    }
 }
 
 impl<const ROWS: usize, const COLS: usize, const BATCH: usize> PartialEq
@@ -885,7 +878,7 @@ where
     LaneCount<BATCH>: SupportedLaneCount,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.val == other.val && self.dij_val == other.dij_val
+        self.real_part == other.real_part && self.dij_part == other.dij_part
     }
 }
 
@@ -901,7 +894,7 @@ where
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        self.val.abs_diff_eq(&other.val, epsilon)
+        self.real_part.abs_diff_eq(&other.real_part, epsilon)
     }
 }
 
@@ -920,7 +913,8 @@ where
         epsilon: Self::Epsilon,
         max_relative: Self::Epsilon,
     ) -> bool {
-        self.val.relative_eq(&other.val, epsilon, max_relative)
+        self.real_part
+            .relative_eq(&other.real_part, epsilon, max_relative)
     }
 }
 
@@ -931,19 +925,19 @@ where
 {
     fn from_f64(val: f64) -> Self {
         DualBatchMatrix {
-            val: BatchMatF64::<ROWS, COLS, BATCH>::from_f64(val),
-            dij_val: None,
+            real_part: BatchMatF64::<ROWS, COLS, BATCH>::from_f64(val),
+            dij_part: None,
         }
     }
 
     fn set_elem(&mut self, idx: [usize; 2], val: DualBatchScalar<BATCH>) {
-        self.val.set_elem(idx, val.val);
-        if self.dij_val.is_some() {
-            let dij = &mut self.dij_val.as_mut().unwrap();
+        self.real_part.set_elem(idx, val.real_part);
+        if self.dij_part.is_some() {
+            let dij = &mut self.dij_part.as_mut().unwrap();
             for i in 0..dij.dims()[0] {
                 for j in 0..dij.dims()[1] {
                     dij.mut_view().get_mut([i, j])[(idx[0], idx[1])] =
-                        val.dij_val.clone().unwrap().get([i, j]);
+                        val.dij_part.clone().unwrap().get([i, j]);
                 }
             }
         }
@@ -951,8 +945,8 @@ where
 
     fn from_scalar(val: DualBatchScalar<BATCH>) -> Self {
         DualBatchMatrix {
-            val: BatchMatF64::<ROWS, COLS, BATCH>::from_scalar(val.val),
-            dij_val: val.dij_val.map(|dij_val| {
+            real_part: BatchMatF64::<ROWS, COLS, BATCH>::from_scalar(val.real_part),
+            dij_part: val.dij_part.map(|dij_val| {
                 MutTensorDDRC::from_map(&dij_val.view(), |v| {
                     BatchMatF64::<ROWS, COLS, BATCH>::from_scalar(*v)
                 })
@@ -965,28 +959,31 @@ where
         rhs: DualBatchMatrix<COLS, COLS2, BATCH>,
     ) -> DualBatchMatrix<ROWS, COLS2, BATCH> {
         DualBatchMatrix {
-            val: self.val * rhs.val,
-            dij_val: DualBatchMatrix::<ROWS, COLS2, BATCH>::binary_mm_dij(
-                &self.dij_val,
-                &rhs.dij_val,
-                |l_dij| l_dij * rhs.val,
-                |r_dij| self.val * r_dij,
+            real_part: self.real_part * rhs.real_part,
+            dij_part: DualBatchMatrix::<ROWS, COLS2, BATCH>::binary_mm_dij(
+                &self.dij_part,
+                &rhs.dij_part,
+                |l_dij| l_dij * rhs.real_part,
+                |r_dij| self.real_part * r_dij,
             ),
         }
     }
 
     fn from_real_matrix(val: BatchMatF64<ROWS, COLS, BATCH>) -> Self {
-        Self { val, dij_val: None }
+        Self {
+            real_part: val,
+            dij_part: None,
+        }
     }
 
     fn scaled(&self, s: DualBatchScalar<BATCH>) -> Self {
         DualBatchMatrix {
-            val: self.val * s.val,
-            dij_val: DualBatchMatrix::<ROWS, COLS, BATCH>::binary_ms_dij(
-                &self.dij_val,
-                &s.dij_val,
-                |l_dij| l_dij * s.val,
-                |r_dij| self.val * *r_dij,
+            real_part: self.real_part * s.real_part,
+            dij_part: DualBatchMatrix::<ROWS, COLS, BATCH>::binary_ms_dij(
+                &self.dij_part,
+                &s.dij_part,
+                |l_dij| l_dij * s.real_part,
+                |r_dij| self.real_part * *r_dij,
             ),
         }
     }
@@ -997,9 +994,9 @@ where
 
     fn get_elem(&self, idx: [usize; 2]) -> DualBatchScalar<BATCH> {
         DualBatchScalar::<BATCH> {
-            val: self.val.get_elem(idx),
-            dij_val: self
-                .dij_val
+            real_part: self.real_part.get_elem(idx),
+            dij_part: self
+                .dij_part
                 .clone()
                 .map(|dij_val| MutTensorDD::from_map(&dij_val.view(), |v| v[(idx[0], idx[1])])),
         }
@@ -1013,45 +1010,44 @@ where
             for j in 0..d_rows.len() {
                 let d = d_rows.clone()[j].clone();
 
-                val_mat[(i, j)] = d.val;
-                if d.dij_val.is_some() {
-                    shape = Some(d.dij_val.clone().unwrap().dims());
+                val_mat[(i, j)] = d.real_part;
+                if d.dij_part.is_some() {
+                    shape = Some(d.dij_part.clone().unwrap().dims());
                 }
             }
         }
 
         if shape.is_none() {
             return DualBatchMatrix {
-                val: val_mat,
-                dij_val: None,
+                real_part: val_mat,
+                dij_part: None,
             };
         }
         let shape = shape.unwrap();
 
         let mut r = MutTensorDDRC::<BatchScalarF64<BATCH>, ROWS, COLS>::from_shape(shape);
-
         for i in 0..duals.len() {
             let d_rows = duals[i].clone();
             for j in 0..d_rows.len() {
                 let d = d_rows.clone()[j].clone();
-                if d.dij_val.is_some() {
+                if d.dij_part.is_some() {
                     for d0 in 0..shape[0] {
                         for d1 in 0..shape[1] {
                             r.mut_view().get_mut([d0, d1])[(i, j)] =
-                                d.dij_val.clone().unwrap().get([d0, d1]);
+                                d.dij_part.clone().unwrap().get([d0, d1]);
                         }
                     }
                 }
             }
         }
         DualBatchMatrix {
-            val: val_mat,
-            dij_val: Some(r),
+            real_part: val_mat,
+            dij_part: Some(r),
         }
     }
 
     fn real_matrix(&self) -> &BatchMatF64<ROWS, COLS, BATCH> {
-        &self.val
+        &self.real_part
     }
 
     fn block_mat2x2<const R0: usize, const R1: usize, const C0: usize, const C1: usize>(
@@ -1078,11 +1074,14 @@ where
         bot_row: DualBatchMatrix<R1, COLS, BATCH>,
     ) -> Self {
         assert_eq!(R0 + R1, ROWS);
-        let maybe_dij = Self::two_dx(top_row.dij_val, bot_row.dij_val);
+        let maybe_dij = Self::two_dx(top_row.dij_part, bot_row.dij_part);
 
         Self {
-            val: BatchMatF64::<ROWS, COLS, BATCH>::block_mat2x1(top_row.val, bot_row.val),
-            dij_val: match maybe_dij {
+            real_part: BatchMatF64::<ROWS, COLS, BATCH>::block_mat2x1(
+                top_row.real_part,
+                bot_row.real_part,
+            ),
+            dij_part: match maybe_dij {
                 Some(dij_val) => {
                     let mut r = MutTensorDDRC::<BatchScalarF64<BATCH>, ROWS, COLS>::from_shape(
                         dij_val.shape(),
@@ -1108,11 +1107,14 @@ where
         righ_col: DualBatchMatrix<ROWS, C1, BATCH>,
     ) -> Self {
         assert_eq!(C0 + C1, COLS);
-        let maybe_dij = Self::two_dx(left_col.dij_val, righ_col.dij_val);
+        let maybe_dij = Self::two_dx(left_col.dij_part, righ_col.dij_part);
 
         Self {
-            val: BatchMatF64::<ROWS, COLS, BATCH>::block_mat1x2(left_col.val, righ_col.val),
-            dij_val: match maybe_dij {
+            real_part: BatchMatF64::<ROWS, COLS, BATCH>::block_mat1x2(
+                left_col.real_part,
+                righ_col.real_part,
+            ),
+            dij_part: match maybe_dij {
                 Some(dij_val) => {
                     let mut r = MutTensorDDRC::<BatchScalarF64<BATCH>, ROWS, COLS>::from_shape(
                         dij_val.shape(),
@@ -1139,8 +1141,8 @@ where
         start_c: usize,
     ) -> DualBatchMatrix<R, C, BATCH> {
         DualBatchMatrix {
-            val: self.val.get_fixed_submat(start_r, start_c),
-            dij_val: self.dij_val.clone().map(|dij_val| {
+            real_part: self.real_part.get_fixed_submat(start_r, start_c),
+            dij_part: self.dij_part.clone().map(|dij_val| {
                 MutTensorDDRC::from_map(&dij_val.view(), |v| v.get_fixed_submat(start_r, start_c))
             }),
         }
@@ -1148,9 +1150,9 @@ where
 
     fn get_col_vec(&self, start_r: usize) -> DualBatchVector<ROWS, BATCH> {
         DualBatchVector {
-            val: self.val.get_col_vec(start_r),
-            dij_val: self
-                .dij_val
+            real_part: self.real_part.get_col_vec(start_r),
+            dij_part: self
+                .dij_part
                 .clone()
                 .map(|dij_val| MutTensorDDR::from_map(&dij_val.view(), |v| v.get_col_vec(start_r))),
         }
@@ -1158,25 +1160,25 @@ where
 
     fn get_row_vec(&self, c: usize) -> DualBatchVector<COLS, BATCH> {
         DualBatchVector {
-            val: self.val.get_row_vec(c),
-            dij_val: self
-                .dij_val
+            real_part: self.real_part.get_row_vec(c),
+            dij_part: self
+                .dij_part
                 .clone()
                 .map(|dij_val| MutTensorDDR::from_map(&dij_val.view(), |v| v.get_row_vec(c))),
         }
     }
 
-    fn from_real_array2(vals: [[BatchScalarF64<BATCH>; COLS]; ROWS]) -> Self {
+    fn from_real_scalar_array2(vals: [[BatchScalarF64<BATCH>; COLS]; ROWS]) -> Self {
         DualBatchMatrix {
-            val: BatchMatF64::from_real_array2(vals),
-            dij_val: None,
+            real_part: BatchMatF64::from_real_scalar_array2(vals),
+            dij_part: None,
         }
     }
 
     fn from_f64_array2(vals: [[f64; COLS]; ROWS]) -> Self {
         DualBatchMatrix {
-            val: BatchMatF64::from_f64_array2(vals),
-            dij_val: None,
+            real_part: BatchMatF64::from_f64_array2(vals),
+            dij_part: None,
         }
     }
 
@@ -1185,7 +1187,7 @@ where
         c: usize,
         v: <DualBatchScalar<BATCH> as IsScalar<BATCH>>::Vector<ROWS>,
     ) {
-        self.val.set_col_vec(c, v.val);
+        self.real_part.set_col_vec(c, v.real_part);
         todo!();
     }
 
@@ -1194,11 +1196,11 @@ where
     }
 
     fn select(self, mask: &Mask<i64, BATCH>, other: Self) -> Self {
-        let maybe_dij = Self::two_dx(self.dij_val, other.dij_val);
+        let maybe_dij = Self::two_dx(self.dij_part, other.dij_part);
 
         DualBatchMatrix {
-            val: self.val.select(mask, other.val),
-            dij_val: match maybe_dij {
+            real_part: self.real_part.select(mask, other.real_part),
+            dij_part: match maybe_dij {
                 Some(dij) => {
                     let mut r =
                         MutTensorDDRC::<BatchScalarF64<BATCH>, ROWS, COLS>::from_shape(dij.shape());
@@ -1225,10 +1227,10 @@ where
 
     fn add(self, rhs: Self) -> Self::Output {
         DualBatchMatrix {
-            val: self.val + rhs.val,
-            dij_val: Self::binary_mm_dij(
-                &self.dij_val,
-                &rhs.dij_val,
+            real_part: self.real_part + rhs.real_part,
+            dij_part: Self::binary_mm_dij(
+                &self.dij_part,
+                &rhs.dij_part,
                 |l_dij| *l_dij,
                 |r_dij| *r_dij,
             ),
@@ -1245,10 +1247,10 @@ where
 
     fn sub(self, rhs: Self) -> Self::Output {
         DualBatchMatrix {
-            val: self.val - rhs.val,
-            dij_val: Self::binary_mm_dij(
-                &self.dij_val,
-                &rhs.dij_val,
+            real_part: self.real_part - rhs.real_part,
+            dij_part: Self::binary_mm_dij(
+                &self.dij_part,
+                &rhs.dij_part,
                 |l_dij| *l_dij,
                 |r_dij| -r_dij,
             ),
@@ -1265,9 +1267,9 @@ where
 
     fn neg(self) -> Self::Output {
         DualBatchMatrix {
-            val: -self.val,
-            dij_val: self
-                .dij_val
+            real_part: -self.real_part,
+            dij_part: self
+                .dij_part
                 .clone()
                 .map(|dij_val| MutTensorDDRC::from_map(&dij_val.view(), |v| -v)),
         }
@@ -1284,7 +1286,7 @@ where
     }
 
     fn is_zero(&self) -> bool {
-        self.val.is_zero()
+        self.real_part.is_zero()
     }
 }
 
@@ -1297,12 +1299,12 @@ where
 
     fn mul(self, rhs: DualBatchVector<COLS, BATCH>) -> Self::Output {
         Self::Output {
-            val: self.val * rhs.val,
-            dij_val: Self::binary_mv_dij(
-                &self.dij_val,
-                &rhs.dij_val,
-                |l_dij| l_dij * rhs.val,
-                |r_dij| self.val * r_dij,
+            real_part: self.real_part * rhs.real_part,
+            dij_part: Self::binary_mv_dij(
+                &self.dij_part,
+                &rhs.dij_part,
+                |l_dij| l_dij * rhs.real_part,
+                |r_dij| self.real_part * r_dij,
             ),
         }
     }
@@ -1314,14 +1316,14 @@ where
     LaneCount<BATCH>: SupportedLaneCount,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.dij_val.is_some() {
+        if self.dij_part.is_some() {
             f.debug_struct("DualScalarLike")
-                .field("val", &self.val)
-                .field("dij_val", &self.dij_val.as_ref().unwrap().elem_view())
+                .field("val", &self.real_part)
+                .field("dij_val", &self.dij_part.as_ref().unwrap().elem_view())
                 .finish()
         } else {
             f.debug_struct("DualScalarLike")
-                .field("val", &self.val)
+                .field("val", &self.real_part)
                 .finish()
         }
     }

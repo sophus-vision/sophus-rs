@@ -1,6 +1,6 @@
-use crate::linalg::scalar::IsScalar;
 use crate::linalg::VecF64;
 use crate::points::example_points;
+use crate::prelude::*;
 
 /// Parameter implementation.
 pub trait ParamsImpl<S: IsScalar<BATCH_SIZE>, const PARAMS: usize, const BATCH_SIZE: usize> {

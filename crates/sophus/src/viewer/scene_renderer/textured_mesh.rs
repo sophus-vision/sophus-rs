@@ -1,11 +1,10 @@
+use crate::viewer::renderable::TexturedTriangle3;
+use crate::viewer::ViewerRenderState;
 use bytemuck::Pod;
 use bytemuck::Zeroable;
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use std::collections::BTreeMap;
 use wgpu::DepthStencilState;
-
-use crate::viewer::renderable::TexturedTriangle3;
-use crate::viewer::ViewerRenderState;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]

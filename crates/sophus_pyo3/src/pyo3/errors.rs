@@ -1,5 +1,8 @@
 use numpy::PyArray1;
+use numpy::PyArrayMethods;
+use numpy::PyUntypedArrayMethods;
 use pyo3::exceptions::PyOSError;
+use pyo3::Bound;
 use pyo3::PyErr;
 use std::fmt;
 
@@ -32,12 +35,12 @@ impl std::convert::From<PyArray1DimMismatch> for PyErr {
 
 /// Check if array has expected dimension
 pub fn check_array1_dim_impl(
-    array: &PyArray1<f64>,
+    array: &Bound<PyArray1<f64>>,
     expected: usize,
     file: &'static str,
     line: u32,
 ) -> Result<(), PyArray1DimMismatch> {
-    if array.len() == expected {
+    if array.readonly().len() == expected {
         Ok(())
     } else {
         Err(PyArray1DimMismatch {

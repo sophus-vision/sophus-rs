@@ -5,9 +5,8 @@ use eframe::egui;
 use hollywood::actors::egui::EguiAppFromBuilder;
 use hollywood::actors::egui::GenericEguiBuilder;
 use hollywood::core::request::RequestMessage;
-use sophus_lie::groups::isometry3::Isometry3;
+use sophus_lie::Isometry3;
 use sophus_sensor::dyn_camera::DynCamera;
-
 pub struct ViewerCamera {
     pub intrinsics: DynCamera<f64, 1>,
     pub clipping_planes: WgpuClippingPlanes,

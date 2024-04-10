@@ -1,9 +1,7 @@
 use crate::cost::IsCost;
-use crate::solvers::solve;
-
 use crate::cost_fn::IsCostFn;
+use crate::solvers::solve;
 use crate::variables::VarPool;
-
 use std::fmt::Debug;
 
 /// Optimization parameters

@@ -1,14 +1,12 @@
-use std::marker::PhantomData;
-
 use crate::cost::Cost;
-use crate::cost_args::c_from_var_kind;
-use crate::variables::VarKind;
-
 use crate::cost::IsCost;
+use crate::cost_args::c_from_var_kind;
 use crate::robust_kernel::RobustKernel;
 use crate::term::Term;
 use crate::variables::IsVarTuple;
+use crate::variables::VarKind;
 use crate::variables::VarPool;
+use std::marker::PhantomData;
 
 /// Signature of a term of a cost function
 pub trait IsTermSignature<const N: usize> {
@@ -99,7 +97,7 @@ where
     ResidualFn: IsResidualFn<NUM, NUM_ARGS, VarTuple, Constants> + 'static,
 {
     /// create a new cost function from a signature and a residual function
-    pub fn new(
+    pub fn new_box(
         signature: CostSignature<NUM_ARGS, Constants, TermSignature>,
         residual_fn: ResidualFn,
     ) -> Box<dyn IsCostFn> {

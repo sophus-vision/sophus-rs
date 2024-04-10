@@ -1,14 +1,14 @@
-use crate::groups::rotation2::Rotation2;
-use crate::groups::rotation3::Rotation3;
 use crate::lie_group::LieGroup;
+use crate::prelude::*;
 use crate::traits::IsRealLieFactorGroupImpl;
+use crate::Rotation2;
+use crate::Rotation3;
 use approx::assert_relative_eq;
-use sophus_core::calculus::dual::dual_scalar::DualBatchScalar;
-use sophus_core::calculus::dual::dual_scalar::DualScalar;
-use sophus_core::calculus::maps::matrix_valued_maps::MatrixValuedMapFromVector;
-use sophus_core::linalg::matrix::IsMatrix;
-use sophus_core::linalg::scalar::IsRealScalar;
+use sophus_core::calculus::dual::DualBatchScalar;
+use sophus_core::calculus::dual::DualScalar;
+use sophus_core::calculus::maps::MatrixValuedMapFromVector;
 use sophus_core::linalg::BatchScalarF64;
+use sophus_core::manifold::traits::TangentImpl;
 
 impl<
         S: IsRealScalar<BATCH_SIZE, RealScalar = S>,
@@ -69,7 +69,6 @@ macro_rules! def_real_group_test_template {
         impl RealFactorLieGroupTest for $group {
             fn mat_v_test() {
                 use crate::traits::IsLieGroup;
-                use sophus_core::calculus::manifold::traits::TangentImpl;
                 use sophus_core::linalg::scalar::IsScalar;
 
                 const POINT: usize = <$group>::POINT;
@@ -88,8 +87,6 @@ macro_rules! def_real_group_test_template {
 
             fn test_mat_v_jacobian() {
                 use crate::traits::IsLieGroup;
-                use sophus_core::calculus::dual::dual_scalar::IsDualScalar;
-                use sophus_core::calculus::manifold::traits::TangentImpl;
                 use sophus_core::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
                 use sophus_core::linalg::scalar::IsScalar;
                 use sophus_core::linalg::vector::IsVector;
@@ -132,8 +129,6 @@ macro_rules! def_real_group_test_template {
                 }
                 for p in example_points::<$scalar, POINT, $batch>() {
                     for a in Self::element_examples() {
-                        let dual_params_a = <$dual_scalar>::vector_v(*a.clone().params());
-                        let _dual_a = <$dual_group>::from_params(&dual_params_a);
                         let dual_p =
                             <$dual_scalar as IsScalar<$batch>>::Vector::from_real_vector(p.clone());
 

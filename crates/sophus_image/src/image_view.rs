@@ -1,49 +1,7 @@
-use sophus_core::linalg::scalar::IsCoreScalar;
+use crate::prelude::*;
+use crate::ImageSize;
 use sophus_core::linalg::SVec;
-use sophus_core::tensor::element::IsStaticTensor;
-use sophus_core::tensor::tensor_view::IsTensorLike;
-use sophus_core::tensor::tensor_view::IsTensorView;
 use sophus_core::tensor::tensor_view::TensorView;
-
-/// Image size
-#[derive(Debug, Copy, Clone, Default)]
-pub struct ImageSize {
-    /// Width of the image - number of columns
-    pub width: usize,
-    /// Height of the image - number of rows
-    pub height: usize,
-}
-
-impl ImageSize {
-    /// Create a new image size from width and height
-    pub fn new(width: usize, height: usize) -> Self {
-        Self { width, height }
-    }
-
-    /// Get the area of the image - width * height
-    pub fn area(&self) -> usize {
-        self.width * self.height
-    }
-}
-
-impl From<[usize; 2]> for ImageSize {
-    /// We are converting from Tensor (and matrix) convention (d0 = rows, d1 = cols)
-    /// to Matrix convention (d0 = width = cols, d1 = height = rows)
-    fn from(rows_cols: [usize; 2]) -> Self {
-        ImageSize {
-            width: rows_cols[1],
-            height: rows_cols[0],
-        }
-    }
-}
-
-impl From<ImageSize> for [usize; 2] {
-    /// We are converting from Image Indexing Convention (d0 = width = cols, d1 = height = rows)
-    /// to tensor (and matrix) convention  (d0 = rows, d1 = cols).
-    fn from(image_size: ImageSize) -> Self {
-        [image_size.height, image_size.width]
-    }
-}
 
 /// Image view of static tensors
 #[derive(Debug, Clone, PartialEq)]

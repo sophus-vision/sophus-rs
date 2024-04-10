@@ -1,8 +1,8 @@
+use crate::prelude::*;
 use dyn_clone::DynClone;
 use sophus_core::linalg::VecF64;
-use sophus_core::params::HasParams;
-use sophus_lie::groups::isometry2::Isometry2;
-use sophus_lie::groups::isometry3::Isometry3;
+use sophus_lie::Isometry2;
+use sophus_lie::Isometry3;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -137,7 +137,7 @@ impl IsVariable for Isometry2<f64, 1> {
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
         let mut delta_vec = VecF64::<3>::zeros();
-        for d in 0..Self::DOF {
+        for d in 0..<Self as IsVariable>::DOF {
             delta_vec[d] = delta[d];
         }
         self.set_params(
@@ -152,7 +152,7 @@ impl IsVariable for Isometry3<f64, 1> {
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
         let mut delta_vec = VecF64::<6>::zeros();
-        for d in 0..Self::DOF {
+        for d in 0..<Self as IsVariable>::DOF {
             delta_vec[d] = delta[d];
         }
         self.set_params(
@@ -223,6 +223,11 @@ pub trait IsVarFamily: as_any::AsAny + Debug + DynClone {
 
     /// number of members in the family
     fn len(&self) -> usize;
+
+    /// is empty
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 
     /// returns 0 if variable is conditioned, DOF otherwise
     fn free_or_marg_dof(&self) -> usize;

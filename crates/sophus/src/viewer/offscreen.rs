@@ -1,9 +1,9 @@
 use crate::image::arc_image::ArcImageF32;
-use crate::image::image_view::ImageSize;
 use crate::image::image_view::ImageViewF32;
+use crate::image::ImageSize;
 use crate::viewer::ViewerRenderState;
 use eframe::egui::{self};
-use sophus_sensor::dyn_camera::DynCamera;
+use sophus_sensor::DynCamera;
 
 #[derive(Debug)]
 pub(crate) struct OffscreenTexture {

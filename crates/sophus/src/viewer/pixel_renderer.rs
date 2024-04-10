@@ -1,13 +1,11 @@
 pub mod line;
 pub mod pixel_point;
-
+use self::line::PixelLineRenderer;
+use self::pixel_point::PixelPointRenderer;
 use crate::viewer::actor::ViewerBuilder;
 use crate::viewer::scene_renderer::interaction::InteractionState;
 use crate::viewer::DepthRenderer;
 use crate::viewer::ViewerRenderState;
-
-use self::line::PixelLineRenderer;
-use self::pixel_point::PixelPointRenderer;
 use bytemuck::Pod;
 use bytemuck::Zeroable;
 use std::num::NonZeroU64;

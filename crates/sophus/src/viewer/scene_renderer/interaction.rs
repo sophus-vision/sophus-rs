@@ -1,10 +1,8 @@
 use crate::image::arc_image::ArcImageF32;
-use crate::image::image_view::IsImageView;
-use crate::lie::traits::IsTranslationProductGroup;
+use crate::prelude::*;
 use eframe::egui;
 use sophus_core::linalg::VecF64;
-use sophus_core::tensor::tensor_view::IsTensorLike;
-use sophus_lie::groups::isometry3::Isometry3;
+use sophus_lie::Isometry3;
 use sophus_sensor::dyn_camera::DynCamera;
 
 #[derive(Clone, Copy)]

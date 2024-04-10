@@ -1,15 +1,8 @@
-use crate::calculus::dual::dual_matrix::IsDualMatrix;
-use crate::calculus::dual::dual_scalar::IsDualScalar;
-use crate::linalg::matrix::IsMatrix;
-use crate::linalg::matrix::IsRealMatrix;
-use crate::linalg::scalar::IsRealScalar;
-use crate::linalg::scalar::IsScalar;
 use crate::linalg::SMat;
+use crate::prelude::*;
 use crate::tensor::mut_tensor::MutTensorDDRC;
 use crate::tensor::mut_tensor::MutTensorDRC;
-use crate::tensor::mut_tensor_view::IsMutTensorLike;
 use nalgebra::SMatrix;
-
 use std::marker::PhantomData;
 
 /// Matrix-valued map on a vector space.
@@ -71,7 +64,7 @@ impl<D: IsDualScalar<BATCH, DualScalar = D>, const BATCH: usize>
         TFn: Fn(D::DualVector<INROWS>) -> D::DualMatrix<OUTROWS, OUTCOLS>,
     {
         MutTensorDRC {
-            mut_array: matrix_valued(D::vector_v(a))
+            mut_array: matrix_valued(D::vector_with_dij(a))
                 .dij_val()
                 .unwrap()
                 .mut_array
@@ -156,7 +149,7 @@ impl<D: IsDualScalar<BATCH, DualScalar = D>, const BATCH: usize>
     where
         TFn: Fn(D::DualMatrix<INROWS, INCOLS>) -> D::DualMatrix<OUTROWS, OUTCOLS>,
     {
-        matrix_valued(D::matrix_v(a)).dij_val().unwrap()
+        matrix_valued(D::matrix_with_dij(a)).dij_val().unwrap()
     }
 }
 
@@ -165,7 +158,7 @@ fn matrix_valued_map_from_vector_tests() {
     use crate::calculus::dual::dual_scalar::DualBatchScalar;
     use crate::calculus::dual::dual_scalar::DualScalar;
     use crate::calculus::maps::matrix_valued_maps::MatrixValuedMapFromVector;
-    use crate::linalg::matrix::IsMatrix;
+
     use crate::linalg::scalar::IsScalar;
     use crate::linalg::vector::IsVector;
     use crate::linalg::BatchScalarF64;

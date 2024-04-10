@@ -3,7 +3,6 @@ pub mod offscreen;
 pub mod pixel_renderer;
 pub mod renderable;
 pub mod scene_renderer;
-
 use self::actor::ViewerBuilder;
 use self::offscreen::OffscreenTexture;
 use self::pixel_renderer::PixelRenderer;
@@ -12,8 +11,8 @@ use self::scene_renderer::depth_renderer::DepthRenderer;
 use self::scene_renderer::textured_mesh::TexturedMeshVertex3;
 use self::scene_renderer::SceneRenderer;
 use crate::image::arc_image::ArcImage4U8;
-use crate::image::image_view::ImageSize;
 use crate::image::image_view::IsImageView;
+use crate::image::ImageSize;
 use crate::viewer::pixel_renderer::LineVertex2;
 use crate::viewer::pixel_renderer::PointVertex2;
 use crate::viewer::scene_renderer::line::LineVertex3;
@@ -30,7 +29,7 @@ use hollywood::actors::egui::Stream;
 use hollywood::compute::pipeline::CancelRequest;
 use hollywood::core::request::RequestMessage;
 use sophus_core::tensor::tensor_view::IsTensorLike;
-use sophus_lie::groups::isometry3::Isometry3;
+use sophus_lie::Isometry3;
 use sophus_sensor::dyn_camera::DynCamera;
 use std::sync::Arc;
 

@@ -1,8 +1,7 @@
 use crate::camera_enum::perspective_camera::PerspectiveCameraEnum;
+use crate::prelude::*;
 use crate::projections::orthographic::OrthographicCamera;
-use crate::traits::IsCameraEnum;
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_image::image_view::ImageSize;
+use sophus_image::ImageSize;
 
 /// Generalized camera enum
 #[derive(Debug, Clone)]

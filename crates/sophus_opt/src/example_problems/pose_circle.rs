@@ -1,18 +1,17 @@
+use super::cost_fn::pose_graph::PoseGraphCostFn;
 use crate::cost_fn::CostFn;
 use crate::cost_fn::CostSignature;
 use crate::example_problems::cost_fn::pose_graph::PoseGraphCostTermSignature;
-use crate::nlls::*;
+use crate::nlls::optimize;
+use crate::nlls::OptParams;
+use crate::prelude::*;
 use crate::variables::VarFamily;
 use crate::variables::VarKind;
 use crate::variables::VarPool;
 use crate::variables::VarPoolBuilder;
-
-use sophus_core::linalg::vector::IsVector;
 use sophus_core::linalg::VecF64;
-use sophus_lie::groups::isometry2::Isometry2;
+use sophus_lie::Isometry2;
 use std::collections::HashMap;
-
-use super::cost_fn::pose_graph::PoseGraphCostFn;
 
 /// Pose graph example problem
 #[derive(Debug, Clone)]
@@ -106,7 +105,7 @@ impl PoseCircleProblem {
     }
 
     /// Calculate the error of the current estimate
-    pub fn calc_error(&self, est_world_from_robot: &Vec<Isometry2<f64, 1>>) -> f64 {
+    pub fn calc_error(&self, est_world_from_robot: &[Isometry2<f64, 1>]) -> f64 {
         let mut res_err = 0.0;
         for obs in self.obs_pose_a_from_pose_b_poses.terms.clone() {
             let residual = super::cost_fn::pose_graph::res_fn(
@@ -135,7 +134,7 @@ impl PoseCircleProblem {
 
         optimize(
             var_pool,
-            vec![CostFn::new(
+            vec![CostFn::new_box(
                 self.obs_pose_a_from_pose_b_poses.clone(),
                 PoseGraphCostFn {},
             )],

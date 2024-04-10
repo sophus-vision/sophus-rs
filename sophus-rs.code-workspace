@@ -12,5 +12,6 @@
 		"rust-analyzer.diagnostics.styleLints.enable": true,
 		"rust-analyzer.imports.granularity.group": "item",
 		"rust-analyzer.imports.prefix": "crate",
+		"rust-analyzer.cargo.unsetTest": [],
 	}
 }
