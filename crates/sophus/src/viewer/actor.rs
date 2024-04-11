@@ -4,7 +4,7 @@ use crate::viewer::ViewerRenderState;
 use eframe::egui;
 use hollywood::actors::egui::EguiAppFromBuilder;
 use hollywood::actors::egui::GenericEguiBuilder;
-use hollywood::core::request::RequestMessage;
+use hollywood::RequestMessage;
 use sophus_lie::Isometry3;
 use sophus_sensor::dyn_camera::DynCamera;
 pub struct ViewerCamera {

@@ -83,7 +83,7 @@ impl Interaction {
                 drag_start_uv: VecF64::<2>::new(pixel.x as f64, pixel.y as f64),
                 current_uv: VecF64::<2>::new(pixel.x as f64, pixel.y as f64),
             });
-        } else if response.drag_released() {
+        } else if response.drag_stopped() {
             // A drag event finished
             self.maybe_state = None;
         };

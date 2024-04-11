@@ -7,6 +7,8 @@
 	"settings": {
 		"rust-analyzer.linkedProjects": [
 			"./Cargo.toml",
+			"./crates/sophus/Cargo.toml",
+			"./crates/sophus/Cargo.toml"
 		],
 		"rust-analyzer.cargo.target": null,
 		"rust-analyzer.diagnostics.styleLints.enable": true,
