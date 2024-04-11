@@ -1,8 +1,6 @@
 use crate::linalg::VecF64;
-
-use crate::linalg::scalar::IsScalar;
-use crate::params::HasParams;
 use crate::params::ParamsImpl;
+use crate::prelude::*;
 
 /// A tangent implementation.
 pub trait TangentImpl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const BATCH_SIZE: usize> {

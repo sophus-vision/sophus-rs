@@ -1,7 +1,6 @@
 use crate::sensor::distortion_table::DistortTable;
 use crate::viewer::ViewerBuilder;
 use crate::viewer::ViewerRenderState;
-
 use std::sync::Mutex;
 use wgpu::util::DeviceExt;
 

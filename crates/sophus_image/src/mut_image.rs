@@ -1,16 +1,10 @@
 use crate::arc_image::GenArcImage;
 use crate::image_view::GenImageView;
-use crate::image_view::ImageSize;
-use crate::image_view::IsImageView;
-use crate::mut_image_view::IsMutImageView;
-
-use sophus_core::linalg::scalar::IsCoreScalar;
+use crate::prelude::*;
+use crate::ImageSize;
 use sophus_core::linalg::SVec;
-use sophus_core::tensor::element::IsStaticTensor;
-use sophus_core::tensor::mut_tensor::MutTensor;
-use sophus_core::tensor::mut_tensor_view::IsMutTensorLike;
-use sophus_core::tensor::tensor_view::IsTensorView;
-use sophus_core::tensor::tensor_view::TensorView;
+use sophus_core::tensor::MutTensor;
+use sophus_core::tensor::TensorView;
 
 /// Mutable image of static tensors
 #[derive(Debug, Clone, Default)]
@@ -111,7 +105,7 @@ macro_rules! mut_image {
                 self.mut_tensor.mut_array[[v, u]].clone()
             }
 
-            fn image_size(&self) -> crate::image_view::ImageSize {
+            fn image_size(&self) -> ImageSize {
                 self.image_view().image_size()
             }
         }
@@ -126,7 +120,7 @@ macro_rules! mut_image {
             > GenMutImage<$scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
         {
             /// creates a mutable image view from image size
-            pub fn from_image_size(size: crate::image_view::ImageSize) -> Self {
+            pub fn from_image_size(size: ImageSize) -> Self {
                 Self {
                     mut_tensor: MutTensor::<
                         $scalar_rank,
@@ -142,7 +136,7 @@ macro_rules! mut_image {
             }
 
             /// creates a mutable image from image size and value
-            pub fn from_image_size_and_val(size: crate::image_view::ImageSize, val: STensor) -> Self {
+            pub fn from_image_size_and_val(size: ImageSize, val: STensor) -> Self {
                 Self {
                     mut_tensor: MutTensor::<
                         $scalar_rank,

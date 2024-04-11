@@ -3,9 +3,7 @@ pub mod spline_segment;
 
 use crate::calculus::spline::spline_segment::CubicBSplineSegment;
 use crate::calculus::spline::spline_segment::SegmentCase;
-use crate::linalg::bool_mask::BoolMask;
-use crate::linalg::matrix::IsMatrix;
-use crate::linalg::scalar::IsSingleScalar;
+use crate::prelude::*;
 
 /// Cubic B-Spline implementation
 pub struct CubicBSplineImpl<S: IsSingleScalar, const DIMS: usize> {

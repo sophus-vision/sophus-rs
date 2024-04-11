@@ -1,10 +1,5 @@
-use crate::calculus::dual::dual_scalar::IsDualScalar;
-use crate::linalg::matrix::IsMatrix;
-use crate::linalg::scalar::IsRealScalar;
-use crate::linalg::scalar::IsScalar;
-use crate::linalg::vector::IsVector;
+use crate::prelude::*;
 use crate::tensor::mut_tensor::MutTensorDD;
-use crate::tensor::tensor_view::IsTensorLike;
 
 /// Scalar-valued map on a vector space.
 ///
@@ -58,8 +53,10 @@ impl<D: IsDualScalar<BATCH>, const BATCH: usize> ScalarValuedMapFromVector<D, BA
     where
         TFn: Fn(D::DualVector<INROWS>) -> D,
     {
-        let jacobian: MutTensorDD<D::RealScalar> =
-            scalar_valued(D::vector_v(a)).dij_val().unwrap().clone();
+        let jacobian: MutTensorDD<D::RealScalar> = scalar_valued(D::vector_with_dij(a))
+            .dij_val()
+            .unwrap()
+            .clone();
         assert_eq!(jacobian.dims(), [INROWS, 1]);
         let mut out = D::RealVector::<INROWS>::zeros();
 
@@ -117,8 +114,10 @@ impl<D: IsDualScalar<BATCH>, const BATCH: usize> ScalarValuedMapFromMatrix<D, BA
     where
         TFn: Fn(D::DualMatrix<INROWS, INCOLS>) -> D,
     {
-        let jacobian: MutTensorDD<D::RealScalar> =
-            scalar_valued(D::matrix_v(a)).dij_val().unwrap().clone();
+        let jacobian: MutTensorDD<D::RealScalar> = scalar_valued(D::matrix_with_dij(a))
+            .dij_val()
+            .unwrap()
+            .clone();
         assert_eq!(jacobian.dims(), [INROWS, INCOLS]);
         let mut out = D::RealMatrix::<INROWS, INCOLS>::zeros();
 
@@ -148,7 +147,6 @@ fn scalar_valued_map_tests() {
             #[cfg(test)]
             impl Test for $scalar {
                 fn run() {
-                    use crate::linalg::matrix::IsMatrix;
                     use crate::linalg::vector::IsVector;
 
                     let a = <$scalar as IsScalar<$batch>>::Vector::<2>::new(

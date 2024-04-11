@@ -1,9 +1,7 @@
-use crate::linalg::scalar::IsCoreScalar;
 use crate::linalg::SMat;
 use crate::linalg::SVec;
-use crate::tensor::element::IsStaticTensor;
-use crate::tensor::mut_tensor::MutTensor;
-
+use crate::prelude::*;
+use crate::tensor::MutTensor;
 use concat_arrays::concat_arrays;
 use std::marker::PhantomData;
 
@@ -179,6 +177,7 @@ macro_rules! tensor_view_is_view {
                 elem_view: ndarray::ArrayView<'a, STensor, ndarray::Dim<[ndarray::Ix; $drank]>>,
             ) -> Self {
                 let dims: [usize; $drank] = elem_view.shape().try_into().unwrap();
+                #[allow(clippy::drop_non_drop)]
                 let shape: [usize; $scalar_rank] = concat_arrays!(dims, STensor::sdims());
 
                 let dstrides: [isize; $drank] = elem_view.strides().try_into().unwrap();
@@ -187,6 +186,7 @@ macro_rules! tensor_view_is_view {
                 for d in dstrides.iter_mut() {
                     *d *= num_scalars;
                 }
+                #[allow(clippy::drop_non_drop)]
                 let strides = concat_arrays!(dstrides, STensor::strides());
 
                 let ptr = elem_view.as_ptr() as *const Scalar;

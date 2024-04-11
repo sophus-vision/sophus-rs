@@ -1,11 +1,9 @@
 use crate::term::Term;
 use crate::variables::VarKind;
 use crate::variables::VarPool;
-
+use dyn_clone::DynClone;
 use std::fmt::Debug;
 use std::ops::AddAssign;
-
-use dyn_clone::DynClone;
 
 /// Evaluated cost
 pub trait IsCost: Debug + DynClone {

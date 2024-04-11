@@ -1,6 +1,4 @@
-use crate::linalg::matrix::IsMatrix;
-use crate::linalg::scalar::IsSingleScalar;
-use crate::linalg::vector::IsVector;
+use crate::prelude::*;
 use std::marker::PhantomData;
 
 /// cubic basis function

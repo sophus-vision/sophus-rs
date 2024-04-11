@@ -1,7 +1,15 @@
+/// Boolean mask - generalization of bool to SIMD
 pub mod bool_mask;
+
+/// Matrix types
 pub mod matrix;
+
+/// Scalar types
 pub mod scalar;
+
+/// Vector types
 pub mod vector;
+
 use std::ops::Add;
 use std::simd::cmp::SimdPartialEq;
 use std::simd::num::SimdFloat;
@@ -17,7 +25,7 @@ pub type SVec<ScalarLike, const ROWS: usize> = nalgebra::SVector<ScalarLike, ROW
 pub type SMat<ScalarLike, const ROWS: usize, const COLS: usize> =
     nalgebra::SMatrix<ScalarLike, ROWS, COLS>;
 
-/// Batch scalar
+/// Batch of scalar
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub struct BatchScalar<ScalarLike: SimdElement, const BATCH_SIZE: usize>(
     Simd<ScalarLike, BATCH_SIZE>,
@@ -25,9 +33,11 @@ pub struct BatchScalar<ScalarLike: SimdElement, const BATCH_SIZE: usize>(
 where
     LaneCount<BATCH_SIZE>: SupportedLaneCount;
 
+/// Batch of vectors
 pub type BatchVec<ScalarLike, const ROWS: usize, const BATCH_SIZE: usize> =
     nalgebra::SVector<BatchScalar<ScalarLike, BATCH_SIZE>, ROWS>;
 
+/// Batch of matrices
 pub type BatchMat<ScalarLike, const ROWS: usize, const COLS: usize, const BATCH_SIZE: usize> =
     nalgebra::SMatrix<BatchScalar<ScalarLike, BATCH_SIZE>, ROWS, COLS>;
 

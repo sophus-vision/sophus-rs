@@ -1,7 +1,8 @@
 #![feature(portable_simd)]
 #![deny(missing_docs)]
+#![allow(clippy::needless_range_loop)]
 
-//! # Non-linear least squares optimization module
+//! # Non-linear least squares optimization crate - part of the sophus-rs project
 
 /// Block vector and matrix operations
 pub mod block;
@@ -25,3 +26,11 @@ pub mod solvers;
 pub mod term;
 /// Decision variables
 pub mod variables;
+
+/// Sophus optimization prelude
+pub mod prelude {
+    pub use crate::robust_kernel::IsRobustKernel;
+    pub use sophus_image::prelude::*;
+    pub use sophus_lie::prelude::*;
+    pub use sophus_sensor::prelude::*;
+}

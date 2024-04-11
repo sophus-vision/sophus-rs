@@ -1,8 +1,5 @@
+use crate::prelude::*;
 use crate::traits::IsCameraDistortionImpl;
-use sophus_core::linalg::bool_mask::BoolMask;
-use sophus_core::linalg::matrix::IsMatrix;
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_core::linalg::vector::IsVector;
 use sophus_core::params::ParamsImpl;
 use std::marker::PhantomData;
 

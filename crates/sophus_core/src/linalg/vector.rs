@@ -1,16 +1,13 @@
-use approx::AbsDiffEq;
-use approx::RelativeEq;
-
-use super::scalar::IsRealScalar;
-use super::scalar::IsScalar;
-use super::scalar::IsSingleScalar;
-use crate::calculus::dual::dual_vector::DualBatchVector;
-use crate::calculus::dual::dual_vector::DualVector;
+use crate::calculus::dual::DualBatchVector;
+use crate::calculus::dual::DualVector;
 use crate::linalg::BatchMatF64;
 use crate::linalg::BatchScalarF64;
 use crate::linalg::BatchVecF64;
 use crate::linalg::MatF64;
 use crate::linalg::VecF64;
+use crate::prelude::*;
+use approx::AbsDiffEq;
+use approx::RelativeEq;
 use std::fmt::Debug;
 use std::ops::Add;
 use std::ops::Index;
@@ -32,27 +29,17 @@ pub trait IsVector<S: IsScalar<BATCH_SIZE>, const ROWS: usize, const BATCH_SIZE:
     + AbsDiffEq<Epsilon = f64>
     + RelativeEq<Epsilon = f64>
 {
-    fn vector(self) -> Self;
-
-    /// create a block vector
+    /// creates vector from a block of two vectors
     fn block_vec2<const R0: usize, const R1: usize>(
         top_row: S::Vector<R0>,
         bot_row: S::Vector<R1>,
     ) -> Self;
 
-    fn to_dual(
-        self,
-    ) -> <<S as IsScalar<BATCH_SIZE>>::DualScalar as IsScalar<BATCH_SIZE>>::Vector<ROWS>;
-
     /// dot product
     fn dot(self, rhs: Self) -> S;
 
-    fn outer<const R2: usize>(self, rhs: S::Vector<R2>) -> S::Matrix<ROWS, R2>;
-
     /// create a vector from an array
     fn from_array(vals: [S; ROWS]) -> Self;
-
-    fn select(self, mask: &S::Mask, other: Self) -> Self;
 
     /// create a constant vector from an array
     fn from_real_array(vals: [S::RealScalar; ROWS]) -> Self;
@@ -66,14 +53,14 @@ pub trait IsVector<S: IsScalar<BATCH_SIZE>, const ROWS: usize, const BATCH_SIZE:
     /// create a constant vector from an array
     fn from_f64_array(vals: [f64; ROWS]) -> Self;
 
-    /// create a constant vector from an array
-    fn from_scalar_array(vals: [S; ROWS]) -> Self;
-
     /// get ith element
     fn get_elem(&self, idx: usize) -> S;
 
-    /// get fixed rows
-    fn get_fixed_rows<const R: usize>(&self, start: usize) -> S::Vector<R>;
+    /// Returns a fixed-size subvector starting at the given row
+    fn get_fixed_subvec<const R: usize>(&self, start_r: usize) -> S::Vector<R>;
+
+    /// create a constant vector from an array
+    fn from_scalar_array(vals: [S; ROWS]) -> Self;
 
     /// norm
     fn norm(&self) -> S;
@@ -81,22 +68,35 @@ pub trait IsVector<S: IsScalar<BATCH_SIZE>, const ROWS: usize, const BATCH_SIZE:
     /// return normalized vector
     fn normalized(&self) -> Self;
 
+    /// outer product
+    fn outer<const R2: usize>(self, rhs: S::Vector<R2>) -> S::Matrix<ROWS, R2>;
+
     /// return the real part
     fn real_vector(&self) -> &S::RealVector<ROWS>;
+
+    /// Returns self if mask is true, otherwise returns other
+    ///
+    /// For batch vectors, this is a lane-wise operation
+    fn select(self, mask: &S::Mask, other: Self) -> Self;
 
     /// return scaled vector
     fn scaled(&self, v: S) -> Self;
 
-    /// set ith element as constant
+    /// set ith element to given scalar
     fn set_elem(&mut self, idx: usize, v: S);
-
-    /// set ith element as constant
-    fn set_real_elem(&mut self, idx: usize, v: S::RealScalar);
 
     /// squared norm
     fn squared_norm(&self) -> S;
 
-    /// return the matrix representation
+    /// Return dual vector
+    ///
+    /// If self is a real vector, this will return a dual vector with the infinitesimal part set to
+    /// zero: (self, 0ϵ)
+    fn to_dual(
+        self,
+    ) -> <<S as IsScalar<BATCH_SIZE>>::DualScalar as IsScalar<BATCH_SIZE>>::Vector<ROWS>;
+
+    /// return the matrix representation - in self as a column vector
     fn to_mat(self) -> S::Matrix<ROWS, 1>;
 
     /// ones
@@ -108,9 +108,6 @@ pub trait IsVector<S: IsScalar<BATCH_SIZE>, const ROWS: usize, const BATCH_SIZE:
     fn zeros() -> Self {
         Self::from_f64(0.0)
     }
-
-    /// get fixed submatrix
-    fn get_fixed_subvec<const R: usize>(&self, start_r: usize) -> S::Vector<R>;
 }
 
 /// is real vector like
@@ -144,10 +141,6 @@ impl<const BATCH: usize> IsSingleVector<f64, BATCH> for VecF64<BATCH> {
 impl<const ROWS: usize> IsRealVector<f64, ROWS, 1> for VecF64<ROWS> {}
 
 impl<const ROWS: usize> IsVector<f64, ROWS, 1> for VecF64<ROWS> {
-    fn vector(self) -> Self {
-        self
-    }
-
     fn block_vec2<const R0: usize, const R1: usize>(
         top_row: VecF64<R0>,
         bot_row: VecF64<R1>,
@@ -184,10 +177,6 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1> for VecF64<ROWS> {
         self[idx]
     }
 
-    fn get_fixed_rows<const R: usize>(&self, start: usize) -> VecF64<R> {
-        self.fixed_rows::<R>(start).into()
-    }
-
     fn norm(&self) -> f64 {
         self.norm()
     }
@@ -197,10 +186,6 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1> for VecF64<ROWS> {
     }
 
     fn set_elem(&mut self, idx: usize, v: f64) {
-        self[idx] = v;
-    }
-
-    fn set_real_elem(&mut self, idx: usize, v: f64) {
         self[idx] = v;
     }
 
@@ -286,12 +271,8 @@ where
         m
     }
 
-    fn vector(self) -> Self {
-        self
-    }
-
     fn dot(self, rhs: Self) -> BatchScalarF64<BATCH> {
-        (self.transpose() * &rhs)[0]
+        (self.transpose() * rhs)[0]
     }
 
     fn from_array(vals: [BatchScalarF64<BATCH>; ROWS]) -> Self {
@@ -318,17 +299,13 @@ where
         self[idx]
     }
 
-    fn get_fixed_rows<const R: usize>(&self, start: usize) -> BatchVecF64<R, BATCH> {
-        self.fixed_rows::<R>(start).into()
-    }
-
     fn norm(&self) -> BatchScalarF64<BATCH> {
         self.squared_norm().sqrt()
     }
 
     fn normalized(&self) -> Self {
         let norm = self.norm();
-        if norm == BatchScalarF64::<BATCH>::zeros() {
+        if norm == <BatchScalarF64<BATCH> as IsScalar<BATCH>>::zeros() {
             return *self;
         }
         let factor = BatchScalarF64::<BATCH>::ones() / norm;
@@ -347,14 +324,10 @@ where
         self[idx] = v;
     }
 
-    fn set_real_elem(&mut self, idx: usize, v: BatchScalarF64<BATCH>) {
-        self[idx] = v;
-    }
-
     fn squared_norm(&self) -> BatchScalarF64<BATCH> {
-        let mut squared_norm = BatchScalarF64::<BATCH>::zeros();
+        let mut squared_norm = <BatchScalarF64<BATCH> as IsScalar<BATCH>>::zeros();
         for i in 0..ROWS {
-            let val = self.get_elem(i);
+            let val = IsVector::get_elem(self, i);
             squared_norm += val * val;
         }
         squared_norm

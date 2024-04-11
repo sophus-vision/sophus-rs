@@ -1,4 +1,4 @@
-use crate::image_view::IsImageView;
+use crate::prelude::*;
 use sophus_core::linalg::SVec;
 
 /// Bilinear interpolated image lookup

@@ -1,6 +1,5 @@
-#![feature(portable_simd)]
 #![deny(missing_docs)]
-//! # Pyo3 module
+//! pyo3 bindings for sophus-rs
 
 /// python wrapper
 pub mod pyo3;
@@ -15,7 +14,7 @@ use numpy::pyo3::prelude::*;
 /// the `lib.name` setting in the `Cargo.toml`, else Python will not be able to
 /// import the module.
 #[pymodule]
-fn sophus_pyo3(_py: Python, m: &PyModule) -> PyResult<()> {
+fn sophus_pyo3(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyRotation2>()?;
     m.add_class::<PyIsometry2>()?;
     m.add_class::<PyRotation3>()?;

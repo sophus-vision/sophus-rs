@@ -1,9 +1,6 @@
-use crate::linalg::scalar::IsCoreScalar;
-use crate::tensor::element::IsStaticTensor;
-use crate::tensor::mut_tensor::MutTensor;
-use crate::tensor::tensor_view::IsTensorLike;
-use crate::tensor::tensor_view::IsTensorView;
-use crate::tensor::tensor_view::TensorView;
+use crate::prelude::*;
+use crate::tensor::MutTensor;
+use crate::tensor::TensorView;
 use concat_arrays::concat_arrays;
 use std::marker::PhantomData;
 
@@ -91,6 +88,7 @@ macro_rules! mut_view_is_view {
                 >,
             ) -> Self {
                 let dims: [usize; $drank] = elem_view_mut.shape().try_into().unwrap();
+                #[allow(clippy::drop_non_drop)]
                 let shape: [usize; $scalar_rank] = concat_arrays!(dims, STensor::sdims());
 
                 let dstrides: [isize; $drank] = elem_view_mut.strides().try_into().unwrap();
@@ -99,6 +97,7 @@ macro_rules! mut_view_is_view {
                 for d in dstrides.iter_mut() {
                     *d *= num_scalars;
                 }
+                #[allow(clippy::drop_non_drop)]
                 let strides = concat_arrays!(dstrides, STensor::strides());
 
                 let ptr = elem_view_mut.as_ptr() as *mut Scalar;

@@ -1,15 +1,10 @@
 use crate::image_view::GenImageView;
-use crate::image_view::ImageSize;
-use crate::image_view::IsImageView;
 use crate::mut_image::GenMutImage;
-
-use sophus_core::linalg::scalar::IsCoreScalar;
+use crate::prelude::*;
+use crate::ImageSize;
 use sophus_core::linalg::SVec;
-use sophus_core::tensor::arc_tensor::ArcTensor;
-use sophus_core::tensor::element::IsStaticTensor;
-use sophus_core::tensor::tensor_view::IsTensorLike;
-use sophus_core::tensor::tensor_view::IsTensorView;
 use sophus_core::tensor::tensor_view::TensorView;
+use sophus_core::tensor::ArcTensor;
 
 /// Image of static tensors with shared ownership
 #[derive(Debug, Clone)]
@@ -249,7 +244,7 @@ macro_rules! arc_image {
                 self.tensor.get([v, u])
             }
 
-            fn image_size(&self) -> super::image_view::ImageSize {
+            fn image_size(&self) -> ImageSize {
                 self.image_view().image_size()
             }
         }

@@ -1,19 +1,16 @@
-use crate::camera::Camera;
 use crate::distortions::affine::AffineDistortionImpl;
 use crate::distortions::kannala_brandt::KannalaBrandtDistortionImpl;
-use crate::projections::perspective::PerspectiveProjection;
-use crate::traits::IsCameraEnum;
-use crate::traits::IsPerspectiveCameraEnum;
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_core::linalg::vector::IsVector;
-use sophus_image::image_view::ImageSize;
+use crate::prelude::*;
+use crate::projections::perspective::PerspectiveProjectionImpl;
+use crate::Camera;
+use sophus_image::ImageSize;
 
 /// Pinhole camera
 pub type PinholeCamera<S, const BATCH: usize> =
-    Camera<S, 0, 4, BATCH, AffineDistortionImpl<S, BATCH>, PerspectiveProjection>;
+    Camera<S, 0, 4, BATCH, AffineDistortionImpl<S, BATCH>, PerspectiveProjectionImpl>;
 /// Kannala-Brandt camera
 pub type KannalaBrandtCamera<S, const BATCH: usize> =
-    Camera<S, 4, 8, BATCH, KannalaBrandtDistortionImpl<S, BATCH>, PerspectiveProjection>;
+    Camera<S, 4, 8, BATCH, KannalaBrandtDistortionImpl<S, BATCH>, PerspectiveProjectionImpl>;
 
 /// Perspective camera enum
 #[derive(Debug, Clone)]

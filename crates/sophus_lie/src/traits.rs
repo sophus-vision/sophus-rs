@@ -1,11 +1,7 @@
-use std::fmt::Debug;
-
-use sophus_core::calculus::manifold::traits::TangentImpl;
-use sophus_core::calculus::manifold::{self};
-use sophus_core::linalg::scalar::IsRealScalar;
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_core::params::HasParams;
+use crate::prelude::*;
+use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
+use std::fmt::Debug;
 
 /// Lie Group implementation trait
 ///
@@ -23,11 +19,7 @@ pub trait IsLieGroupImpl<
     const POINT: usize,
     const AMBIENT: usize,
     const BATCH_SIZE: usize,
->:
-    ParamsImpl<S, PARAMS, BATCH_SIZE>
-    + manifold::traits::TangentImpl<S, DOF, BATCH_SIZE>
-    + Clone
-    + Debug
+>: ParamsImpl<S, PARAMS, BATCH_SIZE> + TangentImpl<S, DOF, BATCH_SIZE> + Clone + Debug
 {
     /// Generic scalar, real scalar, and dual scalar
     type GenG<S2: IsScalar<BATCH_SIZE>>: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>;

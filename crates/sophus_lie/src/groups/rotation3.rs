@@ -1,15 +1,10 @@
 use crate::lie_group::LieGroup;
+use crate::prelude::*;
 use crate::traits::IsLieGroupImpl;
 use crate::traits::IsRealLieFactorGroupImpl;
 use crate::traits::IsRealLieGroupImpl;
-use sophus_core::calculus::manifold::{self};
-use sophus_core::linalg::bool_mask::BoolMask;
-use sophus_core::linalg::matrix::IsMatrix;
-use sophus_core::linalg::scalar::IsRealScalar;
-use sophus_core::linalg::scalar::IsScalar;
 use sophus_core::linalg::vector::cross;
-use sophus_core::linalg::vector::IsVector;
-use sophus_core::params::HasParams;
+use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
 use std::marker::PhantomData;
 
@@ -21,29 +16,20 @@ pub struct Rotation3Impl<S: IsScalar<BATCH>, const BATCH: usize> {
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 4, BATCH> for Rotation3Impl<S, BATCH> {
     fn params_examples() -> Vec<S::Vector<4>> {
-        let mut params = vec![];
-
-        params.push(
+        vec![
             Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.0, 0.0, 0.0]))
                 .params()
                 .clone(),
-        );
-        params.push(
             Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.1, 0.5, -0.1]))
                 .params()
                 .clone(),
-        );
-        params.push(
             Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.0, 0.2, 1.0]))
                 .params()
                 .clone(),
-        );
-        params.push(
             Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([-0.2, 0.0, 0.8]))
                 .params()
                 .clone(),
-        );
-        params
+        ]
     }
 
     fn invalid_params_examples() -> Vec<S::Vector<4>> {
@@ -62,9 +48,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 4, BATCH> for Rotatio
     }
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> manifold::traits::TangentImpl<S, 3, BATCH>
-    for Rotation3Impl<S, BATCH>
-{
+impl<S: IsScalar<BATCH>, const BATCH: usize> TangentImpl<S, 3, BATCH> for Rotation3Impl<S, BATCH> {
     fn tangent_examples() -> Vec<S::Vector<3>> {
         vec![
             S::Vector::<3>::from_f64_array([0.0, 0.0, 0.0]),
@@ -123,7 +107,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsLieGroupImpl<S, 3, 4, 3, 3, BATCH
 
     fn log(params: &S::Vector<4>) -> S::Vector<3> {
         const EPS: f64 = 1e-8;
-        let ivec: S::Vector<3> = params.get_fixed_rows::<3>(1);
+        let ivec: S::Vector<3> = params.get_fixed_subvec::<3>(1);
 
         let squared_n = ivec.squared_norm();
         let w = params.get_elem(0);
@@ -188,7 +172,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsLieGroupImpl<S, 3, 4, 3, 3, BATCH
     }
 
     fn matrix(params: &S::Vector<4>) -> S::Matrix<3, 3> {
-        let ivec = params.get_fixed_rows::<3>(1);
+        let ivec = params.get_fixed_subvec::<3>(1);
         let re = params.get_elem(0);
 
         let unit_x = S::Vector::from_f64_array([1.0, 0.0, 0.0]);
@@ -228,8 +212,8 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsLieGroupImpl<S, 3, 4, 3, 3, BATCH
         let lhs_re = lhs_params.get_elem(0);
         let rhs_re = rhs_params.get_elem(0);
 
-        let lhs_ivec = lhs_params.get_fixed_rows::<3>(1);
-        let rhs_ivec = rhs_params.get_fixed_rows::<3>(1);
+        let lhs_ivec = lhs_params.get_fixed_subvec::<3>(1);
+        let rhs_ivec = rhs_params.get_fixed_subvec::<3>(1);
 
         let re = lhs_re.clone() * rhs_re.clone() - lhs_ivec.clone().dot(rhs_ivec.clone());
         let ivec = rhs_ivec.scaled(lhs_re)
@@ -334,7 +318,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
     }
 
     fn dx_log_x(params: &S::Vector<4>) -> S::Matrix<3, 4> {
-        let ivec: S::Vector<3> = params.get_fixed_rows::<3>(1);
+        let ivec: S::Vector<3> = params.get_fixed_subvec::<3>(1);
         let w = params.get_elem(0);
         let squared_n = ivec.squared_norm();
 
@@ -592,10 +576,11 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
         ];
 
         let set = |i| -> S::Matrix<3, 3> {
-            let t: &S::Matrix<3, 3> = &dt_mat_omega_sq[i];
-            let foo: S::Matrix<3, 3> =
-                t.scaled(c) + mat_omega_sq.scaled(domega_theta.get_elem(i) * dt_c);
-            let mut l_i: S::Matrix<3, 3> = S::Matrix::zeros().select(&near_zero, foo);
+            let dt_mat_omega_sq_i: &S::Matrix<3, 3> = &dt_mat_omega_sq[i];
+            let mut l_i: S::Matrix<3, 3> = S::Matrix::zeros().select(
+                &near_zero,
+                dt_mat_omega_sq_i.scaled(c) + mat_omega_sq.scaled(domega_theta.get_elem(i) * dt_c),
+            );
 
             let pos_idx = dt_mat_omega_pos_idx[i];
             l_i.set_elem(pos_idx, S::from_f64(-0.5) + l_i.get_elem(pos_idx));

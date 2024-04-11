@@ -5,7 +5,6 @@ pub mod line;
 pub mod mesh;
 pub mod point;
 pub mod textured_mesh;
-
 use self::buffers::SceneRenderBuffers;
 use self::interaction::Interaction;
 use self::mesh::MeshRenderer;

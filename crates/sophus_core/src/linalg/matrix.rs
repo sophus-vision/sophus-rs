@@ -1,16 +1,13 @@
-use super::scalar::IsRealScalar;
-use super::scalar::IsSingleScalar;
-use crate::calculus::dual::dual_matrix::DualBatchMatrix;
-use crate::calculus::dual::dual_matrix::DualMatrix;
-use crate::linalg::scalar::IsScalar;
+use crate::calculus::dual::DualBatchMatrix;
+use crate::calculus::dual::DualMatrix;
 use crate::linalg::BatchMatF64;
 use crate::linalg::BatchScalarF64;
 use crate::linalg::BatchVecF64;
 use crate::linalg::MatF64;
 use crate::linalg::VecF64;
+use crate::prelude::*;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
-use num_traits::Zero;
 use std::fmt::Debug;
 use std::ops::Add;
 use std::ops::Index;
@@ -22,7 +19,9 @@ use std::simd::LaneCount;
 use std::simd::Mask;
 use std::simd::SupportedLaneCount;
 
-/// Matrix - either a real (f64) or a dual number matrix
+/// Matrix trait
+///  - either a real (f64) or a dual number matrix
+///  - either a single matrix or a batch matrix
 pub trait IsMatrix<
     S: IsScalar<BATCH_SIZE>,
     const ROWS: usize,
@@ -40,40 +39,47 @@ pub trait IsMatrix<
     + AbsDiffEq<Epsilon = f64>
     + RelativeEq<Epsilon = f64>
 {
-    /// create 1x2 block matrix
+    /// creates matrix from a left and right block columns
     fn block_mat1x2<const C0: usize, const C1: usize>(
         left_col: S::Matrix<ROWS, C0>,
         righ_col: S::Matrix<ROWS, C1>,
     ) -> Self;
 
-    fn set_elem(&mut self, idx: [usize; 2], val: S);
-
-    /// create 2x1 block matrix
+    /// creates matrix from a top and bottom block rows
     fn block_mat2x1<const R0: usize, const R1: usize>(
         top_row: S::Matrix<R0, COLS>,
         bot_row: S::Matrix<R1, COLS>,
     ) -> Self;
 
-    /// create 2x2 block matrix
+    /// creates matrix from a 2x2 block of matrices
     fn block_mat2x2<const R0: usize, const R1: usize, const C0: usize, const C1: usize>(
         top_row: (S::Matrix<R0, C0>, S::Matrix<R0, C1>),
         bot_row: (S::Matrix<R1, C0>, S::Matrix<R1, C1>),
     ) -> Self;
 
-    fn select(self, mask: &S::Mask, other: Self) -> Self;
-
-    /// create from 2d array
+    /// creates matrix from a 2d array of scalars
     fn from_array2(vals: [[S; COLS]; ROWS]) -> Self;
 
-    /// create from constant 2d array
-    fn from_real_array2(vals: [[S::RealScalar; COLS]; ROWS]) -> Self;
+    /// creates matrix with all real elements (and lanes) set to the given value
+    ///
+    /// (for dual numbers, the infinitesimal part is set to zero)
+    fn from_f64(val: f64) -> Self;
 
-    /// create from constant 2d array
+    /// creates matrix from a 2d array of real values
+    ///
+    ///  - all lanes are set to the same value
+    ///  - for dual numbers, the infinitesimal part is set to zero
     fn from_f64_array2(vals: [[f64; COLS]; ROWS]) -> Self;
+
+    /// creates matrix from a 2d array of real scalars
+    ///
+    /// (for dual numbers, the infinitesimal part is set to zero)
+    fn from_real_scalar_array2(vals: [[S::RealScalar; COLS]; ROWS]) -> Self;
 
     /// create a constant matrix
     fn from_real_matrix(val: S::RealMatrix<ROWS, COLS>) -> Self;
 
+    /// create a constant scalar
     fn from_scalar(val: S) -> Self;
 
     /// extract column vector
@@ -92,29 +98,39 @@ pub trait IsMatrix<
         start_c: usize,
     ) -> S::Matrix<R, C>;
 
-    fn to_dual(self) -> S::DualMatrix<ROWS, COLS>;
-
     /// create an identity matrix
     fn identity() -> Self;
 
     /// matrix multiplication
     fn mat_mul<const C2: usize>(&self, other: S::Matrix<COLS, C2>) -> S::Matrix<ROWS, C2>;
 
-    /// return the real part
+    /// ones
+    fn ones() -> Self {
+        Self::from_f64(1.0)
+    }
+
+    /// Return a real matrix
     fn real_matrix(&self) -> &S::RealMatrix<ROWS, COLS>;
 
     /// return scaled matrix
     fn scaled(&self, v: S) -> Self;
 
-    /// create a constant scalar
-    fn from_f64(val: f64) -> Self;
+    /// Returns self if mask is true, otherwise returns other
+    ///
+    /// For batch matrices, this is a lane-wise operation
+    fn select(self, mask: &S::Mask, other: Self) -> Self;
 
+    /// set i-th element
+    fn set_elem(&mut self, idx: [usize; 2], val: S);
+
+    /// set column vectors
     fn set_col_vec(&mut self, c: usize, v: S::Vector<ROWS>);
 
-    /// ones
-    fn ones() -> Self {
-        Self::from_f64(1.0)
-    }
+    /// Return dual matrix
+    ///
+    /// If self is a real matrix, this will return a dual matrix with the infinitesimal part set to
+    /// zero: (self, 0ϵ)
+    fn to_dual(self) -> S::DualMatrix<ROWS, COLS>;
 
     /// zeros
     fn zeros() -> Self {
@@ -122,7 +138,7 @@ pub trait IsMatrix<
     }
 }
 
-/// is real vector like
+/// Is real matrix?
 pub trait IsRealMatrix<
     S: IsRealScalar<BATCH_SIZE> + IsScalar<BATCH_SIZE>,
     const ROWS: usize,
@@ -136,7 +152,7 @@ pub trait IsRealMatrix<
 {
 }
 
-/// Matrix - either a real (f64) or a dual number matrix
+/// Is single matrix? (not batch)
 pub trait IsSingleMatrix<S: IsSingleScalar, const ROWS: usize, const COLS: usize>:
     IsMatrix<S, ROWS, COLS, 1> + Mul<S::SingleVector<COLS>, Output = S::SingleVector<ROWS>>
 {
@@ -166,7 +182,7 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF
         m
     }
 
-    fn from_real_array2(vals: [[f64; COLS]; ROWS]) -> Self {
+    fn from_real_scalar_array2(vals: [[f64; COLS]; ROWS]) -> Self {
         let mut m = MatF64::<ROWS, COLS>::zeros();
         for c in 0..COLS {
             for r in 0..ROWS {
@@ -197,7 +213,7 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF
         bot_row: MatF64<R1, COLS>,
     ) -> Self {
         assert_eq!(ROWS, R0 + R1);
-        let mut m = Self::zero();
+        let mut m = Self::zeros();
 
         m.fixed_view_mut::<R0, COLS>(0, 0).copy_from(&top_row);
         m.fixed_view_mut::<R1, COLS>(R0, 0).copy_from(&bot_row);
@@ -210,7 +226,7 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF
     ) -> Self {
         assert_eq!(ROWS, R0 + R1);
         assert_eq!(COLS, C0 + C1);
-        let mut m = Self::zero();
+        let mut m = Self::zeros();
 
         m.fixed_view_mut::<R0, C0>(0, 0).copy_from(&top_row.0);
         m.fixed_view_mut::<R0, C1>(0, C0).copy_from(&top_row.1);
@@ -225,7 +241,7 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF
         righ_col: MatF64<ROWS, C1>,
     ) -> Self {
         assert_eq!(COLS, C0 + C1);
-        let mut m = Self::zero();
+        let mut m = Self::zeros();
 
         m.fixed_view_mut::<ROWS, C0>(0, 0).copy_from(&left_col);
         m.fixed_view_mut::<ROWS, C1>(0, C0).copy_from(&righ_col);
@@ -317,7 +333,7 @@ where
         Self::from_fn(|r, c| vals[r][c])
     }
 
-    fn from_real_array2(vals: [[BatchScalarF64<BATCH>; COLS]; ROWS]) -> Self {
+    fn from_real_scalar_array2(vals: [[BatchScalarF64<BATCH>; COLS]; ROWS]) -> Self {
         Self::from_fn(|r, c| vals[r][c])
     }
 

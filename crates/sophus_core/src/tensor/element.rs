@@ -1,8 +1,7 @@
-use crate::linalg::scalar::IsCoreScalar;
 use crate::linalg::scalar::NumberCategory;
 use crate::linalg::SMat;
 use crate::linalg::SVec;
-
+use crate::prelude::*;
 use std::fmt::Debug;
 pub use typenum::generic_const_mappings::Const;
 
@@ -14,11 +13,6 @@ pub trait IsStaticTensor<
     const COLS: usize,
 >: Clone + Debug + num_traits::Zero
 {
-    /// Set zeros
-    fn zeros() -> Self {
-        Self::from_slice(&vec![Scalar::zero(); Self::num_scalars()])
-    }
-
     /// Returns ith scalar element
     fn scalar(&self, idx: [usize; SRANK]) -> &Scalar;
 

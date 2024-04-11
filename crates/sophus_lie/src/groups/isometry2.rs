@@ -1,9 +1,8 @@
-use super::rotation2::Rotation2Impl;
-use super::translation_product_product::TranslationProductGroupImpl;
-use crate::groups::rotation2::Rotation2;
+use crate::groups::rotation2::Rotation2Impl;
+use crate::groups::translation_product_product::TranslationProductGroupImpl;
 use crate::lie_group::LieGroup;
-use crate::traits::IsTranslationProductGroup;
-use sophus_core::linalg::scalar::IsScalar;
+use crate::prelude::*;
+use crate::Rotation2;
 
 /// 2D isometry group implementation struct - SE(2)
 pub type Isometry2Impl<S, const BATCH: usize> =

@@ -1,7 +1,7 @@
 use crate::block::BlockVector;
 use crate::block::NewBlockMatrix;
+use crate::prelude::*;
 use crate::robust_kernel;
-use crate::robust_kernel::IsRobustKernel;
 use crate::variables::VarKind;
 use sophus_core::linalg::MatF64;
 use sophus_core::linalg::VecF64;
@@ -161,10 +161,10 @@ impl<
     ) {
         if idx == j {
             if let Some(self_0) = self.0 {
-                if precision_mat.is_none() {
-                    hessian.set_block(i, j, lhs.transpose() * self_0);
+                if let Some(precision) = precision_mat {
+                    hessian.set_block(i, j, lhs.transpose() * precision * self_0);
                 } else {
-                    hessian.set_block(i, j, lhs.transpose() * precision_mat.unwrap() * self_0);
+                    hessian.set_block(i, j, lhs.transpose() * self_0);
                 }
             }
         } else {

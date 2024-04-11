@@ -1,13 +1,12 @@
 use crate::lie_group::LieGroup;
+use crate::prelude::*;
 use crate::traits::IsLieGroupImpl;
-use sophus_core::calculus::manifold::traits::IsManifold;
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_core::params::HasParams;
 use sophus_core::params::ParamsImpl;
 use std::fmt::Debug;
 
+/// Left group manifold
 #[derive(Debug, Clone)]
-struct LeftGroupManifold<
+pub struct LeftGroupManifold<
     S: IsScalar<BATCH_SIZE>,
     const DOF: usize,
     const PARAMS: usize,

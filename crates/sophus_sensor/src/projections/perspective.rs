@@ -7,9 +7,9 @@ use sophus_core::linalg::vector::IsVector;
 ///
 /// Projects a 3D point in the camera frame to a 2D point in the z=1 plane
 #[derive(Debug, Clone, Copy)]
-pub struct PerspectiveProjection;
+pub struct PerspectiveProjectionImpl;
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> IsProjection<S, BATCH> for PerspectiveProjection {
+impl<S: IsScalar<BATCH>, const BATCH: usize> IsProjection<S, BATCH> for PerspectiveProjectionImpl {
     fn proj(point_in_camera: &S::Vector<3>) -> S::Vector<2> {
         S::Vector::<2>::from_array([
             point_in_camera.get_elem(0) / point_in_camera.get_elem(2),

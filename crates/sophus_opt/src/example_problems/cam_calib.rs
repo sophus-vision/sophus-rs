@@ -6,18 +6,17 @@ use crate::example_problems::cost_fn::reprojection::ReprojTermSignature;
 use crate::example_problems::cost_fn::reprojection::ReprojectionCostFn;
 use crate::nlls::optimize;
 use crate::nlls::OptParams;
+use crate::prelude::*;
 use crate::robust_kernel::HuberKernel;
 use crate::variables::VarFamily;
 use crate::variables::VarKind;
 use crate::variables::VarPoolBuilder;
 use sophus_core::linalg::MatF64;
 use sophus_core::linalg::VecF64;
-use sophus_image::image_view::ImageSize;
-use sophus_lie::groups::isometry3::Isometry3;
-use sophus_lie::groups::rotation3::Rotation3;
-use sophus_sensor::camera_enum::perspective_camera::PinholeCamera;
-
-use sophus_lie::traits::IsTranslationProductGroup;
+use sophus_image::ImageSize;
+use sophus_lie::Isometry3;
+use sophus_lie::Rotation3;
+use sophus_sensor::PinholeCamera;
 use std::collections::HashMap;
 
 /// Camera calibration problem
@@ -234,8 +233,8 @@ impl CamCalibProblem {
         let up_var_pool = optimize(
             var_pool,
             vec![
-                CostFn::new(priors.clone(), Isometry3PriorCostFn {}),
-                CostFn::new(reproj_obs.clone(), ReprojectionCostFn {}),
+                CostFn::new_box(priors.clone(), Isometry3PriorCostFn {}),
+                CostFn::new_box(reproj_obs.clone(), ReprojectionCostFn {}),
             ],
             OptParams {
                 num_iter: 5,

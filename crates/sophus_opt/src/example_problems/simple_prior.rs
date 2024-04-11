@@ -6,14 +6,14 @@ use crate::example_problems::cost_fn::isometry3_prior::Isometry3PriorCostFn;
 use crate::example_problems::cost_fn::isometry3_prior::Isometry3PriorTermSignature;
 use crate::nlls::optimize;
 use crate::nlls::OptParams;
+use crate::prelude::*;
 use crate::variables::VarFamily;
 use crate::variables::VarKind;
 use crate::variables::VarPoolBuilder;
-use sophus_core::linalg::vector::IsVector;
 use sophus_core::linalg::MatF64;
 use sophus_core::linalg::VecF64;
-use sophus_lie::groups::isometry2::Isometry2;
-use sophus_lie::groups::isometry3::Isometry3;
+use sophus_lie::Isometry2;
+use sophus_lie::Isometry3;
 
 /// Simple 2D isometry prior problem
 pub struct SimpleIso2PriorProblem {
@@ -65,7 +65,7 @@ impl SimpleIso2PriorProblem {
 
         let up_families = optimize(
             families,
-            vec![CostFn::new(
+            vec![CostFn::new_box(
                 obs_pose_a_from_pose_b_poses.clone(),
                 Isometry2PriorCostFn {},
             )],
@@ -134,7 +134,7 @@ impl SimpleIso3PriorProblem {
 
         let up_families = optimize(
             families,
-            vec![CostFn::new(
+            vec![CostFn::new_box(
                 obs_pose_a_from_pose_b_poses.clone(),
                 Isometry3PriorCostFn {},
             )],

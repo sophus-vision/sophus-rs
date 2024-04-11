@@ -8,7 +8,8 @@ pub use hollywood::core::*;
 use hollywood::macros::*;
 use nalgebra::SVector;
 use sophus::image::arc_image::ArcImage4F32;
-use sophus::image::image_view::ImageSize;
+use sophus::image::ImageSize;
+use sophus::prelude::*;
 use sophus::viewer::actor::run_viewer_on_main_thread;
 use sophus::viewer::actor::ViewerBuilder;
 use sophus::viewer::actor::ViewerCamera;
@@ -16,11 +17,9 @@ use sophus::viewer::actor::ViewerConfig;
 use sophus::viewer::renderable::*;
 use sophus::viewer::scene_renderer::interaction::WgpuClippingPlanes;
 use sophus::viewer::SimpleViewer;
-use sophus_core::linalg::vector::IsVector;
 use sophus_core::linalg::VecF64;
-use sophus_lie::groups::isometry3::Isometry3;
-use sophus_lie::traits::IsTranslationProductGroup;
-use sophus_sensor::dyn_camera::DynCamera;
+use sophus_lie::Isometry3;
+use sophus_sensor::DynCamera;
 
 #[actor(ContentGeneratorMessage)]
 type ContentGenerator = Actor<

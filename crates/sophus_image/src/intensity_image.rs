@@ -12,7 +12,6 @@ use crate::arc_image::ArcImageF32;
 use crate::arc_image::ArcImageR;
 use crate::arc_image::ArcImageU16;
 use crate::arc_image::ArcImageU8;
-use crate::image_view::ImageSize;
 use crate::image_view::ImageView2F32;
 use crate::image_view::ImageView2U16;
 use crate::image_view::ImageView2U8;
@@ -25,7 +24,6 @@ use crate::image_view::ImageView4U8;
 use crate::image_view::ImageViewF32;
 use crate::image_view::ImageViewU16;
 use crate::image_view::ImageViewU8;
-use crate::image_view::IsImageView;
 use crate::mut_image::MutImage;
 use crate::mut_image::MutImage2F32;
 use crate::mut_image::MutImage2U16;
@@ -40,10 +38,9 @@ use crate::mut_image::MutImageF32;
 use crate::mut_image::MutImageR;
 use crate::mut_image::MutImageU16;
 use crate::mut_image::MutImageU8;
-use sophus_core::linalg::scalar::IsCoreScalar;
-
+use crate::prelude::*;
+use crate::ImageSize;
 use sophus_core::linalg::SVec;
-use sophus_core::tensor::element::IsStaticTensor;
 
 /// dynamic mutable intensity image of unsigned integer values
 pub enum DynIntensityMutImageU {
@@ -221,32 +218,34 @@ impl DynIntensityArcImage {
     pub fn to_grayscale_u8(&self) -> ArcImageU8 {
         match self {
             DynIntensityArcImage::GrayscaleU8(image) => image.clone(),
-            DynIntensityArcImage::GrayscaleAlphaU8(image) => IntensityArcImage::to_grayscale(image),
-            DynIntensityArcImage::RgbU8(image) => IntensityArcImage::to_grayscale(image),
-            DynIntensityArcImage::RgbaU8(image) => IntensityArcImage::to_grayscale(image),
+            DynIntensityArcImage::GrayscaleAlphaU8(image) => {
+                IsIntensityArcImage::to_grayscale(image)
+            }
+            DynIntensityArcImage::RgbU8(image) => IsIntensityArcImage::to_grayscale(image),
+            DynIntensityArcImage::RgbaU8(image) => IsIntensityArcImage::to_grayscale(image),
             DynIntensityArcImage::GrayscaleU16(image) => {
-                IntensityArcImage::cast_u8(&IntensityArcImage::to_grayscale(image))
+                IsIntensityArcImage::cast_u8(&IsIntensityArcImage::to_grayscale(image))
             }
             DynIntensityArcImage::GrayscaleAlphaU16(image) => {
-                IntensityArcImage::cast_u8(&IntensityArcImage::to_grayscale(image))
+                IsIntensityArcImage::cast_u8(&IsIntensityArcImage::to_grayscale(image))
             }
             DynIntensityArcImage::RgbU16(image) => {
-                IntensityArcImage::cast_u8(&IntensityArcImage::to_grayscale(image))
+                IsIntensityArcImage::cast_u8(&IsIntensityArcImage::to_grayscale(image))
             }
             DynIntensityArcImage::RgbaU16(image) => {
-                IntensityArcImage::cast_u8(&IntensityArcImage::to_grayscale(image))
+                IsIntensityArcImage::cast_u8(&IsIntensityArcImage::to_grayscale(image))
             }
             DynIntensityArcImage::GrayscaleF32(image) => {
-                IntensityArcImage::cast_u8(&IntensityArcImage::to_grayscale(image))
+                IsIntensityArcImage::cast_u8(&IsIntensityArcImage::to_grayscale(image))
             }
             DynIntensityArcImage::GrayscaleAlphaF32(image) => {
-                IntensityArcImage::cast_u8(&IntensityArcImage::to_grayscale(image))
+                IsIntensityArcImage::cast_u8(&IsIntensityArcImage::to_grayscale(image))
             }
             DynIntensityArcImage::RgbF32(image) => {
-                IntensityArcImage::cast_u8(&IntensityArcImage::to_grayscale(image))
+                IsIntensityArcImage::cast_u8(&IsIntensityArcImage::to_grayscale(image))
             }
             DynIntensityArcImage::RgbaF32(image) => {
-                IntensityArcImage::cast_u8(&IntensityArcImage::to_grayscale(image))
+                IsIntensityArcImage::cast_u8(&IsIntensityArcImage::to_grayscale(image))
             }
         }
     }
@@ -296,7 +295,7 @@ pub enum DynIntensityImageView<'a> {
 ///    If the f32 is outside this range, conversion results may be surprising.
 ///
 /// These are image type which typically used for computer vision and graphics applications.
-pub trait IntensityMutImage<
+pub trait IsIntensityMutImage<
     const TOTAL_RANK: usize,
     const SRANK: usize,
     Scalar: IsCoreScalar + 'static,
@@ -346,7 +345,7 @@ pub trait IntensityMutImage<
     fn try_into_dyn_image_view_u(img: Self) -> Option<DynIntensityMutImageU>;
 }
 
-impl<'a> IntensityMutImage<2, 0, u8, u8, 1, 1> for MutImageU8 {
+impl IsIntensityMutImage<2, 0, u8, u8, 1, 1> for MutImageU8 {
     type Pixel<S: IsCoreScalar> = S;
 
     fn pixel_to_grayscale(pixel: &u8) -> u8 {
@@ -398,7 +397,7 @@ impl<'a> IntensityMutImage<2, 0, u8, u8, 1, 1> for MutImageU8 {
     }
 }
 
-impl IntensityMutImage<2, 0, u16, u16, 1, 1> for MutImageU16 {
+impl IsIntensityMutImage<2, 0, u16, u16, 1, 1> for MutImageU16 {
     type Pixel<S: IsCoreScalar> = S;
 
     fn pixel_to_grayscale(pixel: &u16) -> u16 {
@@ -450,7 +449,7 @@ impl IntensityMutImage<2, 0, u16, u16, 1, 1> for MutImageU16 {
     }
 }
 
-impl IntensityMutImage<2, 0, f32, f32, 1, 1> for MutImageF32 {
+impl IsIntensityMutImage<2, 0, f32, f32, 1, 1> for MutImageF32 {
     type Pixel<S: IsCoreScalar> = S;
 
     fn pixel_to_grayscale(pixel: &f32) -> f32 {
@@ -502,7 +501,7 @@ impl IntensityMutImage<2, 0, f32, f32, 1, 1> for MutImageF32 {
     }
 }
 
-impl IntensityMutImage<3, 1, u8, SVec<u8, 4>, 4, 1> for MutImage4U8 {
+impl IsIntensityMutImage<3, 1, u8, SVec<u8, 4>, 4, 1> for MutImage4U8 {
     type Pixel<S: IsCoreScalar> = SVec<S, 4>;
 
     fn pixel_to_grayscale(pixel: &SVec<u8, 4>) -> u8 {
@@ -562,7 +561,7 @@ impl IntensityMutImage<3, 1, u8, SVec<u8, 4>, 4, 1> for MutImage4U8 {
 }
 
 /// Trait for "intensity" images with shared ownership.
-pub trait IntensityArcImage<
+pub trait IsIntensityArcImage<
     const TOTAL_RANK: usize,
     const SRANK: usize,
     Scalar: IsCoreScalar + 'static,
@@ -615,7 +614,7 @@ pub trait IntensityArcImage<
     fn try_into_dyn_image_view_u(img: &Self) -> Option<DynIntensityArcImageU>;
 }
 
-impl IntensityArcImage<2, 0, u8, u8, 1, 1> for ArcImageU8 {
+impl IsIntensityArcImage<2, 0, u8, u8, 1, 1> for ArcImageU8 {
     type Pixel<S: IsCoreScalar> = S;
 
     fn pixel_to_grayscale(pixel: &u8) -> u8 {
@@ -667,7 +666,7 @@ impl IntensityArcImage<2, 0, u8, u8, 1, 1> for ArcImageU8 {
     }
 }
 
-impl IntensityArcImage<2, 0, u16, u16, 1, 1> for ArcImageU16 {
+impl IsIntensityArcImage<2, 0, u16, u16, 1, 1> for ArcImageU16 {
     type Pixel<S: IsCoreScalar> = S;
 
     fn pixel_to_grayscale(pixel: &u16) -> u16 {
@@ -721,7 +720,7 @@ impl IntensityArcImage<2, 0, u16, u16, 1, 1> for ArcImageU16 {
     }
 }
 
-impl IntensityArcImage<2, 0, f32, f32, 1, 1> for ArcImageF32 {
+impl IsIntensityArcImage<2, 0, f32, f32, 1, 1> for ArcImageF32 {
     type Pixel<S: IsCoreScalar> = S;
 
     fn pixel_to_grayscale(pixel: &f32) -> f32 {
@@ -773,7 +772,7 @@ impl IntensityArcImage<2, 0, f32, f32, 1, 1> for ArcImageF32 {
     }
 }
 
-impl IntensityArcImage<3, 1, u8, SVec<u8, 2>, 2, 1> for ArcImage2U8 {
+impl IsIntensityArcImage<3, 1, u8, SVec<u8, 2>, 2, 1> for ArcImage2U8 {
     type Pixel<S: IsCoreScalar> = SVec<S, 2>;
 
     fn pixel_to_grayscale(pixel: &SVec<u8, 2>) -> u8 {
@@ -827,7 +826,7 @@ impl IntensityArcImage<3, 1, u8, SVec<u8, 2>, 2, 1> for ArcImage2U8 {
     }
 }
 
-impl IntensityArcImage<3, 1, u8, SVec<u8, 3>, 3, 1> for ArcImage3U8 {
+impl IsIntensityArcImage<3, 1, u8, SVec<u8, 3>, 3, 1> for ArcImage3U8 {
     type Pixel<S: IsCoreScalar> = SVec<S, 3>;
 
     fn pixel_to_grayscale(pixel: &SVec<u8, 3>) -> u8 {
@@ -885,7 +884,7 @@ impl IntensityArcImage<3, 1, u8, SVec<u8, 3>, 3, 1> for ArcImage3U8 {
     }
 }
 
-impl IntensityArcImage<3, 1, u8, SVec<u8, 4>, 4, 1> for ArcImage4U8 {
+impl IsIntensityArcImage<3, 1, u8, SVec<u8, 4>, 4, 1> for ArcImage4U8 {
     type Pixel<S: IsCoreScalar> = SVec<S, 4>;
 
     fn pixel_to_grayscale(pixel: &SVec<u8, 4>) -> u8 {
@@ -944,7 +943,7 @@ impl IntensityArcImage<3, 1, u8, SVec<u8, 4>, 4, 1> for ArcImage4U8 {
     }
 }
 
-impl IntensityArcImage<3, 1, u16, SVec<u16, 2>, 2, 1> for ArcImage2U16 {
+impl IsIntensityArcImage<3, 1, u16, SVec<u16, 2>, 2, 1> for ArcImage2U16 {
     type Pixel<S: IsCoreScalar> = SVec<S, 2>;
 
     fn pixel_to_grayscale(pixel: &SVec<u16, 2>) -> u16 {
@@ -1002,7 +1001,7 @@ impl IntensityArcImage<3, 1, u16, SVec<u16, 2>, 2, 1> for ArcImage2U16 {
     }
 }
 
-impl IntensityArcImage<3, 1, u16, SVec<u16, 3>, 3, 1> for ArcImage3U16 {
+impl IsIntensityArcImage<3, 1, u16, SVec<u16, 3>, 3, 1> for ArcImage3U16 {
     type Pixel<S: IsCoreScalar> = SVec<S, 3>;
 
     fn pixel_to_grayscale(pixel: &SVec<u16, 3>) -> u16 {
@@ -1065,7 +1064,7 @@ impl IntensityArcImage<3, 1, u16, SVec<u16, 3>, 3, 1> for ArcImage3U16 {
     }
 }
 
-impl IntensityArcImage<3, 1, u16, SVec<u16, 4>, 4, 1> for ArcImage4U16 {
+impl IsIntensityArcImage<3, 1, u16, SVec<u16, 4>, 4, 1> for ArcImage4U16 {
     type Pixel<S: IsCoreScalar> = SVec<S, 4>;
 
     fn pixel_to_grayscale(pixel: &SVec<u16, 4>) -> u16 {
@@ -1130,7 +1129,7 @@ impl IntensityArcImage<3, 1, u16, SVec<u16, 4>, 4, 1> for ArcImage4U16 {
     }
 }
 
-impl IntensityArcImage<3, 1, f32, SVec<f32, 2>, 2, 1> for ArcImage2F32 {
+impl IsIntensityArcImage<3, 1, f32, SVec<f32, 2>, 2, 1> for ArcImage2F32 {
     type Pixel<S: IsCoreScalar> = SVec<S, 2>;
 
     fn pixel_to_grayscale(pixel: &SVec<f32, 2>) -> f32 {
@@ -1191,7 +1190,7 @@ impl IntensityArcImage<3, 1, f32, SVec<f32, 2>, 2, 1> for ArcImage2F32 {
     }
 }
 
-impl IntensityArcImage<3, 1, f32, SVec<f32, 3>, 3, 1> for ArcImage3F32 {
+impl IsIntensityArcImage<3, 1, f32, SVec<f32, 3>, 3, 1> for ArcImage3F32 {
     type Pixel<S: IsCoreScalar> = SVec<S, 3>;
 
     fn pixel_to_grayscale(pixel: &SVec<f32, 3>) -> f32 {
@@ -1254,7 +1253,7 @@ impl IntensityArcImage<3, 1, f32, SVec<f32, 3>, 3, 1> for ArcImage3F32 {
     }
 }
 
-impl IntensityArcImage<3, 1, f32, SVec<f32, 4>, 4, 1> for ArcImage4F32 {
+impl IsIntensityArcImage<3, 1, f32, SVec<f32, 4>, 4, 1> for ArcImage4F32 {
     type Pixel<S: IsCoreScalar> = SVec<S, 4>;
 
     fn pixel_to_grayscale(pixel: &SVec<f32, 4>) -> f32 {
@@ -1320,7 +1319,7 @@ impl IntensityArcImage<3, 1, f32, SVec<f32, 4>, 4, 1> for ArcImage4F32 {
 }
 
 /// Intensity image view of unsigned integer values.
-pub trait IntensityViewImageU<'a> {
+pub trait IsIntensityViewImageU<'a> {
     /// Color type of the image
     const COLOR_TYPE: png::ColorType;
     /// Bit depth of the image
@@ -1333,7 +1332,7 @@ pub trait IntensityViewImageU<'a> {
     fn raw_u8_slice(&self) -> &[u8];
 }
 
-impl<'a> IntensityViewImageU<'a> for ImageViewU8<'a> {
+impl<'a> IsIntensityViewImageU<'a> for ImageViewU8<'a> {
     const COLOR_TYPE: png::ColorType = png::ColorType::Grayscale;
     const BIT_DEPTH: png::BitDepth = png::BitDepth::Eight;
 
@@ -1346,7 +1345,7 @@ impl<'a> IntensityViewImageU<'a> for ImageViewU8<'a> {
     }
 }
 
-impl<'a> IntensityViewImageU<'a> for ImageView2U8<'a> {
+impl<'a> IsIntensityViewImageU<'a> for ImageView2U8<'a> {
     const COLOR_TYPE: png::ColorType = png::ColorType::GrayscaleAlpha;
     const BIT_DEPTH: png::BitDepth = png::BitDepth::Eight;
 
@@ -1359,7 +1358,7 @@ impl<'a> IntensityViewImageU<'a> for ImageView2U8<'a> {
     }
 }
 
-impl<'a> IntensityViewImageU<'a> for ImageView3U8<'a> {
+impl<'a> IsIntensityViewImageU<'a> for ImageView3U8<'a> {
     const COLOR_TYPE: png::ColorType = png::ColorType::Rgb;
     const BIT_DEPTH: png::BitDepth = png::BitDepth::Eight;
 
@@ -1372,7 +1371,7 @@ impl<'a> IntensityViewImageU<'a> for ImageView3U8<'a> {
     }
 }
 
-impl<'a> IntensityViewImageU<'a> for ImageView4U8<'a> {
+impl<'a> IsIntensityViewImageU<'a> for ImageView4U8<'a> {
     const COLOR_TYPE: png::ColorType = png::ColorType::Rgba;
     const BIT_DEPTH: png::BitDepth = png::BitDepth::Eight;
 
@@ -1385,7 +1384,7 @@ impl<'a> IntensityViewImageU<'a> for ImageView4U8<'a> {
     }
 }
 
-impl<'a> IntensityViewImageU<'a> for ImageViewU16<'a> {
+impl<'a> IsIntensityViewImageU<'a> for ImageViewU16<'a> {
     const COLOR_TYPE: png::ColorType = png::ColorType::Grayscale;
     const BIT_DEPTH: png::BitDepth = png::BitDepth::Sixteen;
 
@@ -1398,7 +1397,7 @@ impl<'a> IntensityViewImageU<'a> for ImageViewU16<'a> {
     }
 }
 
-impl<'a> IntensityViewImageU<'a> for ImageView2U16<'a> {
+impl<'a> IsIntensityViewImageU<'a> for ImageView2U16<'a> {
     const COLOR_TYPE: png::ColorType = png::ColorType::GrayscaleAlpha;
     const BIT_DEPTH: png::BitDepth = png::BitDepth::Sixteen;
 
@@ -1411,7 +1410,7 @@ impl<'a> IntensityViewImageU<'a> for ImageView2U16<'a> {
     }
 }
 
-impl<'a> IntensityViewImageU<'a> for ImageView3U16<'a> {
+impl<'a> IsIntensityViewImageU<'a> for ImageView3U16<'a> {
     const COLOR_TYPE: png::ColorType = png::ColorType::Rgb;
     const BIT_DEPTH: png::BitDepth = png::BitDepth::Sixteen;
 
@@ -1424,7 +1423,7 @@ impl<'a> IntensityViewImageU<'a> for ImageView3U16<'a> {
     }
 }
 
-impl<'a> IntensityViewImageU<'a> for ImageView4U16<'a> {
+impl<'a> IsIntensityViewImageU<'a> for ImageView4U16<'a> {
     const COLOR_TYPE: png::ColorType = png::ColorType::Rgba;
     const BIT_DEPTH: png::BitDepth = png::BitDepth::Sixteen;
 

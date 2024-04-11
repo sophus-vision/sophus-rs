@@ -1,11 +1,11 @@
 use crate::cost_fn::IsResidualFn;
 use crate::cost_fn::IsTermSignature;
+use crate::prelude::*;
 use crate::robust_kernel;
 use crate::term::MakeTerm;
 use crate::term::Term;
 use crate::variables::VarKind;
-use sophus_core::linalg::scalar::IsSingleScalar;
-use sophus_lie::groups::isometry2::Isometry2;
+use sophus_lie::Isometry2;
 
 /// residual function for a pose-pose constraint
 pub fn res_fn<S: IsSingleScalar>(

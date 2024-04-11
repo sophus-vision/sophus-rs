@@ -1,7 +1,6 @@
 use crate::viewer::renderable::Line2;
 use crate::viewer::LineVertex2;
 use crate::viewer::ViewerRenderState;
-
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use nalgebra::SVector;
 use std::collections::BTreeMap;

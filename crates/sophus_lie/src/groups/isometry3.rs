@@ -1,9 +1,8 @@
-use super::rotation3::Rotation3;
 use super::rotation3::Rotation3Impl;
 use super::translation_product_product::TranslationProductGroupImpl;
 use crate::lie_group::LieGroup;
-use crate::traits::IsTranslationProductGroup;
-use sophus_core::linalg::scalar::IsScalar;
+use crate::prelude::*;
+use crate::Rotation3;
 
 /// 3D isometry group implementation struct - SE(3)
 pub type Isometry3Impl<S, const BATCH: usize> =

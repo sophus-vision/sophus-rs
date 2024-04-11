@@ -1,14 +1,10 @@
 use crate::lie_group::LieGroup;
+use crate::prelude::*;
 use crate::traits::IsLieFactorGroupImpl;
 use crate::traits::IsLieGroupImpl;
 use crate::traits::IsRealLieFactorGroupImpl;
 use crate::traits::IsRealLieGroupImpl;
-use sophus_core::calculus::manifold::{self};
-use sophus_core::linalg::matrix::IsMatrix;
-use sophus_core::linalg::scalar::IsRealScalar;
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_core::linalg::vector::IsVector;
-use sophus_core::params::HasParams;
+use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
 use std::marker::PhantomData;
 
@@ -52,8 +48,8 @@ impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> ParamsImpl<S, 2, BATCH_SI
     }
 }
 
-impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize>
-    manifold::traits::TangentImpl<S, 1, BATCH_SIZE> for Rotation2Impl<S, BATCH_SIZE>
+impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> TangentImpl<S, 1, BATCH_SIZE>
+    for Rotation2Impl<S, BATCH_SIZE>
 {
     fn tangent_examples() -> Vec<S::Vector<1>> {
         vec![
@@ -154,7 +150,7 @@ impl<S: IsRealScalar<BATCH_SIZE>, const BATCH_SIZE: usize>
     IsRealLieGroupImpl<S, 1, 2, 2, 2, BATCH_SIZE> for Rotation2Impl<S, BATCH_SIZE>
 {
     fn dx_exp_x_at_0() -> S::Matrix<2, 1> {
-        S::Matrix::from_real_array2([[S::RealScalar::zeros()], [S::RealScalar::ones()]])
+        S::Matrix::from_real_scalar_array2([[S::RealScalar::zeros()], [S::RealScalar::ones()]])
     }
 
     fn dx_exp_x_times_point_at_0(point: S::Vector<2>) -> S::Matrix<2, 1> {
@@ -182,7 +178,7 @@ impl<S: IsRealScalar<BATCH_SIZE>, const BATCH_SIZE: usize>
     }
 
     fn has_shortest_path_ambiguity(params: &S::Vector<2>) -> S::Mask {
-        (Self::log(params).vector().get_elem(0).abs() - S::from_f64(std::f64::consts::PI))
+        (Self::log(params).get_elem(0).abs() - S::from_f64(std::f64::consts::PI))
             .abs()
             .less_equal(&S::from_f64(1e-5))
     }
