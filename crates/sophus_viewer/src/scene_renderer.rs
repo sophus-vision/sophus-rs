@@ -1,9 +1,22 @@
+/// buffers for rendering a scene
 pub mod buffers;
+
+/// depth renderer
 pub mod depth_renderer;
+
+/// interaction state
 pub mod interaction;
+
+/// line renderer
 pub mod line;
+
+/// mesh renderer
 pub mod mesh;
+
+/// point renderer
 pub mod point;
+
+/// textured mesh renderer
 pub mod textured_mesh;
 use self::buffers::SceneRenderBuffers;
 use self::interaction::Interaction;
@@ -21,17 +34,26 @@ use sophus_sensor::distortion_table::distort_table;
 use sophus_sensor::dyn_camera::DynCamera;
 use wgpu::DepthStencilState;
 
+/// Scene renderer
 pub struct SceneRenderer {
+    /// Buffers of the scene
     pub buffers: SceneRenderBuffers,
+    /// Mesh renderer
     pub mesh_renderer: MeshRenderer,
+    /// Textured mesh renderer
     pub textured_mesh_renderer: textured_mesh::TexturedMeshRenderer,
+    /// Point renderer
     pub point_renderer: ScenePointRenderer,
+    /// Line renderer
     pub line_renderer: line::SceneLineRenderer,
+    /// Depth renderer
     pub depth_renderer: DepthRenderer,
+    /// Interaction state
     pub interaction: Interaction,
 }
 
 impl SceneRenderer {
+    /// Create a new scene renderer
     pub fn new(
         wgpu_render_state: &ViewerRenderState,
         builder: &ViewerBuilder,
@@ -127,22 +149,25 @@ impl SceneRenderer {
                 depth_stencil,
             ),
             interaction: Interaction {
-                maybe_state: None,
+                maybe_pointer_state: None,
+                maybe_scroll_state: None,
                 scene_from_camera: builder.config.camera.scene_from_camera,
                 clipping_planes: builder.config.camera.clipping_planes,
             },
         }
     }
 
+    /// Process an event
     pub fn process_event(
         &mut self,
         cam: &DynCamera<f64, 1>,
         response: &egui::Response,
         z_buffer: ArcImageF32,
     ) {
-        self.interaction.process_event(cam, response, z_buffer);
+        self.interaction.process_event(cam, response, &z_buffer);
     }
 
+    /// Paint the scene
     pub fn paint<'rp>(
         &'rp self,
         command_encoder: &'rp mut wgpu::CommandEncoder,
@@ -192,6 +217,7 @@ impl SceneRenderer {
         );
     }
 
+    /// Render the depth
     pub fn depth_paint<'rp>(
         &'rp self,
         command_encoder: &'rp mut wgpu::CommandEncoder,
@@ -236,6 +262,7 @@ impl SceneRenderer {
         );
     }
 
+    /// Clear the vertex data
     pub fn clear_vertex_data(&mut self) {
         self.line_renderer.vertex_data.clear();
         self.point_renderer.vertex_data.clear();
@@ -243,6 +270,7 @@ impl SceneRenderer {
         self.textured_mesh_renderer.vertices.clear();
     }
 
+    /// Prepare the renderer
     pub fn prepare(&self, state: &ViewerRenderState, intrinsics: &DynCamera<f64, 1>) {
         state.queue.write_buffer(
             &self.point_renderer.vertex_buffer,

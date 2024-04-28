@@ -1,11 +1,20 @@
 #![feature(portable_simd)]
+#![deny(missing_docs)]
 #![allow(clippy::needless_range_loop)]
 
+//! Simple viewer for 2D and 3D visualizations.
+
+/// The actor for the viewer.
 pub mod actor;
+/// The offscreen texture for rendering.
 pub mod offscreen;
+/// The pixel renderer for 2D rendering.
 pub mod pixel_renderer;
+/// The renderable structs.
 pub mod renderable;
+/// The scene renderer for 3D rendering.
 pub mod scene_renderer;
+
 use self::actor::ViewerBuilder;
 use self::offscreen::OffscreenTexture;
 use self::pixel_renderer::PixelRenderer;
@@ -36,12 +45,13 @@ use sophus_lie::Isometry3;
 use sophus_sensor::dyn_camera::DynCamera;
 use std::sync::Arc;
 
+/// The state of the viewer.
 #[derive(Clone)]
 pub struct ViewerRenderState {
-    pub wgpu_state: Arc<RwLock<Renderer>>,
-    pub device: Arc<wgpu::Device>,
-    pub queue: Arc<wgpu::Queue>,
-    pub adapter: Arc<wgpu::Adapter>,
+    pub(crate) wgpu_state: Arc<RwLock<Renderer>>,
+    pub(crate) device: Arc<wgpu::Device>,
+    pub(crate) queue: Arc<wgpu::Queue>,
+    pub(crate) _adapter: Arc<wgpu::Adapter>,
 }
 
 pub(crate) struct BackgroundTexture {
@@ -86,6 +96,7 @@ impl BackgroundTexture {
     }
 }
 
+/// The simple viewer top-level struct.
 pub struct SimpleViewer {
     state: ViewerRenderState,
     offscreen: OffscreenTexture,
@@ -384,7 +395,7 @@ impl eframe::App for SimpleViewer {
         self.state.queue.submit(Some(command_encoder.finish()));
 
         self.pixel
-            .show_interaction_marker(&self.state, &self.scene.interaction.maybe_state);
+            .show_interaction_marker(&self.state, &self.scene.interaction.maybe_pointer_state);
 
         let mut command_encoder = self
             .state
