@@ -2,14 +2,16 @@ use crate::ViewerRenderState;
 use sophus_sensor::dyn_camera::DynCamera;
 use wgpu::DepthStencilState;
 
+/// Depth renderer.
 pub struct DepthRenderer {
-    pub depth_stencil: Option<wgpu::DepthStencilState>,
-    pub depth_texture: wgpu::Texture,
-    pub depth_texture_view: wgpu::TextureView,
-    pub depth_texture_sampler: wgpu::Sampler,
+    pub(crate) _depth_stencil: Option<wgpu::DepthStencilState>,
+    pub(crate) _depth_texture: wgpu::Texture,
+    pub(crate) depth_texture_view: wgpu::TextureView,
+    pub(crate) _depth_texture_sampler: wgpu::Sampler,
 }
 
 impl DepthRenderer {
+    /// Create a new depth renderer.
     pub fn new(
         state: &ViewerRenderState,
         cam: &DynCamera<f64, 1>,
@@ -48,10 +50,10 @@ impl DepthRenderer {
             ..Default::default()
         });
         Self {
-            depth_texture: texture,
+            _depth_texture: texture,
             depth_texture_view: view,
-            depth_texture_sampler: sampler,
-            depth_stencil,
+            _depth_texture_sampler: sampler,
+            _depth_stencil: depth_stencil,
         }
     }
 }

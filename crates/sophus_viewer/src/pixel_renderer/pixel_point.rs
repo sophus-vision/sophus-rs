@@ -6,17 +6,18 @@ use std::collections::BTreeMap;
 use std::sync::Mutex;
 use wgpu::DepthStencilState;
 
+/// Pixel point renderer
 pub struct PixelPointRenderer {
-    pub pipeline: wgpu::RenderPipeline,
-    pub vertex_buffer: wgpu::Buffer,
-    pub points_table: BTreeMap<String, Vec<Point2>>,
-    pub vertex_data: Vec<PointVertex2>,
-
-    pub interaction_vertex_buffer: wgpu::Buffer,
-    pub show_interaction_marker: Mutex<bool>,
+    pub(crate) pipeline: wgpu::RenderPipeline,
+    pub(crate) vertex_buffer: wgpu::Buffer,
+    pub(crate) points_table: BTreeMap<String, Vec<Point2>>,
+    pub(crate) vertex_data: Vec<PointVertex2>,
+    pub(crate) interaction_vertex_buffer: wgpu::Buffer,
+    pub(crate) show_interaction_marker: Mutex<bool>,
 }
 
 impl PixelPointRenderer {
+    /// Create a new pixel point renderer
     pub fn new(
         wgpu_render_state: &ViewerRenderState,
         pipeline_layout: &wgpu::PipelineLayout,
@@ -99,7 +100,7 @@ impl PixelPointRenderer {
         }
     }
 
-    pub fn paint<'rp>(
+    pub(crate) fn paint<'rp>(
         &'rp self,
         render_pass: &mut wgpu::RenderPass<'rp>,
         uniform_bind_group: &'rp wgpu::BindGroup,

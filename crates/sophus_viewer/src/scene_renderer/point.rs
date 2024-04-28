@@ -8,20 +8,23 @@ use wgpu::DepthStencilState;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
+/// 3D point vertex
 pub struct PointVertex3 {
-    pub _pos: [f32; 3],
-    pub _point_size: f32,
-    pub _color: [f32; 4],
+    pub(crate) _pos: [f32; 3],
+    pub(crate) _point_size: f32,
+    pub(crate) _color: [f32; 4],
 }
 
+/// Scene point renderer
 pub struct ScenePointRenderer {
-    pub pipeline: wgpu::RenderPipeline,
-    pub vertex_buffer: wgpu::Buffer,
-    pub point_table: BTreeMap<String, Vec<Point3>>,
-    pub vertex_data: Vec<PointVertex3>,
+    pub(crate) pipeline: wgpu::RenderPipeline,
+    pub(crate) vertex_buffer: wgpu::Buffer,
+    pub(crate) point_table: BTreeMap<String, Vec<Point3>>,
+    pub(crate) vertex_data: Vec<PointVertex3>,
 }
 
 impl ScenePointRenderer {
+    /// Create a new scene point renderer
     pub fn new(
         wgpu_render_state: &ViewerRenderState,
         pipeline_layout: &wgpu::PipelineLayout,
@@ -90,7 +93,7 @@ impl ScenePointRenderer {
         }
     }
 
-    pub fn paint<'rp>(
+    pub(crate) fn paint<'rp>(
         &'rp self,
         render_pass: &mut wgpu::RenderPass<'rp>,
         bind_group: &'rp wgpu::BindGroup,

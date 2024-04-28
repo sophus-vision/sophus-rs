@@ -8,9 +8,10 @@ use wgpu::DepthStencilState;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
+/// 3D textured mesh vertex
 pub struct TexturedMeshVertex3 {
-    pub _pos: [f32; 3],
-    pub _tex: [f32; 2],
+    pub(crate) _pos: [f32; 3],
+    pub(crate) _tex: [f32; 2],
 }
 
 // pub(crate) struct TexturedMeshes {
@@ -21,16 +22,18 @@ pub struct TexturedMeshVertex3 {
 //     pub bind_group: wgpu::BindGroup,
 // }
 
+/// Scene textured mesh renderer
 pub struct TexturedMeshRenderer {
-    pub pipeline: wgpu::RenderPipeline,
-    pub depth_pipeline: wgpu::RenderPipeline,
-    pub vertex_buffer: wgpu::Buffer,
-    pub mesh_table: BTreeMap<String, Vec<TexturedTriangle3>>,
-    pub vertices: Vec<TexturedMeshVertex3>,
+    pub(crate) pipeline: wgpu::RenderPipeline,
+    pub(crate) depth_pipeline: wgpu::RenderPipeline,
+    pub(crate) vertex_buffer: wgpu::Buffer,
+    pub(crate) mesh_table: BTreeMap<String, Vec<TexturedTriangle3>>,
+    pub(crate) vertices: Vec<TexturedMeshVertex3>,
     //pub meshes: BTreeMap<String, TexturedMeshes>,
 }
 
 impl TexturedMeshRenderer {
+    /// Create a new scene textured mesh renderer
     pub fn new(
         wgpu_render_state: &ViewerRenderState,
         pipeline_layout: &wgpu::PipelineLayout,
@@ -130,7 +133,7 @@ impl TexturedMeshRenderer {
         }
     }
 
-    pub fn paint<'rp>(
+    pub(crate) fn paint<'rp>(
         &'rp self,
         render_pass: &mut wgpu::RenderPass<'rp>,
         bind_group: &'rp wgpu::BindGroup,
@@ -143,7 +146,7 @@ impl TexturedMeshRenderer {
         render_pass.draw(0..self.vertices.len() as u32, 0..1);
     }
 
-    pub fn depth_paint<'rp>(
+    pub(crate) fn depth_paint<'rp>(
         &'rp self,
         depth_render_pass: &mut wgpu::RenderPass<'rp>,
         bind_group: &'rp wgpu::BindGroup,

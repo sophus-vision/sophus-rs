@@ -1,5 +1,4 @@
 use eframe::egui;
-use eframe::egui::MultiTouchInfo;
 use sophus_core::linalg::VecF64;
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::prelude::*;
@@ -7,9 +6,12 @@ use sophus_lie::prelude::*;
 use sophus_lie::Isometry3;
 use sophus_sensor::dyn_camera::DynCamera;
 
+/// Clipping planes for the Wgpu renderer
 #[derive(Clone, Copy)]
 pub struct WgpuClippingPlanes {
+    /// Near clipping plane
     pub near: f64,
+    /// Far clipping plane
     pub far: f64,
 }
 
@@ -18,30 +20,36 @@ impl WgpuClippingPlanes {
         -(self.far * self.near) / (-self.far + ndc * self.far - ndc * self.near)
     }
 
-    pub fn ndc_from_z(&self, z: f64) -> f64 {
+    pub(crate) fn _ndc_from_z(&self, z: f64) -> f64 {
         (self.far * (z - self.near)) / (z * (self.far - self.near))
     }
 }
 
+/// Interaction state for pointer
 #[derive(Clone, Copy)]
 pub struct InteractionPointerState {
+    /// Depth of the scene
     pub depth: f64,
+    /// Start uv position
     pub drag_start_uv: VecF64<2>,
+    /// Current uv position
     pub current_uv: VecF64<2>,
 }
 
 #[derive(Clone, Copy)]
+/// Scroll state
 pub struct ScrollState {
-    pub depth: f64,
-    pub scroll_start_uv: VecF64<2>,
+    pub(crate) depth: f64,
+    pub(crate) scroll_start_uv: VecF64<2>,
 }
 
 #[derive(Clone, Copy)]
+/// Interaction state
 pub struct Interaction {
-    pub maybe_pointer_state: Option<InteractionPointerState>,
-    pub maybe_scroll_state: Option<ScrollState>,
-    pub clipping_planes: WgpuClippingPlanes,
-    pub scene_from_camera: Isometry3<f64, 1>,
+    pub(crate) maybe_pointer_state: Option<InteractionPointerState>,
+    pub(crate) maybe_scroll_state: Option<ScrollState>,
+    pub(crate) clipping_planes: WgpuClippingPlanes,
+    pub(crate) scene_from_camera: Isometry3<f64, 1>,
 }
 
 impl Interaction {
@@ -66,6 +74,11 @@ impl Interaction {
         self.clipping_planes.z_from_ndc(ndc_z)
     }
 
+    /// Process scroll events
+    ///
+    /// Scroll up/down: zoom in/out
+    ///
+    /// Scroll left/right: rotate about scene focus
     pub fn process_scrolls(
         &mut self,
         cam: &DynCamera<f64, 1>,
@@ -124,12 +137,13 @@ impl Interaction {
         println!("{:?}", response);
 
         if smooth_scroll_delta.x != 0.0 {
-            let delta_z: f64 = (0.01 * smooth_scroll_delta.x) as f64;
+            let delta_z: f64 = (smooth_scroll_delta.x) as f64;
 
             let drag_state = self.maybe_scroll_state.unwrap();
             let pixel = drag_state.scroll_start_uv;
             let depth = drag_state.depth;
             let delta = 0.01 * VecF64::<6>::new(0.0, 0.0, 0.0, 0.0, 0.0, delta_z);
+            println!("delta: {:?}", delta);
             let camera_from_scene_point = Isometry3::from_t(&cam.cam_unproj_with_z(&pixel, depth));
             self.scene_from_camera =
                 self.scene_from_camera
@@ -139,6 +153,11 @@ impl Interaction {
         }
     }
 
+    /// Process pointer events
+    ///
+    /// primary button: rotate about scene focus
+    ///
+    /// secondary button: in-plane translate
     pub fn process_pointer(
         &mut self,
         cam: &DynCamera<f64, 1>,
@@ -217,6 +236,7 @@ impl Interaction {
         }
     }
 
+    /// Process event
     pub fn process_event(
         &mut self,
         cam: &DynCamera<f64, 1>,

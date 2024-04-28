@@ -127,8 +127,7 @@ impl PixelRenderer {
         }
     }
 
-    /// Show the interaction marker
-    pub fn show_interaction_marker(
+    pub(crate) fn show_interaction_marker(
         &self,
         state: &ViewerRenderState,
         interaction_state: &Option<InteractionPointerState>,
@@ -156,14 +155,12 @@ impl PixelRenderer {
         };
     }
 
-    /// Clear the vertex data
-    pub fn clear_vertex_data(&mut self) {
+    pub(crate) fn clear_vertex_data(&mut self) {
         self.line_renderer.vertex_data.clear();
         self.point_renderer.vertex_data.clear();
     }
 
-    /// Prepare the renderer
-    pub fn prepare(&self, state: &ViewerRenderState) {
+    pub(crate) fn prepare(&self, state: &ViewerRenderState) {
         state.queue.write_buffer(
             &self.point_renderer.vertex_buffer,
             0,
@@ -176,8 +173,7 @@ impl PixelRenderer {
         );
     }
 
-    /// Paint the renderer
-    pub fn paint<'rp>(
+    pub(crate) fn paint<'rp>(
         &'rp self,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         texture_view: &'rp wgpu::TextureView,

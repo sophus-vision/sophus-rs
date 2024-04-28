@@ -8,22 +8,25 @@ use wgpu::DepthStencilState;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
+/// 3D line vertex
 pub struct LineVertex3 {
-    pub _p0: [f32; 3],
-    pub _p1: [f32; 3],
-    pub _color: [f32; 4],
-    pub _line_width: f32,
+    pub(crate) _p0: [f32; 3],
+    pub(crate) _p1: [f32; 3],
+    pub(crate) _color: [f32; 4],
+    pub(crate) _line_width: f32,
 }
 
+/// Scene line renderer
 pub struct SceneLineRenderer {
-    pub pipeline: wgpu::RenderPipeline,
-    pub depth_pipeline: wgpu::RenderPipeline,
-    pub vertex_buffer: wgpu::Buffer,
-    pub vertex_data: Vec<LineVertex3>,
-    pub line_table: BTreeMap<String, Vec<Line3>>,
+    pub(crate) pipeline: wgpu::RenderPipeline,
+    pub(crate) depth_pipeline: wgpu::RenderPipeline,
+    pub(crate) vertex_buffer: wgpu::Buffer,
+    pub(crate) vertex_data: Vec<LineVertex3>,
+    pub(crate) line_table: BTreeMap<String, Vec<Line3>>,
 }
 
 impl SceneLineRenderer {
+    /// Create a new scene line renderer
     pub fn new(
         wgpu_render_state: &ViewerRenderState,
         pipeline_layout: &wgpu::PipelineLayout,
@@ -122,7 +125,7 @@ impl SceneLineRenderer {
         }
     }
 
-    pub fn paint<'rp>(
+    pub(crate) fn paint<'rp>(
         &'rp self,
         render_pass: &mut wgpu::RenderPass<'rp>,
         bind_group: &'rp wgpu::BindGroup,
@@ -135,7 +138,7 @@ impl SceneLineRenderer {
         render_pass.draw(0..self.vertex_data.len() as u32, 0..1);
     }
 
-    pub fn depth_paint<'rp>(
+    pub(crate) fn depth_paint<'rp>(
         &'rp self,
         depth_render_pass: &mut wgpu::RenderPass<'rp>,
         bind_group: &'rp wgpu::BindGroup,

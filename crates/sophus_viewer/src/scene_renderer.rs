@@ -157,8 +157,7 @@ impl SceneRenderer {
         }
     }
 
-    /// Process an event
-    pub fn process_event(
+    pub(crate) fn process_event(
         &mut self,
         cam: &DynCamera<f64, 1>,
         response: &egui::Response,
@@ -167,8 +166,7 @@ impl SceneRenderer {
         self.interaction.process_event(cam, response, &z_buffer);
     }
 
-    /// Paint the scene
-    pub fn paint<'rp>(
+    pub(crate) fn paint<'rp>(
         &'rp self,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         texture_view: &'rp wgpu::TextureView,
@@ -217,8 +215,7 @@ impl SceneRenderer {
         );
     }
 
-    /// Render the depth
-    pub fn depth_paint<'rp>(
+    pub(crate) fn depth_paint<'rp>(
         &'rp self,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         depth_texture_view: &'rp wgpu::TextureView,
@@ -270,8 +267,7 @@ impl SceneRenderer {
         self.textured_mesh_renderer.vertices.clear();
     }
 
-    /// Prepare the renderer
-    pub fn prepare(&self, state: &ViewerRenderState, intrinsics: &DynCamera<f64, 1>) {
+    pub(crate) fn prepare(&self, state: &ViewerRenderState, intrinsics: &DynCamera<f64, 1>) {
         state.queue.write_buffer(
             &self.point_renderer.vertex_buffer,
             0,
