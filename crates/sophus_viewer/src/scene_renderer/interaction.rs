@@ -1,7 +1,8 @@
-use crate::image::arc_image::ArcImageF32;
-use crate::prelude::*;
 use eframe::egui;
 use sophus_core::linalg::VecF64;
+use sophus_image::arc_image::ArcImageF32;
+use sophus_image::prelude::*;
+use sophus_lie::prelude::*;
 use sophus_lie::Isometry3;
 use sophus_sensor::dyn_camera::DynCamera;
 

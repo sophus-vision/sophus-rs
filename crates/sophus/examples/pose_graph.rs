@@ -18,18 +18,26 @@ use sophus_sensor::camera_enum::perspective_camera::PerspectiveCameraEnum;
 use sophus_sensor::dyn_camera::DynCamera;
 use sophus_sensor::KannalaBrandtCamera;
 
-#[actor(ContentGeneratorMessage)]
+#[actor(ContentGeneratorMessage, NullInRequestMessage)]
 type ContentGenerator = Actor<
     NullProp,
     ContentGeneratorInbound,
+    NullInRequests,
     ContentGeneratorState,
     ContentGeneratorOutbound,
-    NullRequest,
+    NullOutRequests,
 >;
 
 /// Inbound message for the ContentGenerator actor.
 #[derive(Clone, Debug)]
-#[actor_inputs(ContentGeneratorInbound, {NullProp, ContentGeneratorState, ContentGeneratorOutbound, NullRequest})]
+#[actor_inputs(
+    ContentGeneratorInbound,
+    {
+        NullProp,
+        ContentGeneratorState,
+        ContentGeneratorOutbound,
+        NullOutRequests,
+        NullInRequestMessage})]
 pub enum ContentGeneratorMessage {
     /// in seconds
     ClockTick(f64),
@@ -91,7 +99,7 @@ impl HasOnMessage for ContentGeneratorMessage {
         _prop: &Self::Prop,
         _state: &mut Self::State,
         outbound: &Self::OutboundHub,
-        _request: &NullRequest,
+        _request: &NullOutRequests,
     ) {
         match &self {
             ContentGeneratorMessage::ClockTick(_time_in_seconds) => {
@@ -156,8 +164,9 @@ pub async fn run_viewer_example() {
             ContentGeneratorState::default(),
         );
         // 3. The viewer actor
-        let mut viewer =
-            EguiActor::<Vec<Renderable>, (), Isometry3<f64, 1>>::from_builder(context, &builder);
+        let mut viewer = EguiActor::<Vec<Renderable>, (), Isometry3<f64, 1>, (), ()>::from_builder(
+            context, &builder,
+        );
 
         // Pipeline connections:
         timer

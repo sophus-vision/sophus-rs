@@ -1,10 +1,10 @@
-use crate::viewer::scene_renderer::interaction::WgpuClippingPlanes;
-use crate::viewer::Renderable;
-use crate::viewer::ViewerRenderState;
+use crate::scene_renderer::interaction::WgpuClippingPlanes;
+use crate::Renderable;
+use crate::ViewerRenderState;
 use eframe::egui;
 use hollywood::actors::egui::EguiAppFromBuilder;
 use hollywood::actors::egui::GenericEguiBuilder;
-use hollywood::RequestMessage;
+use hollywood::RequestWithReplyChannel;
 use sophus_lie::Isometry3;
 use sophus_sensor::dyn_camera::DynCamera;
 pub struct ViewerCamera {
@@ -21,7 +21,11 @@ pub struct ViewerConfig {
 #[derive(Clone, Debug)]
 pub enum ViewerMessage {
     Packets(Vec<Renderable>),
-    RequestViewPose(RequestMessage<(), Isometry3<f64, 1>>),
+}
+
+#[derive(Debug)]
+pub enum ViewerInRequestMessage {
+    RequestViewPose(RequestWithReplyChannel<(), Isometry3<f64, 1>>),
 }
 
 impl Default for ViewerMessage {
@@ -30,8 +34,13 @@ impl Default for ViewerMessage {
     }
 }
 
-pub type ViewerBuilder =
-    GenericEguiBuilder<Vec<Renderable>, RequestMessage<(), Isometry3<f64, 1>>, ViewerConfig>;
+pub type ViewerBuilder = GenericEguiBuilder<
+    Vec<Renderable>,
+    RequestWithReplyChannel<(), Isometry3<f64, 1>>,
+    (),
+    (),
+    ViewerConfig,
+>;
 
 pub fn run_viewer_on_main_thread<
     Builder: 'static,

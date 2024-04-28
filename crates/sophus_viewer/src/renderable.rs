@@ -1,5 +1,5 @@
-use crate::image::arc_image::ArcImage4F32;
-use crate::image::arc_image::ArcImage4U8;
+use sophus_image::arc_image::ArcImage4F32;
+use sophus_image::arc_image::ArcImage4U8;
 
 use nalgebra::SVector;
 

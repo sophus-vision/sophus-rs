@@ -1,5 +1,5 @@
-use crate::viewer::renderable::Triangle3;
-use crate::viewer::ViewerRenderState;
+use crate::renderable::Triangle3;
+use crate::ViewerRenderState;
 use bytemuck::Pod;
 use bytemuck::Zeroable;
 use eframe::egui_wgpu::wgpu::util::DeviceExt;

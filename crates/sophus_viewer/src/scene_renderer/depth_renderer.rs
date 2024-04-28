@@ -1,4 +1,4 @@
-use crate::viewer::ViewerRenderState;
+use crate::ViewerRenderState;
 use sophus_sensor::dyn_camera::DynCamera;
 use wgpu::DepthStencilState;
 
