@@ -151,6 +151,7 @@ impl SceneRenderer {
             interaction: Interaction {
                 maybe_pointer_state: None,
                 maybe_scroll_state: None,
+                maybe_scene_focus: None,
                 scene_from_camera: builder.config.camera.scene_from_camera,
                 clipping_planes: builder.config.camera.clipping_planes,
             },
