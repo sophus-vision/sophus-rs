@@ -28,8 +28,8 @@ impl WgpuClippingPlanes {
 /// Interaction state for pointer
 #[derive(Clone, Copy)]
 pub struct InteractionPointerState {
-    /// Current uv position
-    pub current_uv: VecF64<2>,
+    /// Start uv position
+    pub start_uv: VecF64<2>,
 }
 
 /// Scene focus
@@ -118,47 +118,28 @@ impl Interaction {
                     uv: VecF64::<2>::new(uv.x as f64, uv.y as f64),
                 });
             }
-
-            let mut z = self
-                .clipping_planes
-                .z_from_ndc(z_buffer.pixel(uv.x as usize, uv.y as usize) as f64);
-            if z >= self.clipping_planes.far {
-                z = self.median_scene_depth(z_buffer);
-            }
             self.maybe_scroll_state = Some(ScrollState {});
         } else if scroll_stopped {
             self.maybe_scroll_state = None;
         }
 
         if smooth_scroll_delta.y != 0.0 {
+            // TODO: make sure the zoom is centered around the scene focus
             let zoom: f64 = (1.0 + 0.01 * smooth_scroll_delta.y) as f64;
-
-            // let current_pixel = response.interact_pointer_pos().unwrap() - response.rect.min;
-            // let drag_state = self.maybe_state.unwrap();
-            // let pixel = drag_state.drag_start_uv;
-            // let depth = drag_state.depth;
-            // let p0 = cam.cam_unproj_with_z(&pixel, depth);
-            // let p1 = cam.cam_unproj_with_z(
-            //     &VecF64::<2>::new(pixel.x + delta_x as f64, pixel.y + delta_y as f64),
-            //     depth,
-            // );
             let mut scene_from_camera = self.scene_from_camera;
 
             scene_from_camera.set_translation(&(scene_from_camera.translation() * zoom));
             self.scene_from_camera = scene_from_camera;
-            // self.maybe_state.as_mut().unwrap().current_uv =
-            //     VecF64::<2>::new(current_pixel[0] as f64, current_pixel[1] as f64);
         }
-        println!("{:?}", response);
 
         if smooth_scroll_delta.x != 0.0 {
+            // TODO: make sure the in-plane rotation is centered around the scene focus
             let delta_z: f64 = (smooth_scroll_delta.x) as f64;
 
             let scene_focus = self.maybe_scene_focus.unwrap();
             let pixel = scene_focus.uv;
             let depth = scene_focus.depth;
             let delta = 0.01 * VecF64::<6>::new(0.0, 0.0, 0.0, 0.0, 0.0, delta_z);
-            println!("delta: {:?}", delta);
             let camera_from_scene_point = Isometry3::from_t(&cam.cam_unproj_with_z(&pixel, depth));
             self.scene_from_camera =
                 self.scene_from_camera
@@ -182,21 +163,12 @@ impl Interaction {
         let delta_x = response.drag_delta().x;
         let delta_y = response.drag_delta().y;
 
-        if let Some(touch) = response.ctx.multi_touch() {
-            println!("touch: {:?}", touch);
-        } else {
-            println!("no touch");
-        }
-
-        let maybe_uv = response.interact_pointer_pos();
-
         if response.drag_started() {
             // A drag event started - select new scene focus
 
             let pointer = response.interact_pointer_pos().unwrap();
 
-            let pixel = pointer - response.rect.min;
-            let uv = maybe_uv.unwrap();
+            let uv = pointer - response.rect.min;
 
             let mut z = self
                 .clipping_planes
@@ -206,10 +178,10 @@ impl Interaction {
             }
             self.maybe_scene_focus = Some(SceneFocus {
                 depth: z,
-                uv: VecF64::<2>::new(pixel.x as f64, pixel.y as f64),
+                uv: VecF64::<2>::new(uv.x as f64, uv.y as f64),
             });
             self.maybe_pointer_state = Some(InteractionPointerState {
-                current_uv: VecF64::<2>::new(pixel.x as f64, pixel.y as f64),
+                start_uv: VecF64::<2>::new(uv.x as f64, uv.y as f64),
             });
         } else if response.drag_stopped() {
             // A drag event finished
@@ -221,11 +193,14 @@ impl Interaction {
 
             let current_pixel = response.interact_pointer_pos().unwrap() - response.rect.min;
             let scene_focus = self.maybe_scene_focus.unwrap();
-            let pixel = scene_focus.uv;
+            let start_pixel = self.maybe_pointer_state.unwrap().start_uv;
             let depth = scene_focus.depth;
-            let p0 = cam.cam_unproj_with_z(&pixel, depth);
+            let p0 = cam.cam_unproj_with_z(&start_pixel, depth);
             let p1 = cam.cam_unproj_with_z(
-                &VecF64::<2>::new(pixel.x + delta_x as f64, pixel.y + delta_y as f64),
+                &VecF64::<2>::new(
+                    start_pixel.x + delta_x as f64,
+                    start_pixel.y + delta_y as f64,
+                ),
                 depth,
             );
             let mut scene_from_camera = self.scene_from_camera;
@@ -234,8 +209,10 @@ impl Interaction {
             scene_from_camera
                 .set_translation(&(scene_from_camera.translation() + translation_update));
             self.scene_from_camera = scene_from_camera;
-            self.maybe_pointer_state.as_mut().unwrap().current_uv =
-                VecF64::<2>::new(current_pixel[0] as f64, current_pixel[1] as f64);
+
+            if let Some(focus) = &mut self.maybe_scene_focus {
+                focus.uv = VecF64::<2>::new(current_pixel.x as f64, current_pixel.y as f64);
+            }
         } else if response.dragged_by(egui::PointerButton::Primary) {
             // rotate around scene focus
 

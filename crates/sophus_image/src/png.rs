@@ -1,5 +1,5 @@
-use crate::intensity_image::DynIntensityMutImage;
-use crate::intensity_image::IsIntensityViewImageU;
+use crate::intensity_image::dyn_intensity_image::DynIntensityMutImage;
+use crate::intensity_image::intensity_image_view::IsIntensityViewImageU;
 use crate::mut_image::MutImage2U16;
 use crate::mut_image::MutImage2U8;
 use crate::mut_image::MutImage3U16;

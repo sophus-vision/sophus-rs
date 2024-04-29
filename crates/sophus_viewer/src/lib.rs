@@ -395,7 +395,7 @@ impl eframe::App for SimpleViewer {
         self.state.queue.submit(Some(command_encoder.finish()));
 
         self.pixel
-            .show_interaction_marker(&self.state, &self.scene.interaction.maybe_pointer_state);
+            .show_interaction_marker(&self.state, &self.scene.interaction);
 
         let mut command_encoder = self
             .state

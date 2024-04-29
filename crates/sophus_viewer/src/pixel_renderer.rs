@@ -6,7 +6,7 @@ pub mod pixel_point;
 use self::line::PixelLineRenderer;
 use self::pixel_point::PixelPointRenderer;
 use crate::actor::ViewerBuilder;
-use crate::scene_renderer::interaction::InteractionPointerState;
+use crate::scene_renderer::interaction::Interaction;
 use crate::DepthRenderer;
 use crate::ViewerRenderState;
 use bytemuck::Pod;
@@ -130,29 +130,33 @@ impl PixelRenderer {
     pub(crate) fn show_interaction_marker(
         &self,
         state: &ViewerRenderState,
-        interaction_state: &Option<InteractionPointerState>,
+        interaction_state: &Interaction,
     ) {
-        *self.point_renderer.show_interaction_marker.lock().unwrap() = match interaction_state {
-            None => false,
-            Some(drag) => {
-                let mut vertex_data = vec![];
+        if let Some(scene_focus) = interaction_state.maybe_scene_focus {
+            *self.point_renderer.show_interaction_marker.lock().unwrap() =
+                if interaction_state.maybe_pointer_state.is_some()
+                    || interaction_state.maybe_scroll_state.is_some()
+                {
+                    let mut vertex_data = vec![];
 
-                for _i in 0..6 {
-                    vertex_data.push(PointVertex2 {
-                        _pos: [drag.current_uv[0] as f32, drag.current_uv[1] as f32],
-                        _color: [0.5, 0.5, 0.5, 1.0],
-                        _point_size: 5.0,
-                    });
-                }
-                state.queue.write_buffer(
-                    &self.point_renderer.interaction_vertex_buffer,
-                    0,
-                    bytemuck::cast_slice(&vertex_data),
-                );
+                    for _i in 0..6 {
+                        vertex_data.push(PointVertex2 {
+                            _pos: [scene_focus.uv[0] as f32, scene_focus.uv[1] as f32],
+                            _color: [0.5, 0.5, 0.5, 1.0],
+                            _point_size: 5.0,
+                        });
+                    }
+                    state.queue.write_buffer(
+                        &self.point_renderer.interaction_vertex_buffer,
+                        0,
+                        bytemuck::cast_slice(&vertex_data),
+                    );
 
-                true
-            }
-        };
+                    true
+                } else {
+                    false
+                };
+        }
     }
 
     pub(crate) fn clear_vertex_data(&mut self) {

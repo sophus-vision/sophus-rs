@@ -9,6 +9,7 @@ pub use sophus_sensor as sensor;
 pub use sophus_viewer as viewer;
 
 pub use hollywood;
+pub use nalgebra;
 
 pub mod prelude {
     pub use crate::core::prelude::*;
