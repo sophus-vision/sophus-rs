@@ -1,5 +1,5 @@
-use crate::viewer::renderable::Triangle3;
-use crate::viewer::ViewerRenderState;
+use crate::renderable::Triangle3;
+use crate::ViewerRenderState;
 use bytemuck::Pod;
 use bytemuck::Zeroable;
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
@@ -8,20 +8,23 @@ use wgpu::DepthStencilState;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
+/// 3D mesh vertex
 pub struct MeshVertex3 {
-    pub _pos: [f32; 3],
-    pub _color: [f32; 4],
+    pub(crate) _pos: [f32; 3],
+    pub(crate) _color: [f32; 4],
 }
 
+/// Scene mesh renderer
 pub struct MeshRenderer {
-    pub pipeline: wgpu::RenderPipeline,
-    pub depth_pipeline: wgpu::RenderPipeline,
-    pub vertex_buffer: wgpu::Buffer,
-    pub mesh_table: BTreeMap<String, Vec<Triangle3>>,
-    pub vertices: Vec<MeshVertex3>,
+    pub(crate) pipeline: wgpu::RenderPipeline,
+    pub(crate) depth_pipeline: wgpu::RenderPipeline,
+    pub(crate) vertex_buffer: wgpu::Buffer,
+    pub(crate) mesh_table: BTreeMap<String, Vec<Triangle3>>,
+    pub(crate) vertices: Vec<MeshVertex3>,
 }
 
 impl MeshRenderer {
+    /// Create a new scene mesh renderer
     pub fn new(
         wgpu_render_state: &ViewerRenderState,
         pipeline_layout: &wgpu::PipelineLayout,
@@ -120,7 +123,7 @@ impl MeshRenderer {
         }
     }
 
-    pub fn paint<'rp>(
+    pub(crate) fn paint<'rp>(
         &'rp self,
         render_pass: &mut wgpu::RenderPass<'rp>,
         bind_group: &'rp wgpu::BindGroup,
@@ -133,7 +136,7 @@ impl MeshRenderer {
         render_pass.draw(0..self.vertices.len() as u32, 0..1);
     }
 
-    pub fn depth_paint<'rp>(
+    pub(crate) fn depth_paint<'rp>(
         &'rp self,
         depth_render_pass: &mut wgpu::RenderPass<'rp>,
         bind_group: &'rp wgpu::BindGroup,

@@ -1,37 +1,59 @@
+/// buffers for rendering a scene
 pub mod buffers;
+
+/// depth renderer
 pub mod depth_renderer;
+
+/// interaction state
 pub mod interaction;
+
+/// line renderer
 pub mod line;
+
+/// mesh renderer
 pub mod mesh;
+
+/// point renderer
 pub mod point;
+
+/// textured mesh renderer
 pub mod textured_mesh;
 use self::buffers::SceneRenderBuffers;
 use self::interaction::Interaction;
 use self::mesh::MeshRenderer;
 use self::point::ScenePointRenderer;
-use crate::image::arc_image::ArcImageF32;
-use crate::viewer::actor::ViewerBuilder;
-use crate::viewer::DepthRenderer;
-use crate::viewer::ViewerRenderState;
+use crate::actor::ViewerBuilder;
+use crate::DepthRenderer;
+use crate::ViewerRenderState;
 use eframe::egui;
 use sophus_core::calculus::region::IsRegion;
 use sophus_core::tensor::tensor_view::IsTensorLike;
+use sophus_image::arc_image::ArcImageF32;
 use sophus_image::image_view::IsImageView;
 use sophus_sensor::distortion_table::distort_table;
 use sophus_sensor::dyn_camera::DynCamera;
 use wgpu::DepthStencilState;
 
+/// Scene renderer
 pub struct SceneRenderer {
+    /// Buffers of the scene
     pub buffers: SceneRenderBuffers,
+    /// Mesh renderer
     pub mesh_renderer: MeshRenderer,
+    /// Textured mesh renderer
     pub textured_mesh_renderer: textured_mesh::TexturedMeshRenderer,
+    /// Point renderer
     pub point_renderer: ScenePointRenderer,
+    /// Line renderer
     pub line_renderer: line::SceneLineRenderer,
+    /// Depth renderer
     pub depth_renderer: DepthRenderer,
+    /// Interaction state
     pub interaction: Interaction,
 }
 
 impl SceneRenderer {
+    /// Create a new scene renderer
     pub fn new(
         wgpu_render_state: &ViewerRenderState,
         builder: &ViewerBuilder,
@@ -127,23 +149,25 @@ impl SceneRenderer {
                 depth_stencil,
             ),
             interaction: Interaction {
-                maybe_state: None,
+                maybe_pointer_state: None,
+                maybe_scroll_state: None,
+                maybe_scene_focus: None,
                 scene_from_camera: builder.config.camera.scene_from_camera,
                 clipping_planes: builder.config.camera.clipping_planes,
             },
         }
     }
 
-    pub fn process_event(
+    pub(crate) fn process_event(
         &mut self,
         cam: &DynCamera<f64, 1>,
         response: &egui::Response,
         z_buffer: ArcImageF32,
     ) {
-        self.interaction.process_event(cam, response, z_buffer);
+        self.interaction.process_event(cam, response, &z_buffer);
     }
 
-    pub fn paint<'rp>(
+    pub(crate) fn paint<'rp>(
         &'rp self,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         texture_view: &'rp wgpu::TextureView,
@@ -192,7 +216,7 @@ impl SceneRenderer {
         );
     }
 
-    pub fn depth_paint<'rp>(
+    pub(crate) fn depth_paint<'rp>(
         &'rp self,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         depth_texture_view: &'rp wgpu::TextureView,
@@ -236,6 +260,7 @@ impl SceneRenderer {
         );
     }
 
+    /// Clear the vertex data
     pub fn clear_vertex_data(&mut self) {
         self.line_renderer.vertex_data.clear();
         self.point_renderer.vertex_data.clear();
@@ -243,7 +268,7 @@ impl SceneRenderer {
         self.textured_mesh_renderer.vertices.clear();
     }
 
-    pub fn prepare(&self, state: &ViewerRenderState, intrinsics: &DynCamera<f64, 1>) {
+    pub(crate) fn prepare(&self, state: &ViewerRenderState, intrinsics: &DynCamera<f64, 1>) {
         state.queue.write_buffer(
             &self.point_renderer.vertex_buffer,
             0,

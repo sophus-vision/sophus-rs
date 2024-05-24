@@ -1,8 +1,6 @@
 use hollywood::actors::egui::EguiActor;
 use hollywood::actors::egui::Stream;
-pub use hollywood::compute::Context;
-pub use hollywood::core::*;
-use hollywood::macros::*;
+use hollywood::prelude::*;
 use sophus::opt::example_problems::pose_circle::PoseCircleProblem;
 use sophus::prelude::*;
 use sophus::viewer::actor::run_viewer_on_main_thread;
@@ -20,18 +18,26 @@ use sophus_sensor::camera_enum::perspective_camera::PerspectiveCameraEnum;
 use sophus_sensor::dyn_camera::DynCamera;
 use sophus_sensor::KannalaBrandtCamera;
 
-#[actor(ContentGeneratorMessage)]
+#[actor(ContentGeneratorMessage, NullInRequestMessage)]
 type ContentGenerator = Actor<
     NullProp,
     ContentGeneratorInbound,
+    NullInRequests,
     ContentGeneratorState,
     ContentGeneratorOutbound,
-    NullRequest,
+    NullOutRequests,
 >;
 
 /// Inbound message for the ContentGenerator actor.
 #[derive(Clone, Debug)]
-#[actor_inputs(ContentGeneratorInbound, {NullProp, ContentGeneratorState, ContentGeneratorOutbound, NullRequest})]
+#[actor_inputs(
+    ContentGeneratorInbound,
+    {
+        NullProp,
+        ContentGeneratorState,
+        ContentGeneratorOutbound,
+        NullOutRequests,
+        NullInRequestMessage})]
 pub enum ContentGeneratorMessage {
     /// in seconds
     ClockTick(f64),
@@ -86,14 +92,14 @@ fn make_axes(world_from_local_poses: Vec<Isometry2<f64, 1>>) -> Vec<Line3> {
     lines
 }
 
-impl OnMessage for ContentGeneratorMessage {
+impl HasOnMessage for ContentGeneratorMessage {
     /// Process the inbound time_stamp message.
     fn on_message(
         self,
         _prop: &Self::Prop,
         _state: &mut Self::State,
         outbound: &Self::OutboundHub,
-        _request: &NullRequest,
+        _request: &NullOutRequests,
     ) {
         match &self {
             ContentGeneratorMessage::ClockTick(_time_in_seconds) => {
@@ -116,7 +122,7 @@ impl OnMessage for ContentGeneratorMessage {
     }
 }
 
-impl InboundMessageNew<f64> for ContentGeneratorMessage {
+impl IsInboundMessageNew<f64> for ContentGeneratorMessage {
     fn new(_inbound_name: String, msg: f64) -> Self {
         ContentGeneratorMessage::ClockTick(msg)
     }
@@ -147,7 +153,7 @@ pub async fn run_viewer_example() {
     let mut builder = ViewerBuilder::from_config(ViewerConfig { camera });
 
     // Pipeline configuration
-    let pipeline = hollywood::compute::Context::configure(&mut |context| {
+    let pipeline = Hollywood::configure(&mut |context| {
         // Actor creation:
         // 1. Periodic timer to drive the simulation
         let mut timer = hollywood::actors::Periodic::new_with_period(context, 0.01);
@@ -158,8 +164,9 @@ pub async fn run_viewer_example() {
             ContentGeneratorState::default(),
         );
         // 3. The viewer actor
-        let mut viewer =
-            EguiActor::<Vec<Renderable>, (), Isometry3<f64, 1>>::from_builder(context, &builder);
+        let mut viewer = EguiActor::<Vec<Renderable>, (), Isometry3<f64, 1>, (), ()>::from_builder(
+            context, &builder,
+        );
 
         // Pipeline connections:
         timer

@@ -7,6 +7,7 @@ members = [
   "crates/sophus_image",
   "crates/sophus_sensor",
   "crates/sophus_opt",
+  "crates/sophus_viewer",
 ]
 resolver = "2"
 
@@ -20,46 +21,47 @@ include = [
 keywords = ["robotics", "optimization"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/farm-ng/sophus-rs/"
-version = "0.4.0"
+version = "0.6.0"
 
 [workspace.dependencies]
-sophus = {path = "crates/sophus", version = "0.4.0"}
-sophus_core = {path = "crates/sophus_core", version = "0.4.0"}
-sophus_image = {path = "crates/sophus_image", version = "0.4.0"}
-sophus_lie = {path = "crates/sophus_lie", version = "0.4.0"}
-sophus_opt = {path = "crates/sophus_opt", version = "0.4.0"}
-sophus_pyo3 = {path = "crates/sophus_pyo3", version = "0.4.0"}
-sophus_sensor = {path = "crates/sophus_sensor", version = "0.4.0"}
+sophus = {path = "crates/sophus", version = "0.6.0"}
+sophus_core = {path = "crates/sophus_core", version = "0.6.0"}
+sophus_image = {path = "crates/sophus_image", version = "0.6.0"}
+sophus_lie = {path = "crates/sophus_lie", version = "0.6.0"}
+sophus_opt = {path = "crates/sophus_opt", version = "0.6.0"}
+sophus_pyo3 = {path = "crates/sophus_pyo3", version = "0.6.0"}
+sophus_sensor = {path = "crates/sophus_sensor", version = "0.6.0"}
+sophus_viewer = {path = "crates/sophus_viewer", version = "0.6.0"}
 
-approx = "0.5.1"
-as-any = "0.3.1"
-assertables = "7.0.1"
-async-trait = "0.1.77"
-bytemuck = {version = "1.14.0", features = ["derive"]}
-concat-arrays = "0.1.2"
-dyn-clone = "1.0.16"
-eframe = {version = "0.26", features = ["wgpu"]}
-egui_extras = "0.26"
+approx = "0.5"
+as-any = "0.3"
+assertables = "7.0"
+async-trait = "0.1"
+bytemuck = {version = "1.14", features = ["derive"]}
+concat-arrays = "0.1"
+dyn-clone = "1.0"
+eframe = {version = "0.27", features = ["wgpu"]}
+egui_extras = "0.27"
 env_logger = "0.11"
 faer = "0.18"
-hollywood = "0.5.0"
+hollywood = {version = "0.7.0"}
 image = {version = "0.25", features = [
   "jpeg",
   "png",
   "tiff",
 ]}
-log = "0.4.14"
+log = "0.4"
 nalgebra = {version = "0.32", features = ["rand"]}
-ndarray = {version = "0.15.4", features = ["approx-0_5"]}
-num-traits = "0.2.15"
+ndarray = {version = "0.15", features = ["approx-0_5"]}
+num-traits = "0.2"
 numpy = "0.21"
-png = "0.17.11"
-rand = "0.8.5"
-sleef = "0.3.2"
+png = "0.17"
+rand = "0.8"
+sleef = "0.3"
 tokio = {version = "1", features = ["full"]}
-typenum = {version = "1.17.0", features = ["const-generics"]}
+typenum = {version = "1.17", features = ["const-generics"]}
 wgpu = "0.19"
-winit = {version = "0.29", features = ["android-native-activity"]}
+winit = {version = "0.30", features = ["android-native-activity"]}
 
 [profile.release]
 debug = 1

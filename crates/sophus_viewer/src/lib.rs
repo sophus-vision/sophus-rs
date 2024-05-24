@@ -1,8 +1,20 @@
+#![feature(portable_simd)]
+#![deny(missing_docs)]
+#![allow(clippy::needless_range_loop)]
+
+//! Simple viewer for 2D and 3D visualizations.
+
+/// The actor for the viewer.
 pub mod actor;
+/// The offscreen texture for rendering.
 pub mod offscreen;
+/// The pixel renderer for 2D rendering.
 pub mod pixel_renderer;
+/// The renderable structs.
 pub mod renderable;
+/// The scene renderer for 3D rendering.
 pub mod scene_renderer;
+
 use self::actor::ViewerBuilder;
 use self::offscreen::OffscreenTexture;
 use self::pixel_renderer::PixelRenderer;
@@ -10,14 +22,11 @@ use self::renderable::Renderable;
 use self::scene_renderer::depth_renderer::DepthRenderer;
 use self::scene_renderer::textured_mesh::TexturedMeshVertex3;
 use self::scene_renderer::SceneRenderer;
-use crate::image::arc_image::ArcImage4U8;
-use crate::image::image_view::IsImageView;
-use crate::image::ImageSize;
-use crate::viewer::pixel_renderer::LineVertex2;
-use crate::viewer::pixel_renderer::PointVertex2;
-use crate::viewer::scene_renderer::line::LineVertex3;
-use crate::viewer::scene_renderer::mesh::MeshVertex3;
-use crate::viewer::scene_renderer::point::PointVertex3;
+use crate::pixel_renderer::LineVertex2;
+use crate::pixel_renderer::PointVertex2;
+use crate::scene_renderer::line::LineVertex3;
+use crate::scene_renderer::mesh::MeshVertex3;
+use crate::scene_renderer::point::PointVertex3;
 use eframe::egui::load::SizedTexture;
 use eframe::egui::Image;
 use eframe::egui::Sense;
@@ -27,18 +36,22 @@ use eframe::epaint::mutex::RwLock;
 use hollywood::actors::egui::EguiAppFromBuilder;
 use hollywood::actors::egui::Stream;
 use hollywood::compute::pipeline::CancelRequest;
-use hollywood::core::request::RequestMessage;
+use hollywood::RequestWithReplyChannel;
 use sophus_core::tensor::tensor_view::IsTensorLike;
+use sophus_image::arc_image::ArcImage4U8;
+use sophus_image::image_view::IsImageView;
+use sophus_image::ImageSize;
 use sophus_lie::Isometry3;
 use sophus_sensor::dyn_camera::DynCamera;
 use std::sync::Arc;
 
+/// The state of the viewer.
 #[derive(Clone)]
 pub struct ViewerRenderState {
-    pub wgpu_state: Arc<RwLock<Renderer>>,
-    pub device: Arc<wgpu::Device>,
-    pub queue: Arc<wgpu::Queue>,
-    pub adapter: Arc<wgpu::Adapter>,
+    pub(crate) wgpu_state: Arc<RwLock<Renderer>>,
+    pub(crate) device: Arc<wgpu::Device>,
+    pub(crate) queue: Arc<wgpu::Queue>,
+    pub(crate) _adapter: Arc<wgpu::Adapter>,
 }
 
 pub(crate) struct BackgroundTexture {
@@ -83,6 +96,7 @@ impl BackgroundTexture {
     }
 }
 
+/// The simple viewer top-level struct.
 pub struct SimpleViewer {
     state: ViewerRenderState,
     offscreen: OffscreenTexture,
@@ -91,9 +105,10 @@ pub struct SimpleViewer {
     scene: SceneRenderer,
     background_image: Option<ArcImage4U8>,
     background_texture: Option<BackgroundTexture>,
-    message_recv: std::sync::mpsc::Receiver<Stream<Vec<Renderable>>>,
-    request_recv: std::sync::mpsc::Receiver<RequestMessage<(), Isometry3<f64, 1>>>,
-    cancel_request_sender: tokio::sync::mpsc::Sender<CancelRequest>,
+    message_recv: tokio::sync::mpsc::UnboundedReceiver<Stream<Vec<Renderable>>>,
+    request_recv:
+        tokio::sync::mpsc::UnboundedReceiver<RequestWithReplyChannel<(), Isometry3<f64, 1>>>,
+    cancel_request_sender: tokio::sync::mpsc::UnboundedSender<CancelRequest>,
 }
 
 impl EguiAppFromBuilder<ViewerBuilder> for SimpleViewer {
@@ -112,8 +127,8 @@ impl EguiAppFromBuilder<ViewerBuilder> for SimpleViewer {
             cam: builder.config.camera.intrinsics.clone(),
             pixel: PixelRenderer::new(&render_state, &builder, depth_stencil.clone()),
             scene: SceneRenderer::new(&render_state, &builder, depth_stencil),
-            message_recv: builder.message_recv,
-            request_recv: builder.request_recv,
+            message_recv: builder.message_from_actor_recv,
+            request_recv: builder.in_request_from_actor_recv,
             cancel_request_sender: builder.cancel_request_sender.unwrap(),
             background_image: None,
             background_texture: None,
@@ -127,7 +142,12 @@ impl EguiAppFromBuilder<ViewerBuilder> for SimpleViewer {
 
 impl SimpleViewer {
     fn add_renderables_to_tables(&mut self) {
-        for stream in self.message_recv.try_iter() {
+        loop {
+            let maybe_stream = self.message_recv.try_recv();
+            if maybe_stream.is_err() {
+                break;
+            }
+            let stream = maybe_stream.unwrap();
             for m in stream.msg {
                 match m {
                     Renderable::Lines2(lines) => {
@@ -172,8 +192,14 @@ impl SimpleViewer {
                 }
             }
         }
-        for request in self.request_recv.try_iter() {
-            request.reply(|_| self.scene.interaction.scene_from_camera);
+
+        loop {
+            let maybe_request = self.request_recv.try_recv();
+            if maybe_request.is_err() {
+                break;
+            }
+            let request = maybe_request.unwrap();
+            request.reply(self.scene.interaction.scene_from_camera);
         }
 
         for (_, points) in self.pixel.point_renderer.points_table.iter() {
@@ -295,9 +321,7 @@ impl SimpleViewer {
 
 impl eframe::App for SimpleViewer {
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
-        self.cancel_request_sender
-            .try_send(CancelRequest::Cancel(()))
-            .unwrap();
+        self.cancel_request_sender.send(CancelRequest).unwrap();
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -371,7 +395,7 @@ impl eframe::App for SimpleViewer {
         self.state.queue.submit(Some(command_encoder.finish()));
 
         self.pixel
-            .show_interaction_marker(&self.state, &self.scene.interaction.maybe_state);
+            .show_interaction_marker(&self.state, &self.scene.interaction);
 
         let mut command_encoder = self
             .state

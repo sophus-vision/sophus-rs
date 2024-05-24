@@ -1,22 +1,26 @@
+/// Line renderer
 pub mod line;
+/// Pixel point renderer
 pub mod pixel_point;
+
 use self::line::PixelLineRenderer;
 use self::pixel_point::PixelPointRenderer;
-use crate::viewer::actor::ViewerBuilder;
-use crate::viewer::scene_renderer::interaction::InteractionState;
-use crate::viewer::DepthRenderer;
-use crate::viewer::ViewerRenderState;
+use crate::actor::ViewerBuilder;
+use crate::scene_renderer::interaction::Interaction;
+use crate::DepthRenderer;
+use crate::ViewerRenderState;
 use bytemuck::Pod;
 use bytemuck::Zeroable;
 use std::num::NonZeroU64;
 use wgpu::util::DeviceExt;
 use wgpu::DepthStencilState;
 
+/// Renderer for pixel data
 pub struct PixelRenderer {
-    pub uniform_bind_group: wgpu::BindGroup,
-    pub uniform_buffer: wgpu::Buffer,
-    pub line_renderer: PixelLineRenderer,
-    pub point_renderer: PixelPointRenderer,
+    pub(crate) uniform_bind_group: wgpu::BindGroup,
+    pub(crate) _uniform_buffer: wgpu::Buffer,
+    pub(crate) line_renderer: PixelLineRenderer,
+    pub(crate) point_renderer: PixelPointRenderer,
 }
 
 #[repr(C)]
@@ -29,6 +33,7 @@ struct OrthoCam {
     dummy1: f32,
 }
 
+/// 2D vertex
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub struct Vertex2 {
@@ -36,24 +41,27 @@ pub struct Vertex2 {
     _color: [f32; 4],
 }
 
+/// 2D line vertex
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub struct LineVertex2 {
-    pub _pos: [f32; 2],
-    pub _color: [f32; 4],
-    pub _normal: [f32; 2],
-    pub _line_width: f32,
+    pub(crate) _pos: [f32; 2],
+    pub(crate) _color: [f32; 4],
+    pub(crate) _normal: [f32; 2],
+    pub(crate) _line_width: f32,
 }
 
+/// 2D point vertex
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub struct PointVertex2 {
-    pub _pos: [f32; 2],
-    pub _point_size: f32,
-    pub _color: [f32; 4],
+    pub(crate) _pos: [f32; 2],
+    pub(crate) _point_size: f32,
+    pub(crate) _color: [f32; 4],
 }
 
 impl PixelRenderer {
+    /// Create a new pixel renderer
     pub fn new(
         wgpu_render_state: &ViewerRenderState,
         builder: &ViewerBuilder,
@@ -104,7 +112,7 @@ impl PixelRenderer {
         });
 
         Self {
-            uniform_buffer,
+            _uniform_buffer: uniform_buffer,
             uniform_bind_group,
             line_renderer: PixelLineRenderer::new(
                 wgpu_render_state,
@@ -119,40 +127,44 @@ impl PixelRenderer {
         }
     }
 
-    pub fn show_interaction_marker(
+    pub(crate) fn show_interaction_marker(
         &self,
         state: &ViewerRenderState,
-        interaction_state: &Option<InteractionState>,
+        interaction_state: &Interaction,
     ) {
-        *self.point_renderer.show_interaction_marker.lock().unwrap() = match interaction_state {
-            None => false,
-            Some(drag) => {
-                let mut vertex_data = vec![];
+        if let Some(scene_focus) = interaction_state.maybe_scene_focus {
+            *self.point_renderer.show_interaction_marker.lock().unwrap() =
+                if interaction_state.maybe_pointer_state.is_some()
+                    || interaction_state.maybe_scroll_state.is_some()
+                {
+                    let mut vertex_data = vec![];
 
-                for _i in 0..6 {
-                    vertex_data.push(PointVertex2 {
-                        _pos: [drag.current_uv[0] as f32, drag.current_uv[1] as f32],
-                        _color: [0.5, 0.5, 0.5, 1.0],
-                        _point_size: 5.0,
-                    });
-                }
-                state.queue.write_buffer(
-                    &self.point_renderer.interaction_vertex_buffer,
-                    0,
-                    bytemuck::cast_slice(&vertex_data),
-                );
+                    for _i in 0..6 {
+                        vertex_data.push(PointVertex2 {
+                            _pos: [scene_focus.uv[0] as f32, scene_focus.uv[1] as f32],
+                            _color: [0.5, 0.5, 0.5, 1.0],
+                            _point_size: 5.0,
+                        });
+                    }
+                    state.queue.write_buffer(
+                        &self.point_renderer.interaction_vertex_buffer,
+                        0,
+                        bytemuck::cast_slice(&vertex_data),
+                    );
 
-                true
-            }
-        };
+                    true
+                } else {
+                    false
+                };
+        }
     }
 
-    pub fn clear_vertex_data(&mut self) {
+    pub(crate) fn clear_vertex_data(&mut self) {
         self.line_renderer.vertex_data.clear();
         self.point_renderer.vertex_data.clear();
     }
 
-    pub fn prepare(&self, state: &ViewerRenderState) {
+    pub(crate) fn prepare(&self, state: &ViewerRenderState) {
         state.queue.write_buffer(
             &self.point_renderer.vertex_buffer,
             0,
@@ -165,7 +177,7 @@ impl PixelRenderer {
         );
     }
 
-    pub fn paint<'rp>(
+    pub(crate) fn paint<'rp>(
         &'rp self,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         texture_view: &'rp wgpu::TextureView,
