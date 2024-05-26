@@ -66,9 +66,7 @@ impl From<ImageSize> for [usize; 2] {
 /// sophus_image prelude
 pub mod prelude {
     pub use crate::image_view::IsImageView;
-    pub use crate::intensity_image::IsIntensityArcImage;
-    pub use crate::intensity_image::IsIntensityMutImage;
-    pub use crate::intensity_image::IsIntensityViewImageU;
+    pub use crate::intensity_image::dyn_intensity_image::DynIntensityMutImage;
     pub use crate::mut_image_view::IsMutImageView;
     pub use sophus_core::prelude::*;
 }

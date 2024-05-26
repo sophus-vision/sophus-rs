@@ -1,19 +1,21 @@
-use crate::viewer::renderable::Line2;
-use crate::viewer::LineVertex2;
-use crate::viewer::ViewerRenderState;
+use crate::renderable::Line2;
+use crate::LineVertex2;
+use crate::ViewerRenderState;
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use nalgebra::SVector;
 use std::collections::BTreeMap;
 use wgpu::DepthStencilState;
 
+/// Pixel line renderer
 pub struct PixelLineRenderer {
-    pub pipeline: wgpu::RenderPipeline,
-    pub vertex_buffer: wgpu::Buffer,
-    pub lines_table: BTreeMap<String, Vec<Line2>>,
-    pub vertex_data: Vec<LineVertex2>,
+    pub(crate) pipeline: wgpu::RenderPipeline,
+    pub(crate) vertex_buffer: wgpu::Buffer,
+    pub(crate) lines_table: BTreeMap<String, Vec<Line2>>,
+    pub(crate) vertex_data: Vec<LineVertex2>,
 }
 
 impl PixelLineRenderer {
+    /// Create a new pixel line renderer
     pub fn new(
         wgpu_render_state: &ViewerRenderState,
         pipeline_layout: &wgpu::PipelineLayout,
@@ -95,7 +97,7 @@ impl PixelLineRenderer {
         }
     }
 
-    pub fn paint<'rp>(
+    pub(crate) fn paint<'rp>(
         &'rp self,
         render_pass: &mut wgpu::RenderPass<'rp>,
         uniform_bind_group: &'rp wgpu::BindGroup,

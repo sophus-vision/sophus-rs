@@ -1,6 +1,6 @@
-use crate::sensor::distortion_table::DistortTable;
-use crate::viewer::ViewerBuilder;
-use crate::viewer::ViewerRenderState;
+use crate::ViewerBuilder;
+use crate::ViewerRenderState;
+use sophus_sensor::distortion_table::DistortTable;
 use std::sync::Mutex;
 use wgpu::util::DeviceExt;
 
@@ -34,14 +34,15 @@ struct View {
     scene_from_camera: [[f32; 4]; 4],
 }
 
+/// Buffers for rendering a scene
 pub struct SceneRenderBuffers {
-    pub bind_group: wgpu::BindGroup,
-    pub uniform_buffer: wgpu::Buffer,
-    pub view_uniform_buffer: wgpu::Buffer,
-    pub lut_buffer: wgpu::Buffer,
-    pub dist_texture: wgpu::Texture,
-    pub dist_bind_group: wgpu::BindGroup,
-    pub distortion_lut: Mutex<Option<DistortTable>>,
+    pub(crate) bind_group: wgpu::BindGroup,
+    pub(crate) _uniform_buffer: wgpu::Buffer,
+    pub(crate) view_uniform_buffer: wgpu::Buffer,
+    pub(crate) lut_buffer: wgpu::Buffer,
+    pub(crate) dist_texture: wgpu::Texture,
+    pub(crate) dist_bind_group: wgpu::BindGroup,
+    pub(crate) distortion_lut: Mutex<Option<DistortTable>>,
 }
 
 impl SceneRenderBuffers {
@@ -194,7 +195,7 @@ impl SceneRenderBuffers {
 
         Self {
             bind_group,
-            uniform_buffer: transform_buffer,
+            _uniform_buffer: transform_buffer,
             view_uniform_buffer: view_buffer,
             lut_buffer,
             dist_texture,

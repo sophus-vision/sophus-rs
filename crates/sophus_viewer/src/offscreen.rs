@@ -1,8 +1,8 @@
-use crate::image::arc_image::ArcImageF32;
-use crate::image::image_view::ImageViewF32;
-use crate::image::ImageSize;
-use crate::viewer::ViewerRenderState;
+use crate::ViewerRenderState;
 use eframe::egui::{self};
+use sophus_image::arc_image::ArcImageF32;
+use sophus_image::image_view::ImageViewF32;
+use sophus_image::ImageSize;
 use sophus_sensor::DynCamera;
 
 #[derive(Debug)]

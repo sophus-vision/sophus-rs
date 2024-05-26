@@ -25,7 +25,7 @@ macro_rules! check_array1_dim {
 macro_rules! crate_py_lie_group_class {
     ($py_group: ident, $rust_group:ty, $name: literal,
       $dof:literal, $params:literal, $point:literal, $ambient:literal) => {
-        /// Python wrapper for python group
+        /// Python wrapper for Lie group
         #[pyclass(name = $name)]
         #[derive(Debug, Clone)]
         pub struct $py_group {

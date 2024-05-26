@@ -1,11 +1,6 @@
 use hollywood::actors::egui::EguiActor;
 use hollywood::actors::egui::Stream;
-pub use hollywood::compute::Context;
-use hollywood::core::request::ReplyMessage;
-use hollywood::core::request::RequestChannel;
-pub use hollywood::core::request::RequestHub;
-pub use hollywood::core::*;
-use hollywood::macros::*;
+use hollywood::prelude::*;
 use nalgebra::SVector;
 use sophus::image::arc_image::ArcImage4F32;
 use sophus::image::ImageSize;
@@ -21,18 +16,27 @@ use sophus_core::linalg::VecF64;
 use sophus_lie::Isometry3;
 use sophus_sensor::DynCamera;
 
-#[actor(ContentGeneratorMessage)]
+#[actor(ContentGeneratorMessage, NullInRequestMessage)]
 type ContentGenerator = Actor<
     NullProp,
     ContentGeneratorInbound,
+    NullInRequests,
     ContentGeneratorState,
     ContentGeneratorOutbound,
-    ContentGeneratorRequest,
+    ContentGeneratorOutRequest,
 >;
 
 /// Inbound message for the ContentGenerator actor.
 #[derive(Clone, Debug)]
-#[actor_inputs(ContentGeneratorInbound, {NullProp, ContentGeneratorState, ContentGeneratorOutbound, ContentGeneratorRequest})]
+#[actor_inputs(
+    ContentGeneratorInbound,
+    {
+        NullProp,
+        ContentGeneratorState,
+        ContentGeneratorOutbound,
+        ContentGeneratorOutRequest,
+        NullInRequestMessage
+    })]
 pub enum ContentGeneratorMessage {
     /// in seconds
     ClockTick(f64),
@@ -40,18 +44,19 @@ pub enum ContentGeneratorMessage {
 }
 
 /// Request of the simulation actor.
-pub struct ContentGeneratorRequest {
+pub struct ContentGeneratorOutRequest {
     /// Check time-stamp of receiver
-    pub scene_from_camera_request: RequestChannel<(), Isometry3<f64, 1>, ContentGeneratorMessage>,
+    pub scene_from_camera_request:
+        OutRequestChannel<(), Isometry3<f64, 1>, ContentGeneratorMessage>,
 }
 
-impl RequestHub<ContentGeneratorMessage> for ContentGeneratorRequest {
+impl IsOutRequestHub<ContentGeneratorMessage> for ContentGeneratorOutRequest {
     fn from_parent_and_sender(
         actor_name: &str,
-        sender: &tokio::sync::mpsc::Sender<ContentGeneratorMessage>,
+        sender: &tokio::sync::mpsc::UnboundedSender<ContentGeneratorMessage>,
     ) -> Self {
         Self {
-            scene_from_camera_request: RequestChannel::new(
+            scene_from_camera_request: OutRequestChannel::new(
                 actor_name.to_owned(),
                 "scene_from_camera_request",
                 sender,
@@ -60,7 +65,7 @@ impl RequestHub<ContentGeneratorMessage> for ContentGeneratorRequest {
     }
 }
 
-impl Activate for ContentGeneratorRequest {
+impl HasActivate for ContentGeneratorOutRequest {
     fn extract(&mut self) -> Self {
         Self {
             scene_from_camera_request: self.scene_from_camera_request.extract(),
@@ -104,14 +109,14 @@ pub struct ContentGeneratorOutbound {
     pub packets: OutboundChannel<Stream<Vec<Renderable>>>,
 }
 
-impl OnMessage for ContentGeneratorMessage {
+impl HasOnMessage for ContentGeneratorMessage {
     /// Process the inbound time_stamp message.
     fn on_message(
         self,
         _prop: &Self::Prop,
         state: &mut Self::State,
         outbound: &Self::OutboundHub,
-        request: &ContentGeneratorRequest,
+        request: &ContentGeneratorOutRequest,
     ) {
         match &self {
             ContentGeneratorMessage::ClockTick(_time_in_seconds) => {
@@ -414,13 +419,13 @@ impl OnMessage for ContentGeneratorMessage {
     }
 }
 
-impl InboundMessageNew<f64> for ContentGeneratorMessage {
+impl IsInboundMessageNew<f64> for ContentGeneratorMessage {
     fn new(_inbound_name: String, msg: f64) -> Self {
         ContentGeneratorMessage::ClockTick(msg)
     }
 }
 
-impl InboundMessageNew<ReplyMessage<Isometry3<f64, 1>>> for ContentGeneratorMessage {
+impl IsInboundMessageNew<ReplyMessage<Isometry3<f64, 1>>> for ContentGeneratorMessage {
     fn new(_inbound_name: String, scene_from_camera: ReplyMessage<Isometry3<f64, 1>>) -> Self {
         ContentGeneratorMessage::SceneFromCamera(scene_from_camera)
     }
@@ -449,7 +454,7 @@ pub async fn run_viewer_example() {
     let mut builder = ViewerBuilder::from_config(ViewerConfig { camera });
 
     // Pipeline configuration
-    let pipeline = hollywood::compute::Context::configure(&mut |context| {
+    let pipeline = Hollywood::configure(&mut |context| {
         // Actor creation:
         // 1. Periodic timer to drive the simulation
         let mut timer = hollywood::actors::Periodic::new_with_period(context, 0.01);
@@ -465,8 +470,9 @@ pub async fn run_viewer_example() {
             },
         );
         // 3. The viewer actor
-        let mut viewer =
-            EguiActor::<Vec<Renderable>, (), Isometry3<f64, 1>>::from_builder(context, &builder);
+        let mut viewer = EguiActor::<Vec<Renderable>, (), Isometry3<f64, 1>, (), ()>::from_builder(
+            context, &builder,
+        );
 
         // Pipeline connections:
         timer
@@ -478,9 +484,9 @@ pub async fn run_viewer_example() {
             .packets
             .connect(context, &mut viewer.inbound.stream);
         content_generator
-            .request
+            .out_requests
             .scene_from_camera_request
-            .connect(context, &mut viewer.inbound.request);
+            .connect(context, &mut viewer.in_requests.request);
     });
 
     // The cancel_requester is used to cancel the pipeline.
