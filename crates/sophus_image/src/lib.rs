@@ -42,6 +42,14 @@ impl ImageSize {
     pub fn area(&self) -> usize {
         self.width * self.height
     }
+
+    /// Get the aspect ratio of the image - width / height
+    pub fn aspect_ratio(&self) -> f32 {
+        if self.area() == 0 {
+            return 1.0;
+        }
+        self.width as f32 / self.height as f32
+    }
 }
 
 impl From<[usize; 2]> for ImageSize {
@@ -60,6 +68,12 @@ impl From<ImageSize> for [usize; 2] {
     /// to tensor (and matrix) convention  (d0 = rows, d1 = cols).
     fn from(image_size: ImageSize) -> Self {
         [image_size.height, image_size.width]
+    }
+}
+
+impl PartialEq for ImageSize {
+    fn eq(&self, other: &Self) -> bool {
+        self.width == other.width && self.height == other.height
     }
 }
 

@@ -28,8 +28,8 @@ use std::marker::PhantomData;
 ///  2. A scalar tensor of TOTAL_RANK = DRANK + SRANK.
 ///    *  ``self.scalar_dims()`` is used to access its dimensions of type
 ///        ``[usize: TOTAL_RANK]`` at runtime.
-///    *  - an individual element (= static tensor) can be accessed with
-///        ``self.scalar_get(idx)``, where idx is of type ``[usize: DRANK]``.
+///    *  an individual element (= static tensor) can be accessed with
+///       ``self.scalar_get(idx)``, where idx is of type ``[usize: DRANK]``.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TensorView<
     'a,

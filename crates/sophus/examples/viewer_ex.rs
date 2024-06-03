@@ -1,20 +1,27 @@
 use hollywood::actors::egui::EguiActor;
 use hollywood::actors::egui::Stream;
 use hollywood::prelude::*;
-use nalgebra::SVector;
-use sophus::image::arc_image::ArcImage4F32;
+use sophus::examples::viewer_example::make_example_image;
 use sophus::image::ImageSize;
-use sophus::prelude::*;
 use sophus::viewer::actor::run_viewer_on_main_thread;
 use sophus::viewer::actor::ViewerBuilder;
 use sophus::viewer::actor::ViewerCamera;
 use sophus::viewer::actor::ViewerConfig;
-use sophus::viewer::renderable::*;
-use sophus::viewer::scene_renderer::interaction::WgpuClippingPlanes;
-use sophus::viewer::SimpleViewer;
-use sophus_core::linalg::VecF64;
+use sophus::viewer::renderables::*;
 use sophus_lie::Isometry3;
-use sophus_sensor::DynCamera;
+use sophus_viewer::renderables::color::Color;
+use sophus_viewer::renderables::renderable2d::Points2;
+use sophus_viewer::renderables::renderable2d::Renderable2d;
+use sophus_viewer::renderables::renderable2d::View2dPacket;
+use sophus_viewer::renderables::renderable3d::View3dPacket;
+use sophus_viewer::simple_viewer::SimpleViewer;
+
+use crate::frame::Frame;
+use crate::renderable2d::Lines2;
+use crate::renderable3d::Lines3;
+use crate::renderable3d::Mesh3;
+use crate::renderable3d::Points3;
+use crate::renderable3d::Renderable3d;
 
 #[actor(ContentGeneratorMessage, NullInRequestMessage)]
 type ContentGenerator = Actor<
@@ -47,7 +54,7 @@ pub enum ContentGeneratorMessage {
 pub struct ContentGeneratorOutRequest {
     /// Check time-stamp of receiver
     pub scene_from_camera_request:
-        OutRequestChannel<(), Isometry3<f64, 1>, ContentGeneratorMessage>,
+        OutRequestChannel<String, Isometry3<f64, 1>, ContentGeneratorMessage>,
 }
 
 impl IsOutRequestHub<ContentGeneratorMessage> for ContentGeneratorOutRequest {
@@ -80,33 +87,70 @@ impl HasActivate for ContentGeneratorOutRequest {
 #[derive(Clone, Debug)]
 pub struct ContentGeneratorState {
     pub counter: u32,
-    pub show: bool,
-    pub intrinsics: DynCamera<f64, 1>,
-    pub scene_from_camera: Isometry3<f64, 1>,
-}
-
-impl Default for ContentGeneratorState {
-    fn default() -> Self {
-        ContentGeneratorState {
-            counter: 0,
-            show: false,
-            intrinsics: DynCamera::new_kannala_brandt(
-                &VecF64::<8>::from_array([600.0, 600.0, 320.0, 240.0, 0.0, 0.0, 0.0, 0.0]),
-                ImageSize {
-                    width: 640,
-                    height: 480,
-                },
-            ),
-            scene_from_camera: Isometry3::from_t(&VecF64::<3>::new(0.0, 0.0, -5.0)),
-        }
-    }
 }
 
 /// Outbound hub for the ContentGenerator.
 #[actor_outputs]
 pub struct ContentGeneratorOutbound {
     /// curves
-    pub packets: OutboundChannel<Stream<Vec<Renderable>>>,
+    pub packets: OutboundChannel<Stream<Packets>>,
+}
+
+fn create_view2_packet(image_size: ImageSize) -> Packet {
+    let img = make_example_image(image_size);
+
+    let mut packet_2d = View2dPacket {
+        view_label: "view_2d".to_owned(),
+        renderables3d: vec![],
+        renderables2d: vec![],
+        frame: Some(Frame::from_image(&img)),
+    };
+
+    let points2 = Points2::make("points2", &[[16.0, 12.0], [32.0, 24.0]], &Color::red(), 5.0);
+    packet_2d.renderables2d.push(Renderable2d::Points2(points2));
+
+    let lines2 = Lines2::make(
+        "lines2",
+        &[[[0.0, 0.0], [100.0, 100.0]]],
+        &Color::red(),
+        5.0,
+    );
+    packet_2d.renderables2d.push(Renderable2d::Lines2(lines2));
+
+    Packet::View2d(packet_2d)
+}
+
+fn create_view3_packet(initial_camera: ViewerCamera) -> Packet {
+    let mut packet_3d = View3dPacket {
+        view_label: "view_3d".to_owned(),
+        renderables3d: vec![],
+        initial_camera: initial_camera.clone(),
+    };
+
+    let trig_points = [[0.0, 0.0, -0.1], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]];
+
+    let points3 = Points3::make("points3", &trig_points, &Color::red(), 5.0);
+    packet_3d.renderables3d.push(Renderable3d::Points3(points3));
+
+    let lines3 = Lines3::make(
+        "lines3",
+        &[
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+            [[0.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
+        ],
+        &Color::green(),
+        5.0,
+    );
+    packet_3d.renderables3d.push(Renderable3d::Lines3(lines3));
+
+    let blue = Color::blue();
+    let mesh = Mesh3::make("mesh", &[(trig_points, blue)]);
+    packet_3d
+        .renderables3d
+        .push(renderable3d::Renderable3d::Mesh3(mesh));
+
+    Packet::View3d(packet_3d)
 }
 
 impl HasOnMessage for ContentGeneratorMessage {
@@ -116,304 +160,32 @@ impl HasOnMessage for ContentGeneratorMessage {
         _prop: &Self::Prop,
         state: &mut Self::State,
         outbound: &Self::OutboundHub,
-        request: &ContentGeneratorOutRequest,
+        _request: &ContentGeneratorOutRequest,
     ) {
         match &self {
             ContentGeneratorMessage::ClockTick(_time_in_seconds) => {
-                let mut renderables = vec![];
+                let initial_camera = ViewerCamera::default();
 
-                let trig_points = [
-                    SVector::<f32, 3>::new(0.0, 0.0, -0.1),
-                    SVector::<f32, 3>::new(0.0, 1.0, 0.0),
-                    SVector::<f32, 3>::new(1.0, 0.0, 0.0),
-                ];
-
-                let ttrig_points = [
-                    SVector::<f32, 3>::new(0.1, 0.0, 0.3),
-                    SVector::<f32, 3>::new(0.1, 1.0, 0.3),
-                    SVector::<f32, 3>::new(1.1, 0.0, 0.3),
-                ];
+                let mut packets = Packets { packets: vec![] };
 
                 if state.counter == 0 {
-                    let points2 = vec![
-                        Point2 {
-                            p: SVector::<f32, 2>::new(16.0, 12.0),
-                            color: Color {
-                                r: 1.0,
-                                g: 1.0,
-                                b: 0.0,
-                                a: 1.0,
-                            },
-                            point_size: 5.0,
-                        },
-                        Point2 {
-                            p: SVector::<f32, 2>::new(32.0, 24.0),
-                            color: Color {
-                                r: 1.0,
-                                g: 1.0,
-                                b: 0.0,
-                                a: 1.0,
-                            },
-                            point_size: 5.0,
-                        },
-                    ];
+                    packets
+                        .packets
+                        .push(create_view2_packet(initial_camera.intrinsics.image_size()));
 
-                    let points3 = vec![
-                        Point3 {
-                            p: trig_points[0],
-                            color: Color {
-                                r: 0.0,
-                                g: 1.0,
-                                b: 0.0,
-                                a: 1.0,
-                            },
-                            point_size: 5.0,
-                        },
-                        Point3 {
-                            p: trig_points[1],
-                            color: Color {
-                                r: 0.0,
-                                g: 1.0,
-                                b: 0.0,
-                                a: 1.0,
-                            },
-                            point_size: 5.0,
-                        },
-                        Point3 {
-                            p: trig_points[2],
-                            color: Color {
-                                r: 0.0,
-                                g: 1.0,
-                                b: 0.0,
-                                a: 1.0,
-                            },
-                            point_size: 5.0,
-                        },
-                    ];
-
-                    let mesh = vec![Triangle3 {
-                        p0: trig_points[0],
-                        p1: trig_points[1],
-                        p2: trig_points[2],
-                        color: Color {
-                            r: 1.0,
-                            g: 0.0,
-                            b: 0.0,
-                            a: 0.5,
-                        },
-                    }];
-
-                    let textured_mesh = vec![TexturedTriangle3 {
-                        p0: ttrig_points[0],
-                        p1: ttrig_points[1],
-                        p2: ttrig_points[2],
-                        tex0: SVector::<f32, 2>::new(0.0, 0.0),
-                        tex1: SVector::<f32, 2>::new(0.0, 0.0),
-                        tex2: SVector::<f32, 2>::new(0.0, 0.0),
-                    }];
-
-                    let line3 = vec![
-                        Line3 {
-                            p0: SVector::<f32, 3>::new(0.0, 0.0, 0.0),
-                            p1: SVector::<f32, 3>::new(1.0, 0.0, 0.0),
-                            color: Color {
-                                r: 1.0,
-                                g: 0.0,
-                                b: 0.0,
-                                a: 1.0,
-                            },
-                            line_width: 5.0,
-                        },
-                        Line3 {
-                            p0: SVector::<f32, 3>::new(0.0, 0.0, 0.0),
-                            p1: SVector::<f32, 3>::new(0.0, 1.0, 0.0),
-                            color: Color {
-                                r: 0.0,
-                                g: 1.0,
-                                b: 0.0,
-                                a: 1.0,
-                            },
-                            line_width: 5.0,
-                        },
-                        Line3 {
-                            p0: SVector::<f32, 3>::new(0.0, 0.0, 0.0),
-                            p1: SVector::<f32, 3>::new(0.0, 0.0, 1.0),
-                            color: Color {
-                                r: 0.0,
-                                g: 0.0,
-                                b: 1.0,
-                                a: 1.0,
-                            },
-                            line_width: 5.0,
-                        },
-                    ];
-
-                    renderables.push(Renderable::Points2(Points2 {
-                        name: "points2".to_owned(),
-                        points: points2,
-                    }));
-                    renderables.push(Renderable::Points3(Points3 {
-                        name: "points3".to_owned(),
-                        points: points3,
-                    }));
-                    renderables.push(Renderable::Mesh3(Mesh3 {
-                        name: "mesh".to_owned(),
-                        mesh,
-                    }));
-
-                    renderables.push(Renderable::TexturedMesh3(TexturedMesh3 {
-                        name: "tex_mesh".to_owned(),
-                        mesh: textured_mesh,
-                        texture: ArcImage4F32::from_image_size_and_val(
-                            ImageSize {
-                                width: 2,
-                                height: 2,
-                            },
-                            nalgebra::SVector::<f32, 4>::new(0.0, 0.0, 0.0, 0.0),
-                        ),
-                    }));
-
-                    renderables.push(Renderable::Lines3(Lines3 {
-                        name: "line3".to_owned(),
-                        lines: line3,
-                    }));
+                    packets.packets.push(create_view3_packet(initial_camera));
                 }
 
-                let proj_line2 = vec![
-                    Line2 {
-                        p0: state
-                            .intrinsics
-                            .cam_proj(
-                                &state
-                                    .scene_from_camera
-                                    .inverse()
-                                    .transform(&trig_points[0].cast()),
-                            )
-                            .cast(),
-                        p1: state
-                            .intrinsics
-                            .cam_proj(
-                                &state
-                                    .scene_from_camera
-                                    .inverse()
-                                    .transform(&trig_points[1].cast()),
-                            )
-                            .cast(),
-                        color: Color {
-                            r: 0.0,
-                            g: 1.0,
-                            b: 0.0,
-                            a: 0.5,
-                        },
-                        line_width: 2.0,
-                    },
-                    Line2 {
-                        p0: state
-                            .intrinsics
-                            .cam_proj(
-                                &state
-                                    .scene_from_camera
-                                    .inverse()
-                                    .transform(&trig_points[1].cast()),
-                            )
-                            .cast(),
-                        p1: state
-                            .intrinsics
-                            .cam_proj(
-                                &state
-                                    .scene_from_camera
-                                    .inverse()
-                                    .transform(&trig_points[2].cast()),
-                            )
-                            .cast(),
-                        color: Color {
-                            r: 0.0,
-                            g: 1.0,
-                            b: 0.0,
-                            a: 0.5,
-                        },
-                        line_width: 2.0,
-                    },
-                    Line2 {
-                        p0: state
-                            .intrinsics
-                            .cam_proj(
-                                &state
-                                    .scene_from_camera
-                                    .inverse()
-                                    .transform(&trig_points[2].cast()),
-                            )
-                            .cast(),
-                        p1: state
-                            .intrinsics
-                            .cam_proj(
-                                &state
-                                    .scene_from_camera
-                                    .inverse()
-                                    .transform(&trig_points[0].cast()),
-                            )
-                            .cast(),
-                        color: Color {
-                            r: 0.0,
-                            g: 1.0,
-                            b: 0.0,
-                            a: 0.5,
-                        },
-                        line_width: 2.0,
-                    },
-                ];
-
-                renderables.push(Renderable::Lines2(Lines2 {
-                    name: "proj_line".to_owned(),
-                    lines: proj_line2,
-                }));
                 state.counter += 1;
 
-                if state.counter > 20 {
-                    state.show = !state.show;
-                    state.counter = 0;
-                }
+                outbound.packets.send(Stream { msg: packets });
 
-                let lines = if state.show {
-                    vec![
-                        Line2 {
-                            p0: SVector::<f32, 2>::new(16.0, 12.0),
-                            p1: SVector::<f32, 2>::new(32.0, 24.0),
-                            color: Color {
-                                r: 1.0,
-                                g: 0.0,
-                                b: 0.0,
-                                a: 1.0,
-                            },
-                            line_width: 5.0,
-                        },
-                        Line2 {
-                            p0: SVector::<f32, 2>::new(-0.5, -0.5),
-                            p1: SVector::<f32, 2>::new(0.5, 0.5),
-                            color: Color {
-                                r: 1.0,
-                                g: 0.0,
-                                b: 0.0,
-                                a: 1.0,
-                            },
-                            line_width: 5.0,
-                        },
-                    ]
-                } else {
-                    vec![]
-                };
-
-                renderables.push(Renderable::Lines2(Lines2 {
-                    name: "l".to_owned(),
-                    lines,
-                }));
-
-                outbound.packets.send(Stream { msg: renderables });
-
-                request.scene_from_camera_request.send_request(());
+                // request
+                //     .scene_from_camera_request
+                //     .send_request("view_2d".to_owned());
             }
             ContentGeneratorMessage::SceneFromCamera(reply) => {
-                state.scene_from_camera = reply.reply;
+                println!("{}", reply.reply);
             }
         }
     }
@@ -432,26 +204,7 @@ impl IsInboundMessageNew<ReplyMessage<Isometry3<f64, 1>>> for ContentGeneratorMe
 }
 
 pub async fn run_viewer_example() {
-    // Camera / view pose parameters
-    let intrinsics = DynCamera::new_kannala_brandt(
-        &VecF64::<8>::from_array([600.0, 600.0, 320.0, 240.0, 0.0, 0.0, 0.0, 0.0]),
-        ImageSize {
-            width: 640,
-            height: 480,
-        },
-    );
-    let scene_from_camera = Isometry3::from_t(&VecF64::<3>::new(0.0, 0.0, -5.0));
-    let clipping_planes = WgpuClippingPlanes {
-        near: 0.1,
-        far: 1000.0,
-    };
-    let camera = ViewerCamera {
-        intrinsics: intrinsics.clone(),
-        clipping_planes,
-        scene_from_camera,
-    };
-
-    let mut builder = ViewerBuilder::from_config(ViewerConfig { camera });
+    let mut builder = ViewerBuilder::from_config(ViewerConfig {});
 
     // Pipeline configuration
     let pipeline = Hollywood::configure(&mut |context| {
@@ -462,15 +215,10 @@ pub async fn run_viewer_example() {
         let mut content_generator = ContentGenerator::from_prop_and_state(
             context,
             NullProp {},
-            ContentGeneratorState {
-                counter: 0,
-                show: false,
-                intrinsics: intrinsics.clone(),
-                scene_from_camera,
-            },
+            ContentGeneratorState { counter: 0 },
         );
         // 3. The viewer actor
-        let mut viewer = EguiActor::<Vec<Renderable>, (), Isometry3<f64, 1>, (), ()>::from_builder(
+        let mut viewer = EguiActor::<Packets, String, Isometry3<f64, 1>, (), ()>::from_builder(
             context, &builder,
         );
 

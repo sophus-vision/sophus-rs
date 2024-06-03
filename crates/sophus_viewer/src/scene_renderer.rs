@@ -4,9 +4,6 @@ pub mod buffers;
 /// depth renderer
 pub mod depth_renderer;
 
-/// interaction state
-pub mod interaction;
-
 /// line renderer
 pub mod line;
 
@@ -18,21 +15,24 @@ pub mod point;
 
 /// textured mesh renderer
 pub mod textured_mesh;
-use self::buffers::SceneRenderBuffers;
-use self::interaction::Interaction;
-use self::mesh::MeshRenderer;
-use self::point::ScenePointRenderer;
-use crate::actor::ViewerBuilder;
-use crate::DepthRenderer;
-use crate::ViewerRenderState;
+
 use eframe::egui;
 use sophus_core::calculus::region::IsRegion;
+use sophus_core::linalg::VecF32;
 use sophus_core::tensor::tensor_view::IsTensorLike;
+use sophus_image::arc_image::ArcImage4U8;
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::image_view::IsImageView;
 use sophus_sensor::distortion_table::distort_table;
 use sophus_sensor::dyn_camera::DynCamera;
 use wgpu::DepthStencilState;
+
+use crate::interactions::InteractionEnum;
+use crate::scene_renderer::buffers::SceneRenderBuffers;
+use crate::scene_renderer::depth_renderer::DepthRenderer;
+use crate::scene_renderer::mesh::MeshRenderer;
+use crate::scene_renderer::point::ScenePointRenderer;
+use crate::ViewerRenderState;
 
 /// Scene renderer
 pub struct SceneRenderer {
@@ -49,61 +49,66 @@ pub struct SceneRenderer {
     /// Depth renderer
     pub depth_renderer: DepthRenderer,
     /// Interaction state
-    pub interaction: Interaction,
+    pub interaction: InteractionEnum,
 }
 
 impl SceneRenderer {
     /// Create a new scene renderer
     pub fn new(
         wgpu_render_state: &ViewerRenderState,
-        builder: &ViewerBuilder,
+        intrinsics: &DynCamera<f64, 1>,
         depth_stencil: Option<DepthStencilState>,
+        interaction: InteractionEnum,
     ) -> Self {
         let device = &wgpu_render_state.device;
 
         let depth_renderer = DepthRenderer::new(
             wgpu_render_state,
-            &builder.config.camera.intrinsics,
+            &intrinsics.image_size(),
             depth_stencil.clone(),
         );
 
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("scene group layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        let uniform_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("scene group layout"),
+                entries: &[
+                    // frustum uniform
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // view-transform uniform
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // distortion table uniform
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
 
-        let texture_bind_group_layout =
+        let distortion_texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
@@ -115,15 +120,42 @@ impl SceneRenderer {
                     },
                     count: None,
                 }],
-                label: Some("texture_bind_group_layout"),
+                label: Some("dist_texture_bind_group_layout"),
+            });
+
+        let background_texture_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+                label: Some("background_texture_bind_group_layout"),
             });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("scene pipeline"),
-            bind_group_layouts: &[&bind_group_layout, &texture_bind_group_layout],
+            bind_group_layouts: &[
+                &uniform_bind_group_layout,
+                &distortion_texture_bind_group_layout,
+                &background_texture_bind_group_layout,
+            ],
             push_constant_ranges: &[],
         });
-        let buffers = SceneRenderBuffers::new(wgpu_render_state, builder);
+        let buffers = SceneRenderBuffers::new(wgpu_render_state, intrinsics);
 
         Self {
             buffers,
@@ -148,13 +180,7 @@ impl SceneRenderer {
                 &pipeline_layout,
                 depth_stencil,
             ),
-            interaction: Interaction {
-                maybe_pointer_state: None,
-                maybe_scroll_state: None,
-                maybe_scene_focus: None,
-                scene_from_camera: builder.config.camera.scene_from_camera,
-                clipping_planes: builder.config.camera.clipping_planes,
-            },
+            interaction,
         }
     }
 
@@ -162,9 +188,11 @@ impl SceneRenderer {
         &mut self,
         cam: &DynCamera<f64, 1>,
         response: &egui::Response,
+        scales: &VecF32<2>,
         z_buffer: ArcImageF32,
     ) {
-        self.interaction.process_event(cam, response, &z_buffer);
+        self.interaction
+            .process_event(cam, response, scales, &z_buffer);
     }
 
     pub(crate) fn paint<'rp>(
@@ -198,11 +226,13 @@ impl SceneRenderer {
             &mut render_pass,
             &self.buffers.bind_group,
             &self.buffers.dist_bind_group,
+            &self.buffers.background_bind_group,
         );
         self.textured_mesh_renderer.paint(
             &mut render_pass,
             &self.buffers.bind_group,
             &self.buffers.dist_bind_group,
+            &self.buffers.background_bind_group,
         );
         self.point_renderer.paint(
             &mut render_pass,
@@ -247,11 +277,13 @@ impl SceneRenderer {
             &mut render_pass,
             &self.buffers.bind_group,
             &self.buffers.dist_bind_group,
+            &self.buffers.background_bind_group,
         );
         self.textured_mesh_renderer.depth_paint(
             &mut render_pass,
             &self.buffers.bind_group,
             &self.buffers.dist_bind_group,
+            &self.buffers.background_bind_group,
         );
         self.line_renderer.depth_paint(
             &mut render_pass,
@@ -268,7 +300,12 @@ impl SceneRenderer {
         self.textured_mesh_renderer.vertices.clear();
     }
 
-    pub(crate) fn prepare(&self, state: &ViewerRenderState, intrinsics: &DynCamera<f64, 1>) {
+    pub(crate) fn prepare(
+        &self,
+        state: &ViewerRenderState,
+        intrinsics: &DynCamera<f64, 1>,
+        background_image: &Option<ArcImage4U8>,
+    ) {
         state.queue.write_buffer(
             &self.point_renderer.vertex_buffer,
             0,
@@ -294,7 +331,7 @@ impl SceneRenderer {
         for i in 0..4 {
             for j in 0..4 {
                 scene_from_camera_uniform[j][i] =
-                    self.interaction.scene_from_camera.inverse().matrix()[(i, j)] as f32;
+                    self.interaction.scene_from_camera().inverse().matrix()[(i, j)] as f32;
             }
         }
         state.queue.write_buffer(
@@ -320,7 +357,7 @@ impl SceneRenderer {
                 wgpu::ImageDataLayout {
                     offset: 0,
                     bytes_per_row: Some(8 * distort_lut.table.image_size().width as u32),
-                    rows_per_image: None,
+                    rows_per_image: Some(distort_lut.table.image_size().height as u32),
                 },
                 self.buffers.dist_texture.size(),
             );
@@ -333,6 +370,24 @@ impl SceneRenderer {
                     distort_lut.region.range().x as f32,
                     distort_lut.region.range().y as f32,
                 ]),
+            );
+        }
+
+        if let Some(background_image) = background_image {
+            state.queue.write_texture(
+                wgpu::ImageCopyTexture {
+                    texture: &self.buffers.background_texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                bytemuck::cast_slice(background_image.tensor.scalar_view().as_slice().unwrap()),
+                wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(4 * background_image.image_size().width as u32),
+                    rows_per_image: Some(background_image.image_size().height as u32),
+                },
+                self.buffers.background_texture.size(),
             );
         }
     }

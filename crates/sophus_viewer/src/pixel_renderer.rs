@@ -3,17 +3,18 @@ pub mod line;
 /// Pixel point renderer
 pub mod pixel_point;
 
-use self::line::PixelLineRenderer;
-use self::pixel_point::PixelPointRenderer;
-use crate::actor::ViewerBuilder;
-use crate::scene_renderer::interaction::Interaction;
-use crate::DepthRenderer;
-use crate::ViewerRenderState;
 use bytemuck::Pod;
 use bytemuck::Zeroable;
+use sophus_image::ImageSize;
 use std::num::NonZeroU64;
 use wgpu::util::DeviceExt;
 use wgpu::DepthStencilState;
+
+use crate::interactions::InteractionEnum;
+use crate::pixel_renderer::line::PixelLineRenderer;
+use crate::pixel_renderer::pixel_point::PixelPointRenderer;
+use crate::scene_renderer::depth_renderer::DepthRenderer;
+use crate::ViewerRenderState;
 
 /// Renderer for pixel data
 pub struct PixelRenderer {
@@ -64,7 +65,7 @@ impl PixelRenderer {
     /// Create a new pixel renderer
     pub fn new(
         wgpu_render_state: &ViewerRenderState,
-        builder: &ViewerBuilder,
+        image_size: &ImageSize,
         depth_stencil: Option<DepthStencilState>,
     ) -> Self {
         let device = &wgpu_render_state.device;
@@ -90,11 +91,13 @@ impl PixelRenderer {
         });
 
         let camera_uniform = OrthoCam {
-            width: builder.config.camera.intrinsics.image_size().width as f32,
-            height: builder.config.camera.intrinsics.image_size().height as f32,
+            width: image_size.width as f32,
+            height: image_size.height as f32,
             dummy0: 0.0,
             dummy1: 0.0,
         };
+
+        println!("image_size: {:?}", image_size);
 
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("pixel uniform buffer"),
@@ -130,32 +133,63 @@ impl PixelRenderer {
     pub(crate) fn show_interaction_marker(
         &self,
         state: &ViewerRenderState,
-        interaction_state: &Interaction,
+        interaction_state: &InteractionEnum,
     ) {
-        if let Some(scene_focus) = interaction_state.maybe_scene_focus {
-            *self.point_renderer.show_interaction_marker.lock().unwrap() =
-                if interaction_state.maybe_pointer_state.is_some()
-                    || interaction_state.maybe_scroll_state.is_some()
-                {
-                    let mut vertex_data = vec![];
+        match interaction_state {
+            InteractionEnum::OrbitalInteraction(orbital_interaction) => {
+                if let Some(scene_focus) = orbital_interaction.maybe_scene_focus {
+                    *self.point_renderer.show_interaction_marker.lock().unwrap() =
+                        if orbital_interaction.maybe_pointer_state.is_some()
+                            || orbital_interaction.maybe_scroll_state.is_some()
+                        {
+                            let mut vertex_data = vec![];
 
-                    for _i in 0..6 {
-                        vertex_data.push(PointVertex2 {
-                            _pos: [scene_focus.uv[0] as f32, scene_focus.uv[1] as f32],
-                            _color: [0.5, 0.5, 0.5, 1.0],
-                            _point_size: 5.0,
-                        });
-                    }
-                    state.queue.write_buffer(
-                        &self.point_renderer.interaction_vertex_buffer,
-                        0,
-                        bytemuck::cast_slice(&vertex_data),
-                    );
+                            for _i in 0..6 {
+                                vertex_data.push(PointVertex2 {
+                                    _pos: [scene_focus.uv[0] as f32, scene_focus.uv[1] as f32],
+                                    _color: [0.5, 0.5, 0.5, 1.0],
+                                    _point_size: 5.0,
+                                });
+                            }
+                            state.queue.write_buffer(
+                                &self.point_renderer.interaction_vertex_buffer,
+                                0,
+                                bytemuck::cast_slice(&vertex_data),
+                            );
 
-                    true
-                } else {
-                    false
-                };
+                            true
+                        } else {
+                            false
+                        };
+                }
+            }
+            InteractionEnum::InplaneInteraction(inplane_interaction) => {
+                if let Some(scene_focus) = inplane_interaction.maybe_scene_focus {
+                    *self.point_renderer.show_interaction_marker.lock().unwrap() =
+                        if inplane_interaction.maybe_pointer_state.is_some()
+                            || inplane_interaction.maybe_scroll_state.is_some()
+                        {
+                            let mut vertex_data = vec![];
+
+                            for _i in 0..6 {
+                                vertex_data.push(PointVertex2 {
+                                    _pos: [scene_focus.uv[0] as f32, scene_focus.uv[1] as f32],
+                                    _color: [0.5, 0.5, 0.5, 1.0],
+                                    _point_size: 5.0,
+                                });
+                            }
+                            state.queue.write_buffer(
+                                &self.point_renderer.interaction_vertex_buffer,
+                                0,
+                                bytemuck::cast_slice(&vertex_data),
+                            );
+
+                            true
+                        } else {
+                            false
+                        };
+                }
+            }
         }
     }
 

@@ -1,10 +1,12 @@
-use crate::renderable::Line3;
-use crate::ViewerRenderState;
+use std::collections::BTreeMap;
+
 use bytemuck::Pod;
 use bytemuck::Zeroable;
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
-use std::collections::BTreeMap;
 use wgpu::DepthStencilState;
+
+use crate::renderables::renderable3d::Line3;
+use crate::ViewerRenderState;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]

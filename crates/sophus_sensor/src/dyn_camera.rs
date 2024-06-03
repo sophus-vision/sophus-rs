@@ -24,6 +24,26 @@ pub type DynCamera<S, const BATCH: usize> =
 impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
     DynCameraFacade<S, BATCH, CameraType>
 {
+    /// Create default pnhole from Image Size
+    pub fn default_pinhole(image_size: ImageSize) -> Self {
+        let w = image_size.width as f64;
+        let h = image_size.height as f64;
+
+        let focal_length = (w + h) * 0.5;
+        Self {
+            camera_type: CameraType::new_pinhole(
+                &S::Vector::<4>::from_f64_array([
+                    focal_length,
+                    focal_length,
+                    0.5 * w - 0.5,
+                    0.5 * h - 0.5,
+                ]),
+                image_size,
+            ),
+            phantom: std::marker::PhantomData,
+        }
+    }
+
     /// Create a new dynamic camera facade from a camera model
     pub fn from_model(camera_type: CameraType) -> Self {
         Self {

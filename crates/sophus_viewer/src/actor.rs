@@ -1,14 +1,19 @@
-use crate::scene_renderer::interaction::WgpuClippingPlanes;
-use crate::Renderable;
-use crate::ViewerRenderState;
 use eframe::egui;
 use hollywood::actors::egui::EguiAppFromBuilder;
 use hollywood::actors::egui::GenericEguiBuilder;
 use hollywood::RequestWithReplyChannel;
+use sophus_core::linalg::VecF64;
+use sophus_image::ImageSize;
+use sophus_lie::traits::IsTranslationProductGroup;
 use sophus_lie::Isometry3;
 use sophus_sensor::dyn_camera::DynCamera;
 
+use crate::interactions::WgpuClippingPlanes;
+use crate::renderables::Packets;
+use crate::ViewerRenderState;
+
 /// Viewer camera configuration.
+#[derive(Clone, Debug)]
 pub struct ViewerCamera {
     /// Camera intrinsics
     pub intrinsics: DynCamera<f64, 1>,
@@ -18,36 +23,50 @@ pub struct ViewerCamera {
     pub scene_from_camera: Isometry3<f64, 1>,
 }
 
-/// Viewer configuration.
-pub struct ViewerConfig {
-    /// Camera configuration
-    pub camera: ViewerCamera,
+impl Default for ViewerCamera {
+    fn default() -> Self {
+        ViewerCamera::default_from(ImageSize::new(640, 480))
+    }
 }
+
+impl ViewerCamera {
+    /// Create default viewer camera from image size
+    pub fn default_from(image_size: ImageSize) -> ViewerCamera {
+        ViewerCamera {
+            intrinsics: DynCamera::default_pinhole(image_size),
+            clipping_planes: WgpuClippingPlanes::default(),
+            scene_from_camera: Isometry3::from_t(&VecF64::<3>::new(0.0, 0.0, -5.0)),
+        }
+    }
+}
+
+/// Viewer configuration.
+pub struct ViewerConfig {}
 
 /// Inbound message for the Viewer actor.
 #[derive(Clone, Debug)]
 pub enum ViewerMessage {
     /// Packets to render
-    Packets(Vec<Renderable>),
+    Packets(Packets),
 }
 
 /// Inbound message for the Viewer actor.
 #[derive(Debug)]
 pub enum ViewerInRequestMessage {
     /// Request the view pose
-    RequestViewPose(RequestWithReplyChannel<(), Isometry3<f64, 1>>),
+    RequestViewPose(RequestWithReplyChannel<String, Isometry3<f64, 1>>),
 }
 
 impl Default for ViewerMessage {
     fn default() -> Self {
-        ViewerMessage::Packets(Vec::default())
+        ViewerMessage::Packets(Packets::default())
     }
 }
 
 /// Builder for the Viewer actor.
 pub type ViewerBuilder = GenericEguiBuilder<
-    Vec<Renderable>,
-    RequestWithReplyChannel<(), Isometry3<f64, 1>>,
+    Packets,
+    RequestWithReplyChannel<String, Isometry3<f64, 1>>,
     (),
     (),
     ViewerConfig,

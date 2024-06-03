@@ -1,10 +1,12 @@
-use crate::renderable::Point2;
-use crate::PointVertex2;
-use crate::ViewerRenderState;
-use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use std::collections::BTreeMap;
 use std::sync::Mutex;
+
+use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use wgpu::DepthStencilState;
+
+use crate::pixel_renderer::PointVertex2;
+use crate::renderables::renderable2d::Point2;
+use crate::ViewerRenderState;
 
 /// Pixel point renderer
 pub struct PixelPointRenderer {

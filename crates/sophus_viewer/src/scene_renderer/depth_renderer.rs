@@ -1,6 +1,7 @@
-use crate::ViewerRenderState;
-use sophus_sensor::dyn_camera::DynCamera;
+use sophus_image::ImageSize;
 use wgpu::DepthStencilState;
+
+use crate::ViewerRenderState;
 
 /// Depth renderer.
 pub struct DepthRenderer {
@@ -14,14 +15,14 @@ impl DepthRenderer {
     /// Create a new depth renderer.
     pub fn new(
         state: &ViewerRenderState,
-        cam: &DynCamera<f64, 1>,
+        image_size: &ImageSize,
         depth_stencil: Option<DepthStencilState>,
     ) -> Self {
         pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
         let size = wgpu::Extent3d {
-            width: cam.image_size().width as u32,
-            height: cam.image_size().height as u32,
+            width: image_size.width as u32,
+            height: image_size.height as u32,
             depth_or_array_layers: 1,
         };
         let desc = wgpu::TextureDescriptor {
