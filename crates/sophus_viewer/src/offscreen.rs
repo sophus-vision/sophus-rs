@@ -1,9 +1,11 @@
+use std::num::NonZeroU32;
+
 use crate::ViewerRenderState;
 use eframe::egui::{self};
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::image_view::ImageViewF32;
 use sophus_image::ImageSize;
-use sophus_sensor::DynCamera;
+use wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
 
 #[derive(Debug)]
 pub(crate) struct OffscreenTexture {
@@ -15,17 +17,17 @@ pub(crate) struct OffscreenTexture {
 }
 
 impl OffscreenTexture {
-    pub(crate) fn new(render_state: &ViewerRenderState, intrinsics: &DynCamera<f64, 1>) -> Self {
-        let w = intrinsics.image_size().width as f32;
-        let h = intrinsics.image_size().height as f32;
+    pub(crate) fn new(render_state: &ViewerRenderState, image_size: &ImageSize) -> Self {
+        let w = image_size.width as u32;
+        let h = image_size.height as u32;
 
         let render_target = render_state
             .device
             .create_texture(&wgpu::TextureDescriptor {
                 label: None,
                 size: wgpu::Extent3d {
-                    width: w as u32,
-                    height: h as u32,
+                    width: w,
+                    height: h,
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
@@ -45,15 +47,13 @@ impl OffscreenTexture {
             wgpu::FilterMode::Linear,
         );
 
-        let depth_texture_data = Vec::<u8>::with_capacity(w as usize * h as usize * 4);
-
         let depth_render_target = render_state
             .device
             .create_texture(&wgpu::TextureDescriptor {
                 label: None,
                 size: wgpu::Extent3d {
-                    width: w as u32,
-                    height: h as u32,
+                    width: w,
+                    height: h,
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
@@ -65,10 +65,15 @@ impl OffscreenTexture {
                     | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[wgpu::TextureFormat::R32Float],
             });
+
+        let bytes_per_row = Self::bytes_per_row(w);
+
+        let required_buffer_size = bytes_per_row * h; // Total bytes needed in the buffer
+
         let depth_output_staging_buffer =
             render_state.device.create_buffer(&wgpu::BufferDescriptor {
                 label: None,
-                size: depth_texture_data.capacity() as u64,
+                size: required_buffer_size as wgpu::BufferAddress,
                 usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
                 mapped_at_creation: false,
             });
@@ -93,6 +98,13 @@ impl OffscreenTexture {
         }
     }
 
+    fn bytes_per_row(width: u32) -> u32 {
+        let bytes_per_pixel = 4;
+        let unaligned_bytes_per_row = width * bytes_per_pixel;
+        let align = COPY_BYTES_PER_ROW_ALIGNMENT; // GPU's row alignment requirement
+        (unaligned_bytes_per_row + align - 1) & !(align - 1)
+    }
+
     // download the depth image from the GPU to ArcImageF32 and copy the rgba texture to the egui texture
     pub fn download_images(
         &self,
@@ -100,8 +112,9 @@ impl OffscreenTexture {
         mut command_encoder: wgpu::CommandEncoder,
         image_size: &ImageSize,
     ) -> ArcImageF32 {
-        let w = image_size.width as f32;
-        let h = image_size.height as f32;
+        let w = image_size.width as u32;
+        let h = image_size.height as u32;
+
         command_encoder.copy_texture_to_buffer(
             wgpu::ImageCopyTexture {
                 texture: &self.depth_render_target,
@@ -113,16 +126,17 @@ impl OffscreenTexture {
                 buffer: &self.depth_output_staging_buffer,
                 layout: wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: Some((w as u32) * 4),
-                    rows_per_image: Some(h as u32),
+                    bytes_per_row: Some(NonZeroU32::new(Self::bytes_per_row(w)).unwrap().get()),
+                    rows_per_image: Some(h),
                 },
             },
             wgpu::Extent3d {
-                width: w as u32,
-                height: h as u32,
+                width: w,
+                height: h,
                 depth_or_array_layers: 1,
             },
         );
+
         state.queue.submit(Some(command_encoder.finish()));
 
         #[allow(unused_assignments)]

@@ -1,7 +1,26 @@
 #![feature(portable_simd)]
 #![deny(missing_docs)]
 #![allow(clippy::needless_range_loop)]
-//! sophus core crate - part of the sophus-rs projectx
+//! Core math functionality including
+//!  - linear algebra types
+//!      * such as [linalg::VecF64], and [linalg::MatF64]
+//!      * batch types such as [linalg::BatchScalarF64], [linalg::BatchVecF64],
+//!        [linalg::BatchMatF64]
+//!  - tensors
+//!      * design: dynamic tensor (ndarray) of static tensors (nalgebra)
+//!  - differentiation tools
+//!      * dual numbers: [calculus::dual::DualScalar], [calculus::dual::DualVector],
+//!        [calculus::dual::DualMatrix]
+//!      * [calculus::maps::curves] f: ℝ -> ℝ,   f: ℝ -> ℝʳ,   f: ℝ -> ℝʳ x ℝᶜ
+//!      * [calculus::maps::scalar_valued_maps]: f: ℝᵐ -> ℝ,   f: ℝᵐ x ℝⁿ -> ℝ
+//!      * [calculus::maps::vector_valued_maps]: f: ℝᵐ -> ℝᵖ,   f: ℝᵐ x ℝⁿ -> ℝᵖ
+//!      * [calculus::maps::matrix_valued_maps]: f: ℝᵐ -> ℝʳ x ℝᶜ,   f: ℝᵐ x ℝⁿ -> ℝʳ x ℝᶜ
+//!  - splines
+//!      * [calculus::spline::CubicBSpline]
+//!  - intervals, regions
+//!      * closed interval: [calculus::region::Interval]
+//!      * closed region: [calculus::region::Interval]
+//!  - manifolds: [manifold::traits]
 
 /// calculus - differentiation, splines, and more
 pub mod calculus;

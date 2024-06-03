@@ -1,10 +1,12 @@
-use crate::renderable::Triangle3;
-use crate::ViewerRenderState;
+use std::collections::BTreeMap;
+
 use bytemuck::Pod;
 use bytemuck::Zeroable;
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
-use std::collections::BTreeMap;
 use wgpu::DepthStencilState;
+
+use crate::renderables::renderable3d::Triangle3;
+use crate::ViewerRenderState;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -128,10 +130,12 @@ impl MeshRenderer {
         render_pass: &mut wgpu::RenderPass<'rp>,
         bind_group: &'rp wgpu::BindGroup,
         dist_bind_group: &'rp wgpu::BindGroup,
+        background_bind_group: &'rp wgpu::BindGroup,
     ) {
         render_pass.set_pipeline(&self.pipeline);
         render_pass.set_bind_group(0, bind_group, &[]);
         render_pass.set_bind_group(1, dist_bind_group, &[]);
+        render_pass.set_bind_group(2, background_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.draw(0..self.vertices.len() as u32, 0..1);
     }
@@ -141,10 +145,12 @@ impl MeshRenderer {
         depth_render_pass: &mut wgpu::RenderPass<'rp>,
         bind_group: &'rp wgpu::BindGroup,
         dist_bind_group: &'rp wgpu::BindGroup,
+        background_bind_group: &'rp wgpu::BindGroup,
     ) {
         depth_render_pass.set_pipeline(&self.depth_pipeline);
         depth_render_pass.set_bind_group(0, bind_group, &[]);
         depth_render_pass.set_bind_group(1, dist_bind_group, &[]);
+        depth_render_pass.set_bind_group(2, background_bind_group, &[]);
         depth_render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         depth_render_pass.draw(0..self.vertices.len() as u32, 0..1);
     }

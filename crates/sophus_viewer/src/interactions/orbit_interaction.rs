@@ -1,53 +1,21 @@
 use eframe::egui;
+use sophus_core::linalg::VecF32;
 use sophus_core::linalg::VecF64;
+use sophus_core::IsTensorLike;
 use sophus_image::arc_image::ArcImageF32;
-use sophus_image::prelude::*;
-use sophus_lie::prelude::*;
+use sophus_image::image_view::IsImageView;
+use sophus_lie::traits::IsTranslationProductGroup;
 use sophus_lie::Isometry3;
-use sophus_sensor::dyn_camera::DynCamera;
+use sophus_sensor::DynCamera;
 
-/// Clipping planes for the Wgpu renderer
-#[derive(Clone, Copy)]
-pub struct WgpuClippingPlanes {
-    /// Near clipping plane
-    pub near: f64,
-    /// Far clipping plane
-    pub far: f64,
-}
-
-impl WgpuClippingPlanes {
-    fn z_from_ndc(&self, ndc: f64) -> f64 {
-        -(self.far * self.near) / (-self.far + ndc * self.far - ndc * self.near)
-    }
-
-    pub(crate) fn _ndc_from_z(&self, z: f64) -> f64 {
-        (self.far * (z - self.near)) / (z * (self.far - self.near))
-    }
-}
-
-/// Interaction state for pointer
-#[derive(Clone, Copy)]
-pub struct InteractionPointerState {
-    /// Start uv position
-    pub start_uv: VecF64<2>,
-}
-
-/// Scene focus
-#[derive(Clone, Copy)]
-pub struct SceneFocus {
-    /// Depth
-    pub depth: f64,
-    /// UV position
-    pub uv: VecF64<2>,
-}
-
-#[derive(Clone, Copy)]
-/// Scroll state
-pub struct ScrollState {}
+use crate::interactions::InteractionPointerState;
+use crate::interactions::SceneFocus;
+use crate::interactions::ScrollState;
+use crate::interactions::WgpuClippingPlanes;
 
 #[derive(Clone, Copy)]
 /// Interaction state
-pub struct Interaction {
+pub struct OrbitalInteraction {
     pub(crate) maybe_pointer_state: Option<InteractionPointerState>,
     pub(crate) maybe_scroll_state: Option<ScrollState>,
     pub(crate) maybe_scene_focus: Option<SceneFocus>,
@@ -55,7 +23,7 @@ pub struct Interaction {
     pub(crate) scene_from_camera: Isometry3<f64, 1>,
 }
 
-impl Interaction {
+impl OrbitalInteraction {
     fn median_scene_depth(&self, z_buffer: &ArcImageF32) -> f64 {
         // to median ndc z
         let scalar_view = z_buffer.tensor.scalar_view();
@@ -86,6 +54,7 @@ impl Interaction {
         &mut self,
         cam: &DynCamera<f64, 1>,
         response: &egui::Response,
+        scales: &VecF32<2>,
         z_buffer: &ArcImageF32,
     ) {
         let last_pointer_pos = response.ctx.input(|i| i.pointer.latest_pos());
@@ -102,7 +71,10 @@ impl Interaction {
         let scroll_stopped = self.maybe_scroll_state.is_some() && is_scroll_zero;
 
         if scroll_started {
-            let uv = last_pointer_pos - response.rect.min;
+            let uv = egui::Vec2::new(
+                (last_pointer_pos - response.rect.min)[0] * scales[0],
+                (last_pointer_pos - response.rect.min)[1] * scales[1],
+            );
 
             if self.maybe_scene_focus.is_none() {
                 // Typically, the scene focus shall only be set by the pointer interaction event. But
@@ -158,6 +130,7 @@ impl Interaction {
         &mut self,
         cam: &DynCamera<f64, 1>,
         response: &egui::Response,
+        scales: &VecF32<2>,
         z_buffer: &ArcImageF32,
     ) {
         let delta_x = response.drag_delta().x;
@@ -168,7 +141,10 @@ impl Interaction {
 
             let pointer = response.interact_pointer_pos().unwrap();
 
-            let uv = pointer - response.rect.min;
+            let uv = egui::Pos2::new(
+                (pointer - response.rect.min)[0] * scales[0],
+                (pointer - response.rect.min)[1] * scales[1],
+            );
 
             let mut z = self
                 .clipping_planes
@@ -191,7 +167,8 @@ impl Interaction {
         if response.dragged_by(egui::PointerButton::Secondary) {
             // translate scene
 
-            let current_pixel = response.interact_pointer_pos().unwrap() - response.rect.min;
+            let c = response.interact_pointer_pos().unwrap() - response.rect.min;
+            let current_pixel = egui::Vec2::new(c[0] * scales[0], c[1] * scales[1]);
             let scene_focus = self.maybe_scene_focus.unwrap();
             let start_pixel = self.maybe_pointer_state.unwrap().start_uv;
             let depth = scene_focus.depth;
@@ -235,9 +212,10 @@ impl Interaction {
         &mut self,
         cam: &DynCamera<f64, 1>,
         response: &egui::Response,
+        scales: &VecF32<2>,
         z_buffer: &ArcImageF32,
     ) {
-        self.process_pointer(cam, response, z_buffer);
-        self.process_scrolls(cam, response, z_buffer);
+        self.process_pointer(cam, response, scales, z_buffer);
+        self.process_scrolls(cam, response, scales, z_buffer);
     }
 }

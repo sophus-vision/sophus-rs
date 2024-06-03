@@ -242,8 +242,8 @@ impl SparseLdlt {
             );
 
         let mut x = b.clone();
-        let mut x_mut_slice = x.as_mut_slice();
-        let mut x_ref = faer::mat::from_column_major_slice_mut::<f64>(&mut x_mut_slice, dim, 1);
+        let x_mut_slice = x.as_mut_slice();
+        let mut x_ref = faer::mat::from_column_major_slice_mut::<f64>(x_mut_slice, dim, 1);
         faer::perm::permute_rows_in_place(
             faer::reborrow::ReborrowMut::rb_mut(&mut x_ref),
             perm_ref,

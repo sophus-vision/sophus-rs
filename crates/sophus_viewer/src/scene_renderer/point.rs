@@ -1,10 +1,12 @@
-use crate::renderable::Point3;
-use crate::ViewerRenderState;
+use std::collections::BTreeMap;
+
 use bytemuck::Pod;
 use bytemuck::Zeroable;
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
-use std::collections::BTreeMap;
 use wgpu::DepthStencilState;
+
+use crate::renderables::renderable3d::Point3;
+use crate::ViewerRenderState;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -62,7 +64,7 @@ impl ScenePointRenderer {
         });
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("mesh scene pipeline"),
+            label: Some("point scene pipeline"),
             layout: Some(pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,

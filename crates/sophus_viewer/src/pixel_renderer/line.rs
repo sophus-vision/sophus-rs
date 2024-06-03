@@ -1,10 +1,12 @@
-use crate::renderable::Line2;
-use crate::LineVertex2;
-use crate::ViewerRenderState;
+use std::collections::BTreeMap;
+
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use nalgebra::SVector;
-use std::collections::BTreeMap;
 use wgpu::DepthStencilState;
+
+use crate::pixel_renderer::LineVertex2;
+use crate::renderables::renderable2d::Line2;
+use crate::ViewerRenderState;
 
 /// Pixel line renderer
 pub struct PixelLineRenderer {
