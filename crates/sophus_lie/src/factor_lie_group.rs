@@ -4,11 +4,15 @@ use crate::traits::IsRealLieFactorGroupImpl;
 use crate::Rotation2;
 use crate::Rotation3;
 use approx::assert_relative_eq;
-use sophus_core::calculus::dual::DualBatchScalar;
 use sophus_core::calculus::dual::DualScalar;
 use sophus_core::calculus::maps::MatrixValuedMapFromVector;
-use sophus_core::linalg::BatchScalarF64;
 use sophus_core::manifold::traits::TangentImpl;
+
+#[cfg(feature = "simd")]
+use sophus_core::calculus::dual::DualBatchScalar;
+
+#[cfg(feature = "simd")]
+use sophus_core::linalg::BatchScalarF64;
 
 impl<
         S: IsRealScalar<BATCH_SIZE, RealScalar = S>,
@@ -154,6 +158,7 @@ macro_rules! def_real_group_test_template {
 }
 
 def_real_group_test_template!(f64, DualScalar, Rotation2<f64, 1>, Rotation2<DualScalar, 1>,  1);
+#[cfg(feature = "simd")]
 def_real_group_test_template!(
     BatchScalarF64<8>,
     DualBatchScalar<8>,
@@ -163,6 +168,7 @@ def_real_group_test_template!(
 );
 
 def_real_group_test_template!(f64, DualScalar, Rotation3<f64, 1>, Rotation3<DualScalar, 1>,  1);
+#[cfg(feature = "simd")]
 def_real_group_test_template!(
     BatchScalarF64<8>,
     DualBatchScalar<8>,

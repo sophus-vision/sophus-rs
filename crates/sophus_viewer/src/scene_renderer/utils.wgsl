@@ -45,12 +45,12 @@ fn z1_plane_to_distorted(point_in_proj: vec3<f32>, frustum: Frustum, lut: Distor
     var lut_offset_y = lut.lut_offset_y;
     var lut_range_x = lut.lut_range_x;
     var lut_range_y = lut.lut_range_y;
- 
+
     let u = clamp((width - 1.0) * (point_in_proj.x -lut_offset_x) / lut_range_x, 0.0, width - 1.00001);
     let v = clamp((height - 1.0) * (point_in_proj.y -lut_offset_y) / lut_range_y, 0.0, height - 1.00001);
 
     // Manual implementation of bilinear interpolation.
-    // This is to workaround apparent limitations of wgpu - such as no/limited support for 
+    // This is to workaround apparent limitations of wgpu - such as no/limited support for
     // sampling of f32 textures and sampling in the vertex shader.
     // TDDO: Figure out how to use sampling in vertex shader or maybe undistort in fragment shader
     //       (first render pinhole image to texture, then undistort in fragment shader).
@@ -81,17 +81,15 @@ fn scene_point_to_distorted(scene_point: vec3<f32>,
 // map point from pixel coordinates (Computer Vision convention) to clip space coordinates (WebGPU convention)
 fn pixel_and_z_to_clip(uv_z: vec2<f32>, z: f32, frustum: Frustum) -> vec4<f32> {
     var width = frustum.width;
-    var height = frustum.height;    
+    var height = frustum.height;
     var near = frustum.near;
     var far = frustum.far;
     var u = uv_z.x;
     var v = uv_z.y;
- 
-    return vec4<f32>(2.0 * (u / width - 0.5), 
-                    -2.0 * (v / height - 0.5), 
+
+    return vec4<f32>(2.0 * (u / width - 0.5),
+                    -2.0 * (v / height - 0.5),
                     // todo: Check whether the z value is correct.
                     (far * (z - near)) / (z * (far - near)),
                     1.0);
 }
-
-

@@ -404,14 +404,14 @@ macro_rules! augment_py_product_group_class {
 
 augment_py_product_group_class!(
     PyBaseIsometry2,
-    PyIsometry2, 
-    Isometry2<f64, 1>, 
+    PyIsometry2,
+    Isometry2<f64, 1>,
     PyRotation2,
-    "Isometry2", 
+    "Isometry2",
     2);
 augment_py_product_group_class!(
     PyBaseIsometry3,
     PyIsometry3,
-    Isometry3<f64, 1>, 
-    PyRotation3, 
+    Isometry3<f64, 1>,
+    PyRotation3,
     "Isometry3",3);

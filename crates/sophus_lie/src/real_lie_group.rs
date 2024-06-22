@@ -8,12 +8,16 @@ use crate::Rotation2;
 use crate::Rotation3;
 use approx::assert_relative_eq;
 use nalgebra::SVector;
-use sophus_core::calculus::dual::DualBatchScalar;
 use sophus_core::calculus::dual::DualScalar;
 use sophus_core::calculus::maps::MatrixValuedMapFromVector;
 use sophus_core::calculus::maps::VectorValuedMapFromMatrix;
 use sophus_core::calculus::maps::VectorValuedMapFromVector;
+
+#[cfg(feature = "simd")]
+use sophus_core::calculus::dual::dual_batch_scalar::DualBatchScalar;
+#[cfg(feature = "simd")]
 use sophus_core::linalg::BatchScalarF64;
+
 use std::fmt::Display;
 use std::fmt::Formatter;
 
@@ -513,6 +517,7 @@ macro_rules! def_real_group_test_template {
 }
 
 def_real_group_test_template!(f64, DualScalar, Rotation2<f64, 1>, Rotation2<DualScalar, 1>,  1);
+#[cfg(feature = "simd")]
 def_real_group_test_template!(
     BatchScalarF64<8>,
     DualBatchScalar<8>,
@@ -522,6 +527,7 @@ def_real_group_test_template!(
 );
 
 def_real_group_test_template!(f64, DualScalar, Isometry2<f64, 1>, Isometry2<DualScalar, 1>,  1);
+#[cfg(feature = "simd")]
 def_real_group_test_template!(
     BatchScalarF64<8>,
     DualBatchScalar<8>,
@@ -531,6 +537,7 @@ def_real_group_test_template!(
 );
 
 def_real_group_test_template!(f64, DualScalar, Rotation3<f64, 1>, Rotation3<DualScalar, 1>,  1);
+#[cfg(feature = "simd")]
 def_real_group_test_template!(
     BatchScalarF64<8>,
     DualBatchScalar<8>,
@@ -540,6 +547,7 @@ def_real_group_test_template!(
 );
 
 def_real_group_test_template!(f64, DualScalar, Isometry3<f64, 1>, Isometry3<DualScalar, 1>,  1);
+#[cfg(feature = "simd")]
 def_real_group_test_template!(
     BatchScalarF64<8>,
     DualBatchScalar<8>,

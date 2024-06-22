@@ -603,18 +603,24 @@ pub type Rotation3<S, const BATCH: usize> = LieGroup<S, 3, 4, 3, 3, BATCH, Rotat
 fn rotation3_prop_tests() {
     use crate::factor_lie_group::RealFactorLieGroupTest;
     use crate::real_lie_group::RealLieGroupTest;
-    use sophus_core::calculus::dual::dual_scalar::DualBatchScalar;
     use sophus_core::calculus::dual::dual_scalar::DualScalar;
+    #[cfg(feature = "simd")]
+    use sophus_core::calculus::dual::DualBatchScalar;
+    #[cfg(feature = "simd")]
     use sophus_core::linalg::BatchScalarF64;
 
     Rotation3::<f64, 1>::test_suite();
+    #[cfg(feature = "simd")]
     Rotation3::<BatchScalarF64<8>, 8>::test_suite();
     Rotation3::<DualScalar, 1>::test_suite();
+    #[cfg(feature = "simd")]
     Rotation3::<DualBatchScalar<8>, 8>::test_suite();
 
     Rotation3::<f64, 1>::run_real_tests();
+    #[cfg(feature = "simd")]
     Rotation3::<BatchScalarF64<8>, 8>::run_real_tests();
 
     Rotation3::<f64, 1>::run_real_factor_tests();
+    #[cfg(feature = "simd")]
     Rotation3::<BatchScalarF64<8>, 8>::run_real_factor_tests();
 }

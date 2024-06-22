@@ -1,4 +1,4 @@
-#![feature(portable_simd)]
+#![cfg_attr(feature = "simd", feature(portable_simd))]
 #![deny(missing_docs)]
 
 //! Sensor (aka camera) crate - part of the sophus-rs project

@@ -277,7 +277,7 @@ impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
         assert_eq!(
             self.start_indices.len(),
             0,
-            "Ths function must ony called once"
+            "This function must only called once"
         );
 
         match self.get_var_kind() {

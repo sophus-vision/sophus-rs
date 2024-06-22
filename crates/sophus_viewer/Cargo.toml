@@ -28,3 +28,11 @@ nalgebra.workspace = true
 ndarray.workspace = true
 tokio.workspace = true
 wgpu.workspace = true
+
+[features]
+simd = [
+    "sophus_core/simd",
+    "sophus_lie/simd",
+    "sophus_sensor/simd",
+    "sophus_image/simd",
+]

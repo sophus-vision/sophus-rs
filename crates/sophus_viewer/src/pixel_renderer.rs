@@ -34,14 +34,6 @@ struct OrthoCam {
     dummy1: f32,
 }
 
-/// 2D vertex
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-pub struct Vertex2 {
-    _pos: [f32; 2],
-    _color: [f32; 4],
-}
-
 /// 2D line vertex
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]

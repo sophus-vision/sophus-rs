@@ -115,9 +115,12 @@ impl<D: IsDualScalar<BATCH>, const BATCH: usize> MatrixValuedCurve<D, BATCH> {
 
 #[test]
 fn curve_test() {
-    use crate::calculus::dual::dual_scalar::DualBatchScalar;
-    use crate::calculus::dual::dual_scalar::DualScalar;
+    use crate::calculus::dual::DualScalar;
     use crate::linalg::scalar::IsScalar;
+
+    #[cfg(feature = "simd")]
+    use crate::calculus::dual::DualBatchScalar;
+    #[cfg(feature = "simd")]
     use crate::linalg::BatchScalarF64;
 
     trait CurveTest {
@@ -196,12 +199,18 @@ fn curve_test() {
     }
 
     def_curve_test_template!(1, f64, DualScalar);
+    #[cfg(feature = "simd")]
     def_curve_test_template!(2, BatchScalarF64<2>, DualBatchScalar<2>);
+    #[cfg(feature = "simd")]
     def_curve_test_template!(4, BatchScalarF64<4>, DualBatchScalar<4>);
+    #[cfg(feature = "simd")]
     def_curve_test_template!(8, BatchScalarF64<8>, DualBatchScalar<8>);
 
     DualScalar::run_curve_test();
+    #[cfg(feature = "simd")]
     DualBatchScalar::<2>::run_curve_test();
+    #[cfg(feature = "simd")]
     DualBatchScalar::<4>::run_curve_test();
+    #[cfg(feature = "simd")]
     DualBatchScalar::<8>::run_curve_test();
 }
