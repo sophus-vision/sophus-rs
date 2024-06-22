@@ -63,7 +63,7 @@ fn vs_main(
         uv = uv0 - line_half_width * n;
         z = uv_z0.z;
     }
-       
+
 
     // map point from pixel coordinates (Computer Vision convention) to clip space coordinates (WebGPU convention)
     out.position = pixel_and_z_to_clip(uv, z, frustum_uniforms);

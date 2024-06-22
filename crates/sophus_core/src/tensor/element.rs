@@ -149,10 +149,15 @@ impl STensorFormat {
 
 #[test]
 fn test_elements() {
+    #[cfg(feature = "simd")]
     use crate::linalg::scalar::IsScalar;
     use crate::linalg::scalar::NumberCategory;
+
+    #[cfg(feature = "simd")]
     use crate::linalg::BatchScalar;
+    #[cfg(feature = "simd")]
     use crate::linalg::BatchScalarF64;
+    #[cfg(feature = "simd")]
     use crate::linalg::BatchVecF64;
 
     use crate::linalg::VecF32;
@@ -160,6 +165,7 @@ fn test_elements() {
     assert_eq!(f32::number_category(), NumberCategory::Real);
     assert_eq!(u32::number_category(), NumberCategory::Unsigned);
     assert_eq!(i32::number_category(), NumberCategory::Signed);
+    #[cfg(feature = "simd")]
     assert_eq!(
         BatchScalar::<f64, 4>::number_category(),
         NumberCategory::Real
@@ -180,8 +186,11 @@ fn test_elements() {
     assert_eq!(mat.scalar([1, 1]), &4.0);
     assert_abs_diff_eq!(mat, SMat::<f32, 2, 2>::new(1.0, 2.0, 3.0, 4.0));
 
-    let batch_vec: BatchVecF64<2, 2> =
-        BatchVecF64::from_element(BatchScalarF64::from_real_array([1.0, 2.0]));
-    assert_eq!(batch_vec.scalar([0]).extract_single(0), 1.0);
-    assert_eq!(batch_vec.scalar([1]).extract_single(1), 2.0);
+    #[cfg(feature = "simd")]
+    {
+        let batch_vec: BatchVecF64<2, 2> =
+            BatchVecF64::from_element(BatchScalarF64::from_real_array([1.0, 2.0]));
+        assert_eq!(batch_vec.scalar([0]).extract_single(0), 1.0);
+        assert_eq!(batch_vec.scalar([1]).extract_single(1), 2.0);
+    }
 }

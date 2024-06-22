@@ -438,6 +438,7 @@ mut_tensor_is_view!(5, 2, 3);
 
 #[test]
 fn mut_tensor_tests() {
+    #[cfg(feature = "simd")]
     use crate::linalg::BatchMatF64;
     {
         let _rank1_tensor = MutTensorD::<u8>::default();
@@ -514,6 +515,7 @@ fn mut_tensor_tests() {
     }
 
     //linalg
+    #[cfg(feature = "simd")]
     {
         let shape = [3];
 

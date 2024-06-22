@@ -179,7 +179,7 @@ pub enum DynIntensityArcImage {
     RgbaF32(ArcImage4F32),
 }
 
-/// Convert a GenMutImage to an GenArcImage  
+/// Convert a GenMutImage to an GenArcImage
 ///
 impl From<DynIntensityMutImage> for DynIntensityArcImage {
     fn from(image: DynIntensityMutImage) -> Self {

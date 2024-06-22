@@ -13,5 +13,7 @@
 		"rust-analyzer.imports.granularity.group": "item",
 		"rust-analyzer.imports.prefix": "crate",
 		"rust-analyzer.cargo.unsetTest": [],
+		"rust-analyzer.cargo.features": [
+		],
 	}
 }

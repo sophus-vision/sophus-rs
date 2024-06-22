@@ -1,0 +1,28 @@
+name: format
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  format:
+      runs-on: ubuntu-22.04
+      steps:
+        - name: Checkout workspace
+          uses: actions/checkout@v3
+        - name: Install pre-commit and install
+          run: |
+            pip install pre-commit
+            pre-commit install
+        - name: Run pre-commit checks
+          run: pre-commit run --all-files
+        - uses: actions-rs/toolchain@v1
+          with:
+            toolchain: nightly
+        - name: cargo doc
+          run: |
+            rustup default nightly
+            cargo doc --no-deps --all-features

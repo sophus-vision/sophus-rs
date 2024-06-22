@@ -40,8 +40,8 @@ fn vs_main(
     }
 
     out.position = vec4<f32>(2.0 * (u+0.5) / uniforms.width_height.x - 1.0,
-                             2.0 - 2.0*(v+0.5) / uniforms.width_height.y - 1.0, 
-                             0.0, 
+                             2.0 - 2.0*(v+0.5) / uniforms.width_height.y - 1.0,
+                             0.0,
                              1.0);
     out.color = color;
 

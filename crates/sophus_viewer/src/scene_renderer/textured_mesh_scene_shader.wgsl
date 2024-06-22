@@ -16,17 +16,17 @@ var<uniform> lut_uniform: DistortionLut;
 var distortion_texture: texture_2d<f32>;
 
 @group(2) @binding(0)
-var mesh_texture: texture_2d<f32>;  
+var mesh_texture: texture_2d<f32>;
 
 @group(2) @binding(1)
-var mesh_texture_sampler: sampler;  
+var mesh_texture_sampler: sampler;
 
 
 
 @vertex
 fn vs_main(
     @location(0) position: vec3<f32>,
-    @location(1) texCoords: vec2<f32>  
+    @location(1) texCoords: vec2<f32>
 ) -> VertexOut {
     var out: VertexOut;
     var uv_z = scene_point_to_distorted(position, view_uniform, frustum_uniforms, lut_uniform);
@@ -37,7 +37,7 @@ fn vs_main(
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    return textureSample(mesh_texture, mesh_texture_sampler, in.texCoords); 
+    return textureSample(mesh_texture, mesh_texture_sampler, in.texCoords);
    // return vec4<f32>(1.0, 0.0, 0.0, 1.0);
 }
 

@@ -17,5 +17,10 @@ concat-arrays.workspace = true
 nalgebra.workspace = true
 ndarray.workspace = true
 num-traits.workspace = true
-sleef.workspace = true
 typenum.workspace = true
+
+sleef = { version = "0.3", optional = true }
+
+
+[features]
+simd = ["sleef"]

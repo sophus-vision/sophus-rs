@@ -1,0 +1,33 @@
+name: docs
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+  workflow_dispatch:
+jobs:
+  docs:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: "recursive"
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+      - name: Run sccache stat for check before
+        shell: bash
+        run: ${SCCACHE_PATH} --show-stats
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+      - name: cargo
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
+        run: |
+          rustup default nightly
+          cargo doc --no-deps --all-features
+      - name: Run sccache stat for check after
+        shell: bash
+        run: ${SCCACHE_PATH} --show-stats

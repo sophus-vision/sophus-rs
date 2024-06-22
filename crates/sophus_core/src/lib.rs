@@ -1,11 +1,11 @@
-#![feature(portable_simd)]
+#![cfg_attr(feature = "simd", feature(portable_simd))]
 #![deny(missing_docs)]
 #![allow(clippy::needless_range_loop)]
 //! Core math functionality including
 //!  - linear algebra types
 //!      * such as [linalg::VecF64], and [linalg::MatF64]
 //!      * batch types such as [linalg::BatchScalarF64], [linalg::BatchVecF64],
-//!        [linalg::BatchMatF64]
+//!        [linalg::BatchMatF64] - require the `simd` feature
 //!  - tensors
 //!      * design: dynamic tensor (ndarray) of static tensors (nalgebra)
 //!  - differentiation tools

@@ -155,14 +155,16 @@ impl<D: IsDualScalar<BATCH, DualScalar = D>, const BATCH: usize>
 
 #[test]
 fn matrix_valued_map_from_vector_tests() {
-    use crate::calculus::dual::dual_scalar::DualBatchScalar;
     use crate::calculus::dual::dual_scalar::DualScalar;
     use crate::calculus::maps::matrix_valued_maps::MatrixValuedMapFromVector;
-
     use crate::linalg::scalar::IsScalar;
     use crate::linalg::vector::IsVector;
-    use crate::linalg::BatchScalarF64;
     use crate::tensor::tensor_view::IsTensorLike;
+
+    #[cfg(feature = "simd")]
+    use crate::calculus::dual::DualBatchScalar;
+    #[cfg(feature = "simd")]
+    use crate::linalg::BatchScalarF64;
 
     #[cfg(test)]
     trait Test {
@@ -284,10 +286,14 @@ fn matrix_valued_map_from_vector_tests() {
     }
 
     def_test_template!(f64, DualScalar, 1);
+    #[cfg(feature = "simd")]
     def_test_template!(BatchScalarF64<2>, DualBatchScalar<2>, 2);
+    #[cfg(feature = "simd")]
     def_test_template!(BatchScalarF64<4>, DualBatchScalar<4>, 4);
 
     f64::run();
+    #[cfg(feature = "simd")]
     BatchScalarF64::<2>::run();
+    #[cfg(feature = "simd")]
     BatchScalarF64::<4>::run();
 }

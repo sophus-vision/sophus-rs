@@ -23,7 +23,7 @@ pub trait IsTermSignature<const N: usize> {
     fn idx_ref(&self) -> &[usize; N];
 }
 
-/// Signature of a cost function    
+/// Signature of a cost function
 #[derive(Debug, Clone)]
 pub struct CostSignature<
     const NUM_ARGS: usize,

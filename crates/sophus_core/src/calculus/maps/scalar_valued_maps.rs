@@ -132,8 +132,10 @@ impl<D: IsDualScalar<BATCH>, const BATCH: usize> ScalarValuedMapFromMatrix<D, BA
 
 #[test]
 fn scalar_valued_map_tests() {
-    use crate::calculus::dual::dual_scalar::DualBatchScalar;
     use crate::calculus::dual::dual_scalar::DualScalar;
+    #[cfg(feature = "simd")]
+    use crate::calculus::dual::DualBatchScalar;
+    #[cfg(feature = "simd")]
     use crate::linalg::BatchScalarF64;
 
     #[cfg(test)]
@@ -202,18 +204,30 @@ fn scalar_valued_map_tests() {
     }
 
     def_scalar_valued_map_test_template!(1, f64, DualScalar);
+    #[cfg(feature = "simd")]
     def_scalar_valued_map_test_template!(2, BatchScalarF64<2>, DualBatchScalar<2>);
+    #[cfg(feature = "simd")]
     def_scalar_valued_map_test_template!(4, BatchScalarF64<4>, DualBatchScalar<4>);
+    #[cfg(feature = "simd")]
     def_scalar_valued_map_test_template!(8, BatchScalarF64<8>, DualBatchScalar<8>);
+    #[cfg(feature = "simd")]
     def_scalar_valued_map_test_template!(16, BatchScalarF64<16>, DualBatchScalar<16>);
+    #[cfg(feature = "simd")]
     def_scalar_valued_map_test_template!(32, BatchScalarF64<32>, DualBatchScalar<32>);
+    #[cfg(feature = "simd")]
     def_scalar_valued_map_test_template!(64, BatchScalarF64<64>, DualBatchScalar<64>);
 
     f64::run();
+    #[cfg(feature = "simd")]
     BatchScalarF64::<2>::run();
+    #[cfg(feature = "simd")]
     BatchScalarF64::<4>::run();
+    #[cfg(feature = "simd")]
     BatchScalarF64::<8>::run();
+    #[cfg(feature = "simd")]
     BatchScalarF64::<16>::run();
+    #[cfg(feature = "simd")]
     BatchScalarF64::<32>::run();
+    #[cfg(feature = "simd")]
     BatchScalarF64::<64>::run();
 }

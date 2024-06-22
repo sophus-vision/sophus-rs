@@ -33,15 +33,21 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry3<S, BATCH> {
 #[test]
 fn isometry3_prop_tests() {
     use crate::real_lie_group::RealLieGroupTest;
-    use sophus_core::calculus::dual::dual_scalar::DualBatchScalar;
     use sophus_core::calculus::dual::dual_scalar::DualScalar;
+
+    #[cfg(feature = "simd")]
+    use sophus_core::calculus::dual::DualBatchScalar;
+    #[cfg(feature = "simd")]
     use sophus_core::linalg::BatchScalarF64;
 
     Isometry3::<f64, 1>::test_suite();
+    #[cfg(feature = "simd")]
     Isometry3::<BatchScalarF64<8>, 8>::test_suite();
     Isometry3::<DualScalar, 1>::test_suite();
+    #[cfg(feature = "simd")]
     Isometry3::<DualBatchScalar<8>, 8>::test_suite();
 
     Isometry3::<f64, 1>::run_real_tests();
+    #[cfg(feature = "simd")]
     Isometry3::<BatchScalarF64<8>, 8>::run_real_tests();
 }

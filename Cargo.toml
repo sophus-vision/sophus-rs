@@ -16,22 +16,23 @@ edition = "2021"
 include = [
   "**/*.rs",
   "**/*.wgsl",
-  "Cargo.toml",
+  "**/*.md",
+  "**/Cargo.toml",
 ]
 keywords = ["robotics", "optimization"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/farm-ng/sophus-rs/"
-version = "0.6.1"
+version = "0.7.0"
 
 [workspace.dependencies]
-sophus = {path = "crates/sophus", version = "0.6.1"}
-sophus_core = {path = "crates/sophus_core", version = "0.6.1"}
-sophus_image = {path = "crates/sophus_image", version = "0.6.1"}
-sophus_lie = {path = "crates/sophus_lie", version = "0.6.1"}
-sophus_opt = {path = "crates/sophus_opt", version = "0.6.1"}
-sophus_pyo3 = {path = "crates/sophus_pyo3", version = "0.6.1"}
-sophus_sensor = {path = "crates/sophus_sensor", version = "0.6.1"}
-sophus_viewer = {path = "crates/sophus_viewer", version = "0.6.1"}
+sophus = {path = "crates/sophus", version = "0.7.0"}
+sophus_core = {path = "crates/sophus_core", version = "0.7.0"}
+sophus_image = {path = "crates/sophus_image", version = "0.7.0"}
+sophus_lie = {path = "crates/sophus_lie", version = "0.7.0"}
+sophus_opt = {path = "crates/sophus_opt", version = "0.7.0"}
+sophus_pyo3 = {path = "crates/sophus_pyo3", version = "0.7.0"}
+sophus_sensor = {path = "crates/sophus_sensor", version = "0.7.0"}
+sophus_viewer = {path = "crates/sophus_viewer", version = "0.7.0"}
 
 approx = "0.5"
 as-any = "0.3"
@@ -58,7 +59,6 @@ num-traits = "0.2"
 numpy = "0.21"
 png = "0.17"
 rand = "0.8"
-sleef = "0.3"
 tokio = {version = "1", features = ["full"]}
 typenum = {version = "1.17", features = ["const-generics"]}
 wgpu = "0.19"
