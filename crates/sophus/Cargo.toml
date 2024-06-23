@@ -30,7 +30,6 @@ nalgebra.workspace = true
 ndarray.workspace = true
 tokio.workspace = true
 wgpu.workspace = true
-include-utils = "=0.2.2"
 
 [features]
 simd = [
