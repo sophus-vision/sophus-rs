@@ -1,5 +1,4 @@
 use linked_hash_map::LinkedHashMap;
-use sophus_image::ImageSize;
 use sophus_sensor::DynCamera;
 
 use crate::interactions::orbit_interaction::OrbitalInteraction;
@@ -97,13 +96,5 @@ impl View3d {
 impl HasAspectRatio for View3d {
     fn aspect_ratio(&self) -> f32 {
         self.intrinsics.image_size().aspect_ratio()
-    }
-
-    fn view_size(&self) -> ImageSize {
-        self.intrinsics.image_size()
-    }
-
-    fn intrinsics(&self) -> &DynCamera<f64, 1> {
-        &self.intrinsics
     }
 }

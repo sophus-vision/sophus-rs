@@ -1,7 +1,6 @@
 use linked_hash_map::LinkedHashMap;
 use sophus_core::linalg::VecF64;
 use sophus_image::arc_image::ArcImage4U8;
-use sophus_image::ImageSize;
 use sophus_lie::traits::IsTranslationProductGroup;
 use sophus_lie::Isometry3;
 use sophus_sensor::DynCamera;
@@ -93,7 +92,6 @@ impl View2d {
         };
 
         if let Some(frame) = packet.frame {
-            println!("!!!!!!!!!!!Got a new frame");
             let depth_stencil = Some(wgpu::DepthStencilState {
                 format: wgpu::TextureFormat::Depth32Float,
                 depth_write_enabled: true,
@@ -218,13 +216,5 @@ impl View2d {
 impl HasAspectRatio for View2d {
     fn aspect_ratio(&self) -> f32 {
         self.intrinsics.image_size().aspect_ratio()
-    }
-
-    fn view_size(&self) -> ImageSize {
-        self.intrinsics.image_size()
-    }
-
-    fn intrinsics(&self) -> &DynCamera<f64, 1> {
-        &self.intrinsics
     }
 }
