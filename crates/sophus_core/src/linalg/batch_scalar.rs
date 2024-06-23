@@ -315,4 +315,16 @@ where
             0: mask.select(self.0, other.0),
         }
     }
+
+    fn exp(self) -> Self {
+        BatchScalarF64 {
+            0: sleef::Sleef::exp(self.0),
+        }
+    }
+
+    fn log(self) -> Self {
+        BatchScalarF64 {
+            0: sleef::Sleef::ln(self.0),
+        }
+    }
 }

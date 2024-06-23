@@ -1,3 +1,4 @@
+use crate::groups::spiral_similarity2::SpiralSimilarity2;
 use crate::lie_group::LieGroup;
 use crate::prelude::*;
 use crate::traits::IsRealLieFactorGroupImpl;
@@ -52,25 +53,23 @@ impl<
     }
 }
 
+
+
 /// A trait for Lie groups.
-pub trait RealFactorLieGroupTest {
+pub trait FactorLieGroupTest {
     /// Run all tests.
-    fn run_real_factor_tests() {
+    fn run_factor_tests() {
         Self::mat_v_test();
-        Self::test_mat_v_jacobian();
     }
 
     /// Test mat_v and mat_v_inverse.
     fn mat_v_test();
-
-    /// Test hat and vee operators.
-    fn test_mat_v_jacobian();
 }
 
-macro_rules! def_real_group_test_template {
+macro_rules! def_group_test_template {
     ($scalar:ty, $dual_scalar:ty, $group: ty, $dual_group: ty, $batch:literal
 ) => {
-        impl RealFactorLieGroupTest for $group {
+        impl FactorLieGroupTest for $group {
             fn mat_v_test() {
                 use crate::traits::IsLieGroup;
                 use sophus_core::linalg::scalar::IsScalar;
@@ -88,6 +87,27 @@ macro_rules! def_real_group_test_template {
                     );
                 }
             }
+        }
+    };
+}
+
+
+
+/// A trait for Lie groups.
+pub trait RealFactorLieGroupTest {
+    /// Run all tests.
+    fn run_real_factor_tests() {
+        Self::test_mat_v_jacobian();
+    }
+
+    /// Test hat and vee operators.
+    fn test_mat_v_jacobian();
+}
+
+macro_rules! def_real_group_test_template {
+    ($scalar:ty, $dual_scalar:ty, $group: ty, $dual_group: ty, $batch:literal
+) => {
+        impl RealFactorLieGroupTest for $group {
 
             fn test_mat_v_jacobian() {
                 use crate::traits::IsLieGroup;
@@ -157,6 +177,34 @@ macro_rules! def_real_group_test_template {
     };
 }
 
+def_group_test_template!(f64, DualScalar, Rotation2<f64, 1>, Rotation2<DualScalar, 1>,  1);
+#[cfg(feature = "simd")]
+def_group_test_template!(
+    BatchScalarF64<8>,
+    DualBatchScalar<8>,
+    Rotation2<BatchScalarF64<8>, 8>,
+    Rotation2<DualBatchScalar<8>, 8>,
+    8
+);
+def_group_test_template!(f64, DualScalar, Rotation3<f64, 1>, Rotation3<DualScalar, 1>,  1);
+#[cfg(feature = "simd")]
+def_group_test_template!(
+    BatchScalarF64<8>,
+    DualBatchScalar<8>,
+    Rotation3<BatchScalarF64<8>, 8>,
+    Rotation3<DualBatchScalar<8>, 8>,
+    8
+);
+def_group_test_template!(f64, DualScalar, SpiralSimilarity2<f64, 1>, SpiralSimilarity2<DualScalar, 1>,  1);
+#[cfg(feature = "simd")]
+def_group_test_template!(
+    BatchScalarF64<8>,
+    DualBatchScalar<8>,
+    SpiralSimilarity2<BatchScalarF64<8>, 8>,
+    SpiralSimilarity2<DualBatchScalar<8>, 8>,
+    8
+);
+
 def_real_group_test_template!(f64, DualScalar, Rotation2<f64, 1>, Rotation2<DualScalar, 1>,  1);
 #[cfg(feature = "simd")]
 def_real_group_test_template!(
@@ -166,7 +214,6 @@ def_real_group_test_template!(
     Rotation2<DualBatchScalar<8>, 8>,
     8
 );
-
 def_real_group_test_template!(f64, DualScalar, Rotation3<f64, 1>, Rotation3<DualScalar, 1>,  1);
 #[cfg(feature = "simd")]
 def_real_group_test_template!(
@@ -174,5 +221,14 @@ def_real_group_test_template!(
     DualBatchScalar<8>,
     Rotation3<BatchScalarF64<8>, 8>,
     Rotation3<DualBatchScalar<8>, 8>,
+    8
+);
+def_real_group_test_template!(f64, DualScalar, SpiralSimilarity2<f64, 1>, SpiralSimilarity2<DualScalar, 1>,  1);
+#[cfg(feature = "simd")]
+def_real_group_test_template!(
+    BatchScalarF64<8>,
+    DualBatchScalar<8>,
+    SpiralSimilarity2<BatchScalarF64<8>, 8>,
+    SpiralSimilarity2<DualBatchScalar<8>, 8>,
     8
 );

@@ -17,6 +17,21 @@ pub trait IsBoolMask {
 
     /// Returns the number of lanes
     fn lanes(&self) -> usize;
+
+    /// and
+    fn and(&self, other: &Self) -> Self;
+
+    /// or
+    fn or(&self, other: &Self) -> Self;
+
+    /// not
+    fn not(&self) -> Self;
+
+    /// xor
+    fn xor(&self, other: &Self) -> Self;
+
+    /// Debug string - this way due to orphan rules
+    fn dbg_str(&self) -> String;
 }
 
 impl IsBoolMask for bool {
@@ -44,5 +59,25 @@ impl IsBoolMask for bool {
 
     fn lanes(&self) -> usize {
         1
+    }
+
+    fn and(&self, other: &Self) -> Self {
+        *self && *other
+    }
+
+    fn or(&self, other: &Self) -> Self {
+        *self || *other
+    }
+
+    fn not(&self) -> Self {
+        !*self
+    }
+
+    fn xor(&self, other: &Self) -> Self {
+        *self ^ *other
+    }
+
+    fn dbg_str(&self) -> String {
+        format!("{}", self)
     }
 }

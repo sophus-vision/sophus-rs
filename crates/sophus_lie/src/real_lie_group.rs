@@ -1,5 +1,6 @@
 use super::traits::IsLieGroupImpl;
 use super::traits::IsRealLieGroupImpl;
+use crate::groups::spiral_similarity2::SpiralSimilarity2;
 use crate::lie_group::LieGroup;
 use crate::prelude::*;
 use crate::Isometry2;
@@ -553,5 +554,15 @@ def_real_group_test_template!(
     DualBatchScalar<8>,
     Isometry3<BatchScalarF64<8>, 8>,
     Isometry3<DualBatchScalar<8>, 8>,
+    8
+);
+
+def_real_group_test_template!(f64, DualScalar, SpiralSimilarity2<f64, 1>, SpiralSimilarity2<DualScalar, 1>,  1);
+#[cfg(feature = "simd")]
+def_real_group_test_template!(
+    BatchScalarF64<8>,
+    DualBatchScalar<8>,
+    SpiralSimilarity2<BatchScalarF64<8>, 8>,
+    SpiralSimilarity2<DualBatchScalar<8>, 8>,
     8
 );

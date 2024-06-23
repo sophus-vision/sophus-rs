@@ -592,6 +592,40 @@ where
     fn greater_equal(&self, rhs: &Self) -> Self::Mask {
         self.real_part.greater_equal(&rhs.real_part)
     }
+
+    fn exp(self) -> Self {
+        Self {
+            real_part: self.real_part.exp(),
+            dij_part: match self.dij_part.clone() {
+                Some(dij_val) => {
+                    let dyn_mat = <MutTensorDD<BatchScalarF64<BATCH>>>::from_map(
+                        &dij_val.view(),
+                        |dij: &BatchScalarF64<BATCH>| *dij * self.real_part.exp(),
+                    );
+                    Some(dyn_mat)
+                }
+                None => None,
+            },
+        }
+    }
+
+    fn log(self) -> Self {
+        Self {
+            real_part: self.real_part.log(),
+            dij_part: match self.dij_part.clone() {
+                Some(dij_val) => {
+                    let dyn_mat = <MutTensorDD<BatchScalarF64<BATCH>>>::from_map(
+                        &dij_val.view(),
+                        |dij: &BatchScalarF64<BATCH>| {
+                            *dij * BatchScalarF64::<BATCH>::from_f64(1.0) / self.real_part
+                        },
+                    );
+                    Some(dyn_mat)
+                }
+                None => None,
+            },
+        }
+    }
 }
 
 impl<const BATCH: usize> AddAssign<DualBatchScalar<BATCH>> for DualBatchScalar<BATCH>

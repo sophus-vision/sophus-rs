@@ -93,7 +93,6 @@ impl View2d {
         };
 
         if let Some(frame) = packet.frame {
-            println!("!!!!!!!!!!!Got a new frame");
             let depth_stencil = Some(wgpu::DepthStencilState {
                 format: wgpu::TextureFormat::Depth32Float,
                 depth_write_enabled: true,

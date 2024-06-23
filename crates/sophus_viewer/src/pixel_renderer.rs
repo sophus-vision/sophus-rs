@@ -89,7 +89,6 @@ impl PixelRenderer {
             dummy1: 0.0,
         };
 
-        println!("image_size: {:?}", image_size);
 
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("pixel uniform buffer"),

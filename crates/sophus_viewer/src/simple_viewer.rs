@@ -188,17 +188,11 @@ impl SimpleViewer {
                         }
                     }
                     for (_, lines) in view.pixel.line_renderer.lines_table.iter() {
-                        println!("lines: {}", lines.len());
-
                         for line in lines.iter() {
                             let p0 = line.p0;
                             let p1 = line.p1;
                             let d = (p0 - p1).normalize();
                             let normal = [d[1], -d[0]];
-
-                            println!("p0: {:?}, p1: {:?}", p0, p1);
-                            println!("d: {:?}, normal: {:?}", d, normal);
-                            println!("color: {:?}", line.color);
 
                             let v0 = LineVertex2 {
                                 _pos: [p0[0], p0[1]],

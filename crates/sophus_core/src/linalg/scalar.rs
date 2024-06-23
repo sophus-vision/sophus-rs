@@ -138,6 +138,9 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
     /// cosine
     fn cos(self) -> Self;
 
+    /// exponential function
+    fn exp(self) -> Self;
+
     /// Returns value of single lane
     fn extract_single(&self, i: usize) -> Self::SingleScalar;
 
@@ -169,6 +172,9 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
 
     /// Less or equal comparison
     fn less_equal(&self, rhs: &Self) -> Self::Mask;
+
+    /// natural logarithm
+    fn log(self) -> Self;
 
     /// ones
     fn ones() -> Self {
@@ -376,6 +382,14 @@ impl IsScalar<1> for f64 {
         } else {
             other
         }
+    }
+
+    fn exp(self) -> Self {
+        f64::exp(self)
+    }
+
+    fn log(self) -> Self {
+        f64::ln(self)
     }
 }
 

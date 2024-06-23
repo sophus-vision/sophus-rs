@@ -1,3 +1,4 @@
+use crate::factor_lie_group::FactorLieGroupTest;
 use crate::lie_group::LieGroup;
 use crate::prelude::*;
 use crate::traits::IsLieFactorGroupImpl;
@@ -317,6 +318,10 @@ fn rotation2_prop_tests() {
     Rotation2::<f64, 1>::run_real_tests();
     #[cfg(feature = "simd")]
     Rotation2::<BatchScalarF64<8>, 8>::run_real_tests();
+
+    Rotation2::<f64, 1>::run_factor_tests();
+    #[cfg(feature = "simd")]
+    Rotation2::<BatchScalarF64<8>, 8>::run_factor_tests();
 
     Rotation2::<f64, 1>::run_real_factor_tests();
     #[cfg(feature = "simd")]

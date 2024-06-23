@@ -333,6 +333,36 @@ impl IsScalar<1> for DualScalar {
         }
     }
 
+    fn exp(self) -> Self {
+        Self {
+            real_part: self.real_part.exp(),
+            dij_part: match self.dij_part.clone() {
+                Some(dij_val) => {
+                    let dyn_mat = <MutTensorDD<f64>>::from_map(&dij_val.view(), |dij: &f64| {
+                        *dij * self.real_part.exp()
+                    });
+                    Some(dyn_mat)
+                }
+                None => None,
+            },
+        }
+    }
+
+    fn log(self) -> Self {
+        Self {
+            real_part: self.real_part.ln(),
+            dij_part: match self.dij_part.clone() {
+                Some(dij_val) => {
+                    let dyn_mat = <MutTensorDD<f64>>::from_map(&dij_val.view(), |dij: &f64| {
+                        *dij * 1.0 / self.real_part
+                    });
+                    Some(dyn_mat)
+                }
+                None => None,
+            },
+        }
+    }
+
     fn atan2(self, rhs: Self) -> Self {
         let inv_sq_nrm: f64 =
             1.0 / (self.real_part * self.real_part + rhs.real_part * rhs.real_part);

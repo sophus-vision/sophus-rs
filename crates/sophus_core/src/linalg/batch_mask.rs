@@ -32,4 +32,24 @@ where
     fn lanes(&self) -> usize {
         BATCH
     }
+
+    fn and(&self, other: &Self) -> Self {
+        *self & *other
+    }
+
+    fn or(&self, other: &Self) -> Self {
+        *self | *other
+    }
+
+    fn not(&self) -> Self {
+        !*self
+    }
+
+    fn xor(&self, other: &Self) -> Self {
+        *self ^ *other
+    }
+
+    fn dbg_str(&self) -> String {
+        format!("{:?}", self.to_array())
+    }
 }
