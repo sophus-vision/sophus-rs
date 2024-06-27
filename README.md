@@ -34,7 +34,7 @@ sophus = "0.7.0"
 To allow for batch types, such as BatchScalarF64, the 'simd' feature is required. This feature
 depends on [`portable-simd`](https://doc.rust-lang.org/std/simd/index.html), which is currently
 only available on [nightly](https://doc.rust-lang.org/book/appendix-07-nightly-rust.html). There
-are plans to use any other nightly features.
+are no plans to rely on any other nightly features.
 
 ```toml
 [dependencies]
