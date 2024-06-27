@@ -71,23 +71,28 @@ impl OrbitalInteraction {
         let scroll_stopped = self.maybe_scroll_state.is_some() && is_scroll_zero;
 
         if scroll_started {
-            let uv = egui::Vec2::new(
-                (last_pointer_pos - response.rect.min)[0] * scales[0],
-                (last_pointer_pos - response.rect.min)[1] * scales[1],
+            let uv_view_port = egui::Pos2::new(
+                (last_pointer_pos - response.rect.min)[0],
+                (last_pointer_pos - response.rect.min)[1],
+            );
+
+            let uv_in_virtual_camera = VecF64::<2>::new(
+                (uv_view_port.x * scales[0]) as f64,
+                (uv_view_port.y * scales[1]) as f64,
             );
 
             if self.maybe_scene_focus.is_none() {
                 // Typically, the scene focus shall only be set by the pointer interaction event. But
                 // it was never set, we set it here.
-                let mut z = self
-                    .clipping_planes
-                    .z_from_ndc(z_buffer.pixel(uv.x as usize, uv.y as usize) as f64);
+                let mut z = self.clipping_planes.z_from_ndc(
+                    z_buffer.pixel(uv_view_port.x as usize, uv_view_port.y as usize) as f64,
+                );
                 if z >= self.clipping_planes.far {
                     z = self.median_scene_depth(z_buffer);
                 }
                 self.maybe_scene_focus = Some(SceneFocus {
                     depth: z,
-                    uv: VecF64::<2>::new(uv.x as f64, uv.y as f64),
+                    uv_in_virtual_camera,
                 });
             }
             self.maybe_scroll_state = Some(ScrollState {});
@@ -109,7 +114,7 @@ impl OrbitalInteraction {
             let delta_z: f64 = (smooth_scroll_delta.x) as f64;
 
             let scene_focus = self.maybe_scene_focus.unwrap();
-            let pixel = scene_focus.uv;
+            let pixel = scene_focus.uv_in_virtual_camera;
             let depth = scene_focus.depth;
             let delta = 0.01 * VecF64::<6>::new(0.0, 0.0, 0.0, 0.0, 0.0, delta_z);
             let camera_from_scene_point = Isometry3::from_t(&cam.cam_unproj_with_z(&pixel, depth));
@@ -141,23 +146,29 @@ impl OrbitalInteraction {
 
             let pointer = response.interact_pointer_pos().unwrap();
 
-            let uv = egui::Pos2::new(
-                (pointer - response.rect.min)[0] * scales[0],
-                (pointer - response.rect.min)[1] * scales[1],
+            let uv_view_port = egui::Pos2::new(
+                (pointer - response.rect.min)[0],
+                (pointer - response.rect.min)[1],
             );
 
-            let mut z = self
-                .clipping_planes
-                .z_from_ndc(z_buffer.pixel(uv.x as usize, uv.y as usize) as f64);
+            let uv_in_virtual_camera = VecF64::<2>::new(
+                (uv_view_port.x * scales[0]) as f64,
+                (uv_view_port.y * scales[1]) as f64,
+            );
+
+            let mut z = self.clipping_planes.z_from_ndc(
+                z_buffer.pixel(uv_view_port.x as usize, uv_view_port.y as usize) as f64,
+            );
+
             if z >= self.clipping_planes.far {
                 z = self.median_scene_depth(z_buffer);
             }
             self.maybe_scene_focus = Some(SceneFocus {
                 depth: z,
-                uv: VecF64::<2>::new(uv.x as f64, uv.y as f64),
+                uv_in_virtual_camera,
             });
             self.maybe_pointer_state = Some(InteractionPointerState {
-                start_uv: VecF64::<2>::new(uv.x as f64, uv.y as f64),
+                start_uv: uv_in_virtual_camera,
             });
         } else if response.drag_stopped() {
             // A drag event finished
@@ -188,13 +199,14 @@ impl OrbitalInteraction {
             self.scene_from_camera = scene_from_camera;
 
             if let Some(focus) = &mut self.maybe_scene_focus {
-                focus.uv = VecF64::<2>::new(current_pixel.x as f64, current_pixel.y as f64);
+                focus.uv_in_virtual_camera =
+                    VecF64::<2>::new(current_pixel.x as f64, current_pixel.y as f64);
             }
         } else if response.dragged_by(egui::PointerButton::Primary) {
             // rotate around scene focus
 
             let scene_focus = self.maybe_scene_focus.unwrap();
-            let pixel = scene_focus.uv;
+            let pixel = scene_focus.uv_in_virtual_camera;
             let depth = scene_focus.depth;
             let delta =
                 0.01 * VecF64::<6>::new(0.0, 0.0, 0.0, -delta_y as f64, delta_x as f64, 0.0);

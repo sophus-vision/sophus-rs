@@ -50,8 +50,6 @@ impl Frame {
             image.image_size(),
         );
 
-        println!("!!!!!!!!intrinsics: {:?}", intrinsics);
-
         Frame {
             image: Some(image.clone()),
             intrinsics,

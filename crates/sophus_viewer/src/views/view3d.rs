@@ -4,7 +4,8 @@ use sophus_sensor::DynCamera;
 
 use crate::interactions::orbit_interaction::OrbitalInteraction;
 use crate::interactions::InteractionEnum;
-use crate::offscreen::OffscreenTexture;
+use crate::offscreen::OffscreenTextures;
+use crate::pixel_renderer::PixelRenderer;
 use crate::renderables::renderable3d::Renderable3d;
 use crate::renderables::renderable3d::View3dPacket;
 use crate::scene_renderer::SceneRenderer;
@@ -14,8 +15,10 @@ use crate::ViewerRenderState;
 
 pub(crate) struct View3d {
     pub(crate) scene: SceneRenderer,
+    // At the moment, the pixel renderer is only used for the interaction marker
+    pub(crate) pixel_for_interaction_marker: PixelRenderer,
     pub(crate) intrinsics: DynCamera<f64, 1>,
-    pub(crate) offscreen: OffscreenTexture,
+    pub(crate) offscreen: Option<OffscreenTextures>,
 }
 
 impl View3d {
@@ -35,14 +38,11 @@ impl View3d {
             views.insert(
                 packet.view_label.clone(),
                 View::View3d(View3d {
-                    offscreen: OffscreenTexture::new(
-                        state,
-                        &packet.initial_camera.intrinsics.image_size(),
-                    ),
+                    offscreen: None,
                     scene: SceneRenderer::new(
                         state,
                         &packet.initial_camera.intrinsics,
-                        depth_stencil,
+                        depth_stencil.clone(),
                         InteractionEnum::OrbitalInteraction(OrbitalInteraction {
                             maybe_pointer_state: None,
                             maybe_scroll_state: None,
@@ -50,6 +50,11 @@ impl View3d {
                             clipping_planes: packet.initial_camera.clipping_planes,
                             scene_from_camera: packet.initial_camera.scene_from_camera,
                         }),
+                    ),
+                    pixel_for_interaction_marker: PixelRenderer::new(
+                        state,
+                        &packet.initial_camera.intrinsics.image_size(),
+                        depth_stencil.clone(),
                     ),
                     intrinsics: packet.initial_camera.intrinsics.clone(),
                 }),
@@ -92,18 +97,28 @@ impl View3d {
             }
         }
     }
+
+    pub fn update_offscreen_texture(
+        &mut self,
+        render_state: &ViewerRenderState,
+        view_port_size: &ImageSize,
+    ) {
+        match &mut self.offscreen {
+            Some(offscreen) => {
+                let current_view_port_size = offscreen.view_port_size();
+                if current_view_port_size != view_port_size {
+                    *offscreen = OffscreenTextures::new(render_state, view_port_size);
+                }
+            }
+            None => {
+                self.offscreen = Some(OffscreenTextures::new(render_state, view_port_size));
+            }
+        }
+    }
 }
 
 impl HasAspectRatio for View3d {
     fn aspect_ratio(&self) -> f32 {
         self.intrinsics.image_size().aspect_ratio()
-    }
-
-    fn view_size(&self) -> ImageSize {
-        self.intrinsics.image_size()
-    }
-
-    fn intrinsics(&self) -> &DynCamera<f64, 1> {
-        &self.intrinsics
     }
 }

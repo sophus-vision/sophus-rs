@@ -25,7 +25,7 @@ pub struct ViewerCamera {
 
 impl Default for ViewerCamera {
     fn default() -> Self {
-        ViewerCamera::default_from(ImageSize::new(640, 480))
+        ViewerCamera::default_from(ImageSize::new(639, 479))
     }
 }
 

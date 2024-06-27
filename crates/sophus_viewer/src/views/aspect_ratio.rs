@@ -1,15 +1,10 @@
 use linked_hash_map::LinkedHashMap;
 use sophus_image::ImageSize;
-use sophus_sensor::DynCamera;
 
 use crate::views::View;
 
 pub(crate) trait HasAspectRatio {
     fn aspect_ratio(&self) -> f32;
-
-    fn view_size(&self) -> ImageSize;
-
-    fn intrinsics(&self) -> &DynCamera<f64, 1>;
 }
 
 pub(crate) fn get_median_aspect_ratio(views: &LinkedHashMap<String, View>) -> f32 {
@@ -52,12 +47,26 @@ pub(crate) fn get_max_size(
     (max_width, max_height)
 }
 
-pub(crate) fn get_adjusted_view_size(view: &View, max_width: f32, max_height: f32) -> (f32, f32) {
-    let aspect_ratio = view.aspect_ratio();
-    let view_size = view.view_size();
-    let view_width = max_width.min(max_height * aspect_ratio);
-    let view_height = max_height.min(max_width / aspect_ratio);
-    let view_width = view_width.min(view_size.width as f32);
-    let view_height = view_height.min(view_size.height as f32);
-    (view_width, view_height)
+pub(crate) struct ViewPortSize {
+    pub(crate) width: f32,
+    pub(crate) height: f32,
+}
+
+impl ViewPortSize {
+    pub(crate) fn image_size(&self) -> ImageSize {
+        ImageSize {
+            width: self.width.ceil() as usize,
+            height: self.height.ceil() as usize,
+        }
+    }
+}
+
+pub(crate) fn get_adjusted_view_size(
+    view_aspect_ratio: f32,
+    max_width: f32,
+    max_height: f32,
+) -> ViewPortSize {
+    let width = max_width.min(max_height * view_aspect_ratio);
+    let height = max_height.min(max_width / view_aspect_ratio);
+    ViewPortSize { width, height }
 }

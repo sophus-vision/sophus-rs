@@ -8,7 +8,14 @@ use sophus::viewer::actor::ViewerBuilder;
 use sophus::viewer::actor::ViewerCamera;
 use sophus::viewer::actor::ViewerConfig;
 use sophus::viewer::renderables::*;
+use sophus_core::linalg::VecF64;
+use sophus_image::intensity_image::intensity_arc_image::IsIntensityArcImage;
+use sophus_image::mut_image::MutImageF32;
+use sophus_image::mut_image_view::IsMutImageView;
+use sophus_lie::traits::IsTranslationProductGroup;
 use sophus_lie::Isometry3;
+use sophus_sensor::DynCamera;
+use sophus_viewer::interactions::WgpuClippingPlanes;
 use sophus_viewer::renderables::color::Color;
 use sophus_viewer::renderables::renderable2d::Points2;
 use sophus_viewer::renderables::renderable2d::Renderable2d;
@@ -96,8 +103,11 @@ pub struct ContentGeneratorOutbound {
     pub packets: OutboundChannel<Stream<Packets>>,
 }
 
-fn create_view2_packet(image_size: ImageSize) -> Packet {
-    let img = make_example_image(image_size);
+fn create_view2_packet() -> Packet {
+    let img = make_example_image(ImageSize {
+        width: 300,
+        height: 100,
+    });
 
     let mut packet_2d = View2dPacket {
         view_label: "view_2d".to_owned(),
@@ -109,18 +119,47 @@ fn create_view2_packet(image_size: ImageSize) -> Packet {
     let points2 = Points2::make("points2", &[[16.0, 12.0], [32.0, 24.0]], &Color::red(), 5.0);
     packet_2d.renderables2d.push(Renderable2d::Points2(points2));
 
+    let lines2 = Lines2::make("lines2", &[[[0.0, 0.0], [20.0, 20.0]]], &Color::red(), 5.0);
+    packet_2d.renderables2d.push(Renderable2d::Lines2(lines2));
+
+    Packet::View2d(packet_2d)
+}
+
+fn create_tiny_view2_packet() -> Packet {
+    let mut img = MutImageF32::from_image_size_and_val(ImageSize::new(3, 2), 1.0);
+
+    *img.mut_pixel(0, 0) = 0.0;
+    *img.mut_pixel(0, 1) = 0.5;
+
+    *img.mut_pixel(1, 1) = 0.0;
+
+    *img.mut_pixel(2, 0) = 0.3;
+    *img.mut_pixel(2, 1) = 0.6;
+
+    let mut packet_2d = View2dPacket {
+        view_label: "tiny".to_owned(),
+        renderables3d: vec![],
+        renderables2d: vec![],
+        frame: Some(Frame::from_image(&img.to_shared().to_rgba())),
+    };
+
     let lines2 = Lines2::make(
         "lines2",
-        &[[[0.0, 0.0], [100.0, 100.0]]],
+        &[[[-0.5, -0.5], [0.5, 0.5]], [[0.5, -0.5], [-0.5, 0.5]]],
         &Color::red(),
-        5.0,
+        0.3,
     );
     packet_2d.renderables2d.push(Renderable2d::Lines2(lines2));
 
     Packet::View2d(packet_2d)
 }
 
-fn create_view3_packet(initial_camera: ViewerCamera) -> Packet {
+fn create_view3_packet() -> Packet {
+    let initial_camera = ViewerCamera {
+        intrinsics: DynCamera::default_distorted(ImageSize::new(639, 477)),
+        clipping_planes: WgpuClippingPlanes::default(),
+        scene_from_camera: Isometry3::from_t(&VecF64::<3>::new(0.0, 0.0, -5.0)),
+    };
     let mut packet_3d = View3dPacket {
         view_label: "view_3d".to_owned(),
         renderables3d: vec![],
@@ -164,16 +203,12 @@ impl HasOnMessage for ContentGeneratorMessage {
     ) {
         match &self {
             ContentGeneratorMessage::ClockTick(_time_in_seconds) => {
-                let initial_camera = ViewerCamera::default();
-
                 let mut packets = Packets { packets: vec![] };
 
                 if state.counter == 0 {
-                    packets
-                        .packets
-                        .push(create_view2_packet(initial_camera.intrinsics.image_size()));
-
-                    packets.packets.push(create_view3_packet(initial_camera));
+                    packets.packets.push(create_view2_packet());
+                    packets.packets.push(create_tiny_view2_packet());
+                    packets.packets.push(create_view3_packet());
                 }
 
                 state.counter += 1;

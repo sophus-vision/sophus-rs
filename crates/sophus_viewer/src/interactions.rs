@@ -54,7 +54,7 @@ pub struct SceneFocus {
     /// Depth
     pub depth: f64,
     /// UV position
-    pub uv: VecF64<2>,
+    pub uv_in_virtual_camera: VecF64<2>,
 }
 
 #[derive(Clone, Copy)]

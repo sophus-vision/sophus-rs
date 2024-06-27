@@ -9,21 +9,22 @@ use crate::ViewerRenderState;
 #[repr(C)]
 // This is so we can store this in a buffer
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct Transforms {
-    width: f32,
-    height: f32,
-    near: f32,
-    far: f32,
-    fx: f32,
-    fy: f32,
-    px: f32,
-    py: f32,
+pub(crate) struct Frustum {
+    pub(crate) camera_image_width: f32, // <= this is NOT the view-port width
+    pub(crate) camera_image_height: f32, // <= this is NOT the view-port height
+    pub(crate) near: f32,
+    pub(crate) far: f32,
+    // pinhole parameters for debugging only
+    pub(crate) fx: f32,
+    pub(crate) fy: f32,
+    pub(crate) px: f32,
+    pub(crate) py: f32,
 }
 
 #[repr(C)]
 // This is so we can store this in a buffer
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct Lut {
+struct DistortionLut {
     lut_offset_x: f32,
     lut_offset_y: f32,
     lut_range_x: f32,
@@ -39,9 +40,9 @@ struct View {
 /// Buffers for rendering a scene
 pub struct SceneRenderBuffers {
     pub(crate) bind_group: wgpu::BindGroup,
-    pub(crate) _uniform_buffer: wgpu::Buffer,
+    pub(crate) frustum_uniform_buffer: wgpu::Buffer,
     pub(crate) view_uniform_buffer: wgpu::Buffer,
-    pub(crate) lut_buffer: wgpu::Buffer,
+    pub(crate) camara_params_buffer: wgpu::Buffer,
     pub(crate) dist_texture: wgpu::Texture,
     pub(crate) dist_bind_group: wgpu::BindGroup,
     pub(crate) distortion_lut: Mutex<Option<DistortTable>>,
@@ -99,9 +100,9 @@ impl SceneRenderBuffers {
             [0.0, 0.0, 0.0, 1.0], // 4.
         ];
 
-        let transform_uniforms = Transforms {
-            width: intrinsics.image_size().width as f32,
-            height: intrinsics.image_size().height as f32,
+        let frustum_uniforms = Frustum {
+            camera_image_width: intrinsics.image_size().width as f32,
+            camera_image_height: intrinsics.image_size().height as f32,
             near: 0.1,
             far: 1000.0,
             fx: intrinsics.pinhole_params()[0] as f32,
@@ -110,20 +111,20 @@ impl SceneRenderBuffers {
             py: intrinsics.pinhole_params()[3] as f32,
         };
 
-        let transform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let frustum_uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
-            contents: bytemuck::cast_slice(&[transform_uniforms]),
+            contents: bytemuck::cast_slice(&[frustum_uniforms]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let lut_uniforms = Lut {
+        let lut_uniforms = DistortionLut {
             lut_offset_x: 0.0,
             lut_offset_y: 0.0,
             lut_range_x: 0.0,
             lut_range_y: 0.0,
         };
 
-        let lut_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let camara_params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Lut Buffer"),
             contents: bytemuck::cast_slice(&[lut_uniforms]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
@@ -145,7 +146,7 @@ impl SceneRenderBuffers {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: transform_buffer.as_entire_binding(),
+                    resource: frustum_uniform_buffer.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
@@ -153,7 +154,7 @@ impl SceneRenderBuffers {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: lut_buffer.as_entire_binding(),
+                    resource: camara_params_buffer.as_entire_binding(),
                 },
             ],
         });
@@ -191,9 +192,9 @@ impl SceneRenderBuffers {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::FilterMode::Linear,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         });
 
@@ -270,9 +271,9 @@ impl SceneRenderBuffers {
 
         Self {
             bind_group,
-            _uniform_buffer: transform_buffer,
+            frustum_uniform_buffer,
             view_uniform_buffer: view_buffer,
-            lut_buffer,
+            camara_params_buffer,
             dist_texture,
             dist_bind_group,
             distortion_lut: Mutex::new(None),
