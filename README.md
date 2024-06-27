@@ -1,8 +1,15 @@
 # sophus-rs
 
+[![Latest version](https://img.shields.io/crates/v/sophus.svg)](https://crates.io/crates/sophus)
+[![Documentation](https://docs.rs/strasdat/badge.svg)](https://docs.rs/sophus)
+
+2d and 3d geometry for Computer Vision and Robotics
+
+## Overview
+
 sophus-rs is a Rust library for 2d and 3d geometry for Computer Vision and Robotics applications.
 It is a spin-off of the [Sophus](https://github.com/strasdat/Sophus) C++ library which
-focuses on **Lie groups** (e.g. rotations and transformations in 2d and 3d).
+focuses on *Lie groups* (e.g. rotations and transformations in 2d and 3d).
 
 In addition to Lie groups, sophus-rs also includes other geometric/maths concepts such unit vector,
 splines, image classes, camera models as well as a other utilities such as a non-linear least
