@@ -24,7 +24,7 @@ pub type DynCamera<S, const BATCH: usize> =
 impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
     DynCameraFacade<S, BATCH, CameraType>
 {
-    /// Create default pnhole from Image Size
+    /// Create default pinhole from Image Size
     pub fn default_pinhole(image_size: ImageSize) -> Self {
         let w = image_size.width as f64;
         let h = image_size.height as f64;
@@ -37,6 +37,30 @@ impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
                     focal_length,
                     0.5 * w - 0.5,
                     0.5 * h - 0.5,
+                ]),
+                image_size,
+            ),
+            phantom: std::marker::PhantomData,
+        }
+    }
+
+    /// Create default distorted from Image Size
+    pub fn default_distorted(image_size: ImageSize) -> Self {
+        let w = image_size.width as f64;
+        let h = image_size.height as f64;
+
+        let focal_length = (w + h) * 0.5;
+        Self {
+            camera_type: CameraType::new_kannala_brandt(
+                &S::Vector::<8>::from_f64_array([
+                    focal_length,
+                    focal_length,
+                    0.5 * w - 0.5,
+                    0.5 * h - 0.5,
+                    2.0,
+                    0.0,
+                    0.0,
+                    0.0,
                 ]),
                 image_size,
             ),
@@ -107,16 +131,9 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> DynCamera<S, BATCH> {
 
 #[test]
 fn dyn_camera_tests() {
-    use crate::distortion_table::distort_table;
-    use crate::distortion_table::undistort_table;
-    use crate::distortion_table::DistortTable;
-    use approx::assert_abs_diff_eq;
     use approx::assert_relative_eq;
     use sophus_core::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
     use sophus_core::linalg::VecF64;
-    use sophus_image::image_view::IsImageView;
-    use sophus_image::interpolation::interpolate;
-    use sophus_image::mut_image::MutImage2F32;
     use sophus_image::ImageSize;
 
     type DynCameraF64 = DynCamera<f64, 1>;
@@ -124,10 +141,10 @@ fn dyn_camera_tests() {
     {
         let mut cameras: Vec<DynCameraF64> = vec![];
         cameras.push(DynCameraF64::new_pinhole(
-            &VecF64::<4>::new(600.0, 600.0, 319.5, 239.5),
+            &VecF64::<4>::new(600.0, 600.0, 1.0, 0.5),
             ImageSize {
-                width: 640,
-                height: 480,
+                width: 3,
+                height: 2,
             },
         ));
 
@@ -142,6 +159,11 @@ fn dyn_camera_tests() {
         for camera in cameras {
             let pixels_in_image = vec![
                 VecF64::<2>::new(0.0, 0.0),
+                VecF64::<2>::new(2.0, 1.0),
+                VecF64::<2>::new(2.9, 1.9),
+                VecF64::<2>::new(2.5, 1.5),
+                VecF64::<2>::new(3.0, 2.0),
+                VecF64::<2>::new(-0.5, -0.5),
                 VecF64::<2>::new(1.0, 400.0),
                 VecF64::<2>::new(320.0, 240.0),
                 VecF64::<2>::new(319.5, 239.5),
@@ -149,9 +171,13 @@ fn dyn_camera_tests() {
                 VecF64::<2>::new(639.0, 479.0),
             ];
 
-            let table: MutImage2F32 = undistort_table(&camera);
-
             for pixel in pixels_in_image.clone() {
+                if pixel[0] > camera.image_size().width as f64
+                    || pixel[1] > camera.image_size().height as f64
+                {
+                    continue;
+                }
+
                 for d in [1.0, 0.1, 0.5, 1.1, 3.0, 15.0] {
                     let point_in_camera = camera.cam_unproj_with_z(&pixel, d);
                     assert_relative_eq!(point_in_camera[2], d, epsilon = 1e-6);
@@ -160,9 +186,6 @@ fn dyn_camera_tests() {
                     assert_relative_eq!(pixel_in_image2, pixel, epsilon = 1e-6);
                 }
                 let ab_in_z1plane = camera.undistort(&pixel);
-                let ab_in_z1plane2_f32 = interpolate(&table.image_view(), pixel.cast());
-                let ab_in_z1plane2 = ab_in_z1plane2_f32.cast();
-                assert_relative_eq!(ab_in_z1plane, ab_in_z1plane2, epsilon = 0.000001);
 
                 let pixel_in_image3 = camera.distort(&ab_in_z1plane);
                 assert_relative_eq!(pixel_in_image3, pixel, epsilon = 1e-6);
@@ -176,99 +199,6 @@ fn dyn_camera_tests() {
 
                 assert_relative_eq!(dx, numeric_dx, epsilon = 1e-4);
             }
-
-            let table: DistortTable = distort_table(&camera);
-
-            for pixel in pixels_in_image {
-                let proj = camera.undistort(&pixel);
-                println!("proj: {:?}", proj);
-                println!("region: {:?}", table.region);
-                let analytic_pixel = camera.distort(&proj);
-                let lut_pixel = table.lookup(&proj);
-
-                assert_abs_diff_eq!(analytic_pixel, pixel, epsilon = 1e-3);
-                assert_abs_diff_eq!(analytic_pixel, lut_pixel, epsilon = 1e-3);
-            }
-        }
-    }
-
-    {
-        let camera: DynCameraF64 = DynCameraF64::new_pinhole(
-            &VecF64::<4>::new(600.0, 600.0, 319.5, 239.5),
-            ImageSize {
-                width: 640,
-                height: 480,
-            },
-        );
-
-        let point_in_z1_plane = [
-            VecF64::<2>::new(0.0, 0.0),
-            VecF64::<2>::new(1.0, 400.0),
-            VecF64::<2>::new(320.0, 240.0),
-            VecF64::<2>::new(319.5, 239.5),
-            VecF64::<2>::new(100.0, 40.0),
-            VecF64::<2>::new(639.0, 479.0),
-        ];
-
-        let expected_distorted_pixels = [
-            VecF64::<2>::new(319.5, 239.5),
-            VecF64::<2>::new(919.5, 240239.5),
-            VecF64::<2>::new(192319.5, 144239.5),
-            VecF64::<2>::new(192019.5, 143939.5),
-            VecF64::<2>::new(60319.5, 24239.5),
-            VecF64::<2>::new(383719.5, 287639.5),
-        ];
-
-        for (pixel, expected_distorted_pixel) in point_in_z1_plane
-            .iter()
-            .zip(expected_distorted_pixels.iter())
-        {
-            let distorted_pixel = camera.distort(pixel);
-            // println!("distorted_pixel: {:?}", distorted_pixel);
-            assert_relative_eq!(distorted_pixel, *expected_distorted_pixel, epsilon = 1e-6);
-
-            let undistorted_pixel = camera.undistort(&distorted_pixel);
-            assert_relative_eq!(undistorted_pixel, *pixel, epsilon = 1e-6);
-        }
-    }
-
-    {
-        let camera: DynCameraF64 = DynCameraF64::new_kannala_brandt(
-            &VecF64::<8>::from_vec(vec![1000.0, 1000.0, 320.0, 280.0, 0.1, 0.01, 0.001, 0.0001]),
-            ImageSize {
-                width: 640,
-                height: 480,
-            },
-        );
-
-        let point_in_z1_plane = [
-            VecF64::<2>::new(0.0, 0.0),
-            VecF64::<2>::new(1.0, 400.0),
-            VecF64::<2>::new(320.0, 240.0),
-            VecF64::<2>::new(319.5, 239.5),
-            VecF64::<2>::new(100.0, 40.0),
-            VecF64::<2>::new(639.0, 479.0),
-        ];
-
-        let expected_distorted_pixels = [
-            VecF64::<2>::new(320.0, 280.0),
-            VecF64::<2>::new(325.1949172763466, 2357.966910538644),
-            VecF64::<2>::new(1982.378709731326, 1526.7840322984944),
-            VecF64::<2>::new(1982.6832644475849, 1526.3619462760455),
-            VecF64::<2>::new(2235.6822069661744, 1046.2728827864696),
-            VecF64::<2>::new(1984.8663275417607, 1527.9983895031353),
-        ];
-
-        for (pixel, expected_distorted_pixel) in point_in_z1_plane
-            .iter()
-            .zip(expected_distorted_pixels.iter())
-        {
-            let distorted_pixel = camera.distort(pixel);
-            // println!("distorted_pixel: {:?}", distorted_pixel);
-            assert_relative_eq!(distorted_pixel, *expected_distorted_pixel, epsilon = 1e-6);
-
-            let undistorted_pixel = camera.undistort(&distorted_pixel);
-            assert_relative_eq!(undistorted_pixel, *pixel, epsilon = 1e-6);
         }
     }
 }

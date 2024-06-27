@@ -11,9 +11,9 @@ use wgpu::util::DeviceExt;
 use wgpu::DepthStencilState;
 
 use crate::interactions::InteractionEnum;
+use crate::offscreen::ZBufferTexture;
 use crate::pixel_renderer::line::PixelLineRenderer;
 use crate::pixel_renderer::pixel_point::PixelPointRenderer;
-use crate::scene_renderer::depth_renderer::DepthRenderer;
 use crate::ViewerRenderState;
 
 /// Renderer for pixel data
@@ -89,8 +89,6 @@ impl PixelRenderer {
             dummy1: 0.0,
         };
 
-        println!("image_size: {:?}", image_size);
-
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("pixel uniform buffer"),
             contents: bytemuck::cast_slice(&[camera_uniform]),
@@ -138,7 +136,10 @@ impl PixelRenderer {
 
                             for _i in 0..6 {
                                 vertex_data.push(PointVertex2 {
-                                    _pos: [scene_focus.uv[0] as f32, scene_focus.uv[1] as f32],
+                                    _pos: [
+                                        scene_focus.uv_in_virtual_camera[0] as f32,
+                                        scene_focus.uv_in_virtual_camera[1] as f32,
+                                    ],
                                     _color: [0.5, 0.5, 0.5, 1.0],
                                     _point_size: 5.0,
                                 });
@@ -165,7 +166,10 @@ impl PixelRenderer {
 
                             for _i in 0..6 {
                                 vertex_data.push(PointVertex2 {
-                                    _pos: [scene_focus.uv[0] as f32, scene_focus.uv[1] as f32],
+                                    _pos: [
+                                        scene_focus.uv_in_virtual_camera[0] as f32,
+                                        scene_focus.uv_in_virtual_camera[1] as f32,
+                                    ],
                                     _color: [0.5, 0.5, 0.5, 1.0],
                                     _point_size: 5.0,
                                 });
@@ -207,7 +211,7 @@ impl PixelRenderer {
         &'rp self,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         texture_view: &'rp wgpu::TextureView,
-        depth: &DepthRenderer,
+        depth: &ZBufferTexture,
     ) {
         let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,

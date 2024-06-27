@@ -9,7 +9,7 @@ use sophus_sensor::DynCamera;
 use crate::interactions::inplane_interaction::InplaneInteraction;
 use crate::interactions::InteractionEnum;
 use crate::interactions::WgpuClippingPlanes;
-use crate::offscreen::OffscreenTexture;
+use crate::offscreen::OffscreenTextures;
 use crate::pixel_renderer::PixelRenderer;
 use crate::renderables::renderable2d::Renderable2d;
 use crate::renderables::renderable2d::View2dPacket;
@@ -24,7 +24,7 @@ pub(crate) struct View2d {
     pub(crate) scene: SceneRenderer,
     pub(crate) pixel: PixelRenderer,
     pub(crate) intrinsics: DynCamera<f64, 1>,
-    pub(crate) offscreen: OffscreenTexture,
+    pub(crate) offscreen: Option<OffscreenTextures>,
     pub(crate) background_image: Option<ArcImage4U8>,
 }
 
@@ -66,11 +66,11 @@ impl View2d {
                     pixel: PixelRenderer::new(
                         state,
                         &frame.intrinsics().image_size(),
-                        depth_stencil,
+                        depth_stencil.clone(),
                     ),
                     intrinsics: frame.intrinsics().clone(),
                     background_image: frame.maybe_image().cloned(),
-                    offscreen: OffscreenTexture::new(state, &frame.intrinsics().image_size()),
+                    offscreen: None,
                 }),
             );
             return true;
@@ -93,7 +93,6 @@ impl View2d {
         };
 
         if let Some(frame) = packet.frame {
-            println!("!!!!!!!!!!!Got a new frame");
             let depth_stencil = Some(wgpu::DepthStencilState {
                 format: wgpu::TextureFormat::Depth32Float,
                 depth_write_enabled: true,
@@ -125,11 +124,11 @@ impl View2d {
                         near: 0.1,
                         far: 1000.0,
                     },
-                    scene_from_camera: Isometry3::from_t(&VecF64::<3>::new(0.0, 0.0, -5.0)),
+                    scene_from_camera: Isometry3::from_t(&VecF64::<3>::new(0.0, 0.0, 0.0)),
                 }),
             );
 
-            view.offscreen = OffscreenTexture::new(state, &new_intrinsics.image_size());
+            view.offscreen = Some(OffscreenTextures::new(state, &new_intrinsics.image_size()));
 
             view.intrinsics = new_intrinsics.clone();
             if let Some(background_image) = frame.maybe_image() {
@@ -142,19 +141,19 @@ impl View2d {
 
                 let p0 = view
                     .intrinsics
-                    .cam_unproj_with_z(&VecF64::<2>::new(0.0, 0.0), far)
+                    .cam_unproj_with_z(&VecF64::<2>::new(-0.5, -0.5), far)
                     .cast();
                 let p1 = view
                     .intrinsics
-                    .cam_unproj_with_z(&VecF64::<2>::new(w as f64, 0.0), far)
+                    .cam_unproj_with_z(&VecF64::<2>::new(w as f64 - 0.5, -0.5), far)
                     .cast();
                 let p2 = view
                     .intrinsics
-                    .cam_unproj_with_z(&VecF64::<2>::new(0.0, h as f64), far)
+                    .cam_unproj_with_z(&VecF64::<2>::new(-0.5, h as f64 - 0.5), far)
                     .cast();
                 let p3 = view
                     .intrinsics
-                    .cam_unproj_with_z(&VecF64::<2>::new(w as f64, h as f64), far)
+                    .cam_unproj_with_z(&VecF64::<2>::new(w as f64 - 0.5, h as f64 - 0.5), far)
                     .cast();
 
                 let tex_mesh = TexturedMesh3::make(&[
@@ -213,18 +212,28 @@ impl View2d {
             }
         }
     }
+
+    pub fn update_offscreen_texture(
+        &mut self,
+        render_state: &ViewerRenderState,
+        view_port_size: &ImageSize,
+    ) {
+        match &mut self.offscreen {
+            Some(offscreen) => {
+                let current_view_port_size = offscreen.view_port_size();
+                if current_view_port_size != view_port_size {
+                    *offscreen = OffscreenTextures::new(render_state, view_port_size);
+                }
+            }
+            None => {
+                self.offscreen = Some(OffscreenTextures::new(render_state, view_port_size));
+            }
+        }
+    }
 }
 
 impl HasAspectRatio for View2d {
     fn aspect_ratio(&self) -> f32 {
         self.intrinsics.image_size().aspect_ratio()
-    }
-
-    fn view_size(&self) -> ImageSize {
-        self.intrinsics.image_size()
-    }
-
-    fn intrinsics(&self) -> &DynCamera<f64, 1> {
-        &self.intrinsics
     }
 }

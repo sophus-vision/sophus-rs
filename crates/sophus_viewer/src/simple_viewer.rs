@@ -8,9 +8,7 @@ use hollywood::compute::pipeline::CancelRequest;
 use hollywood::RequestWithReplyChannel;
 use linked_hash_map::LinkedHashMap;
 use sophus_core::linalg::VecF32;
-use sophus_image::arc_image::ArcImageF32;
 use sophus_lie::Isometry3;
-use sophus_sensor::dyn_camera::DynCamera;
 
 use crate::actor::ViewerBuilder;
 use crate::pixel_renderer::LineVertex2;
@@ -23,6 +21,7 @@ use crate::scene_renderer::point::PointVertex3;
 use crate::scene_renderer::textured_mesh::TexturedMeshVertex3;
 use crate::views::aspect_ratio::get_adjusted_view_size;
 use crate::views::aspect_ratio::get_max_size;
+use crate::views::aspect_ratio::HasAspectRatio;
 use crate::views::view2d::View2d;
 use crate::views::view3d::View3d;
 use crate::views::View;
@@ -188,17 +187,11 @@ impl SimpleViewer {
                         }
                     }
                     for (_, lines) in view.pixel.line_renderer.lines_table.iter() {
-                        println!("lines: {}", lines.len());
-
                         for line in lines.iter() {
                             let p0 = line.p0;
                             let p1 = line.p1;
                             let d = (p0 - p1).normalize();
                             let normal = [d[1], -d[0]];
-
-                            println!("p0: {:?}, p1: {:?}", p0, p1);
-                            println!("d: {:?}, normal: {:?}", d, normal);
-                            println!("color: {:?}", line.color);
 
                             let v0 = LineVertex2 {
                                 _pos: [p0[0], p0[1]],
@@ -306,12 +299,6 @@ impl SimpleViewer {
     }
 }
 
-struct Data {
-    rgba_tex_id: egui::TextureId,
-    depth_image: ArcImageF32,
-    intrinsics: DynCamera<f64, 1>,
-}
-
 impl eframe::App for SimpleViewer {
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         self.cancel_request_sender.send(CancelRequest).unwrap();
@@ -335,108 +322,6 @@ impl eframe::App for SimpleViewer {
         // Add renderables to tables
         self.add_renderables_to_tables();
 
-        let mut view_data_map = LinkedHashMap::new();
-
-        // Prepare views and update background textures
-        for (view_label, view) in self.views.iter_mut() {
-            match view {
-                View::View3d(view) => {
-                    view.scene.prepare(&self.state, &view.intrinsics, &None);
-
-                    let mut command_encoder = self
-                        .state
-                        .device
-                        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-
-                    view.scene.paint(
-                        &mut command_encoder,
-                        &view.offscreen.rgba_texture_view,
-                        &view.scene.depth_renderer,
-                    );
-
-                    self.state.queue.submit(Some(command_encoder.finish()));
-
-                    let mut command_encoder = self
-                        .state
-                        .device
-                        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-                    view.scene.depth_paint(
-                        &mut command_encoder,
-                        &view.offscreen.depth_texture_view,
-                        &view.scene.depth_renderer,
-                    );
-
-                    let depth_image = view.offscreen.download_images(
-                        &self.state,
-                        command_encoder,
-                        &view.intrinsics.image_size(),
-                    );
-
-                    view_data_map.insert(
-                        view_label.clone(),
-                        Data {
-                            rgba_tex_id: view.offscreen.rgba_tex_id,
-                            depth_image,
-                            intrinsics: view.intrinsics.clone(),
-                        },
-                    );
-                }
-                View::View2d(view) => {
-                    view.scene
-                        .prepare(&self.state, &view.intrinsics, &view.background_image);
-                    view.pixel.prepare(&self.state);
-
-                    view.background_image = None;
-
-                    let mut command_encoder = self
-                        .state
-                        .device
-                        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-
-                    view.scene.paint(
-                        &mut command_encoder,
-                        &view.offscreen.rgba_texture_view,
-                        &view.scene.depth_renderer,
-                    );
-                    view.pixel.paint(
-                        &mut command_encoder,
-                        &view.offscreen.rgba_texture_view,
-                        &view.scene.depth_renderer,
-                    );
-
-                    self.state.queue.submit(Some(command_encoder.finish()));
-
-                    view.pixel
-                        .show_interaction_marker(&self.state, &view.scene.interaction);
-
-                    let mut command_encoder = self
-                        .state
-                        .device
-                        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-                    view.scene.depth_paint(
-                        &mut command_encoder,
-                        &view.offscreen.depth_texture_view,
-                        &view.scene.depth_renderer,
-                    );
-
-                    let depth_image = view.offscreen.download_images(
-                        &self.state,
-                        command_encoder,
-                        &view.intrinsics.image_size(),
-                    );
-
-                    view_data_map.insert(
-                        view_label.clone(),
-                        Data {
-                            rgba_tex_id: view.offscreen.rgba_tex_id,
-                            depth_image,
-                            intrinsics: view.intrinsics.clone(),
-                        },
-                    );
-                }
-            }
-        }
-
         let mut responses = HashMap::new();
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -446,42 +331,172 @@ impl eframe::App for SimpleViewer {
                 }
                 let (max_width, max_height) = get_max_size(
                     &self.views,
-                    0.95 * ui0.available_width(),
-                    0.95 * ui0.available_height(),
+                    0.99 * ui0.available_width(),
+                    0.99 * ui0.available_height(),
                 );
 
                 ui0.horizontal_wrapped(|ui| {
-                    for (view_label, view_data) in view_data_map.iter() {
+                    for (view_label, view) in self.views.iter_mut() {
+                        let view_aspect_ratio = view.aspect_ratio();
                         let adjusted_size =
-                            get_adjusted_view_size(&self.views[view_label], max_width, max_height);
+                            get_adjusted_view_size(view_aspect_ratio, max_width, max_height);
+                        match view {
+                            View::View3d(view) => {
+                                view.update_offscreen_texture(
+                                    &self.state,
+                                    &adjusted_size.image_size(),
+                                );
+                                let offscreen = view.offscreen.as_ref().unwrap();
 
-                        let response = ui.add(
-                            egui::Image::new(SizedTexture {
-                                size: egui::Vec2::new(
-                                    view_data.intrinsics.image_size().width as f32,
-                                    view_data.intrinsics.image_size().height as f32,
-                                ),
-                                id: view_data.rgba_tex_id,
-                            })
-                            .fit_to_exact_size(egui::Vec2 {
-                                x: adjusted_size.0,
-                                y: adjusted_size.1,
-                            })
-                            .sense(egui::Sense::click_and_drag()),
-                        );
+                                view.scene.prepare(&self.state, &view.intrinsics, &None);
+                                view.pixel_for_interaction_marker.prepare(&self.state);
 
-                        responses.insert(
-                            view_label.clone(),
-                            (
-                                response,
-                                VecF32::<2>::new(
-                                    view_data.intrinsics.image_size().width as f32
-                                        / adjusted_size.0,
-                                    view_data.intrinsics.image_size().height as f32
-                                        / adjusted_size.1,
-                                ),
-                            ),
-                        );
+                                let mut command_encoder = self.state.device.create_command_encoder(
+                                    &wgpu::CommandEncoderDescriptor::default(),
+                                );
+
+                                view.scene.paint(
+                                    &mut command_encoder,
+                                    &offscreen.rgba.rgba_texture_view,
+                                    &offscreen.z_buffer,
+                                );
+
+                                view.pixel_for_interaction_marker
+                                    .show_interaction_marker(&self.state, &view.scene.interaction);
+
+                                view.pixel_for_interaction_marker.paint(
+                                    &mut command_encoder,
+                                    &offscreen.rgba.rgba_texture_view,
+                                    &offscreen.z_buffer,
+                                );
+
+                                self.state.queue.submit(Some(command_encoder.finish()));
+
+                                let mut command_encoder = self.state.device.create_command_encoder(
+                                    &wgpu::CommandEncoderDescriptor::default(),
+                                );
+                                view.scene.depth_paint(
+                                    &mut command_encoder,
+                                    &offscreen.depth.depth_texture_view_f32,
+                                    &offscreen.z_buffer,
+                                );
+
+                                let depth_image = offscreen.depth.download_image(
+                                    &self.state,
+                                    command_encoder,
+                                    &adjusted_size.image_size(),
+                                );
+
+                                let response = ui.add(
+                                    egui::Image::new(SizedTexture {
+                                        size: egui::Vec2::new(
+                                            adjusted_size.width,
+                                            adjusted_size.height,
+                                        ),
+                                        id: offscreen.rgba.rgba_tex_id,
+                                    })
+                                    .fit_to_exact_size(egui::Vec2 {
+                                        x: adjusted_size.width,
+                                        y: adjusted_size.height,
+                                    })
+                                    .sense(egui::Sense::click_and_drag()),
+                                );
+
+                                responses.insert(
+                                    view_label.clone(),
+                                    (
+                                        response,
+                                        VecF32::<2>::new(
+                                            view.intrinsics.image_size().width as f32
+                                                / adjusted_size.width,
+                                            view.intrinsics.image_size().height as f32
+                                                / adjusted_size.height,
+                                        ),
+                                        depth_image,
+                                    ),
+                                );
+                            }
+                            View::View2d(view) => {
+                                view.update_offscreen_texture(
+                                    &self.state,
+                                    &adjusted_size.image_size(),
+                                );
+                                let offscreen = view.offscreen.as_ref().unwrap();
+
+                                view.scene.prepare(
+                                    &self.state,
+                                    &view.intrinsics,
+                                    &view.background_image,
+                                );
+                                view.pixel.prepare(&self.state);
+
+                                view.background_image = None;
+
+                                let mut command_encoder = self.state.device.create_command_encoder(
+                                    &wgpu::CommandEncoderDescriptor::default(),
+                                );
+
+                                view.scene.paint(
+                                    &mut command_encoder,
+                                    &offscreen.rgba.rgba_texture_view,
+                                    &offscreen.z_buffer,
+                                );
+                                view.pixel.paint(
+                                    &mut command_encoder,
+                                    &offscreen.rgba.rgba_texture_view,
+                                    &offscreen.z_buffer,
+                                );
+
+                                self.state.queue.submit(Some(command_encoder.finish()));
+
+                                view.pixel
+                                    .show_interaction_marker(&self.state, &view.scene.interaction);
+
+                                let mut command_encoder = self.state.device.create_command_encoder(
+                                    &wgpu::CommandEncoderDescriptor::default(),
+                                );
+                                view.scene.depth_paint(
+                                    &mut command_encoder,
+                                    &offscreen.depth.depth_texture_view_f32,
+                                    &offscreen.z_buffer,
+                                );
+
+                                let depth_image = offscreen.depth.download_image(
+                                    &self.state,
+                                    command_encoder,
+                                    &adjusted_size.image_size(),
+                                );
+
+                                let response = ui.add(
+                                    egui::Image::new(SizedTexture {
+                                        size: egui::Vec2::new(
+                                            adjusted_size.width,
+                                            adjusted_size.height,
+                                        ),
+                                        id: offscreen.rgba.rgba_tex_id,
+                                    })
+                                    .fit_to_exact_size(egui::Vec2 {
+                                        x: adjusted_size.width,
+                                        y: adjusted_size.height,
+                                    })
+                                    .sense(egui::Sense::click_and_drag()),
+                                );
+
+                                responses.insert(
+                                    view_label.clone(),
+                                    (
+                                        response,
+                                        VecF32::<2>::new(
+                                            view.intrinsics.image_size().width as f32
+                                                / adjusted_size.width,
+                                            view.intrinsics.image_size().height as f32
+                                                / adjusted_size.height,
+                                        ),
+                                        depth_image,
+                                    ),
+                                );
+                            }
+                        }
                     }
                 });
             });
@@ -491,13 +506,12 @@ impl eframe::App for SimpleViewer {
             match view {
                 View::View3d(view) => {
                     let response = responses.get(view_label).unwrap();
-                    let depth_image = view_data_map.get(view_label).unwrap().depth_image.clone();
 
                     view.scene.process_event(
                         &view.intrinsics,
                         &response.0,
                         &response.1,
-                        depth_image,
+                        response.2.clone(),
                     );
                 }
                 View::View2d(_) => {}

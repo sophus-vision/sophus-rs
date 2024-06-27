@@ -1,9 +1,6 @@
 /// buffers for rendering a scene
 pub mod buffers;
 
-/// depth renderer
-pub mod depth_renderer;
-
 /// line renderer
 pub mod line;
 
@@ -28,8 +25,9 @@ use sophus_sensor::dyn_camera::DynCamera;
 use wgpu::DepthStencilState;
 
 use crate::interactions::InteractionEnum;
+use crate::offscreen::ZBufferTexture;
+use crate::scene_renderer::buffers::Frustum;
 use crate::scene_renderer::buffers::SceneRenderBuffers;
-use crate::scene_renderer::depth_renderer::DepthRenderer;
 use crate::scene_renderer::mesh::MeshRenderer;
 use crate::scene_renderer::point::ScenePointRenderer;
 use crate::ViewerRenderState;
@@ -46,8 +44,6 @@ pub struct SceneRenderer {
     pub point_renderer: ScenePointRenderer,
     /// Line renderer
     pub line_renderer: line::SceneLineRenderer,
-    /// Depth renderer
-    pub depth_renderer: DepthRenderer,
     /// Interaction state
     pub interaction: InteractionEnum,
 }
@@ -61,12 +57,6 @@ impl SceneRenderer {
         interaction: InteractionEnum,
     ) -> Self {
         let device = &wgpu_render_state.device;
-
-        let depth_renderer = DepthRenderer::new(
-            wgpu_render_state,
-            &intrinsics.image_size(),
-            depth_stencil.clone(),
-        );
 
         let uniform_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -159,7 +149,6 @@ impl SceneRenderer {
 
         Self {
             buffers,
-            depth_renderer,
             mesh_renderer: MeshRenderer::new(
                 wgpu_render_state,
                 &pipeline_layout,
@@ -199,7 +188,7 @@ impl SceneRenderer {
         &'rp self,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         texture_view: &'rp wgpu::TextureView,
-        depth: &DepthRenderer,
+        depth: &ZBufferTexture,
     ) {
         let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
@@ -250,7 +239,7 @@ impl SceneRenderer {
         &'rp self,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         depth_texture_view: &'rp wgpu::TextureView,
-        depth: &DepthRenderer,
+        depth: &ZBufferTexture,
     ) {
         let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
@@ -327,6 +316,23 @@ impl SceneRenderer {
             bytemuck::cast_slice(self.textured_mesh_renderer.vertices.as_slice()),
         );
 
+        let frustum_uniforms = Frustum {
+            camera_image_width: intrinsics.image_size().width as f32,
+            camera_image_height: intrinsics.image_size().height as f32,
+            near: 0.1,
+            far: 1000.0,
+            fx: intrinsics.pinhole_params()[0] as f32,
+            fy: intrinsics.pinhole_params()[1] as f32,
+            px: intrinsics.pinhole_params()[2] as f32,
+            py: intrinsics.pinhole_params()[3] as f32,
+        };
+
+        state.queue.write_buffer(
+            &self.buffers.frustum_uniform_buffer,
+            0,
+            bytemuck::cast_slice(&[frustum_uniforms]),
+        );
+
         let mut scene_from_camera_uniform: [[f32; 4]; 4] = [[0.0; 4]; 4];
         for i in 0..4 {
             for j in 0..4 {
@@ -362,7 +368,7 @@ impl SceneRenderer {
                 self.buffers.dist_texture.size(),
             );
             state.queue.write_buffer(
-                &self.buffers.lut_buffer,
+                &self.buffers.camara_params_buffer,
                 0,
                 bytemuck::cast_slice(&[
                     distort_lut.offset().x as f32,
