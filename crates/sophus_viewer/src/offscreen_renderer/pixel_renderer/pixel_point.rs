@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use wgpu::DepthStencilState;
 
-use crate::pixel_renderer::PointVertex2;
+use crate::offscreen_renderer::pixel_renderer::PointVertex2;
 use crate::renderables::renderable2d::Point2;
 use crate::ViewerRenderState;
 
@@ -29,7 +29,14 @@ impl PixelPointRenderer {
 
         let point_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("pixel point shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("./point_pixel_shader.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(
+                format!(
+                    "{} {}",
+                    include_str!("./pixel_utils.wgsl"),
+                    include_str!("./point_pixel_shader.wgsl")
+                )
+                .into(),
+            ),
         });
 
         // hack: generate a buffer of 1000 points, because vertex buffer cannot be resized

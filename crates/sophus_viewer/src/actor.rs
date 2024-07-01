@@ -8,7 +8,7 @@ use sophus_lie::traits::IsTranslationProductGroup;
 use sophus_lie::Isometry3;
 use sophus_sensor::dyn_camera::DynCamera;
 
-use crate::interactions::WgpuClippingPlanes;
+use crate::offscreen_renderer::renderer::ClippingPlanes;
 use crate::renderables::Packets;
 use crate::ViewerRenderState;
 
@@ -18,7 +18,7 @@ pub struct ViewerCamera {
     /// Camera intrinsics
     pub intrinsics: DynCamera<f64, 1>,
     /// Clipping planes
-    pub clipping_planes: WgpuClippingPlanes,
+    pub clipping_planes: ClippingPlanes,
     /// Scene from camera pose
     pub scene_from_camera: Isometry3<f64, 1>,
 }
@@ -34,7 +34,7 @@ impl ViewerCamera {
     pub fn default_from(image_size: ImageSize) -> ViewerCamera {
         ViewerCamera {
             intrinsics: DynCamera::default_pinhole(image_size),
-            clipping_planes: WgpuClippingPlanes::default(),
+            clipping_planes: ClippingPlanes::default(),
             scene_from_camera: Isometry3::from_t(&VecF64::<3>::new(0.0, 0.0, -5.0)),
         }
     }

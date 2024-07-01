@@ -1,7 +1,45 @@
+struct Frustum {
+    camera_image_width: f32, // <= NOT the viewport width
+    camera_image_height: f32, // <= NOT the viewport height
+    near: f32,
+    far: f32,
+    // fx, fy, px, py or just here to debug distortion lut table.
+    fx: f32,
+    fy: f32,
+    px: f32,
+    py: f32,
+};
+
+struct Zoom2d {
+    translation_x: f32,
+    translation_y: f32,
+    scaling_x: f32,
+    scaling_y: f32,
+};
+
+struct DistortionLut {
+    lut_offset_x: f32,
+    lut_offset_y: f32,
+    lut_range_x: f32,
+    lut_range_y: f32,
+};
 
 struct ViewTransform {
     scene_from_camera: mat4x4<f32>,
 };
+
+@group(0) @binding(0)
+var<uniform> frustum_uniforms: Frustum;
+
+@group(0) @binding(1)
+var<uniform> zoom: Zoom2d;
+
+@group(0) @binding(2)
+var<uniform> lut_uniform: DistortionLut;
+
+@group(0) @binding(3)
+var<uniform> view_uniform: ViewTransform;
+
 
 fn scene_point_to_z1_plane(scene_point: vec3<f32>,
                                  view: ViewTransform) -> vec3<f32> {
@@ -18,26 +56,6 @@ fn scene_point_to_z1_plane(scene_point: vec3<f32>,
 
     return vec3<f32>(point_in_proj.x, point_in_proj.y, z);
 }
-
-struct Frustum {
-    camera_image_width: f32, // <= NOT the viewport width
-    camera_image_height: f32, // <= NOT the viewport height
-    near: f32,
-    far: f32,
-    // fx, fy, px, py or just here to debug distortion lut table.
-    fx: f32,
-    fy: f32,
-    px: f32,
-    py: f32,
-};
-
-struct DistortionLut {
-    lut_offset_x: f32,
-    lut_offset_y: f32,
-    lut_range_x: f32,
-    lut_range_y: f32,
-};
-
 fn z1_plane_to_distorted(point_in_proj: vec3<f32>, frustum: Frustum, lut: DistortionLut) -> vec3<f32> {
     var width = frustum.camera_image_width;
     var height = frustum.camera_image_height;
@@ -46,8 +64,18 @@ fn z1_plane_to_distorted(point_in_proj: vec3<f32>, frustum: Frustum, lut: Distor
     var lut_range_x = lut.lut_range_x;
     var lut_range_y = lut.lut_range_y;
 
-    let x_lut = clamp((width -1.0 ) * (point_in_proj.x -lut_offset_x) / lut_range_x, 0.0, width - 1.00001);
-    let y_lut = clamp((height -1.0 ) * (point_in_proj.y -lut_offset_y) / lut_range_y, 0.0, height - 1.00001);
+    let x_lut =
+        clamp(
+            (width -1.0 ) * (point_in_proj.x -lut_offset_x) / lut_range_x,
+            0.0,
+            width - 1.00001
+        );
+    let y_lut =
+        clamp(
+            (height -1.0 ) * (point_in_proj.y -lut_offset_y) / lut_range_y,
+            0.0,
+            height - 1.00001
+        );
 
     // Manual implementation of bilinear interpolation.
     // This is to workaround apparent limitations of wgpu - such as no/limited support for
@@ -85,18 +113,18 @@ fn scene_point_to_distorted(scene_point: vec3<f32>,
 }
 
 // map point from pixel coordinates (Computer Vision convention) to clip space coordinates (WebGPU convention)
-fn pixel_and_z_to_clip(uv_z: vec2<f32>, z: f32, frustum: Frustum) -> vec4<f32> {
+fn pixel_and_z_to_clip(uv_z: vec2<f32>, z: f32, frustum: Frustum, zoom: Zoom2d) -> vec4<f32> {
     var width = frustum.camera_image_width;
     var height = frustum.camera_image_height;
     var near = frustum.near;
     var far = frustum.far;
-    var u = uv_z.x;
-    var v = uv_z.y;
+    var u = uv_z.x * zoom.scaling_x + zoom.translation_x;
+    var v = uv_z.y * zoom.scaling_y + zoom.translation_y;
 
     let z_clip = (far * (z - near)) / (z * (far - near));
 
-    return vec4<f32>(2.0 * ((u+0.5) / width - 0.5),
-                    -2.0 * ((v+0.5) / height - 0.5),
+    return vec4<f32>(2.0 * ((u + 0.5) / width - 0.5),
+                    -2.0 * ((v + 0.5) / height - 0.5),
                     z_clip,
                     1.0);
 }

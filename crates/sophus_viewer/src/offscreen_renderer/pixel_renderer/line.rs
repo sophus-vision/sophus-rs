@@ -4,7 +4,7 @@ use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use nalgebra::SVector;
 use wgpu::DepthStencilState;
 
-use crate::pixel_renderer::LineVertex2;
+use crate::offscreen_renderer::pixel_renderer::LineVertex2;
 use crate::renderables::renderable2d::Line2;
 use crate::ViewerRenderState;
 
@@ -27,7 +27,14 @@ impl PixelLineRenderer {
 
         let line_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("pixel line shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("./line_pixel_shader.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(
+                format!(
+                    "{} {}",
+                    include_str!("./pixel_utils.wgsl"),
+                    include_str!("./line_pixel_shader.wgsl")
+                )
+                .into(),
+            ),
         });
 
         // hack: generate a buffer of 1000 lines, because vertex buffer cannot be resized

@@ -3,15 +3,6 @@ struct VertexOut {
     @builtin(position) position: vec4<f32>,
 };
 
-@group(0) @binding(0)
-var<uniform> frustum_uniforms: Frustum;
-
-@group(0) @binding(1)
-var<uniform> view_uniform: ViewTransform;
-
-@group(0) @binding(2)
-var<uniform> lut_uniform: DistortionLut;
-
 @group(1) @binding(0)
 var distortion_texture: texture_2d<f32>;
 
@@ -23,7 +14,7 @@ fn vs_main(
 {
     var out: VertexOut;
     var uv_z = scene_point_to_distorted(position, view_uniform, frustum_uniforms, lut_uniform);
-    out.position = pixel_and_z_to_clip(uv_z.xy, uv_z.z, frustum_uniforms);
+    out.position = pixel_and_z_to_clip(uv_z.xy, uv_z.z, frustum_uniforms, zoom);
     out.color = color;
     return out;
 }

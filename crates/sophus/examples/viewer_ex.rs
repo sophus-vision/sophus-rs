@@ -15,7 +15,7 @@ use sophus_image::mut_image_view::IsMutImageView;
 use sophus_lie::traits::IsTranslationProductGroup;
 use sophus_lie::Isometry3;
 use sophus_sensor::DynCamera;
-use sophus_viewer::interactions::WgpuClippingPlanes;
+use sophus_viewer::offscreen_renderer::renderer::ClippingPlanes;
 use sophus_viewer::renderables::color::Color;
 use sophus_viewer::renderables::renderable2d::Points2;
 use sophus_viewer::renderables::renderable2d::Renderable2d;
@@ -147,7 +147,7 @@ fn create_tiny_view2_packet() -> Packet {
         "lines2",
         &[[[-0.5, -0.5], [0.5, 0.5]], [[0.5, -0.5], [-0.5, 0.5]]],
         &Color::red(),
-        0.3,
+        2.0,
     );
     packet_2d.renderables2d.push(Renderable2d::Lines2(lines2));
 
@@ -157,7 +157,7 @@ fn create_tiny_view2_packet() -> Packet {
 fn create_view3_packet() -> Packet {
     let initial_camera = ViewerCamera {
         intrinsics: DynCamera::default_distorted(ImageSize::new(639, 477)),
-        clipping_planes: WgpuClippingPlanes::default(),
+        clipping_planes: ClippingPlanes::default(),
         scene_from_camera: Isometry3::from_t(&VecF64::<3>::new(0.0, 0.0, -5.0)),
     };
     let mut packet_3d = View3dPacket {

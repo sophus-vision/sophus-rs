@@ -1,27 +1,22 @@
 use std::collections::HashMap;
 
 use eframe::egui;
-use eframe::egui::load::SizedTexture;
 use hollywood::actors::egui::EguiAppFromBuilder;
 use hollywood::actors::egui::Stream;
 use hollywood::compute::pipeline::CancelRequest;
 use hollywood::RequestWithReplyChannel;
 use linked_hash_map::LinkedHashMap;
-use sophus_core::linalg::VecF32;
+use sophus_image::arc_image::ArcImageF32;
+use sophus_image::ImageSize;
 use sophus_lie::Isometry3;
 
 use crate::actor::ViewerBuilder;
-use crate::pixel_renderer::LineVertex2;
-use crate::pixel_renderer::PointVertex2;
 use crate::renderables::Packet;
 use crate::renderables::Packets;
-use crate::scene_renderer::line::LineVertex3;
-use crate::scene_renderer::mesh::MeshVertex3;
-use crate::scene_renderer::point::PointVertex3;
-use crate::scene_renderer::textured_mesh::TexturedMeshVertex3;
 use crate::views::aspect_ratio::get_adjusted_view_size;
 use crate::views::aspect_ratio::get_max_size;
 use crate::views::aspect_ratio::HasAspectRatio;
+use crate::views::interactions::ViewportScale;
 use crate::views::view2d::View2d;
 use crate::views::view3d::View3d;
 use crate::views::View;
@@ -79,224 +74,18 @@ impl SimpleViewer {
             if self.views.contains_key(&view_label) {
                 let view = self.views.get(&view_label).unwrap();
                 if let View::View3d(view) = view {
-                    request.reply(view.scene.interaction.scene_from_camera());
-                }
-            }
-        }
-
-        for (_, view) in self.views.iter_mut() {
-            match view {
-                View::View3d(view) => {
-                    for (_, points) in view.scene.point_renderer.point_table.iter() {
-                        for point in points.iter() {
-                            let v = PointVertex3 {
-                                _pos: [point.p[0], point.p[1], point.p[2]],
-                                _color: [
-                                    point.color.r,
-                                    point.color.g,
-                                    point.color.b,
-                                    point.color.a,
-                                ],
-                                _point_size: point.point_size,
-                            };
-                            for _i in 0..6 {
-                                view.scene.point_renderer.vertex_data.push(v);
-                            }
-                        }
-                    }
-                    for (_, lines) in view.scene.line_renderer.line_table.iter() {
-                        for line in lines.iter() {
-                            let p0 = line.p0;
-                            let p1 = line.p1;
-
-                            let v0 = LineVertex3 {
-                                _p0: [p0[0], p0[1], p0[2]],
-                                _p1: [p1[0], p1[1], p1[2]],
-                                _color: [line.color.r, line.color.g, line.color.b, line.color.a],
-                                _line_width: line.line_width,
-                            };
-                            let v1 = LineVertex3 {
-                                _p0: [p0[0], p0[1], p0[2]],
-                                _p1: [p1[0], p1[1], p1[2]],
-                                _color: [line.color.r, line.color.g, line.color.b, line.color.a],
-                                _line_width: line.line_width,
-                            };
-                            view.scene.line_renderer.vertex_data.push(v0);
-                            view.scene.line_renderer.vertex_data.push(v0);
-                            view.scene.line_renderer.vertex_data.push(v1);
-                            view.scene.line_renderer.vertex_data.push(v0);
-                            view.scene.line_renderer.vertex_data.push(v1);
-                            view.scene.line_renderer.vertex_data.push(v1);
-                        }
-                    }
-                    for (_, mesh) in view.scene.mesh_renderer.mesh_table.iter() {
-                        for trig in mesh.iter() {
-                            let v0 = MeshVertex3 {
-                                _pos: [trig.p0[0], trig.p0[1], trig.p0[2]],
-                                _color: [trig.color.r, trig.color.g, trig.color.b, trig.color.a],
-                            };
-                            let v1 = MeshVertex3 {
-                                _pos: [trig.p1[0], trig.p1[1], trig.p1[2]],
-                                _color: [trig.color.r, trig.color.g, trig.color.b, trig.color.a],
-                            };
-                            let v2 = MeshVertex3 {
-                                _pos: [trig.p2[0], trig.p2[1], trig.p2[2]],
-                                _color: [trig.color.r, trig.color.g, trig.color.b, trig.color.a],
-                            };
-                            view.scene.mesh_renderer.vertices.push(v0);
-                            view.scene.mesh_renderer.vertices.push(v1);
-                            view.scene.mesh_renderer.vertices.push(v2);
-                        }
-                    }
-                    for (_, mesh) in view.scene.textured_mesh_renderer.mesh_table.iter() {
-                        for trig in mesh.iter() {
-                            let v0 = TexturedMeshVertex3 {
-                                _pos: [trig.p0[0], trig.p0[1], trig.p0[2]],
-                                _tex: [trig.tex0[0], trig.tex0[1]],
-                            };
-                            let v1 = TexturedMeshVertex3 {
-                                _pos: [trig.p1[0], trig.p1[1], trig.p1[2]],
-                                _tex: [trig.tex1[0], trig.tex1[1]],
-                            };
-                            let v2 = TexturedMeshVertex3 {
-                                _pos: [trig.p2[0], trig.p2[1], trig.p2[2]],
-                                _tex: [trig.tex2[0], trig.tex2[1]],
-                            };
-                            view.scene.textured_mesh_renderer.vertices.push(v0);
-                            view.scene.textured_mesh_renderer.vertices.push(v1);
-                            view.scene.textured_mesh_renderer.vertices.push(v2);
-                        }
-                    }
-                }
-                View::View2d(view) => {
-                    for (_, points) in view.pixel.point_renderer.points_table.iter() {
-                        for point in points.iter() {
-                            let v = PointVertex2 {
-                                _pos: [point.p[0], point.p[1]],
-                                _color: [
-                                    point.color.r,
-                                    point.color.g,
-                                    point.color.b,
-                                    point.color.a,
-                                ],
-                                _point_size: point.point_size,
-                            };
-                            for _i in 0..6 {
-                                view.pixel.point_renderer.vertex_data.push(v);
-                            }
-                        }
-                    }
-                    for (_, lines) in view.pixel.line_renderer.lines_table.iter() {
-                        for line in lines.iter() {
-                            let p0 = line.p0;
-                            let p1 = line.p1;
-                            let d = (p0 - p1).normalize();
-                            let normal = [d[1], -d[0]];
-
-                            let v0 = LineVertex2 {
-                                _pos: [p0[0], p0[1]],
-                                _normal: normal,
-                                _color: [line.color.r, line.color.g, line.color.b, line.color.a],
-                                _line_width: line.line_width,
-                            };
-                            let v1 = LineVertex2 {
-                                _pos: [p1[0], p1[1]],
-                                _normal: normal,
-                                _color: [line.color.r, line.color.g, line.color.b, line.color.a],
-                                _line_width: line.line_width,
-                            };
-                            view.pixel.line_renderer.vertex_data.push(v0);
-                            view.pixel.line_renderer.vertex_data.push(v0);
-                            view.pixel.line_renderer.vertex_data.push(v1);
-                            view.pixel.line_renderer.vertex_data.push(v0);
-                            view.pixel.line_renderer.vertex_data.push(v1);
-                            view.pixel.line_renderer.vertex_data.push(v1);
-                        }
-                    }
-                    for (_, points) in view.scene.point_renderer.point_table.iter() {
-                        for point in points.iter() {
-                            let v = PointVertex3 {
-                                _pos: [point.p[0], point.p[1], point.p[2]],
-                                _color: [
-                                    point.color.r,
-                                    point.color.g,
-                                    point.color.b,
-                                    point.color.a,
-                                ],
-                                _point_size: point.point_size,
-                            };
-                            for _i in 0..6 {
-                                view.scene.point_renderer.vertex_data.push(v);
-                            }
-                        }
-                    }
-                    for (_, lines) in view.scene.line_renderer.line_table.iter() {
-                        for line in lines.iter() {
-                            let p0 = line.p0;
-                            let p1 = line.p1;
-
-                            let v0 = LineVertex3 {
-                                _p0: [p0[0], p0[1], p0[2]],
-                                _p1: [p1[0], p1[1], p1[2]],
-                                _color: [line.color.r, line.color.g, line.color.b, line.color.a],
-                                _line_width: line.line_width,
-                            };
-                            let v1 = LineVertex3 {
-                                _p0: [p0[0], p0[1], p0[2]],
-                                _p1: [p1[0], p1[1], p1[2]],
-                                _color: [line.color.r, line.color.g, line.color.b, line.color.a],
-                                _line_width: line.line_width,
-                            };
-                            view.scene.line_renderer.vertex_data.push(v0);
-                            view.scene.line_renderer.vertex_data.push(v0);
-                            view.scene.line_renderer.vertex_data.push(v1);
-                            view.scene.line_renderer.vertex_data.push(v0);
-                            view.scene.line_renderer.vertex_data.push(v1);
-                            view.scene.line_renderer.vertex_data.push(v1);
-                        }
-                    }
-                    for (_, mesh) in view.scene.mesh_renderer.mesh_table.iter() {
-                        for trig in mesh.iter() {
-                            let v0 = MeshVertex3 {
-                                _pos: [trig.p0[0], trig.p0[1], trig.p0[2]],
-                                _color: [trig.color.r, trig.color.g, trig.color.b, trig.color.a],
-                            };
-                            let v1 = MeshVertex3 {
-                                _pos: [trig.p1[0], trig.p1[1], trig.p1[2]],
-                                _color: [trig.color.r, trig.color.g, trig.color.b, trig.color.a],
-                            };
-                            let v2 = MeshVertex3 {
-                                _pos: [trig.p2[0], trig.p2[1], trig.p2[2]],
-                                _color: [trig.color.r, trig.color.g, trig.color.b, trig.color.a],
-                            };
-                            view.scene.mesh_renderer.vertices.push(v0);
-                            view.scene.mesh_renderer.vertices.push(v1);
-                            view.scene.mesh_renderer.vertices.push(v2);
-                        }
-                    }
-                    for (_, mesh) in view.scene.textured_mesh_renderer.mesh_table.iter() {
-                        for trig in mesh.iter() {
-                            let v0 = TexturedMeshVertex3 {
-                                _pos: [trig.p0[0], trig.p0[1], trig.p0[2]],
-                                _tex: [trig.tex0[0], trig.tex0[1]],
-                            };
-                            let v1 = TexturedMeshVertex3 {
-                                _pos: [trig.p1[0], trig.p1[1], trig.p1[2]],
-                                _tex: [trig.tex1[0], trig.tex1[1]],
-                            };
-                            let v2 = TexturedMeshVertex3 {
-                                _pos: [trig.p2[0], trig.p2[1], trig.p2[2]],
-                                _tex: [trig.tex2[0], trig.tex2[1]],
-                            };
-                            view.scene.textured_mesh_renderer.vertices.push(v0);
-                            view.scene.textured_mesh_renderer.vertices.push(v1);
-                            view.scene.textured_mesh_renderer.vertices.push(v2);
-                        }
-                    }
+                    request.reply(view.interaction.scene_from_camera());
                 }
             }
         }
     }
+}
+
+struct ResponseStruct {
+    ui_response: egui::Response,
+    depth_image: ArcImageF32,
+    scales: ViewportScale,
+    view_port_size: ImageSize,
 }
 
 impl eframe::App for SimpleViewer {
@@ -307,93 +96,57 @@ impl eframe::App for SimpleViewer {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui_extras::install_image_loaders(ctx);
 
-        // Clear vertex data
-        for (_, view) in self.views.iter_mut() {
-            if let View::View3d(view) = view {
-                view.scene.clear_vertex_data();
-                //view.pixel.clear_vertex_data();
-            }
-            if let View::View2d(view) = view {
-                view.scene.clear_vertex_data();
-                view.pixel.clear_vertex_data();
-            }
-        }
-
         // Add renderables to tables
         self.add_renderables_to_tables();
 
         let mut responses = HashMap::new();
+
+        egui::SidePanel::left("left").show(ctx, |ui| {
+            for (view_label, view) in self.views.iter_mut() {
+                ui.checkbox(view.enabled_mut(), view_label);
+            }
+        });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.scope(|ui0| {
                 if self.views.is_empty() {
                     return;
                 }
-                let (max_width, max_height) = get_max_size(
+                let maybe_max_size = get_max_size(
                     &self.views,
                     0.99 * ui0.available_width(),
                     0.99 * ui0.available_height(),
                 );
+                if maybe_max_size.is_none() {
+                    return;
+                }
+                let (max_width, max_height) = maybe_max_size.unwrap();
 
                 ui0.horizontal_wrapped(|ui| {
                     for (view_label, view) in self.views.iter_mut() {
+                        if !view.enabled() {
+                            continue;
+                        }
+
                         let view_aspect_ratio = view.aspect_ratio();
                         let adjusted_size =
                             get_adjusted_view_size(view_aspect_ratio, max_width, max_height);
                         match view {
                             View::View3d(view) => {
-                                view.update_offscreen_texture(
-                                    &self.state,
+                                let render_result = view.renderer.render_with_interaction_marker(
                                     &adjusted_size.image_size(),
-                                );
-                                let offscreen = view.offscreen.as_ref().unwrap();
-
-                                view.scene.prepare(&self.state, &view.intrinsics, &None);
-                                view.pixel_for_interaction_marker.prepare(&self.state);
-
-                                let mut command_encoder = self.state.device.create_command_encoder(
-                                    &wgpu::CommandEncoderDescriptor::default(),
+                                    view.interaction.zoom2d(),
+                                    view.interaction.scene_from_camera(),
+                                    &view.interaction,
                                 );
 
-                                view.scene.paint(
-                                    &mut command_encoder,
-                                    &offscreen.rgba.rgba_texture_view,
-                                    &offscreen.z_buffer,
-                                );
-
-                                view.pixel_for_interaction_marker
-                                    .show_interaction_marker(&self.state, &view.scene.interaction);
-
-                                view.pixel_for_interaction_marker.paint(
-                                    &mut command_encoder,
-                                    &offscreen.rgba.rgba_texture_view,
-                                    &offscreen.z_buffer,
-                                );
-
-                                self.state.queue.submit(Some(command_encoder.finish()));
-
-                                let mut command_encoder = self.state.device.create_command_encoder(
-                                    &wgpu::CommandEncoderDescriptor::default(),
-                                );
-                                view.scene.depth_paint(
-                                    &mut command_encoder,
-                                    &offscreen.depth.depth_texture_view_f32,
-                                    &offscreen.z_buffer,
-                                );
-
-                                let depth_image = offscreen.depth.download_image(
-                                    &self.state,
-                                    command_encoder,
-                                    &adjusted_size.image_size(),
-                                );
-
-                                let response = ui.add(
-                                    egui::Image::new(SizedTexture {
+                                let ui_response = ui.add(
+                                    egui::Image::new(egui::load::SizedTexture {
                                         size: egui::Vec2::new(
                                             adjusted_size.width,
                                             adjusted_size.height,
                                         ),
-                                        id: offscreen.rgba.rgba_tex_id,
+                                        id: render_result.rgba_tex_id,
                                     })
                                     .fit_to_exact_size(egui::Vec2 {
                                         x: adjusted_size.width,
@@ -404,76 +157,32 @@ impl eframe::App for SimpleViewer {
 
                                 responses.insert(
                                     view_label.clone(),
-                                    (
-                                        response,
-                                        VecF32::<2>::new(
-                                            view.intrinsics.image_size().width as f32
-                                                / adjusted_size.width,
-                                            view.intrinsics.image_size().height as f32
-                                                / adjusted_size.height,
+                                    ResponseStruct {
+                                        ui_response,
+                                        scales: ViewportScale::from_image_size_and_viewport_size(
+                                            view.intrinsics().image_size(),
+                                            adjusted_size,
                                         ),
-                                        depth_image,
-                                    ),
+                                        depth_image: render_result.depth,
+                                        view_port_size: adjusted_size.image_size(),
+                                    },
                                 );
                             }
                             View::View2d(view) => {
-                                view.update_offscreen_texture(
-                                    &self.state,
+                                let render_result = view.renderer.render_with_interaction_marker(
                                     &adjusted_size.image_size(),
-                                );
-                                let offscreen = view.offscreen.as_ref().unwrap();
-
-                                view.scene.prepare(
-                                    &self.state,
-                                    &view.intrinsics,
-                                    &view.background_image,
-                                );
-                                view.pixel.prepare(&self.state);
-
-                                view.background_image = None;
-
-                                let mut command_encoder = self.state.device.create_command_encoder(
-                                    &wgpu::CommandEncoderDescriptor::default(),
+                                    view.interaction.zoom2d(),
+                                    view.interaction.scene_from_camera(),
+                                    &view.interaction,
                                 );
 
-                                view.scene.paint(
-                                    &mut command_encoder,
-                                    &offscreen.rgba.rgba_texture_view,
-                                    &offscreen.z_buffer,
-                                );
-                                view.pixel.paint(
-                                    &mut command_encoder,
-                                    &offscreen.rgba.rgba_texture_view,
-                                    &offscreen.z_buffer,
-                                );
-
-                                self.state.queue.submit(Some(command_encoder.finish()));
-
-                                view.pixel
-                                    .show_interaction_marker(&self.state, &view.scene.interaction);
-
-                                let mut command_encoder = self.state.device.create_command_encoder(
-                                    &wgpu::CommandEncoderDescriptor::default(),
-                                );
-                                view.scene.depth_paint(
-                                    &mut command_encoder,
-                                    &offscreen.depth.depth_texture_view_f32,
-                                    &offscreen.z_buffer,
-                                );
-
-                                let depth_image = offscreen.depth.download_image(
-                                    &self.state,
-                                    command_encoder,
-                                    &adjusted_size.image_size(),
-                                );
-
-                                let response = ui.add(
-                                    egui::Image::new(SizedTexture {
+                                let ui_response = ui.add(
+                                    egui::Image::new(egui::load::SizedTexture {
                                         size: egui::Vec2::new(
                                             adjusted_size.width,
                                             adjusted_size.height,
                                         ),
-                                        id: offscreen.rgba.rgba_tex_id,
+                                        id: render_result.rgba_tex_id,
                                     })
                                     .fit_to_exact_size(egui::Vec2 {
                                         x: adjusted_size.width,
@@ -484,16 +193,15 @@ impl eframe::App for SimpleViewer {
 
                                 responses.insert(
                                     view_label.clone(),
-                                    (
-                                        response,
-                                        VecF32::<2>::new(
-                                            view.intrinsics.image_size().width as f32
-                                                / adjusted_size.width,
-                                            view.intrinsics.image_size().height as f32
-                                                / adjusted_size.height,
+                                    ResponseStruct {
+                                        ui_response,
+                                        scales: ViewportScale::from_image_size_and_viewport_size(
+                                            view.intrinsics().image_size(),
+                                            adjusted_size,
                                         ),
-                                        depth_image,
-                                    ),
+                                        depth_image: render_result.depth,
+                                        view_port_size: adjusted_size.image_size(),
+                                    },
                                 );
                             }
                         }
@@ -505,16 +213,27 @@ impl eframe::App for SimpleViewer {
         for (view_label, view) in self.views.iter_mut() {
             match view {
                 View::View3d(view) => {
-                    let response = responses.get(view_label).unwrap();
-
-                    view.scene.process_event(
-                        &view.intrinsics,
-                        &response.0,
-                        &response.1,
-                        response.2.clone(),
-                    );
+                    if let Some(response) = responses.get(view_label) {
+                        view.interaction.process_event(
+                            &view.intrinsics(),
+                            &response.ui_response,
+                            &response.scales,
+                            response.view_port_size,
+                            &response.depth_image,
+                        );
+                    }
                 }
-                View::View2d(_) => {}
+                View::View2d(view) => {
+                    if let Some(response) = responses.get(view_label) {
+                        view.interaction.process_event(
+                            &view.intrinsics(),
+                            &response.ui_response,
+                            &response.scales,
+                            response.view_port_size,
+                            &response.depth_image,
+                        );
+                    }
+                }
             }
         }
 

@@ -4,6 +4,8 @@ use sophus_sensor::distortion_table::DistortTable;
 use sophus_sensor::DynCamera;
 use wgpu::util::DeviceExt;
 
+use crate::offscreen_renderer::renderer::ClippingPlanes;
+use crate::offscreen_renderer::renderer::Zoom2d;
 use crate::ViewerRenderState;
 
 #[repr(C)]
@@ -43,6 +45,7 @@ pub struct SceneRenderBuffers {
     pub(crate) frustum_uniform_buffer: wgpu::Buffer,
     pub(crate) view_uniform_buffer: wgpu::Buffer,
     pub(crate) camara_params_buffer: wgpu::Buffer,
+    pub(crate) zoom_buffer: wgpu::Buffer,
     pub(crate) dist_texture: wgpu::Texture,
     pub(crate) dist_bind_group: wgpu::BindGroup,
     pub(crate) distortion_lut: Mutex<Option<DistortTable>>,
@@ -58,7 +61,7 @@ impl SceneRenderBuffers {
         let device = &wgpu_render_state.device;
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("custom3d"),
+            label: Some("scene render layout"),
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
@@ -82,6 +85,16 @@ impl SceneRenderBuffers {
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 2,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
                     visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
@@ -103,8 +116,8 @@ impl SceneRenderBuffers {
         let frustum_uniforms = Frustum {
             camera_image_width: intrinsics.image_size().width as f32,
             camera_image_height: intrinsics.image_size().height as f32,
-            near: 0.1,
-            far: 1000.0,
+            near: ClippingPlanes::DEFAULT_NEAR as f32,
+            far: ClippingPlanes::DEFAULT_FAR as f32,
             fx: intrinsics.pinhole_params()[0] as f32,
             fy: intrinsics.pinhole_params()[1] as f32,
             px: intrinsics.pinhole_params()[2] as f32,
@@ -112,21 +125,29 @@ impl SceneRenderBuffers {
         };
 
         let frustum_uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Camera Buffer"),
+            label: Some("frustum buffer"),
             contents: bytemuck::cast_slice(&[frustum_uniforms]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let lut_uniforms = DistortionLut {
+        let zoom_uniform = Zoom2d::default();
+
+        let zoom_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("zoom buffer"),
+            contents: bytemuck::cast_slice(&[zoom_uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let distortion_uniforms = DistortionLut {
             lut_offset_x: 0.0,
             lut_offset_y: 0.0,
             lut_range_x: 0.0,
             lut_range_y: 0.0,
         };
 
-        let camara_params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Lut Buffer"),
-            contents: bytemuck::cast_slice(&[lut_uniforms]),
+        let distortion_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("distortion uniform buffer"),
+            contents: bytemuck::cast_slice(&[distortion_uniforms]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -135,13 +156,13 @@ impl SceneRenderBuffers {
         };
 
         let view_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Camera Buffer2"),
+            label: Some("view buffer"),
             contents: bytemuck::cast_slice(&[view_uniforms]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("custom3d"),
+            label: Some("scene render bind group"),
             layout: &bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
@@ -150,11 +171,15 @@ impl SceneRenderBuffers {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: view_buffer.as_entire_binding(),
+                    resource: zoom_buffer.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: camara_params_buffer.as_entire_binding(),
+                    resource: distortion_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: view_buffer.as_entire_binding(),
                 },
             ],
         });
@@ -273,12 +298,13 @@ impl SceneRenderBuffers {
             bind_group,
             frustum_uniform_buffer,
             view_uniform_buffer: view_buffer,
-            camara_params_buffer,
+            camara_params_buffer: distortion_buffer,
             dist_texture,
             dist_bind_group,
             distortion_lut: Mutex::new(None),
             background_bind_group,
             background_texture,
+            zoom_buffer,
         }
     }
 }
