@@ -6,16 +6,10 @@
 
 /// The actor for the viewer.
 pub mod actor;
-/// Interactions
-pub mod interactions;
 /// The offscreen texture for rendering.
-pub mod offscreen;
-/// The pixel renderer for 2D rendering.
-pub mod pixel_renderer;
+pub mod offscreen_renderer;
 /// The renderable structs.
 pub mod renderables;
-/// The scene renderer for 3D rendering.
-pub mod scene_renderer;
 /// The simple viewer.
 pub mod simple_viewer;
 /// The view struct.

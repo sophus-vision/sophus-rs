@@ -39,7 +39,7 @@ impl ScenePointRenderer {
             source: wgpu::ShaderSource::Wgsl(
                 format!(
                     "{} {}",
-                    include_str!("./utils.wgsl"),
+                    include_str!("./scene_utils.wgsl"),
                     include_str!("./point_scene_shader.wgsl")
                 )
                 .into(),

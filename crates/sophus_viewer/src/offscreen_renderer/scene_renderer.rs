@@ -13,23 +13,23 @@ pub mod point;
 /// textured mesh renderer
 pub mod textured_mesh;
 
-use eframe::egui;
 use sophus_core::calculus::region::IsRegion;
-use sophus_core::linalg::VecF32;
 use sophus_core::tensor::tensor_view::IsTensorLike;
 use sophus_image::arc_image::ArcImage4U8;
-use sophus_image::arc_image::ArcImageF32;
 use sophus_image::image_view::IsImageView;
+use sophus_lie::Isometry3;
 use sophus_sensor::distortion_table::distort_table;
 use sophus_sensor::dyn_camera::DynCamera;
 use wgpu::DepthStencilState;
 
-use crate::interactions::InteractionEnum;
-use crate::offscreen::ZBufferTexture;
-use crate::scene_renderer::buffers::Frustum;
-use crate::scene_renderer::buffers::SceneRenderBuffers;
-use crate::scene_renderer::mesh::MeshRenderer;
-use crate::scene_renderer::point::ScenePointRenderer;
+use crate::offscreen_renderer::renderer::ClippingPlanes;
+use crate::offscreen_renderer::renderer::TranslationAndScaling;
+use crate::offscreen_renderer::renderer::Zoom2d;
+use crate::offscreen_renderer::scene_renderer::buffers::Frustum;
+use crate::offscreen_renderer::scene_renderer::buffers::SceneRenderBuffers;
+use crate::offscreen_renderer::scene_renderer::mesh::MeshRenderer;
+use crate::offscreen_renderer::scene_renderer::point::ScenePointRenderer;
+use crate::offscreen_renderer::textures::ZBufferTexture;
 use crate::ViewerRenderState;
 
 /// Scene renderer
@@ -44,8 +44,6 @@ pub struct SceneRenderer {
     pub point_renderer: ScenePointRenderer,
     /// Line renderer
     pub line_renderer: line::SceneLineRenderer,
-    /// Interaction state
-    pub interaction: InteractionEnum,
 }
 
 impl SceneRenderer {
@@ -54,7 +52,6 @@ impl SceneRenderer {
         wgpu_render_state: &ViewerRenderState,
         intrinsics: &DynCamera<f64, 1>,
         depth_stencil: Option<DepthStencilState>,
-        interaction: InteractionEnum,
     ) -> Self {
         let device = &wgpu_render_state.device;
 
@@ -73,7 +70,7 @@ impl SceneRenderer {
                         },
                         count: None,
                     },
-                    // view-transform uniform
+                    // zoom table uniform
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
                         visibility: wgpu::ShaderStages::VERTEX,
@@ -87,6 +84,17 @@ impl SceneRenderer {
                     // distortion table uniform
                     wgpu::BindGroupLayoutEntry {
                         binding: 2,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // view-transform uniform
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
                         visibility: wgpu::ShaderStages::VERTEX,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
@@ -169,19 +177,7 @@ impl SceneRenderer {
                 &pipeline_layout,
                 depth_stencil,
             ),
-            interaction,
         }
-    }
-
-    pub(crate) fn process_event(
-        &mut self,
-        cam: &DynCamera<f64, 1>,
-        response: &egui::Response,
-        scales: &VecF32<2>,
-        z_buffer: ArcImageF32,
-    ) {
-        self.interaction
-            .process_event(cam, response, scales, &z_buffer);
     }
 
     pub(crate) fn paint<'rp>(
@@ -292,7 +288,9 @@ impl SceneRenderer {
     pub(crate) fn prepare(
         &self,
         state: &ViewerRenderState,
+        zoom_2d: TranslationAndScaling,
         intrinsics: &DynCamera<f64, 1>,
+        scene_from_camera: &Isometry3<f64, 1>,
         background_image: &Option<ArcImage4U8>,
     ) {
         state.queue.write_buffer(
@@ -316,11 +314,12 @@ impl SceneRenderer {
             bytemuck::cast_slice(self.textured_mesh_renderer.vertices.as_slice()),
         );
 
+
         let frustum_uniforms = Frustum {
             camera_image_width: intrinsics.image_size().width as f32,
             camera_image_height: intrinsics.image_size().height as f32,
-            near: 0.1,
-            far: 1000.0,
+            near: ClippingPlanes::DEFAULT_NEAR as f32,
+            far: ClippingPlanes::DEFAULT_FAR as f32,
             fx: intrinsics.pinhole_params()[0] as f32,
             fy: intrinsics.pinhole_params()[1] as f32,
             px: intrinsics.pinhole_params()[2] as f32,
@@ -333,17 +332,17 @@ impl SceneRenderer {
             bytemuck::cast_slice(&[frustum_uniforms]),
         );
 
-        let mut scene_from_camera_uniform: [[f32; 4]; 4] = [[0.0; 4]; 4];
-        for i in 0..4 {
-            for j in 0..4 {
-                scene_from_camera_uniform[j][i] =
-                    self.interaction.scene_from_camera().inverse().matrix()[(i, j)] as f32;
-            }
-        }
+        let zoom_uniform = Zoom2d {
+            translation_x: zoom_2d.translation[0] as f32,
+            translation_y: zoom_2d.translation[1] as f32,
+            scaling_x: zoom_2d.scaling[0] as f32,
+            scaling_y: zoom_2d.scaling[1] as f32,
+        };
+
         state.queue.write_buffer(
-            &self.buffers.view_uniform_buffer,
+            &self.buffers.zoom_buffer,
             0,
-            bytemuck::cast_slice(&[scene_from_camera_uniform]),
+            bytemuck::cast_slice(&[zoom_uniform]),
         );
 
         // distortion table
@@ -378,6 +377,19 @@ impl SceneRenderer {
                 ]),
             );
         }
+
+        let mut scene_from_camera_uniform: [[f32; 4]; 4] = [[0.0; 4]; 4];
+        for i in 0..4 {
+            for j in 0..4 {
+                scene_from_camera_uniform[j][i] =
+                    scene_from_camera.inverse().matrix()[(i, j)] as f32;
+            }
+        }
+        state.queue.write_buffer(
+            &self.buffers.view_uniform_buffer,
+            0,
+            bytemuck::cast_slice(&[scene_from_camera_uniform]),
+        );
 
         if let Some(background_image) = background_image {
             state.queue.write_texture(

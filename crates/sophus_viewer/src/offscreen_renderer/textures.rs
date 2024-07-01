@@ -250,16 +250,13 @@ impl DepthTexture {
 
 #[derive(Debug)]
 pub(crate) struct OffscreenTextures {
-    view_port_size: ImageSize,
+    pub(crate) view_port_size: ImageSize,
     pub(crate) rgba: RgbaTexture,
     pub(crate) z_buffer: ZBufferTexture,
     pub(crate) depth: DepthTexture,
 }
 
 impl OffscreenTextures {
-    pub(crate) fn view_port_size(&self) -> &ImageSize {
-        &self.view_port_size
-    }
     pub(crate) fn new(render_state: &ViewerRenderState, view_port_size: &ImageSize) -> Self {
         Self {
             view_port_size: *view_port_size,

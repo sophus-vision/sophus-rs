@@ -3,14 +3,6 @@ struct VertexOut {
     @builtin(position) position: vec4<f32>,
 };
 
-struct Uniforms {
-     width_height: vec4<f32>
-};
-
-@group(0) @binding(0)
-var<uniform> uniforms: Uniforms;
-
-
 @vertex
 fn vs_main(
      @location(0) position: vec2<f32>,
@@ -19,8 +11,7 @@ fn vs_main(
      @builtin(vertex_index) idx: u32)-> VertexOut
 {
     var out: VertexOut;
-        var point_radius = 0.5 * point_size;
-
+    var point_radius = 0.5 * point_size * ortho_camera.viewport_scale;
 
     var u = position.x;
     var v = position.y;
@@ -39,10 +30,7 @@ fn vs_main(
         v += point_radius;
     }
 
-    out.position = vec4<f32>(2.0 * (u+0.5) / uniforms.width_height.x - 1.0,
-                             2.0 - 2.0*(v+0.5) / uniforms.width_height.y - 1.0,
-                             0.0,
-                             1.0);
+    out.position = pixel_and_z_to_clip(vec2<f32>(u, v), zoom_2d, ortho_camera);
     out.color = color;
 
     return out;

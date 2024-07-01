@@ -21,18 +21,18 @@ include = [
 ]
 keywords = ["robotics", "optimization"]
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/farm-ng/sophus-rs/"
-version = "0.7.0"
+repository = "https://github.com/sophus-vision/sophus-rs/"
+version = "0.8.0"
 
 [workspace.dependencies]
-sophus = {path = "crates/sophus", version = "0.7.0"}
-sophus_core = {path = "crates/sophus_core", version = "0.7.0"}
-sophus_image = {path = "crates/sophus_image", version = "0.7.0"}
-sophus_lie = {path = "crates/sophus_lie", version = "0.7.0"}
-sophus_opt = {path = "crates/sophus_opt", version = "0.7.0"}
-sophus_pyo3 = {path = "crates/sophus_pyo3", version = "0.7.0"}
-sophus_sensor = {path = "crates/sophus_sensor", version = "0.7.0"}
-sophus_viewer = {path = "crates/sophus_viewer", version = "0.7.0"}
+sophus = {path = "crates/sophus", version = "0.8.0"}
+sophus_core = {path = "crates/sophus_core", version = "0.8.0"}
+sophus_image = {path = "crates/sophus_image", version = "0.8.0"}
+sophus_lie = {path = "crates/sophus_lie", version = "0.8.0"}
+sophus_opt = {path = "crates/sophus_opt", version = "0.8.0"}
+sophus_pyo3 = {path = "crates/sophus_pyo3", version = "0.8.0"}
+sophus_sensor = {path = "crates/sophus_sensor", version = "0.8.0"}
+sophus_viewer = {path = "crates/sophus_viewer", version = "0.8.0"}
 
 approx = "0.5"
 as-any = "0.3"

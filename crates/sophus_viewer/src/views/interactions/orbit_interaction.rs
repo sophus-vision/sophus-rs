@@ -1,26 +1,49 @@
 use eframe::egui;
-use sophus_core::linalg::VecF32;
 use sophus_core::linalg::VecF64;
 use sophus_core::IsTensorLike;
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::image_view::IsImageView;
+use sophus_image::ImageSize;
 use sophus_lie::traits::IsTranslationProductGroup;
 use sophus_lie::Isometry3;
 use sophus_sensor::DynCamera;
 
-use crate::interactions::InteractionPointerState;
-use crate::interactions::SceneFocus;
-use crate::interactions::ScrollState;
-use crate::interactions::WgpuClippingPlanes;
+use crate::offscreen_renderer::renderer::ClippingPlanes;
+use crate::offscreen_renderer::renderer::TranslationAndScaling;
+use crate::views::interactions::SceneFocus;
+use crate::views::interactions::ViewportScale;
+
+#[derive(Clone, Copy)]
+pub(crate) struct OrbitalPointerState {
+    pub(crate) start_uv_virtual_camera: VecF64<2>,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct OrbitalScrollState {}
 
 #[derive(Clone, Copy)]
 /// Interaction state
 pub struct OrbitalInteraction {
-    pub(crate) maybe_pointer_state: Option<InteractionPointerState>,
-    pub(crate) maybe_scroll_state: Option<ScrollState>,
+    pub(crate) maybe_pointer_state: Option<OrbitalPointerState>,
+    pub(crate) maybe_scroll_state: Option<OrbitalScrollState>,
     pub(crate) maybe_scene_focus: Option<SceneFocus>,
-    pub(crate) clipping_planes: WgpuClippingPlanes,
+    pub(crate) clipping_planes: ClippingPlanes,
     pub(crate) scene_from_camera: Isometry3<f64, 1>,
+}
+
+impl OrbitalInteraction {
+    pub(crate) fn new(
+        scene_from_camera: Isometry3<f64, 1>,
+        clipping_planes: ClippingPlanes,
+    ) -> OrbitalInteraction {
+        OrbitalInteraction {
+            maybe_pointer_state: None,
+            maybe_scroll_state: None,
+            maybe_scene_focus: None,
+            clipping_planes,
+            scene_from_camera,
+        }
+    }
 }
 
 impl OrbitalInteraction {
@@ -45,7 +68,7 @@ impl OrbitalInteraction {
         self.clipping_planes.z_from_ndc(ndc_z)
     }
 
-    /// Process scroll events
+    /// Process "scroll" events
     ///
     /// Scroll up/down: zoom in/out
     ///
@@ -54,14 +77,28 @@ impl OrbitalInteraction {
         &mut self,
         cam: &DynCamera<f64, 1>,
         response: &egui::Response,
-        scales: &VecF32<2>,
+        scales: &ViewportScale,
+        viewport_size: ImageSize,
         z_buffer: &ArcImageF32,
     ) {
         let last_pointer_pos = response.ctx.input(|i| i.pointer.latest_pos());
         if last_pointer_pos.is_none() {
             return;
         }
+
         let last_pointer_pos = last_pointer_pos.unwrap();
+        let uv_viewport = egui::Pos2::new(
+            (last_pointer_pos - response.rect.min)[0],
+            (last_pointer_pos - response.rect.min)[1],
+        );
+
+        if uv_viewport.x < 0.0
+            || uv_viewport.y < 0.0
+            || uv_viewport.x >= viewport_size.width as f32
+            || uv_viewport.y >= viewport_size.height as f32
+        {
+            return;
+        }
 
         let smooth_scroll_delta = response.ctx.input(|i| i.smooth_scroll_delta);
 
@@ -71,31 +108,18 @@ impl OrbitalInteraction {
         let scroll_stopped = self.maybe_scroll_state.is_some() && is_scroll_zero;
 
         if scroll_started {
-            let uv_view_port = egui::Pos2::new(
-                (last_pointer_pos - response.rect.min)[0],
-                (last_pointer_pos - response.rect.min)[1],
-            );
-
-            let uv_in_virtual_camera = VecF64::<2>::new(
-                (uv_view_port.x * scales[0]) as f64,
-                (uv_view_port.y * scales[1]) as f64,
-            );
-
-            if self.maybe_scene_focus.is_none() {
-                // Typically, the scene focus shall only be set by the pointer interaction event. But
-                // it was never set, we set it here.
-                let mut z = self.clipping_planes.z_from_ndc(
-                    z_buffer.pixel(uv_view_port.x as usize, uv_view_port.y as usize) as f64,
-                );
-                if z >= self.clipping_planes.far {
-                    z = self.median_scene_depth(z_buffer);
-                }
-                self.maybe_scene_focus = Some(SceneFocus {
-                    depth: z,
-                    uv_in_virtual_camera,
-                });
+            let uv_in_virtual_camera = scales.apply(uv_viewport);
+            let mut z = self
+                .clipping_planes
+                .z_from_ndc(z_buffer.pixel(uv_viewport.x as usize, uv_viewport.y as usize) as f64);
+            if z >= self.clipping_planes.far {
+                z = self.median_scene_depth(z_buffer);
             }
-            self.maybe_scroll_state = Some(ScrollState {});
+            self.maybe_scene_focus = Some(SceneFocus {
+                depth: z,
+                uv_in_virtual_camera,
+            });
+            self.maybe_scroll_state = Some(OrbitalScrollState {});
         } else if scroll_stopped {
             self.maybe_scroll_state = None;
         }
@@ -135,7 +159,7 @@ impl OrbitalInteraction {
         &mut self,
         cam: &DynCamera<f64, 1>,
         response: &egui::Response,
-        scales: &VecF32<2>,
+        scales: &ViewportScale,
         z_buffer: &ArcImageF32,
     ) {
         let delta_x = response.drag_delta().x;
@@ -146,19 +170,16 @@ impl OrbitalInteraction {
 
             let pointer = response.interact_pointer_pos().unwrap();
 
-            let uv_view_port = egui::Pos2::new(
+            let uv_viewport = egui::Pos2::new(
                 (pointer - response.rect.min)[0],
                 (pointer - response.rect.min)[1],
             );
 
-            let uv_in_virtual_camera = VecF64::<2>::new(
-                (uv_view_port.x * scales[0]) as f64,
-                (uv_view_port.y * scales[1]) as f64,
-            );
+            let uv_in_virtual_camera = scales.apply(uv_viewport);
 
-            let mut z = self.clipping_planes.z_from_ndc(
-                z_buffer.pixel(uv_view_port.x as usize, uv_view_port.y as usize) as f64,
-            );
+            let mut z = self
+                .clipping_planes
+                .z_from_ndc(z_buffer.pixel(uv_viewport.x as usize, uv_viewport.y as usize) as f64);
 
             if z >= self.clipping_planes.far {
                 z = self.median_scene_depth(z_buffer);
@@ -167,8 +188,8 @@ impl OrbitalInteraction {
                 depth: z,
                 uv_in_virtual_camera,
             });
-            self.maybe_pointer_state = Some(InteractionPointerState {
-                start_uv: uv_in_virtual_camera,
+            self.maybe_pointer_state = Some(OrbitalPointerState {
+                start_uv_virtual_camera: uv_in_virtual_camera,
             });
         } else if response.drag_stopped() {
             // A drag event finished
@@ -178,16 +199,16 @@ impl OrbitalInteraction {
         if response.dragged_by(egui::PointerButton::Secondary) {
             // translate scene
 
-            let c = response.interact_pointer_pos().unwrap() - response.rect.min;
-            let current_pixel = egui::Vec2::new(c[0] * scales[0], c[1] * scales[1]);
+            let uv_viewport = response.interact_pointer_pos().unwrap() - response.rect.min;
+            let current_pixel = scales.apply(uv_viewport.to_pos2()).cast::<f32>();
             let scene_focus = self.maybe_scene_focus.unwrap();
-            let start_pixel = self.maybe_pointer_state.unwrap().start_uv;
+            let start_pixel = self.maybe_pointer_state.unwrap().start_uv_virtual_camera;
             let depth = scene_focus.depth;
             let p0 = cam.cam_unproj_with_z(&start_pixel, depth);
             let p1 = cam.cam_unproj_with_z(
                 &VecF64::<2>::new(
-                    start_pixel.x + delta_x as f64,
-                    start_pixel.y + delta_y as f64,
+                    start_pixel.x + (delta_x as f64 * scales.scale.x),
+                    start_pixel.y + (delta_y as f64 * scales.scale.y),
                 ),
                 depth,
             );
@@ -224,10 +245,16 @@ impl OrbitalInteraction {
         &mut self,
         cam: &DynCamera<f64, 1>,
         response: &egui::Response,
-        scales: &VecF32<2>,
+        scales: &ViewportScale,
+        view_port_size: ImageSize,
         z_buffer: &ArcImageF32,
     ) {
         self.process_pointer(cam, response, scales, z_buffer);
-        self.process_scrolls(cam, response, scales, z_buffer);
+        self.process_scrolls(cam, response, scales, view_port_size, z_buffer);
+    }
+
+    /// Get zoom
+    pub fn zoom2d(&self) -> TranslationAndScaling {
+        TranslationAndScaling::identity()
     }
 }

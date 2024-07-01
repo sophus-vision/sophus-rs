@@ -3,14 +3,6 @@ struct VertexOut {
     @builtin(position) position: vec4<f32>,
 };
 
-struct Uniforms {
-     width_height: vec4<f32>
-};
-
-@group(0) @binding(0)
-var<uniform> uniforms: Uniforms;
-
-
 @vertex
 fn vs_main(
      @location(0) position: vec2<f32>,
@@ -21,7 +13,7 @@ fn vs_main(
 {
     var out: VertexOut;
 
-    var line_half_width = 0.5 * line_width;
+    var line_half_width = 0.5 * line_width * ortho_camera.viewport_scale;
     var p = position;
     var mod6 = idx % 6u;
     if mod6 == 0u {
@@ -44,10 +36,7 @@ fn vs_main(
         p -= normal * line_half_width;
     }
 
-    out.position = vec4<f32>(2.0 * (p.x+0.5) / uniforms.width_height.x - 1.0,
-                             2.0 - 2.0*(p.y+0.5) / uniforms.width_height.y - 1.0,
-                             0.0,
-                             1.0);
+    out.position = pixel_and_z_to_clip(p, zoom_2d, ortho_camera);
     out.color = color;
 
     return out;

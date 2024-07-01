@@ -1,5 +1,7 @@
 /// aspect ratio
 pub mod aspect_ratio;
+/// Interactions
+pub mod interactions;
 /// 2d view
 pub mod view2d;
 /// 3d view
@@ -22,6 +24,22 @@ impl HasAspectRatio for View {
         match self {
             View::View3d(view) => view.aspect_ratio(),
             View::View2d(view) => view.aspect_ratio(),
+        }
+    }
+}
+
+impl View {
+    pub(crate) fn enabled_mut(&mut self) -> &mut bool {
+        match self {
+            View::View3d(view) => &mut view.enabled,
+            View::View2d(view) => &mut view.enabled,
+        }
+    }
+
+    pub(crate) fn enabled(&self) -> bool {
+        match self {
+            View::View3d(view) => view.enabled,
+            View::View2d(view) => view.enabled,
         }
     }
 }

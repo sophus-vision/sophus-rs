@@ -15,7 +15,7 @@ use sophus_lie::Isometry3;
 use sophus_sensor::camera_enum::perspective_camera::PerspectiveCameraEnum;
 use sophus_sensor::dyn_camera::DynCamera;
 use sophus_sensor::KannalaBrandtCamera;
-use sophus_viewer::interactions::WgpuClippingPlanes;
+use sophus_viewer::offscreen_renderer::renderer::ClippingPlanes;
 use sophus_viewer::simple_viewer::SimpleViewer;
 
 use crate::color::Color;
@@ -120,7 +120,7 @@ impl HasOnMessage for ContentGeneratorMessage {
                     },
                 );
                 let scene_from_camera = Isometry3::from_t(&VecF64::<3>::new(0.0, 0.0, -50.0));
-                let clipping_planes = WgpuClippingPlanes {
+                let clipping_planes = ClippingPlanes {
                     near: 0.1,
                     far: 1000.0,
                 };

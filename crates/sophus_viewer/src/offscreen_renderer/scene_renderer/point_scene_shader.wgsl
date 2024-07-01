@@ -3,16 +3,6 @@ struct VertexOut {
     @builtin(position) position: vec4<f32>,
 };
 
-
-@group(0) @binding(0)
-var<uniform> frustum_uniforms: Frustum;
-
-@group(0) @binding(1)
-var<uniform> view_uniform: ViewTransform;
-
-@group(0) @binding(2)
-var<uniform> lut_uniform: DistortionLut;
-
 @group(1) @binding(0)
 var distortion_texture: texture_2d<f32>;
 
@@ -49,7 +39,7 @@ fn vs_main(
     }
 
     // map point from pixel coordinates (Computer Vision convention) to clip space coordinates (WebGPU convention)
-    out.position = pixel_and_z_to_clip(vec2<f32>(u, v), z, frustum_uniforms);
+    out.position = pixel_and_z_to_clip(vec2<f32>(u, v), z, frustum_uniforms, zoom);
     out.color = color;
 
     return out;
