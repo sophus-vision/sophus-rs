@@ -83,11 +83,13 @@ impl PixelPointRenderer {
                     step_mode: wgpu::VertexStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1=>Float32, 2 => Float32x4],
                 }],
+                compilation_options:Default::default(),
             },
             fragment: Some(wgpu::FragmentState {
                 module: &point_shader,
                 entry_point: "fs_main",
                 targets: &[Some(wgpu::TextureFormat::Rgba8UnormSrgb.into())],
+                compilation_options:Default::default(),
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,

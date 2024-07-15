@@ -90,7 +90,7 @@ pub fn run_viewer_on_main_thread<
         "Egui actor",
         options,
         Box::new(|cc| {
-            V::new(
+            Ok(V::new(
                 builder,
                 ViewerRenderState {
                     _adapter: cc.wgpu_render_state.as_ref().unwrap().adapter.clone(),
@@ -98,7 +98,7 @@ pub fn run_viewer_on_main_thread<
                     queue: cc.wgpu_render_state.as_ref().unwrap().queue.clone(),
                     wgpu_state: cc.wgpu_render_state.as_ref().unwrap().renderer.clone(),
                 },
-            )
+            ))
         }),
     )
     .unwrap();
