@@ -82,11 +82,13 @@ impl PixelLineRenderer {
                     step_mode: wgpu::VertexStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1=>Float32x4, 2 => Float32x2, 3 => Float32],
                 }],
+                compilation_options:Default::default(),
             },
             fragment: Some(wgpu::FragmentState {
                 module: &line_shader,
                 entry_point: "fs_main",
                 targets: &[Some(wgpu::TextureFormat::Rgba8UnormSrgb.into())],
+                compilation_options:Default::default(),
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
