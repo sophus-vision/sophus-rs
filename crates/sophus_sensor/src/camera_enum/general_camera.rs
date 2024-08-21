@@ -32,6 +32,10 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
         ))
     }
 
+    fn new_brown_conrady(params: &S::Vector<12>, image_size: ImageSize) -> Self {
+        Self::Perspective(PerspectiveCameraEnum::new_brown_conrady(params, image_size))
+    }
+
     fn cam_proj(&self, point_in_camera: &S::Vector<3>) -> S::Vector<2> {
         match self {
             GeneralCameraEnum::Perspective(camera) => camera.cam_proj(point_in_camera),
