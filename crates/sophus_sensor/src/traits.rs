@@ -52,6 +52,8 @@ pub trait IsCameraEnum<S: IsScalar<BATCH>, const BATCH: usize> {
     fn new_pinhole(params: &S::Vector<4>, image_size: ImageSize) -> Self;
     /// Creates a new Kannala-Brandt camera
     fn new_kannala_brandt(params: &S::Vector<8>, image_size: ImageSize) -> Self;
+    /// Creates a new Brown-Conrady camera
+    fn new_brown_conrady(params: &S::Vector<12>, image_size: ImageSize) -> Self;
 
     /// Returns the image size
     fn image_size(&self) -> ImageSize;

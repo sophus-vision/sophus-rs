@@ -1,4 +1,5 @@
 use crate::distortions::affine::AffineDistortionImpl;
+use crate::distortions::brown_conrady::BrownConradyDistortionImpl;
 use crate::distortions::kannala_brandt::KannalaBrandtDistortionImpl;
 use crate::prelude::*;
 use crate::projections::perspective::PerspectiveProjectionImpl;
@@ -11,6 +12,9 @@ pub type PinholeCamera<S, const BATCH: usize> =
 /// Kannala-Brandt camera
 pub type KannalaBrandtCamera<S, const BATCH: usize> =
     Camera<S, 4, 8, BATCH, KannalaBrandtDistortionImpl<S, BATCH>, PerspectiveProjectionImpl>;
+/// Brown-Conrady camera
+pub type BrownConradyCamera<S, const BATCH: usize> =
+    Camera<S, 8, 12, BATCH, BrownConradyDistortionImpl<S, BATCH>, PerspectiveProjectionImpl>;
 
 /// Perspective camera enum
 #[derive(Debug, Clone)]
@@ -19,6 +23,8 @@ pub enum PerspectiveCameraEnum<S: IsScalar<BATCH>, const BATCH: usize> {
     Pinhole(PinholeCamera<S, BATCH>),
     /// Kannala-Brandt camera
     KannalaBrandt(KannalaBrandtCamera<S, BATCH>),
+    /// Brown-Conrady camera
+    BrownConrady(BrownConradyCamera<S, BATCH>),
 }
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
@@ -31,6 +37,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
         match self {
             PerspectiveCameraEnum::Pinhole(camera) => camera.image_size(),
             PerspectiveCameraEnum::KannalaBrandt(camera) => camera.image_size(),
+            PerspectiveCameraEnum::BrownConrady(camera) => camera.image_size(),
         }
     }
 
@@ -40,10 +47,15 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
         ))
     }
 
+    fn new_brown_conrady(params: &S::Vector<12>, image_size: ImageSize) -> Self {
+        Self::BrownConrady(BrownConradyCamera::from_params_and_size(params, image_size))
+    }
+
     fn cam_proj(&self, point_in_camera: &S::Vector<3>) -> S::Vector<2> {
         match self {
             PerspectiveCameraEnum::Pinhole(camera) => camera.cam_proj(point_in_camera),
             PerspectiveCameraEnum::KannalaBrandt(camera) => camera.cam_proj(point_in_camera),
+            PerspectiveCameraEnum::BrownConrady(camera) => camera.cam_proj(point_in_camera),
         }
     }
 
@@ -53,6 +65,9 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
             PerspectiveCameraEnum::KannalaBrandt(camera) => {
                 camera.cam_unproj_with_z(point_in_camera, z)
             }
+            PerspectiveCameraEnum::BrownConrady(camera) => {
+                camera.cam_unproj_with_z(point_in_camera, z)
+            }
         }
     }
 
@@ -60,6 +75,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
         match self {
             PerspectiveCameraEnum::Pinhole(camera) => camera.distort(point_in_camera),
             PerspectiveCameraEnum::KannalaBrandt(camera) => camera.distort(point_in_camera),
+            PerspectiveCameraEnum::BrownConrady(camera) => camera.distort(point_in_camera),
         }
     }
 
@@ -67,6 +83,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
         match self {
             PerspectiveCameraEnum::Pinhole(camera) => camera.undistort(point_in_camera),
             PerspectiveCameraEnum::KannalaBrandt(camera) => camera.undistort(point_in_camera),
+            PerspectiveCameraEnum::BrownConrady(camera) => camera.undistort(point_in_camera),
         }
     }
 
@@ -74,6 +91,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
         match self {
             PerspectiveCameraEnum::Pinhole(camera) => camera.dx_distort_x(point_in_camera),
             PerspectiveCameraEnum::KannalaBrandt(camera) => camera.dx_distort_x(point_in_camera),
+            PerspectiveCameraEnum::BrownConrady(camera) => camera.dx_distort_x(point_in_camera),
         }
     }
 }
@@ -87,6 +105,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsPerspectiveCameraEnum<S, BATCH>
             PerspectiveCameraEnum::KannalaBrandt(camera) => {
                 camera.params().get_fixed_subvec::<4>(0)
             }
+            PerspectiveCameraEnum::BrownConrady(camera) => camera.params().get_fixed_subvec::<4>(0),
         }
     }
 }

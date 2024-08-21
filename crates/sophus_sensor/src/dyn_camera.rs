@@ -86,6 +86,11 @@ impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
         Self::from_model(CameraType::new_kannala_brandt(params, image_size))
     }
 
+    /// Create a Brown-Conrady camera instance
+    pub fn new_brown_conrady(params: &S::Vector<12>, image_size: ImageSize) -> Self {
+        Self::from_model(CameraType::new_brown_conrady(params, image_size))
+    }
+
     /// Projects a 3D point in the camera frame to a pixel in the image
     pub fn cam_proj(&self, point_in_camera: &S::Vector<3>) -> S::Vector<2> {
         self.camera_type.cam_proj(point_in_camera)
@@ -150,6 +155,27 @@ fn dyn_camera_tests() {
 
         cameras.push(DynCamera::new_kannala_brandt(
             &VecF64::<8>::from_vec(vec![1000.0, 1000.0, 320.0, 280.0, 0.1, 0.01, 0.001, 0.0001]),
+            ImageSize {
+                width: 640,
+                height: 480,
+            },
+        ));
+
+        cameras.push(DynCamera::new_brown_conrady(
+            &VecF64::<12>::from_vec(vec![
+                286.0,
+                286.0,
+                0.5 * (424.0 - 1.0),
+                0.5 * (400.0 - 1.0),
+                0.726405,
+                -0.0148413,
+                1.38447e-05,
+                0.000419742,
+                -0.00514224,
+                1.06774,
+                0.128429,
+                -0.019901,
+            ]),
             ImageSize {
                 width: 640,
                 height: 480,

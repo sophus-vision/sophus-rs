@@ -29,8 +29,7 @@ impl View2d {
                 packet.view_label.clone(),
                 View::View2d(View2d {
                     renderer: OffscreenRenderer::new(state, frame.intrinsics()),
-                    interaction: InteractionEnum::InPlane(InplaneInteraction::new(
-                    )),
+                    interaction: InteractionEnum::InPlane(InplaneInteraction::new()),
                     enabled: true,
                 }),
             );

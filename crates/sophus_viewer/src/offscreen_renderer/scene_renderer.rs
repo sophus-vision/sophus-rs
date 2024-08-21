@@ -314,7 +314,6 @@ impl SceneRenderer {
             bytemuck::cast_slice(self.textured_mesh_renderer.vertices.as_slice()),
         );
 
-
         let frustum_uniforms = Frustum {
             camera_image_width: intrinsics.image_size().width as f32,
             camera_image_height: intrinsics.image_size().height as f32,
