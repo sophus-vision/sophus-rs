@@ -22,7 +22,6 @@ bytemuck.workspace = true
 eframe.workspace = true
 egui_extras.workspace = true
 env_logger.workspace = true
-hollywood.workspace = true
 linked-hash-map.workspace = true
 nalgebra.workspace = true
 ndarray.workspace = true

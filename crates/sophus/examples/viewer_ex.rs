@@ -1,12 +1,5 @@
-use hollywood::actors::egui::EguiActor;
-use hollywood::actors::egui::Stream;
-use hollywood::prelude::*;
 use sophus::examples::viewer_example::make_example_image;
 use sophus::image::ImageSize;
-use sophus::viewer::actor::run_viewer_on_main_thread;
-use sophus::viewer::actor::ViewerBuilder;
-use sophus::viewer::actor::ViewerCamera;
-use sophus::viewer::actor::ViewerConfig;
 use sophus::viewer::renderables::*;
 use sophus_core::linalg::VecF64;
 use sophus_image::intensity_image::intensity_arc_image::IsIntensityArcImage;
@@ -22,6 +15,8 @@ use sophus_viewer::renderables::renderable2d::Renderable2d;
 use sophus_viewer::renderables::renderable2d::View2dPacket;
 use sophus_viewer::renderables::renderable3d::View3dPacket;
 use sophus_viewer::simple_viewer::SimpleViewer;
+use sophus_viewer::simple_viewer::SimplerViewerBuilder;
+use sophus_viewer::simple_viewer::ViewerCamera;
 
 use crate::frame::Frame;
 use crate::renderable2d::Lines2;
@@ -30,78 +25,7 @@ use crate::renderable3d::Mesh3;
 use crate::renderable3d::Points3;
 use crate::renderable3d::Renderable3d;
 
-#[actor(ContentGeneratorMessage, NullInRequestMessage)]
-type ContentGenerator = Actor<
-    NullProp,
-    ContentGeneratorInbound,
-    NullInRequests,
-    ContentGeneratorState,
-    ContentGeneratorOutbound,
-    ContentGeneratorOutRequest,
->;
 
-/// Inbound message for the ContentGenerator actor.
-#[derive(Clone, Debug)]
-#[actor_inputs(
-    ContentGeneratorInbound,
-    {
-        NullProp,
-        ContentGeneratorState,
-        ContentGeneratorOutbound,
-        ContentGeneratorOutRequest,
-        NullInRequestMessage
-    })]
-pub enum ContentGeneratorMessage {
-    /// in seconds
-    ClockTick(f64),
-    SceneFromCamera(ReplyMessage<Isometry3<f64, 1>>),
-}
-
-/// Request of the simulation actor.
-pub struct ContentGeneratorOutRequest {
-    /// Check time-stamp of receiver
-    pub scene_from_camera_request:
-        OutRequestChannel<String, Isometry3<f64, 1>, ContentGeneratorMessage>,
-}
-
-impl IsOutRequestHub<ContentGeneratorMessage> for ContentGeneratorOutRequest {
-    fn from_parent_and_sender(
-        actor_name: &str,
-        sender: &tokio::sync::mpsc::UnboundedSender<ContentGeneratorMessage>,
-    ) -> Self {
-        Self {
-            scene_from_camera_request: OutRequestChannel::new(
-                actor_name.to_owned(),
-                "scene_from_camera_request",
-                sender,
-            ),
-        }
-    }
-}
-
-impl HasActivate for ContentGeneratorOutRequest {
-    fn extract(&mut self) -> Self {
-        Self {
-            scene_from_camera_request: self.scene_from_camera_request.extract(),
-        }
-    }
-
-    fn activate(&mut self) {
-        self.scene_from_camera_request.activate();
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct ContentGeneratorState {
-    pub counter: u32,
-}
-
-/// Outbound hub for the ContentGenerator.
-#[actor_outputs]
-pub struct ContentGeneratorOutbound {
-    /// curves
-    pub packets: OutboundChannel<Stream<Packets>>,
-}
 
 fn create_view2_packet() -> Packet {
     let img = make_example_image(ImageSize {
@@ -192,102 +116,41 @@ fn create_view3_packet() -> Packet {
     Packet::View3d(packet_3d)
 }
 
-impl HasOnMessage for ContentGeneratorMessage {
-    /// Process the inbound time_stamp message.
-    fn on_message(
-        self,
-        _prop: &Self::Prop,
-        state: &mut Self::State,
-        outbound: &Self::OutboundHub,
-        _request: &ContentGeneratorOutRequest,
-    ) {
-        match &self {
-            ContentGeneratorMessage::ClockTick(_time_in_seconds) => {
-                let mut packets = Packets { packets: vec![] };
-
-                if state.counter == 0 {
-                    packets.packets.push(create_view2_packet());
-                    packets.packets.push(create_tiny_view2_packet());
-                    packets.packets.push(create_view3_packet());
-                }
-
-                state.counter += 1;
-
-                outbound.packets.send(Stream { msg: packets });
-
-                // request
-                //     .scene_from_camera_request
-                //     .send_request("view_2d".to_owned());
-            }
-            ContentGeneratorMessage::SceneFromCamera(reply) => {
-                println!("{}", reply.reply);
-            }
-        }
-    }
-}
-
-impl IsInboundMessageNew<f64> for ContentGeneratorMessage {
-    fn new(_inbound_name: String, msg: f64) -> Self {
-        ContentGeneratorMessage::ClockTick(msg)
-    }
-}
-
-impl IsInboundMessageNew<ReplyMessage<Isometry3<f64, 1>>> for ContentGeneratorMessage {
-    fn new(_inbound_name: String, scene_from_camera: ReplyMessage<Isometry3<f64, 1>>) -> Self {
-        ContentGeneratorMessage::SceneFromCamera(scene_from_camera)
-    }
-}
 
 pub async fn run_viewer_example() {
-    let mut builder = ViewerBuilder::from_config(ViewerConfig {});
+    let (message_tx, message_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (cancel_tx, _cancel_rx) = tokio::sync::mpsc::unbounded_channel();
 
-    // Pipeline configuration
-    let pipeline = Hollywood::configure(&mut |context| {
-        // Actor creation:
-        // 1. Periodic timer to drive the simulation
-        let mut timer = hollywood::actors::Periodic::new_with_period(context, 0.01);
-        // 2. The content generator of the example
-        let mut content_generator = ContentGenerator::from_prop_and_state(
-            context,
-            NullProp {},
-            ContentGeneratorState { counter: 0 },
-        );
-        // 3. The viewer actor
-        let mut viewer = EguiActor::<Packets, String, Isometry3<f64, 1>, (), ()>::from_builder(
-            context, &builder,
-        );
-
-        // Pipeline connections:
-        timer
-            .outbound
-            .time_stamp
-            .connect(context, &mut content_generator.inbound.clock_tick);
-        content_generator
-            .outbound
-            .packets
-            .connect(context, &mut viewer.inbound.stream);
-        content_generator
-            .out_requests
-            .scene_from_camera_request
-            .connect(context, &mut viewer.in_requests.request);
+    tokio::spawn(async move {
+        let mut packets = Packets { packets: vec![] };
+        packets.packets.push(create_view3_packet());
+        packets.packets.push(create_view2_packet());
+        packets.packets.push(create_tiny_view2_packet());
+        message_tx.send(packets).unwrap();
     });
 
-    // The cancel_requester is used to cancel the pipeline.
-    builder
-        .cancel_request_sender
-        .clone_from(&pipeline.cancel_request_sender_template);
+    let builder = SimplerViewerBuilder {
+        message_recv: message_rx,
+        cancel_request_sender: cancel_tx,
+    };
+    env_logger::init();
+    let options = eframe::NativeOptions {
+        viewport: eframe::egui::ViewportBuilder::default().with_inner_size([640.0, 480.0]),
+        renderer: eframe::Renderer::Wgpu,
 
-    // Plot the pipeline graph to the console.
-    pipeline.print_flow_graph();
-
-    // Pipeline execution:
-
-    // 1. Run the pipeline on a separate thread.
-    let pipeline_handle = tokio::spawn(pipeline.run());
-    // 2. Run the viewer on the main thread. This is a blocking call.
-    run_viewer_on_main_thread::<ViewerBuilder, SimpleViewer>(builder);
-    // 3. Wait for the pipeline to finish.
-    pipeline_handle.await.unwrap();
+        ..Default::default()
+    };
+    eframe::run_native(
+        "Egui actor",
+        options,
+        Box::new(|cc| {
+            Ok(SimpleViewer::new(
+                builder,
+                sophus_viewer::ViewerRenderState::new(cc),
+            ))
+        }),
+    )
+    .unwrap();
 }
 
 fn main() {

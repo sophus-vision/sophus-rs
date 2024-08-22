@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
 use eframe::egui;
-use hollywood::actors::egui::EguiAppFromBuilder;
-use hollywood::actors::egui::Stream;
-use hollywood::compute::pipeline::CancelRequest;
-use hollywood::RequestWithReplyChannel;
+
 use linked_hash_map::LinkedHashMap;
+use sophus_core::linalg::VecF64;
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::ImageSize;
+use sophus_lie::traits::IsTranslationProductGroup;
 use sophus_lie::Isometry3;
+use sophus_sensor::DynCamera;
 
-use crate::actor::ViewerBuilder;
+use crate::offscreen_renderer::renderer::ClippingPlanes;
 use crate::renderables::Packet;
 use crate::renderables::Packets;
 use crate::views::aspect_ratio::get_adjusted_view_size;
@@ -22,33 +22,64 @@ use crate::views::view3d::View3d;
 use crate::views::View;
 use crate::ViewerRenderState;
 
+/// Cancel request.
+pub struct CancelRequest {}
+
+/// Viewer camera configuration.
+#[derive(Clone, Debug)]
+pub struct ViewerCamera {
+    /// Camera intrinsics
+    pub intrinsics: DynCamera<f64, 1>,
+    /// Clipping planes
+    pub clipping_planes: ClippingPlanes,
+    /// Scene from camera pose
+    pub scene_from_camera: Isometry3<f64, 1>,
+}
+
+impl Default for ViewerCamera {
+    fn default() -> Self {
+        ViewerCamera::default_from(ImageSize::new(639, 479))
+    }
+}
+
+impl ViewerCamera {
+    /// Create default viewer camera from image size
+    pub fn default_from(image_size: ImageSize) -> ViewerCamera {
+        ViewerCamera {
+            intrinsics: DynCamera::default_pinhole(image_size),
+            clipping_planes: ClippingPlanes::default(),
+            scene_from_camera: Isometry3::from_t(&VecF64::<3>::new(0.0, 0.0, -5.0)),
+        }
+    }
+}
+
 /// The simple viewer top-level struct.
 pub struct SimpleViewer {
     state: ViewerRenderState,
     views: LinkedHashMap<String, View>,
-    message_recv: tokio::sync::mpsc::UnboundedReceiver<Stream<Packets>>,
-    request_recv:
-        tokio::sync::mpsc::UnboundedReceiver<RequestWithReplyChannel<String, Isometry3<f64, 1>>>,
+    message_recv: tokio::sync::mpsc::UnboundedReceiver<Packets>,
     cancel_request_sender: tokio::sync::mpsc::UnboundedSender<CancelRequest>,
 }
 
-impl EguiAppFromBuilder<ViewerBuilder> for SimpleViewer {
-    fn new(builder: ViewerBuilder, render_state: ViewerRenderState) -> Box<SimpleViewer> {
-        Box::new(SimpleViewer {
-            state: render_state.clone(),
-            views: LinkedHashMap::new(),
-            message_recv: builder.message_from_actor_recv,
-            request_recv: builder.in_request_from_actor_recv,
-            cancel_request_sender: builder.cancel_request_sender.unwrap(),
-        })
-    }
-
-    type Out = SimpleViewer;
-
-    type State = ViewerRenderState;
+/// Simple viewer builder.
+pub struct SimplerViewerBuilder {
+    /// Message receiver.
+    pub message_recv: tokio::sync::mpsc::UnboundedReceiver<Packets>,
+    /// Cancel request sender.
+    pub cancel_request_sender: tokio::sync::mpsc::UnboundedSender<CancelRequest>,
 }
 
 impl SimpleViewer {
+    /// Create a new simple viewer.
+    pub fn new(builder: SimplerViewerBuilder, render_state: ViewerRenderState) -> Box<SimpleViewer> {
+        Box::new(SimpleViewer {
+            state: render_state.clone(),
+            views: LinkedHashMap::new(),
+            message_recv: builder.message_recv,
+            cancel_request_sender: builder.cancel_request_sender,
+        })
+    }
+
     fn add_renderables_to_tables(&mut self) {
         loop {
             let maybe_stream = self.message_recv.try_recv();
@@ -56,25 +87,10 @@ impl SimpleViewer {
                 break;
             }
             let stream = maybe_stream.unwrap();
-            for packet in stream.msg.packets {
+            for packet in stream.packets {
                 match packet {
                     Packet::View3d(packet) => View3d::update(&mut self.views, packet, &self.state),
                     Packet::View2d(packet) => View2d::update(&mut self.views, packet, &self.state),
-                }
-            }
-        }
-
-        loop {
-            let maybe_request = self.request_recv.try_recv();
-            if maybe_request.is_err() {
-                break;
-            }
-            let request = maybe_request.unwrap();
-            let view_label = request.request.clone();
-            if self.views.contains_key(&view_label) {
-                let view = self.views.get(&view_label).unwrap();
-                if let View::View3d(view) = view {
-                    request.reply(view.interaction.scene_from_camera());
                 }
             }
         }
@@ -90,7 +106,7 @@ struct ResponseStruct {
 
 impl eframe::App for SimpleViewer {
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
-        self.cancel_request_sender.send(CancelRequest).unwrap();
+        self.cancel_request_sender.send(CancelRequest {}).unwrap();
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {

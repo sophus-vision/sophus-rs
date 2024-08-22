@@ -1,8 +1,8 @@
 use nalgebra::SVector;
 
-use crate::actor::ViewerCamera;
 use crate::renderables::color::Color;
 use crate::renderables::renderable2d::HasToVec2F32;
+use crate::simple_viewer::ViewerCamera;
 
 /// View3d renderable
 #[derive(Clone, Debug)]

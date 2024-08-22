@@ -25,11 +25,11 @@ bytemuck.workspace = true
 eframe.workspace = true
 egui_extras.workspace = true
 env_logger.workspace = true
-hollywood.workspace = true
 nalgebra.workspace = true
 ndarray.workspace = true
 tokio.workspace = true
 wgpu.workspace = true
+
 
 [features]
 simd = [
