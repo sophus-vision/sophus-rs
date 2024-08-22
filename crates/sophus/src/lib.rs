@@ -17,7 +17,7 @@ pub use sophus_sensor as sensor;
 #[doc(inline)]
 pub use sophus_viewer as viewer;
 
-pub use hollywood;
+pub use eframe;
 pub use nalgebra;
 
 pub mod prelude {

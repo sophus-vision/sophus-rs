@@ -4,8 +4,6 @@
 
 //! Simple viewer for 2D and 3D visualizations.
 
-/// The actor for the viewer.
-pub mod actor;
 /// The offscreen texture for rendering.
 pub mod offscreen_renderer;
 /// The renderable structs.
@@ -26,4 +24,16 @@ pub struct ViewerRenderState {
     pub(crate) device: Arc<wgpu::Device>,
     pub(crate) queue: Arc<wgpu::Queue>,
     pub(crate) _adapter: Arc<wgpu::Adapter>,
+}
+
+impl ViewerRenderState {
+    /// Create a new viewer render state.
+    pub fn new(cc: &eframe::CreationContext) -> Self {
+        ViewerRenderState {
+            _adapter: cc.wgpu_render_state.as_ref().unwrap().adapter.clone(),
+            device: cc.wgpu_render_state.as_ref().unwrap().device.clone(),
+            queue: cc.wgpu_render_state.as_ref().unwrap().queue.clone(),
+            wgpu_state: cc.wgpu_render_state.as_ref().unwrap().renderer.clone(),
+        }
+    }
 }
