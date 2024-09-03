@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::robust_kernel;
 use crate::term::MakeTerm;
 use crate::term::Term;
-use crate::variables::IsVariable;
 use crate::variables::VarKind;
 use sophus_core::calculus::dual::DualScalar;
 use sophus_core::calculus::dual::DualVector;
@@ -16,15 +15,6 @@ use sophus_sensor::PinholeCamera;
 /// Camera re-projection cost function
 #[derive(Copy, Clone)]
 pub struct ReprojectionCostFn {}
-
-impl IsVariable for PinholeCamera<f64, 1> {
-    const DOF: usize = 4;
-
-    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
-        let new_params = *self.params() + delta;
-        self.set_params(&new_params);
-    }
-}
 
 fn res_fn<Scalar: IsSingleScalar + IsScalar<1>>(
     intrinscs: PinholeCamera<Scalar, 1>,

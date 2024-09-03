@@ -1,4 +1,6 @@
 use nalgebra::SVector;
+use sophus_core::linalg::VecF64;
+use sophus_lie::Isometry3;
 
 use crate::renderables::color::Color;
 use crate::renderables::renderable2d::HasToVec2F32;
@@ -13,6 +15,30 @@ pub enum Renderable3d {
     Points3(Points3),
     /// 3D mesh
     Mesh3(Mesh3),
+}
+
+/// Create 3d points
+pub fn make_lines3d(name: &str, viz_lines_3d: Vec<Line3>) -> Renderable3d {
+    Renderable3d::Lines3(Lines3 {
+        name: name.to_owned(),
+        lines: viz_lines_3d,
+    })
+}
+
+/// Create 3d points
+pub fn make_points3d(name: &str, viz_points_3d: Vec<Point3>) -> Renderable3d {
+    Renderable3d::Points3(Points3 {
+        name: name.to_owned(),
+        points: viz_points_3d,
+    })
+}
+
+/// Create 3d mesh
+pub fn make_mesh3d(name: &str, viz_mesh_3d: Vec<Triangle3>) -> Renderable3d {
+    Renderable3d::Mesh3(Mesh3 {
+        name: name.to_owned(),
+        mesh: viz_mesh_3d,
+    })
 }
 
 /// Packet of view3d renderables
@@ -227,4 +253,55 @@ impl TexturedMesh3 {
 
         mesh
     }
+}
+
+/// Make axis
+pub fn make_axis(world_from_local: Isometry3<f64, 1>, scale: f64) -> Vec<Line3> {
+    let zero_in_local = VecF64::<3>::zeros();
+    let x_axis_local = VecF64::<3>::new(scale, 0.0, 0.0);
+    let y_axis_local = VecF64::<3>::new(0.0, scale, 0.0);
+    let z_axis_local = VecF64::<3>::new(0.0, 0.0, scale);
+
+    let mut lines = vec![];
+
+    let zero_in_world = world_from_local.transform(&zero_in_local);
+    let axis_x_in_world = world_from_local.transform(&x_axis_local);
+    let axis_y_in_world = world_from_local.transform(&y_axis_local);
+    let axis_z_in_world = world_from_local.transform(&z_axis_local);
+
+    lines.push(Line3 {
+        p0: zero_in_world.cast(),
+        p1: axis_x_in_world.cast(),
+        color: Color {
+            r: 1.0,
+            g: 0.0,
+            b: 0.0,
+            a: 1.0,
+        },
+        line_width: 2.0,
+    });
+    lines.push(Line3 {
+        p0: zero_in_world.cast(),
+        p1: axis_y_in_world.cast(),
+        color: Color {
+            r: 0.0,
+            g: 1.0,
+            b: 0.0,
+            a: 1.0,
+        },
+        line_width: 2.0,
+    });
+    lines.push(Line3 {
+        p0: zero_in_world.cast(),
+        p1: axis_z_in_world.cast(),
+        color: Color {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        },
+        line_width: 2.0,
+    });
+
+    lines
 }

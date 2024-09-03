@@ -11,6 +11,9 @@ pub type Isometry2Impl<S, const BATCH: usize> =
 /// 2D isometry group - SE(2)
 pub type Isometry2<S, const BATCH: usize> = LieGroup<S, 3, 4, 2, 3, BATCH, Isometry2Impl<S, BATCH>>;
 
+/// 2D isometry group with f64 scalar type
+pub type Isometry2F64 = Isometry2<f64, 1>;
+
 impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry2<S, BATCH> {
     /// create isometry from translation and rotation
     pub fn from_translation_and_rotation(

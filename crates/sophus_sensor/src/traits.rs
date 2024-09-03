@@ -1,4 +1,7 @@
 use crate::prelude::*;
+use crate::BrownConradyCamera;
+use crate::KannalaBrandtCamera;
+use crate::PinholeCamera;
 use sophus_core::params::ParamsImpl;
 use sophus_image::ImageSize;
 
@@ -68,6 +71,15 @@ pub trait IsCameraEnum<S: IsScalar<BATCH>, const BATCH: usize> {
     fn undistort(&self, pixel: &S::Vector<2>) -> S::Vector<2>;
     /// Derivative of the distortion w.r.t. the point in the camera z=1 plane
     fn dx_distort_x(&self, proj_point_in_camera_z1_plane: &S::Vector<2>) -> S::Matrix<2, 2>;
+
+    /// Returns the brown-conrady camera
+    fn try_get_brown_conrady(self) -> Option<BrownConradyCamera<S, BATCH>>;
+
+    /// Returns the kannala-brandt camera
+    fn try_get_kannala_brandt(self) -> Option<KannalaBrandtCamera<S, BATCH>>;
+
+    /// Returns the pinhole camera
+    fn try_get_pinhole(self) -> Option<PinholeCamera<S, BATCH>>;
 }
 
 /// Dynamic camera trait

@@ -25,8 +25,6 @@ use crate::renderable3d::Mesh3;
 use crate::renderable3d::Points3;
 use crate::renderable3d::Renderable3d;
 
-
-
 fn create_view2_packet() -> Packet {
     let img = make_example_image(ImageSize {
         width: 300,
@@ -115,7 +113,6 @@ fn create_view3_packet() -> Packet {
 
     Packet::View3d(packet_3d)
 }
-
 
 pub async fn run_viewer_example() {
     let (message_tx, message_rx) = tokio::sync::mpsc::unbounded_channel();

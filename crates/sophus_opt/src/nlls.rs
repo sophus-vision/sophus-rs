@@ -41,19 +41,18 @@ pub fn optimize(
     for init_cost in init_costs.iter() {
         mse += init_cost.calc_square_error();
     }
-    println!("e^2: {:?}", mse);
+    let initial_mse = mse;
+
+    use std::time::Instant;
+    let now = Instant::now();
 
     for _i in 0..params.num_iter {
-        use std::time::Instant;
-        let now = Instant::now();
-        println!("nu: {:?}", nu);
+        //println!("nu: {:?}", nu);
 
         let mut evaluated_costs: Vec<Box<dyn IsCost>> = Vec::new();
         for cost_fn in cost_fns.iter_mut() {
             evaluated_costs.push(cost_fn.eval(&variables, true));
         }
-        println!("evaluate cost_fns: {:.2?}", now.elapsed());
-        let now = Instant::now();
 
         let updated_families = solve(&variables, evaluated_costs, nu);
 
@@ -65,9 +64,6 @@ pub fn optimize(
         for init_cost in new_costs.iter() {
             new_mse += init_cost.calc_square_error();
         }
-        println!("update and new cost {:.2?}", now.elapsed());
-
-        println!("new e^2: {:?}", new_mse);
 
         if new_mse < mse {
             nu *= 0.0333;
@@ -77,6 +73,8 @@ pub fn optimize(
             nu *= 2.0;
         }
     }
+    println!("e^2: {:?} -> {:?}", initial_mse, mse);
+    println!("{} iters took: {:.2?}", params.num_iter, now.elapsed());
 
     variables
 }

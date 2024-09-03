@@ -42,6 +42,9 @@ impl<const ROWS: usize, const COLS: usize> Debug for DualMatrix<ROWS, COLS> {
 impl<const ROWS: usize, const COLS: usize> IsSingleMatrix<DualScalar, ROWS, COLS>
     for DualMatrix<ROWS, COLS>
 {
+    fn single_real_matrix(&self) -> MatF64<ROWS, COLS> {
+        self.real_part
+    }
 }
 
 /// Trait for scalar dual numbers

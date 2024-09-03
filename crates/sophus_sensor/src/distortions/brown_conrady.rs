@@ -258,16 +258,18 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 8, 12, BA
         params: &S::Vector<12>,
         proj_point_in_camera_z1_plane: &S::Vector<2>,
     ) -> S::Matrix<2, 2> {
+        const OFFSET: usize = 4;
+
         let fx = params.get_elem(0);
         let fy = params.get_elem(1);
-        let d0 = params.get_elem(0 + 4);
-        let d1 = params.get_elem(1 + 4);
-        let d2 = params.get_elem(2 + 4);
-        let d3 = params.get_elem(3 + 4);
-        let d4 = params.get_elem(4 + 4);
-        let d5 = params.get_elem(5 + 4);
-        let d6 = params.get_elem(6 + 4);
-        let d7 = params.get_elem(7 + 4);
+        let d0 = params.get_elem(OFFSET);
+        let d1 = params.get_elem(1 + OFFSET);
+        let d2 = params.get_elem(2 + OFFSET);
+        let d3 = params.get_elem(3 + OFFSET);
+        let d4 = params.get_elem(4 + OFFSET);
+        let d5 = params.get_elem(5 + OFFSET);
+        let d6 = params.get_elem(6 + OFFSET);
+        let d7 = params.get_elem(7 + OFFSET);
 
         let one = S::from_f64(1.0);
         let two = S::from_f64(2.0);

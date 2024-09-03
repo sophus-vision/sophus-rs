@@ -16,6 +16,7 @@ pub use crate::camera::Camera;
 
 /// Projection models
 pub mod camera_enum;
+pub use crate::camera_enum::perspective_camera::BrownConradyCamera;
 pub use crate::camera_enum::perspective_camera::KannalaBrandtCamera;
 pub use crate::camera_enum::perspective_camera::PinholeCamera;
 

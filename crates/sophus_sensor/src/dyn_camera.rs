@@ -1,6 +1,9 @@
 use crate::camera_enum::GeneralCameraEnum;
 use crate::camera_enum::PerspectiveCameraEnum;
 use crate::prelude::*;
+use crate::BrownConradyCamera;
+use crate::KannalaBrandtCamera;
+use crate::PinholeCamera;
 use sophus_image::ImageSize;
 
 /// Dynamic camera facade
@@ -20,6 +23,9 @@ pub type DynGeneralCamera<S, const BATCH: usize> =
 /// Dynamic perspective camera
 pub type DynCamera<S, const BATCH: usize> =
     DynCameraFacade<S, BATCH, PerspectiveCameraEnum<S, BATCH>>;
+
+/// Create a new dynamic camera facade from a camera model
+pub type DynCameraF64 = DynCamera<f64, 1>;
 
 impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
     DynCameraFacade<S, BATCH, CameraType>
@@ -124,6 +130,21 @@ impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
     /// Returns the image size
     pub fn image_size(&self) -> ImageSize {
         self.camera_type.image_size()
+    }
+
+    /// Returns the Kannala-Brandt camera
+    pub fn try_get_brown_conrady(self) -> Option<BrownConradyCamera<S, BATCH>> {
+        self.camera_type.try_get_brown_conrady()
+    }
+
+    /// Returns the Kannala-Brandt camera
+    pub fn try_get_kannala_brandt(self) -> Option<KannalaBrandtCamera<S, BATCH>> {
+        self.camera_type.try_get_kannala_brandt()
+    }
+
+    /// Returns the pinhole parameters
+    pub fn try_get_pinhole(self) -> Option<PinholeCamera<S, BATCH>> {
+        self.camera_type.try_get_pinhole()
     }
 }
 

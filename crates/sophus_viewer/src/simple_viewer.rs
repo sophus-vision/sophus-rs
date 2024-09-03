@@ -71,7 +71,10 @@ pub struct SimplerViewerBuilder {
 
 impl SimpleViewer {
     /// Create a new simple viewer.
-    pub fn new(builder: SimplerViewerBuilder, render_state: ViewerRenderState) -> Box<SimpleViewer> {
+    pub fn new(
+        builder: SimplerViewerBuilder,
+        render_state: ViewerRenderState,
+    ) -> Box<SimpleViewer> {
         Box::new(SimpleViewer {
             state: render_state.clone(),
             views: LinkedHashMap::new(),

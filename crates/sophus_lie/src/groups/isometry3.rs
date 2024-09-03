@@ -10,6 +10,26 @@ pub type Isometry3Impl<S, const BATCH: usize> =
 /// 3d isometry group - SE(3)
 pub type Isometry3<S, const BATCH: usize> = LieGroup<S, 6, 7, 3, 4, BATCH, Isometry3Impl<S, BATCH>>;
 
+/// 3D isometry group with f64 scalar type
+pub type Isometry3F64 = Isometry3<f64, 1>;
+
+impl Isometry3F64 {
+    /// rotate around x axis
+    pub fn rot_x(theta: f64) -> Isometry3F64 {
+        Isometry3F64::from_rotation(&Rotation3::rot_x(theta))
+    }
+
+    /// rotate around y axis
+    pub fn rot_y(theta: f64) -> Isometry3F64 {
+        Isometry3F64::from_rotation(&Rotation3::rot_y(theta))
+    }
+
+    /// rotate around z axis
+    pub fn rot_z(theta: f64) -> Isometry3F64 {
+        Isometry3F64::from_rotation(&Rotation3::rot_z(theta))
+    }
+}
+
 impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry3<S, BATCH> {
     /// create isometry from translation and rotation
     pub fn from_translation_and_rotation(
@@ -17,6 +37,16 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry3<S, BATCH> {
         rotation: &Rotation3<S, BATCH>,
     ) -> Self {
         Self::from_translation_and_factor(translation, rotation)
+    }
+
+    /// create isometry from translation
+    pub fn from_translation(translation: &S::Vector<3>) -> Self {
+        Self::from_translation_and_factor(translation, &Rotation3::identity())
+    }
+
+    /// create isometry from rotation
+    pub fn from_rotation(rotation: &Rotation3<S, BATCH>) -> Self {
+        Self::from_translation_and_factor(&S::Vector::<3>::zeros(), rotation)
     }
 
     /// set rotation

@@ -187,6 +187,9 @@ impl<S: IsRealScalar<BATCH_SIZE>, const BATCH_SIZE: usize>
 /// 2d rotation group - SO(2)
 pub type Rotation2<S, const B: usize> = LieGroup<S, 1, 2, 2, 2, B, Rotation2Impl<S, B>>;
 
+/// 2d rotation group with f64 scalar type
+pub type Rotation2F64 = Rotation2<f64, 1>;
+
 impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> IsLieFactorGroupImpl<S, 1, 2, 2, BATCH_SIZE>
     for Rotation2Impl<S, BATCH_SIZE>
 {
