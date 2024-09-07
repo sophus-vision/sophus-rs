@@ -190,6 +190,13 @@ pub type Rotation2<S, const B: usize> = LieGroup<S, 1, 2, 2, 2, B, Rotation2Impl
 /// 2d rotation group with f64 scalar type
 pub type Rotation2F64 = Rotation2<f64, 1>;
 
+impl<S: IsScalar<BATCH>, const BATCH: usize> Rotation2<S, BATCH> {
+    /// Rotate by angle
+    pub fn rot(theta: S) -> Self {
+        Rotation2::exp(&S::Vector::<1>::from_array([theta]))
+    }
+}
+
 impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> IsLieFactorGroupImpl<S, 1, 2, 2, BATCH_SIZE>
     for Rotation2Impl<S, BATCH_SIZE>
 {

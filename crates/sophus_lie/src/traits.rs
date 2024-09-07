@@ -246,9 +246,6 @@ pub trait IsTranslationProductGroup<
     /// Create from translation and factor group element
     fn from_translation_and_factor(translation: &S::Vector<POINT>, factor: &FactorGroup) -> Self;
 
-    /// Create from translation
-    fn from_t(params: &S::Vector<POINT>) -> Self;
-
     /// set translation
     fn set_translation(&mut self, translation: &S::Vector<POINT>);
     /// get translation

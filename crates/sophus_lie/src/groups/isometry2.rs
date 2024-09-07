@@ -23,6 +23,31 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry2<S, BATCH> {
         Self::from_translation_and_factor(translation, rotation)
     }
 
+    /// create isometry from translation
+    pub fn from_translation(translation: &S::Vector<2>) -> Self {
+        Self::from_translation_and_factor(translation, &Rotation2::identity())
+    }
+
+    /// create isometry from rotation
+    pub fn from_rotation(rotation: &Rotation2<S, BATCH>) -> Self {
+        Self::from_translation_and_factor(&S::Vector::<2>::zeros(), rotation)
+    }
+
+    /// translate along x axis
+    pub fn trans_x(x: S) -> Self {
+        Self::from_translation(&S::Vector::from_array([x, S::zero()]))
+    }
+
+    /// translate along y axis
+    pub fn trans_y(y: S) -> Self {
+        Self::from_translation(&S::Vector::from_array([S::zero(), y]))
+    }
+
+    /// Rotate by angle
+    pub fn rot(theta: S) -> Self {
+        Self::from_rotation(&Rotation2::rot(theta))
+    }
+
     /// set rotation
     pub fn set_rotation(&mut self, rotation: &Rotation2<S, BATCH>) {
         self.set_factor(rotation)

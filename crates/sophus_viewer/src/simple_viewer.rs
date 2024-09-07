@@ -48,7 +48,7 @@ impl ViewerCamera {
         ViewerCamera {
             intrinsics: DynCamera::default_pinhole(image_size),
             clipping_planes: ClippingPlanes::default(),
-            scene_from_camera: Isometry3::from_t(&VecF64::<3>::new(0.0, 0.0, -5.0)),
+            scene_from_camera: Isometry3::trans_z(-5.0),
         }
     }
 }

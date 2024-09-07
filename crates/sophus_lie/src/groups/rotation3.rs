@@ -611,16 +611,7 @@ pub type Rotation3<S, const BATCH: usize> = LieGroup<S, 3, 4, 3, 3, BATCH, Rotat
 /// 3d rotation group - SO(3) with f64 scalar type
 pub type Rotation3F64 = Rotation3<f64, 1>;
 
-impl<S: IsSingleScalar + PartialOrd> Rotation3<S, 1> {
-    /// Is orthogonal with determinant 1.
-    pub fn is_orthogonal_with_positive_det(mat: &MatF64<3, 3>, thr: f64) -> bool {
-        // We expect: R * R^T = I   and   det(R) > 0
-        //
-        // (If R is orthogonal, then det(R) = +/-1.)
-        let max_abs = ((mat * mat.transpose()) - MatF64::identity()).abs().max();
-        max_abs < thr && mat.determinant() > 0.0
-    }
-
+impl<S: IsScalar<BATCH>, const BATCH: usize> Rotation3<S, BATCH> {
     /// Rotation around the x-axis.
     pub fn rot_x(theta: S) -> Self {
         Rotation3::exp(&S::Vector::<3>::from_array([theta, S::zero(), S::zero()]))
@@ -634,6 +625,17 @@ impl<S: IsSingleScalar + PartialOrd> Rotation3<S, 1> {
     /// Rotation around the z-axis.
     pub fn rot_z(theta: S) -> Self {
         Rotation3::exp(&S::Vector::<3>::from_array([S::zero(), S::zero(), theta]))
+    }
+}
+
+impl<S: IsSingleScalar + PartialOrd> Rotation3<S, 1> {
+    /// Is orthogonal with determinant 1.
+    pub fn is_orthogonal_with_positive_det(mat: &MatF64<3, 3>, thr: f64) -> bool {
+        // We expect: R * R^T = I   and   det(R) > 0
+        //
+        // (If R is orthogonal, then det(R) = +/-1.)
+        let max_abs = ((mat * mat.transpose()) - MatF64::identity()).abs().max();
+        max_abs < thr && mat.determinant() > 0.0
     }
 
     /// From a 3x3 rotation matrix. The matrix must be a valid rotation matrix,

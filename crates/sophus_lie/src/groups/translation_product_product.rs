@@ -490,10 +490,6 @@ impl<
         Self::from_params(&params)
     }
 
-    fn from_t(translation: &<S as IsScalar<BATCH>>::Vector<POINT>) -> Self {
-        Self::from_translation_and_factor(translation, &LieGroup::identity())
-    }
-
     fn set_translation(&mut self, translation: &<S as IsScalar<BATCH>>::Vector<POINT>) {
         self.set_params(&Self::G::params_from(translation, self.factor().params()))
     }
