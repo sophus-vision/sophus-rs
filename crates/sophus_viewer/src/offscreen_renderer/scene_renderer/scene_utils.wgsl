@@ -95,12 +95,12 @@ fn z1_plane_to_distorted(point_in_proj: vec3<f32>, frustum: Frustum, lut: Distor
     var val0 = mix(val00, val01, frac_y);
     var val1 = mix(val10, val11, frac_y);
     var val = mix(val0, val1, frac_x);
-    let u = val.x;
-    let v = val.y;
+   // let u = val.x;
+   // let v = val.y;
 
     // to debug distortion lut table - just using pinhole projection
-    // let u = point_in_proj.x * frustum.fx + frustum.px;
-    // let v = point_in_proj.y * frustum.fy + frustum.py;
+    let u = point_in_proj.x * frustum.fx + frustum.px;
+     let v = point_in_proj.y * frustum.fy + frustum.py;
     return vec3<f32>(u, v, point_in_proj.z);
 }
 

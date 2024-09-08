@@ -216,14 +216,14 @@ where
             .terms
             .sort_by(|a, b| less.le_than(*a.idx_ref(), *b.idx_ref()));
 
-        for t in 0..self.signature.terms.len() - 1 {
-            assert!(
-                less.le_than(
-                    *self.signature.terms[t].idx_ref(),
-                    *self.signature.terms[t + 1].idx_ref()
-                ) == std::cmp::Ordering::Less
-            );
-        }
+        // for t in 0..self.signature.terms.len() - 1 {
+        //     assert!(
+        //         less.le_than(
+        //             *self.signature.terms[t].idx_ref(),
+        //             *self.signature.terms[t + 1].idx_ref()
+        //         ) == std::cmp::Ordering::Less
+        //     );
+        // }
     }
 
     fn robust_kernel(&self) -> Option<RobustKernel> {

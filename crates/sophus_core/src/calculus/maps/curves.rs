@@ -117,6 +117,7 @@ impl<D: IsDualScalar<BATCH>, const BATCH: usize> MatrixValuedCurve<D, BATCH> {
 fn curve_test() {
     use crate::calculus::dual::DualScalar;
     use crate::linalg::scalar::IsScalar;
+    use crate::linalg::EPS_F64;
 
     #[cfg(feature = "simd")]
     use crate::calculus::dual::DualBatchScalar;
@@ -144,7 +145,7 @@ fn curve_test() {
                         let finite_diff = ScalarValuedCurve::<$scalar, $batch>::sym_diff_quotient(
                             square_fn,
                             a.clone(),
-                            1e-6,
+                            EPS_F64,
                         );
                         let auto_grad =
                             ScalarValuedCurve::<$dual_scalar, $batch>::fw_autodiff(square_fn, a);
@@ -162,7 +163,7 @@ fn curve_test() {
                         let finite_diff = VectorValuedCurve::<$scalar, $batch>::sym_diff_quotient(
                             trig_fn,
                             a.clone(),
-                            1e-6,
+                            EPS_F64,
                         );
                         let auto_grad =
                             VectorValuedCurve::<$dual_scalar, $batch>::fw_autodiff(trig_fn, a);
@@ -187,7 +188,7 @@ fn curve_test() {
                         let finite_diff = MatrixValuedCurve::<$scalar, $batch>::sym_diff_quotient(
                             fn_x,
                             a.clone(),
-                            1e-6,
+                            EPS_F64,
                         );
                         let auto_grad =
                             MatrixValuedCurve::<$dual_scalar, $batch>::fw_autodiff(fn_x, a);

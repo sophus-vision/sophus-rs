@@ -96,6 +96,24 @@ macro_rules! image_view {
                 IsTensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS>,
             ndarray::Dim<[ndarray::Ix; $scalar_rank]>: ndarray::Dimension,
         {
+            /// Create a new image view from an array view
+            pub fn new(
+                elem_view: ndarray::ArrayView<'a, STensor, ndarray::Dim<[ndarray::Ix; 2]>>,
+            ) -> Self {
+                Self {
+                    tensor_view: TensorView::<
+                        'a,
+                        $scalar_rank,
+                        2,
+                        $srank,
+                        Scalar,
+                        STensor,
+                        ROWS,
+                        COLS,
+                    >::new(elem_view),
+                }
+            }
+
             /// Create a new image view from an image size and a slice of data
             pub fn from_size_and_slice(image_size: ImageSize, slice: &'a [STensor]) -> Self {
                 Self {

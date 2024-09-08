@@ -77,4 +77,25 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
             GeneralCameraEnum::Orthographic(camera) => camera.image_size(),
         }
     }
+
+    fn try_get_brown_conrady(self) -> Option<crate::BrownConradyCamera<S, BATCH>> {
+        match self {
+            GeneralCameraEnum::Perspective(camera) => camera.try_get_brown_conrady(),
+            GeneralCameraEnum::Orthographic(_) => None,
+        }
+    }
+
+    fn try_get_kannala_brandt(self) -> Option<crate::KannalaBrandtCamera<S, BATCH>> {
+        match self {
+            GeneralCameraEnum::Perspective(camera) => camera.try_get_kannala_brandt(),
+            GeneralCameraEnum::Orthographic(_) => None,
+        }
+    }
+
+    fn try_get_pinhole(self) -> Option<crate::PinholeCamera<S, BATCH>> {
+        match self {
+            GeneralCameraEnum::Perspective(camera) => camera.try_get_pinhole(),
+            GeneralCameraEnum::Orthographic(_) => None,
+        }
+    }
 }

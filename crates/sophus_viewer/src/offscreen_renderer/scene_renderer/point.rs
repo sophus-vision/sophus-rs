@@ -3,26 +3,64 @@ use std::collections::BTreeMap;
 use bytemuck::Pod;
 use bytemuck::Zeroable;
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
+use sophus_lie::Isometry3F64;
 use wgpu::DepthStencilState;
 
-use crate::renderables::renderable3d::Point3;
+use crate::offscreen_renderer::scene_renderer::buffers::SceneRenderBuffers;
+use crate::renderables::renderable3d::PointCloud3;
 use crate::ViewerRenderState;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
-/// 3D point vertex
-pub struct PointVertex3 {
+pub(crate) struct PointVertex3 {
     pub(crate) _pos: [f32; 3],
     pub(crate) _point_size: f32,
     pub(crate) _color: [f32; 4],
 }
 
+pub(crate) struct Point3dEntity {
+    pub(crate) vertex_data: Vec<PointVertex3>,
+    pub(crate) vertex_buffer: wgpu::Buffer,
+    pub(crate) scene_from_entity: Isometry3F64,
+}
+
+impl Point3dEntity {
+    /// Create a new 2d line entity
+    pub fn new(wgpu_render_state: &ViewerRenderState, points: &PointCloud3) -> Self {
+        let mut vertex_data = vec![];
+        for point in points.points.iter() {
+            let v = PointVertex3 {
+                _pos: [point.p[0], point.p[1], point.p[2]],
+                _color: [point.color.r, point.color.g, point.color.b, point.color.a],
+                _point_size: point.point_size,
+            };
+            for _i in 0..6 {
+                vertex_data.push(v);
+            }
+        }
+
+        let vertex_buffer =
+            wgpu_render_state
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some(&format!("3d point vertex buffer: {}", points.name)),
+                    contents: bytemuck::cast_slice(&vertex_data),
+                    usage: wgpu::BufferUsages::VERTEX,
+                });
+
+        Self {
+            vertex_data,
+            vertex_buffer,
+            scene_from_entity: points.scene_from_entity,
+        }
+    }
+}
+
 /// Scene point renderer
 pub struct ScenePointRenderer {
     pub(crate) pipeline: wgpu::RenderPipeline,
-    pub(crate) vertex_buffer: wgpu::Buffer,
-    pub(crate) point_table: BTreeMap<String, Vec<Point3>>,
-    pub(crate) vertex_data: Vec<PointVertex3>,
+    pub(crate) depth_pipeline: wgpu::RenderPipeline,
+    pub(crate) point_table: BTreeMap<String, Point3dEntity>,
 }
 
 impl ScenePointRenderer {
@@ -46,23 +84,6 @@ impl ScenePointRenderer {
             ),
         });
 
-        // hack: generate a buffer of 1000 points, because vertex buffer cannot be resized
-        let mut vertex_data = vec![];
-        for _i in 0..1000 {
-            for _i in 0..6 {
-                vertex_data.push(PointVertex3 {
-                    _pos: [0.0, 0.0, 0.0],
-                    _color: [1.0, 0.0, 0.0, 1.0],
-                    _point_size: 5.0,
-                });
-            }
-        }
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("scene point vertex buffer"),
-            contents: bytemuck::cast_slice(&vertex_data),
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-        });
-
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("point scene pipeline"),
             layout: Some(pipeline_layout),
@@ -75,13 +96,38 @@ impl ScenePointRenderer {
                     attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1=>Float32, 2 => Float32x4],
 
                 }],
-                compilation_options:Default::default(),
+                compilation_options: Default::default(),
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: "fs_main",
                 targets: &[Some(wgpu::TextureFormat::Rgba8UnormSrgb.into())],
-                compilation_options:Default::default(),
+                compilation_options: Default::default(),
+            }),
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: depth_stencil.clone(),
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+        });
+
+        let depth_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("depth point scene pipeline"),
+            layout: Some(pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: "vs_main",
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<PointVertex3>() as wgpu::BufferAddress,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1=>Float32, 2 => Float32x4],
+                }],
+                compilation_options: Default::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: "depth_fs_main",
+                targets: &[Some(wgpu::TextureFormat::R32Float.into())],
+                compilation_options: Default::default(),
             }),
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil,
@@ -91,22 +137,52 @@ impl ScenePointRenderer {
 
         Self {
             pipeline,
-            vertex_buffer,
-            vertex_data: vec![],
             point_table: BTreeMap::new(),
+            depth_pipeline,
         }
     }
 
     pub(crate) fn paint<'rp>(
         &'rp self,
+        wgpu_render_state: &ViewerRenderState,
+        scene_from_camera: &Isometry3F64,
+        buffers: &'rp SceneRenderBuffers,
         render_pass: &mut wgpu::RenderPass<'rp>,
-        bind_group: &'rp wgpu::BindGroup,
-        dist_bind_group: &'rp wgpu::BindGroup,
     ) {
         render_pass.set_pipeline(&self.pipeline);
-        render_pass.set_bind_group(0, bind_group, &[]);
-        render_pass.set_bind_group(1, dist_bind_group, &[]); // NEW!
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.draw(0..self.vertex_data.len() as u32, 0..1);
+        render_pass.set_bind_group(0, &buffers.bind_group, &[]);
+        render_pass.set_bind_group(1, &buffers.dist_bind_group, &[]);
+
+        for point in self.point_table.values() {
+            buffers.view_uniform.update_given_camera_and_entity(
+                &wgpu_render_state.queue,
+                scene_from_camera,
+                &point.scene_from_entity,
+            );
+            render_pass.set_vertex_buffer(0, point.vertex_buffer.slice(..));
+            render_pass.draw(0..point.vertex_data.len() as u32, 0..1);
+        }
+    }
+
+    pub(crate) fn depth_paint<'rp>(
+        &'rp self,
+        wgpu_render_state: &ViewerRenderState,
+        scene_from_camera: &Isometry3F64,
+        buffers: &'rp SceneRenderBuffers,
+        depth_render_pass: &mut wgpu::RenderPass<'rp>,
+    ) {
+        depth_render_pass.set_pipeline(&self.depth_pipeline);
+        depth_render_pass.set_bind_group(0, &buffers.bind_group, &[]);
+        depth_render_pass.set_bind_group(1, &buffers.dist_bind_group, &[]);
+
+        for point in self.point_table.values() {
+            buffers.view_uniform.update_given_camera_and_entity(
+                &wgpu_render_state.queue,
+                scene_from_camera,
+                &point.scene_from_entity,
+            );
+            depth_render_pass.set_vertex_buffer(0, point.vertex_buffer.slice(..));
+            depth_render_pass.draw(0..point.vertex_data.len() as u32, 0..1);
+        }
     }
 }

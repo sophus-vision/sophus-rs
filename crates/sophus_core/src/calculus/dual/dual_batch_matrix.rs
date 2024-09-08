@@ -580,6 +580,13 @@ where
             },
         }
     }
+
+    fn transposed(self) -> DualBatchMatrix<COLS, ROWS, BATCH> {
+        DualBatchMatrix {
+            real_part: self.real_part.transpose(),
+            dij_part: self.dij_part.clone().map(|_dij_val| todo!()),
+        }
+    }
 }
 
 impl<const ROWS: usize, const COLS: usize, const BATCH: usize> Add

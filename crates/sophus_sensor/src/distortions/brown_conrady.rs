@@ -1,6 +1,8 @@
 use crate::distortions::affine::AffineDistortionImpl;
 use crate::prelude::*;
 use crate::traits::IsCameraDistortionImpl;
+use log::warn;
+use sophus_core::linalg::EPS_F64;
 use sophus_core::params::ParamsImpl;
 use std::marker::PhantomData;
 
@@ -194,12 +196,10 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> BrownConradyDistortionImpl<S, BATCH
             let j_inv: S::Matrix<2, 2> = m.scaled(S::from_f64(1.0) / (a * d - b * c));
             let step: S::Vector<2> = j_inv * f_xy;
 
-            let eps = 1e-10;
-
             if step
                 .norm()
                 .real_part()
-                .less_equal(&S::RealScalar::from_f64(eps))
+                .less_equal(&S::RealScalar::from_f64(EPS_F64))
                 .all()
             {
                 break;
@@ -213,11 +213,11 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> BrownConradyDistortionImpl<S, BATCH
         if !f_xy
             .norm()
             .real_part()
-            .less_equal(&S::RealScalar::from_f64(1e-6))
+            .less_equal(&S::RealScalar::from_f64(EPS_F64))
             .any()
         {
-            println!(
-                "WARNING: Newton did not converge: f_xy: {:?}: pixel {:?}",
+            warn!(
+                "Newton did not converge: f_xy: {:?}: pixel {:?}",
                 f_xy, dbg_info_distorted_point
             );
         }
@@ -258,16 +258,18 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 8, 12, BA
         params: &S::Vector<12>,
         proj_point_in_camera_z1_plane: &S::Vector<2>,
     ) -> S::Matrix<2, 2> {
+        const OFFSET: usize = 4;
+
         let fx = params.get_elem(0);
         let fy = params.get_elem(1);
-        let d0 = params.get_elem(0 + 4);
-        let d1 = params.get_elem(1 + 4);
-        let d2 = params.get_elem(2 + 4);
-        let d3 = params.get_elem(3 + 4);
-        let d4 = params.get_elem(4 + 4);
-        let d5 = params.get_elem(5 + 4);
-        let d6 = params.get_elem(6 + 4);
-        let d7 = params.get_elem(7 + 4);
+        let d0 = params.get_elem(OFFSET);
+        let d1 = params.get_elem(1 + OFFSET);
+        let d2 = params.get_elem(2 + OFFSET);
+        let d3 = params.get_elem(3 + OFFSET);
+        let d4 = params.get_elem(4 + OFFSET);
+        let d5 = params.get_elem(5 + OFFSET);
+        let d6 = params.get_elem(6 + OFFSET);
+        let d7 = params.get_elem(7 + OFFSET);
 
         let one = S::from_f64(1.0);
         let two = S::from_f64(2.0);

@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::traits::IsCameraDistortionImpl;
+use sophus_core::linalg::EPS_F64;
 use sophus_core::params::ParamsImpl;
 use std::marker::PhantomData;
 
@@ -58,7 +59,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 4, 8, BAT
             theta * (S::from_f64(1.0) + k0 * theta2 + k1 * theta4 + k2 * theta6 + k3 * theta8);
         let scaling = r_distorted * radius_inverse;
 
-        let near_zero = radius_sq.less_equal(&S::from_f64(1e-8));
+        let near_zero = radius_sq.less_equal(&S::from_f64(EPS_F64));
 
         let scaling = S::ones().select(&near_zero, scaling);
 
@@ -85,7 +86,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 4, 8, BAT
         let vn = (distorted_point.get_elem(1) - v0) / fv;
         let rth2 = un.clone() * un.clone() + vn.clone() * vn.clone();
 
-        let rth2_near_zero = rth2.less_equal(&S::from_f64(1e-8));
+        let rth2_near_zero = rth2.less_equal(&S::from_f64(EPS_F64));
         let point_z1_plane0 = S::Vector::<2>::from_array([un.clone(), vn.clone()]);
 
         let rth = rth2.sqrt();
@@ -117,7 +118,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 4, 8, BAT
             if (step
                 .real_part()
                 .abs()
-                .less_equal(&S::RealScalar::from_f64(1e-8)))
+                .less_equal(&S::RealScalar::from_f64(EPS_F64)))
             .all()
             {
                 break;
@@ -159,7 +160,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 4, 8, BAT
 
         let radius_sq = a.clone() * a.clone() + b.clone() * b.clone();
 
-        let near_zero = radius_sq.less_equal(&S::from_f64(1e-8));
+        let near_zero = radius_sq.less_equal(&S::from_f64(EPS_F64));
 
         let dx0 =
             S::Matrix::<2, 2>::from_array2([[fx.clone(), S::zeros()], [S::zeros(), fy.clone()]]);

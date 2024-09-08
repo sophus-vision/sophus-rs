@@ -1,12 +1,12 @@
 use eframe::egui;
 use sophus_core::linalg::VecF64;
 use sophus_image::ImageSize;
-use sophus_lie::traits::IsTranslationProductGroup;
+use sophus_lie::Isometry3F64;
 use sophus_lie::Isometry3;
 use sophus_sensor::DynCamera;
 
-use crate::offscreen_renderer::renderer::OffscreenRenderer;
-use crate::offscreen_renderer::renderer::TranslationAndScaling;
+use crate::offscreen_renderer::OffscreenRenderer;
+use crate::offscreen_renderer::TranslationAndScaling;
 use crate::views::interactions::SceneFocus;
 use crate::views::interactions::ViewportScale;
 
@@ -83,7 +83,7 @@ impl InplaneInteraction {
                 uv_in_virtual_camera,
             });
 
-            let zoomed_width = (zoomed_width * (smooth_scroll_delta.y * 0.01).exp())
+            let zoomed_width = (zoomed_width * (smooth_scroll_delta.y * 0.001).exp())
                 .clamp(1.0, cam.image_size().width as f32);
 
             let scale = cam.image_size().width as f32 / zoomed_width;
@@ -98,8 +98,8 @@ impl InplaneInteraction {
     }
 
     /// Get scene_from_camera isometry
-    pub fn scene_from_camera(&self) -> Isometry3<f64, 1> {
-        Isometry3::from_t(&VecF64::<3>::new(0.0, 0.0, 0.0))
+    pub fn scene_from_camera(&self) -> Isometry3F64 {
+        Isometry3::from_translation(&VecF64::<3>::new(0.0, 0.0, 0.0))
     }
 
     /// Get zoom

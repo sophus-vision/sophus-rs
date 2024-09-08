@@ -42,6 +42,9 @@ impl<const ROWS: usize, const COLS: usize> Debug for DualMatrix<ROWS, COLS> {
 impl<const ROWS: usize, const COLS: usize> IsSingleMatrix<DualScalar, ROWS, COLS>
     for DualMatrix<ROWS, COLS>
 {
+    fn single_real_matrix(&self) -> MatF64<ROWS, COLS> {
+        self.real_part
+    }
 }
 
 /// Trait for scalar dual numbers
@@ -576,6 +579,10 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
             }
         }
     }
+
+    fn transposed(self) -> <DualScalar as IsScalar<1>>::Matrix<COLS, ROWS> {
+        todo!();
+    }
 }
 
 impl<const ROWS: usize, const COLS: usize> Add for DualMatrix<ROWS, COLS> {
@@ -654,6 +661,7 @@ impl<const ROWS: usize, const COLS: usize> Mul<DualVector<COLS>> for DualMatrix<
 fn dual_matrix_tests() {
     use crate::calculus::dual::DualScalar;
     use crate::calculus::maps::matrix_valued_maps::MatrixValuedMapFromMatrix;
+    use crate::linalg::EPS_F64;
 
     #[cfg(feature = "simd")]
     use crate::calculus::dual::DualBatchScalar;
@@ -692,7 +700,7 @@ fn dual_matrix_tests() {
                         MatrixValuedMapFromMatrix::<$scalar, $batch>::sym_diff_quotient(
                             |x| mat_mul_fn::<$scalar, $batch>(x, m_4x1),
                             m_2x4,
-                            1e-6,
+                            EPS_F64,
                         );
                     let auto_grad = MatrixValuedMapFromMatrix::<$dual_scalar, $batch>::fw_autodiff(
                         |x| {
@@ -717,7 +725,7 @@ fn dual_matrix_tests() {
                     let finite_diff = MatrixValuedMapFromMatrix::sym_diff_quotient(
                         |x| mat_mul_fn::<$scalar, $batch>(m_2x4, x),
                         m_4x1,
-                        1e-6,
+                        EPS_F64,
                     );
                     let auto_grad = MatrixValuedMapFromMatrix::<$dual_scalar, $batch>::fw_autodiff(
                         |x| {
@@ -756,7 +764,7 @@ fn dual_matrix_tests() {
                         MatrixValuedMapFromMatrix::<$scalar, $batch>::sym_diff_quotient(
                             mat_mul2_fn::<$scalar, $batch>,
                             m_4x4,
-                            1e-6,
+                            EPS_F64,
                         );
                     let auto_grad = MatrixValuedMapFromMatrix::<$dual_scalar, $batch>::fw_autodiff(
                         mat_mul2_fn::<$dual_scalar, $batch>,

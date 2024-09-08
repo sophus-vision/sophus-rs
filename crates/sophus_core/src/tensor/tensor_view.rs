@@ -302,7 +302,9 @@ tensor_view_is_view!(5, 2, 3);
 
 #[test]
 fn tensor_view_tests() {
+    use log::info;
     use ndarray::ShapeBuilder;
+
     {
         let rank1_shape = [3];
         let arr: [u8; 3] = [5, 6, 7];
@@ -334,14 +336,14 @@ fn tensor_view_tests() {
         assert!(ndview.is_standard_layout());
         let view = TensorViewDDRC::new(ndview);
 
-        println!("{}", view.elem_view);
+        info!("{}", view.elem_view);
         for d0 in 0..view.dims()[0] {
             for d1 in 0..view.dims()[1] {
                 assert_eq!(view.get([d0, d1]), arr[strides[0] * d0 + strides[1] * d1]);
             }
         }
 
-        println!("{:?}", view.scalar_view);
+        info!("{:?}", view.scalar_view);
         assert!(!view.scalar_view.is_standard_layout());
         for d0 in 0..view.scalar_dims()[0] {
             for d1 in 0..view.scalar_dims()[1] {
@@ -372,7 +374,7 @@ fn tensor_view_tests() {
         assert!(ndview.is_standard_layout());
         let view = TensorViewDDDR::new(ndview);
 
-        println!("{}", view.elem_view);
+        info!("{}", view.elem_view);
         for d0 in 0..view.dims()[0] {
             for d1 in 0..view.dims()[1] {
                 for d2 in 0..view.dims()[2] {
@@ -384,7 +386,7 @@ fn tensor_view_tests() {
             }
         }
 
-        println!("{:?}", view.scalar_view);
+        info!("{:?}", view.scalar_view);
         for d0 in 0..view.scalar_dims()[0] {
             for d1 in 0..view.scalar_dims()[1] {
                 for d2 in 0..view.scalar_dims()[2] {

@@ -1,9 +1,12 @@
 use crate::lie_group::LieGroup;
 use crate::prelude::*;
+use crate::traits::EmptySliceError;
+use crate::traits::HasAverage;
 use crate::traits::IsLieFactorGroupImpl;
 use crate::traits::IsLieGroupImpl;
 use crate::traits::IsRealLieFactorGroupImpl;
 use crate::traits::IsRealLieGroupImpl;
+use sophus_core::linalg::EPS_F64;
 use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
 use std::marker::PhantomData;
@@ -44,7 +47,7 @@ impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> ParamsImpl<S, 2, BATCH_SI
         let norm = params.norm();
         (norm - S::from_f64(1.0))
             .abs()
-            .less_equal(&S::from_f64(1e-6))
+            .less_equal(&S::from_f64(EPS_F64))
     }
 }
 
@@ -180,12 +183,22 @@ impl<S: IsRealScalar<BATCH_SIZE>, const BATCH_SIZE: usize>
     fn has_shortest_path_ambiguity(params: &S::Vector<2>) -> S::Mask {
         (Self::log(params).get_elem(0).abs() - S::from_f64(std::f64::consts::PI))
             .abs()
-            .less_equal(&S::from_f64(1e-5))
+            .less_equal(&S::from_f64(EPS_F64))
     }
 }
 
 /// 2d rotation group - SO(2)
 pub type Rotation2<S, const B: usize> = LieGroup<S, 1, 2, 2, 2, B, Rotation2Impl<S, B>>;
+
+/// 2d rotation group with f64 scalar type
+pub type Rotation2F64 = Rotation2<f64, 1>;
+
+impl<S: IsScalar<BATCH>, const BATCH: usize> Rotation2<S, BATCH> {
+    /// Rotate by angle
+    pub fn rot(theta: S) -> Self {
+        Rotation2::exp(&S::Vector::<1>::from_array([theta]))
+    }
+}
 
 impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> IsLieFactorGroupImpl<S, 1, 2, 2, BATCH_SIZE>
     for Rotation2Impl<S, BATCH_SIZE>
@@ -199,7 +212,7 @@ impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> IsLieFactorGroupImpl<S, 1
         let theta = v.get_elem(0);
         let abs_theta = theta.clone().abs();
 
-        let near_zero = abs_theta.less_equal(&S::from_f64(1e-6));
+        let near_zero = abs_theta.less_equal(&S::from_f64(EPS_F64));
 
         let theta_sq = theta.clone() * theta.clone();
         let sin_theta_by_theta = (S::from_f64(1.0) - S::from_f64(1.0 / 6.0) * theta_sq.clone())
@@ -224,7 +237,7 @@ impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> IsLieFactorGroupImpl<S, 1
         let real_minus_one = theta.clone().cos() - S::from_f64(1.0);
         let abs_real_minus_one = real_minus_one.clone().abs();
 
-        let near_zero = abs_real_minus_one.less_equal(&S::from_f64(1e-6));
+        let near_zero = abs_real_minus_one.less_equal(&S::from_f64(EPS_F64));
 
         let halftheta_by_tan_of_halftheta = (S::from_f64(1.0)
             - S::from_f64(1.0 / 12.0) * tangent.get_elem(0) * tangent.get_elem(0))
@@ -257,7 +270,7 @@ impl<S: IsRealScalar<BATCH_SIZE>, const BATCH_SIZE: usize>
         let sin_theta = theta.sin();
         let cos_theta = theta.cos();
 
-        let near_zero = theta_sq.abs().less_equal(&S::from_f64(1e-6));
+        let near_zero = theta_sq.abs().less_equal(&S::from_f64(EPS_F64));
 
         let m00 = (S::from_f64(-1.0 / 3.0) * theta + S::from_f64(1.0 / 30.0) * theta * theta_sq)
             .select(&near_zero, (theta * cos_theta - sin_theta) / theta_sq);
@@ -280,7 +293,7 @@ impl<S: IsRealScalar<BATCH_SIZE>, const BATCH_SIZE: usize>
         let sin_theta = theta.sin();
         let cos_theta = theta.cos();
 
-        let near_zero = theta.abs().less_equal(&S::from_f64(1e-6));
+        let near_zero = theta.abs().less_equal(&S::from_f64(EPS_F64));
 
         let c = (S::from_f64(-1.0 / 6.0) * theta).select(
             &near_zero,
@@ -291,6 +304,30 @@ impl<S: IsRealScalar<BATCH_SIZE>, const BATCH_SIZE: usize>
             [c, S::from_f64(0.5)],
             [-S::from_f64(0.5), c],
         ])]
+    }
+}
+
+impl<S: IsSingleScalar + PartialOrd> HasAverage<S, 1, 2, 2, 2> for Rotation2<S, 1> {
+    /// Closed form average for the Rotation2 group.
+    fn average(parent_from_body_transforms: &[Rotation2<S, 1>]) -> Result<Self, EmptySliceError> {
+        if parent_from_body_transforms.is_empty() {
+            return Err(EmptySliceError);
+        }
+        let parent_from_body0 = parent_from_body_transforms[0].clone();
+        let w = S::from_f64(1.0 / parent_from_body_transforms.len() as f64);
+
+        let mut average_tangent = S::Vector::zeros();
+
+        for parent_from_body in parent_from_body_transforms {
+            average_tangent = average_tangent
+                + parent_from_body0
+                    .inverse()
+                    .group_mul(parent_from_body)
+                    .log()
+                    .scaled(w.clone());
+        }
+
+        Ok(parent_from_body0.group_mul(&LieGroup::exp(&average_tangent)))
     }
 }
 

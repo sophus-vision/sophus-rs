@@ -25,6 +25,9 @@
 /// calculus - differentiation, splines, and more
 pub mod calculus;
 
+/// geometry
+pub mod geometry;
+
 /// linear algebra types
 pub mod linalg;
 

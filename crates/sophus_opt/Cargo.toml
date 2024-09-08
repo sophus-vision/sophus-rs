@@ -21,14 +21,15 @@ as-any.workspace = true
 assertables.workspace = true
 dyn-clone.workspace = true
 faer.workspace = true
+log.workspace = true
 nalgebra.workspace = true
 ndarray.workspace = true
 rand.workspace = true
 
 [features]
 simd = [
-    "sophus_core/simd",
-    "sophus_lie/simd",
-    "sophus_sensor/simd",
-    "sophus_image/simd",
+  "sophus_core/simd",
+  "sophus_lie/simd",
+  "sophus_sensor/simd",
+  "sophus_image/simd",
 ]

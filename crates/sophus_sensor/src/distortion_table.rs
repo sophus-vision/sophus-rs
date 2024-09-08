@@ -105,6 +105,7 @@ fn camera_distortion_table_tests() {
     use approx::assert_relative_eq;
     use sophus_core::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
     use sophus_core::linalg::VecF64;
+    use sophus_core::linalg::EPS_F64;
     use sophus_image::ImageSize;
 
     type DynCameraF64 = DynCamera<f64, 1>;
@@ -151,21 +152,21 @@ fn camera_distortion_table_tests() {
 
                 for d in [1.0, 0.1, 0.5, 1.1, 3.0, 15.0] {
                     let point_in_camera = camera.cam_unproj_with_z(&pixel, d);
-                    assert_relative_eq!(point_in_camera[2], d, epsilon = 1e-6);
+                    assert_relative_eq!(point_in_camera[2], d, epsilon = EPS_F64);
 
                     let pixel_in_image2 = camera.cam_proj(&point_in_camera);
-                    assert_relative_eq!(pixel_in_image2, pixel, epsilon = 1e-6);
+                    assert_relative_eq!(pixel_in_image2, pixel, epsilon = EPS_F64);
                 }
                 let ab_in_z1plane = camera.undistort(&pixel);
 
                 let pixel_in_image3 = camera.distort(&ab_in_z1plane);
-                assert_relative_eq!(pixel_in_image3, pixel, epsilon = 1e-6);
+                assert_relative_eq!(pixel_in_image3, pixel, epsilon = EPS_F64);
 
                 let dx = camera.dx_distort_x(&pixel);
                 let numeric_dx = VectorValuedMapFromVector::static_sym_diff_quotient(
                     |x: VecF64<2>| camera.distort(&x),
                     pixel,
-                    1e-6,
+                    EPS_F64,
                 );
 
                 assert_relative_eq!(dx, numeric_dx, epsilon = 1e-4);

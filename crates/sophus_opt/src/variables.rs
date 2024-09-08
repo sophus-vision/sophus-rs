@@ -1,11 +1,17 @@
 use crate::prelude::*;
 use dyn_clone::DynClone;
 use sophus_core::linalg::VecF64;
+use sophus_lie::Isometry2F64;
+use sophus_lie::Isometry3F64;
 use sophus_lie::Isometry2;
 use sophus_lie::Isometry3;
+use sophus_sensor::BrownConradyCamera;
+use sophus_sensor::PinholeCamera;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::fmt::Debug;
+
+use sophus_sensor::KannalaBrandtCamera;
 
 /// Variable kind
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -25,6 +31,33 @@ pub trait IsVariable: Clone + Debug {
 
     /// update the variable in-place (called during optimization)
     fn update(&mut self, delta: nalgebra::DVectorView<f64>);
+}
+
+impl IsVariable for KannalaBrandtCamera<f64, 1> {
+    const DOF: usize = 8;
+
+    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
+        let new_params = *self.params() + delta;
+        self.set_params(&new_params);
+    }
+}
+
+impl IsVariable for PinholeCamera<f64, 1> {
+    const DOF: usize = 4;
+
+    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
+        let new_params = *self.params() + delta;
+        self.set_params(&new_params);
+    }
+}
+
+impl IsVariable for BrownConradyCamera<f64, 1> {
+    const DOF: usize = 12;
+
+    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
+        let new_params = *self.params() + delta;
+        self.set_params(&new_params);
+    }
 }
 
 /// Tuple of variables (one for each argument of the cost function)
@@ -132,7 +165,7 @@ impl<const N: usize> IsVariable for VecF64<N> {
     }
 }
 
-impl IsVariable for Isometry2<f64, 1> {
+impl IsVariable for Isometry2F64 {
     const DOF: usize = 3;
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
@@ -147,7 +180,7 @@ impl IsVariable for Isometry2<f64, 1> {
     }
 }
 
-impl IsVariable for Isometry3<f64, 1> {
+impl IsVariable for Isometry3F64 {
     const DOF: usize = 6;
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {

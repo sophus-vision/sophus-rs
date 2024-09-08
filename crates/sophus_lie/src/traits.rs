@@ -246,9 +246,6 @@ pub trait IsTranslationProductGroup<
     /// Create from translation and factor group element
     fn from_translation_and_factor(translation: &S::Vector<POINT>, factor: &FactorGroup) -> Self;
 
-    /// Create from translation
-    fn from_t(params: &S::Vector<POINT>) -> Self;
-
     /// set translation
     fn set_translation(&mut self, translation: &S::Vector<POINT>);
     /// get translation
@@ -259,4 +256,21 @@ pub trait IsTranslationProductGroup<
 
     /// get factor group element
     fn factor(&self) -> FactorGroup;
+}
+
+/// slice is empty
+#[derive(Debug)]
+pub struct EmptySliceError;
+
+/// Lie Group trait
+pub trait HasAverage<
+    S: IsSingleScalar,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+>: IsLieGroup<S, DOF, PARAMS, POINT, AMBIENT, 1> + std::marker::Sized
+{
+    /// Lie group average
+    fn average(parent_from_body_transforms: &[Self]) -> Result<Self, EmptySliceError>;
 }

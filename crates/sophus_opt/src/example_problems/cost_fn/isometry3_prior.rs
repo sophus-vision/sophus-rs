@@ -10,6 +10,7 @@ use sophus_core::calculus::dual::DualVector;
 use sophus_core::calculus::maps::VectorValuedMapFromVector;
 use sophus_core::linalg::MatF64;
 use sophus_core::linalg::VecF64;
+use sophus_lie::Isometry3F64;
 use sophus_lie::Isometry3;
 
 /// Cost function for a prior on an 3d isometry
@@ -20,13 +21,13 @@ pub struct Isometry3PriorCostFn {}
 #[derive(Clone)]
 pub struct Isometry3PriorTermSignature {
     /// prior mean
-    pub isometry_prior: (Isometry3<f64, 1>, MatF64<6, 6>),
+    pub isometry_prior: (Isometry3F64, MatF64<6, 6>),
     /// entity index
     pub entity_indices: [usize; 1],
 }
 
 impl IsTermSignature<1> for Isometry3PriorTermSignature {
-    type Constants = (Isometry3<f64, 1>, MatF64<6, 6>);
+    type Constants = (Isometry3F64, MatF64<6, 6>);
 
     fn c_ref(&self) -> &Self::Constants {
         &self.isometry_prior
@@ -46,17 +47,17 @@ fn res_fn<Scalar: IsScalar<1> + IsSingleScalar>(
     Isometry3::<Scalar, 1>::group_mul(&isometry, &isometry_prior_mean.inverse()).log()
 }
 
-impl IsResidualFn<6, 1, Isometry3<f64, 1>, (Isometry3<f64, 1>, MatF64<6, 6>)>
+impl IsResidualFn<6, 1, Isometry3F64, (Isometry3F64, MatF64<6, 6>)>
     for Isometry3PriorCostFn
 {
     fn eval(
         &self,
-        args: Isometry3<f64, 1>,
+        args: Isometry3F64,
         var_kinds: [VarKind; 1],
         robust_kernel: Option<robust_kernel::RobustKernel>,
-        isometry_prior: &(Isometry3<f64, 1>, MatF64<6, 6>),
+        isometry_prior: &(Isometry3F64, MatF64<6, 6>),
     ) -> Term<6, 1> {
-        let isometry: Isometry3<f64, 1> = args;
+        let isometry: Isometry3F64 = args;
 
         let residual = res_fn(isometry, isometry_prior.0);
         let dx_res_fn = |x: DualVector<6>| -> DualVector<6> {

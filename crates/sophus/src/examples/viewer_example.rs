@@ -7,7 +7,7 @@ use sophus_image::ImageSize;
 pub fn make_example_image(image_size: ImageSize) -> ArcImage4U8 {
     let mut img = MutImage4U8::from_image_size_and_val(
         image_size,
-        nalgebra::SVector::<u8, 4>::new(255, 0, 255, 255),
+        nalgebra::SVector::<u8, 4>::new(255, 255, 255, 255),
     );
 
     let w = image_size.width;

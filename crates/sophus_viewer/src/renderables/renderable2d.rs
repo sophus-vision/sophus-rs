@@ -7,10 +7,56 @@ use crate::renderables::renderable3d::Renderable3d;
 /// View3d renderable
 #[derive(Clone, Debug)]
 pub enum Renderable2d {
-    /// 2D lines
-    Lines2(Lines2),
-    /// 2D points
-    Points2(Points2),
+    /// 2D line segments
+    Line(LineSegments2),
+    /// 2D point cloud
+    Point(PointCloud2),
+}
+
+/// make lines 2d
+pub fn make_line2(
+    name: impl ToString,
+    arr: &[[impl HasToVec2F32; 2]],
+    color: &Color,
+    line_width: f32,
+) -> Renderable2d {
+    let mut line_segments = LineSegments2 {
+        name: name.to_string(),
+        segments: vec![],
+    };
+
+    for tuple in arr {
+        line_segments.segments.push(LineSegment2 {
+            p0: tuple[0].to_vec2(),
+            p1: tuple[1].to_vec2(),
+            color: *color,
+            line_width,
+        });
+    }
+
+    Renderable2d::Line(line_segments)
+}
+
+/// make 2d point cloud
+pub fn make_point2(
+    name: impl ToString,
+    arr: &[impl HasToVec2F32],
+    color: &Color,
+    point_size: f32,
+) -> Renderable2d {
+    let mut cloud = PointCloud2 {
+        name: name.to_string(),
+        points: vec![],
+    };
+
+    for p in arr {
+        cloud.points.push(Point2 {
+            p: p.to_vec2(),
+            color: *color,
+            point_size,
+        });
+    }
+    Renderable2d::Point(cloud)
 }
 
 /// Packet of image renderables
@@ -58,7 +104,7 @@ impl HasToVec2F32 for SVector<f32, 2> {
 
 /// 2D line
 #[derive(Clone, Debug)]
-pub struct Line2 {
+pub struct LineSegment2 {
     /// Start point
     pub p0: SVector<f32, 2>,
     /// End point
@@ -80,70 +126,20 @@ pub struct Point2 {
     pub point_size: f32,
 }
 
-/// 2D lines
+/// 2D line segments
 #[derive(Clone, Debug)]
-pub struct Lines2 {
+pub struct LineSegments2 {
     /// Name of the entity
     pub name: String,
-    /// List of lines
-    pub lines: Vec<Line2>,
+    /// List of line segments
+    pub segments: Vec<LineSegment2>,
 }
 
-impl Lines2 {
-    /// make lines 2d
-    pub fn make(
-        name: impl ToString,
-        arr: &[[impl HasToVec2F32; 2]],
-        color: &Color,
-        line_width: f32,
-    ) -> Self {
-        let mut lines = Lines2 {
-            name: name.to_string(),
-            lines: vec![],
-        };
-
-        for tuple in arr {
-            lines.lines.push(Line2 {
-                p0: tuple[0].to_vec2(),
-                p1: tuple[1].to_vec2(),
-                color: *color,
-                line_width,
-            });
-        }
-
-        lines
-    }
-}
-
-/// 2D points
+/// 2D point cloud
 #[derive(Clone, Debug)]
-pub struct Points2 {
+pub struct PointCloud2 {
     /// Name of the entity
     pub name: String,
     /// List of points
     pub points: Vec<Point2>,
-}
-
-impl Points2 {
-    /// make points 2d
-    pub fn make(
-        name: impl ToString,
-        arr: &[impl HasToVec2F32],
-        color: &Color,
-        point_size: f32,
-    ) -> Self {
-        let mut points = Points2 {
-            name: name.to_string(),
-            points: vec![],
-        };
-
-        for p in arr {
-            points.points.push(Point2 {
-                p: p.to_vec2(),
-                color: *color,
-                point_size,
-            });
-        }
-        points
-    }
 }

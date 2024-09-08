@@ -119,6 +119,9 @@ pub trait IsMatrix<
     /// set column vectors
     fn set_col_vec(&mut self, c: usize, v: S::Vector<ROWS>);
 
+    /// transpose
+    fn transposed(self) -> S::Matrix<COLS, ROWS>;
+
     /// Return dual matrix
     ///
     /// If self is a real matrix, this will return a dual matrix with the infinitesimal part set to
@@ -149,11 +152,17 @@ pub trait IsRealMatrix<
 pub trait IsSingleMatrix<S: IsSingleScalar, const ROWS: usize, const COLS: usize>:
     IsMatrix<S, ROWS, COLS, 1> + Mul<S::SingleVector<COLS>, Output = S::SingleVector<ROWS>>
 {
+    /// returns single real matrix
+    fn single_real_matrix(&self) -> MatF64<ROWS, COLS>;
 }
 
 impl<const ROWS: usize, const COLS: usize> IsRealMatrix<f64, ROWS, COLS, 1> for MatF64<ROWS, COLS> {}
 
-impl<const ROWS: usize, const COLS: usize> IsSingleMatrix<f64, ROWS, COLS> for MatF64<ROWS, COLS> {}
+impl<const ROWS: usize, const COLS: usize> IsSingleMatrix<f64, ROWS, COLS> for MatF64<ROWS, COLS> {
+    fn single_real_matrix(&self) -> MatF64<ROWS, COLS> {
+        *self
+    }
+}
 
 impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF64<ROWS, COLS> {
     fn from_real_matrix(val: MatF64<ROWS, COLS>) -> Self {
@@ -294,5 +303,9 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF
 
     fn set_elem(&mut self, idx: [usize; 2], val: f64) {
         self[(idx[0], idx[1])] = val;
+    }
+
+    fn transposed(self) -> MatF64<COLS, ROWS> {
+        self.transpose()
     }
 }

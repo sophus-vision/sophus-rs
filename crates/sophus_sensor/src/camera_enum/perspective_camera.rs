@@ -8,13 +8,32 @@ use sophus_image::ImageSize;
 
 /// Pinhole camera
 pub type PinholeCamera<S, const BATCH: usize> =
-    Camera<S, 0, 4, BATCH, AffineDistortionImpl<S, BATCH>, PerspectiveProjectionImpl>;
+    Camera<S, 0, 4, BATCH, AffineDistortionImpl<S, BATCH>, PerspectiveProjectionImpl<S, BATCH>>;
 /// Kannala-Brandt camera
-pub type KannalaBrandtCamera<S, const BATCH: usize> =
-    Camera<S, 4, 8, BATCH, KannalaBrandtDistortionImpl<S, BATCH>, PerspectiveProjectionImpl>;
+pub type KannalaBrandtCamera<S, const BATCH: usize> = Camera<
+    S,
+    4,
+    8,
+    BATCH,
+    KannalaBrandtDistortionImpl<S, BATCH>,
+    PerspectiveProjectionImpl<S, BATCH>,
+>;
 /// Brown-Conrady camera
-pub type BrownConradyCamera<S, const BATCH: usize> =
-    Camera<S, 8, 12, BATCH, BrownConradyDistortionImpl<S, BATCH>, PerspectiveProjectionImpl>;
+pub type BrownConradyCamera<S, const BATCH: usize> = Camera<
+    S,
+    8,
+    12,
+    BATCH,
+    BrownConradyDistortionImpl<S, BATCH>,
+    PerspectiveProjectionImpl<S, BATCH>,
+>;
+
+/// Pinhole camera with f64 scalar type
+pub type PinholeCameraF64 = PinholeCamera<f64, 1>;
+/// Kannala-Brandt camera with f64 scalar type
+pub type KannalaBrandtCameraF64 = KannalaBrandtCamera<f64, 1>;
+/// Brown-Conrady camera with f64 scalar type
+pub type BrownConradyCameraF64 = BrownConradyCamera<f64, 1>;
 
 /// Perspective camera enum
 #[derive(Debug, Clone)]
@@ -92,6 +111,30 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
             PerspectiveCameraEnum::Pinhole(camera) => camera.dx_distort_x(point_in_camera),
             PerspectiveCameraEnum::KannalaBrandt(camera) => camera.dx_distort_x(point_in_camera),
             PerspectiveCameraEnum::BrownConrady(camera) => camera.dx_distort_x(point_in_camera),
+        }
+    }
+
+    fn try_get_brown_conrady(self) -> Option<BrownConradyCamera<S, BATCH>> {
+        match self {
+            PerspectiveCameraEnum::Pinhole(_) => None,
+            PerspectiveCameraEnum::KannalaBrandt(_) => None,
+            PerspectiveCameraEnum::BrownConrady(camera) => Some(camera),
+        }
+    }
+
+    fn try_get_kannala_brandt(self) -> Option<KannalaBrandtCamera<S, BATCH>> {
+        match self {
+            PerspectiveCameraEnum::Pinhole(_) => None,
+            PerspectiveCameraEnum::KannalaBrandt(camera) => Some(camera),
+            PerspectiveCameraEnum::BrownConrady(_) => None,
+        }
+    }
+
+    fn try_get_pinhole(self) -> Option<PinholeCamera<S, BATCH>> {
+        match self {
+            PerspectiveCameraEnum::Pinhole(camera) => Some(camera),
+            PerspectiveCameraEnum::KannalaBrandt(_) => None,
+            PerspectiveCameraEnum::BrownConrady(_) => None,
         }
     }
 }

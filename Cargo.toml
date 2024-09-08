@@ -22,21 +22,21 @@ include = [
 keywords = ["robotics", "optimization"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/sophus-vision/sophus-rs/"
-version = "0.8.0"
+version = "0.9.0"
 
 [workspace.dependencies]
-sophus = {path = "crates/sophus", version = "0.8.0"}
-sophus_core = {path = "crates/sophus_core", version = "0.8.0"}
-sophus_image = {path = "crates/sophus_image", version = "0.8.0"}
-sophus_lie = {path = "crates/sophus_lie", version = "0.8.0"}
-sophus_opt = {path = "crates/sophus_opt", version = "0.8.0"}
-sophus_pyo3 = {path = "crates/sophus_pyo3", version = "0.8.0"}
-sophus_sensor = {path = "crates/sophus_sensor", version = "0.8.0"}
-sophus_viewer = {path = "crates/sophus_viewer", version = "0.8.0"}
+sophus = {path = "crates/sophus", version = "0.9.0"}
+sophus_core = {path = "crates/sophus_core", version = "0.9.0"}
+sophus_image = {path = "crates/sophus_image", version = "0.9.0"}
+sophus_lie = {path = "crates/sophus_lie", version = "0.9.0"}
+sophus_opt = {path = "crates/sophus_opt", version = "0.9.0"}
+sophus_pyo3 = {path = "crates/sophus_pyo3", version = "0.9.0"}
+sophus_sensor = {path = "crates/sophus_sensor", version = "0.9.0"}
+sophus_viewer = {path = "crates/sophus_viewer", version = "0.9.0"}
 
 approx = "0.5"
 as-any = "0.3"
-assertables = "7.0"
+assertables = "8.3"
 async-trait = "0.1"
 bytemuck = {version = "1.14", features = ["derive"]}
 concat-arrays = "0.1"
@@ -58,10 +58,12 @@ num-traits = "0.2"
 numpy = "0.21"
 png = "0.17"
 rand = "0.8"
-tokio = {version = "1", features = ["full"]}
 typenum = {version = "1.17", features = ["const-generics"]}
 wgpu = "0.20.1"
 winit = {version = "0.30", features = ["android-native-activity"]}
+
+[workspace.resolutions]
+eframe = "0.28.0"
 
 [profile.release]
 debug = 1

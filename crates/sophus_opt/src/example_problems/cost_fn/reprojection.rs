@@ -4,27 +4,18 @@ use crate::prelude::*;
 use crate::robust_kernel;
 use crate::term::MakeTerm;
 use crate::term::Term;
-use crate::variables::IsVariable;
 use crate::variables::VarKind;
 use sophus_core::calculus::dual::DualScalar;
 use sophus_core::calculus::dual::DualVector;
 use sophus_core::calculus::maps::VectorValuedMapFromVector;
 use sophus_core::linalg::VecF64;
+use sophus_lie::Isometry3F64;
 use sophus_lie::Isometry3;
 use sophus_sensor::PinholeCamera;
 
 /// Camera re-projection cost function
 #[derive(Copy, Clone)]
 pub struct ReprojectionCostFn {}
-
-impl IsVariable for PinholeCamera<f64, 1> {
-    const DOF: usize = 4;
-
-    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
-        let new_params = *self.params() + delta;
-        self.set_params(&new_params);
-    }
-}
 
 fn res_fn<Scalar: IsSingleScalar + IsScalar<1>>(
     intrinscs: PinholeCamera<Scalar, 1>,
@@ -59,14 +50,14 @@ impl IsTermSignature<3> for ReprojTermSignature {
     const DOF_TUPLE: [i64; 3] = [4, 6, 3];
 }
 
-impl IsResidualFn<13, 3, (PinholeCamera<f64, 1>, Isometry3<f64, 1>, VecF64<3>), VecF64<2>>
+impl IsResidualFn<13, 3, (PinholeCamera<f64, 1>, Isometry3F64, VecF64<3>), VecF64<2>>
     for ReprojectionCostFn
 {
     fn eval(
         &self,
         (intrinsics, world_from_camera_pose, point_in_world): (
             PinholeCamera<f64, 1>,
-            Isometry3<f64, 1>,
+            Isometry3F64,
             VecF64<3>,
         ),
         var_kinds: [VarKind; 3],

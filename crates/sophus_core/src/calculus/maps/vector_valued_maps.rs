@@ -195,8 +195,8 @@ fn vector_valued_map_from_vector_tests() {
     use crate::calculus::dual::dual_scalar::DualScalar;
     use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromMatrix;
     use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
-
     use crate::linalg::vector::IsVector;
+    use crate::linalg::EPS_F64;
     use crate::tensor::tensor_view::IsTensorLike;
 
     #[cfg(feature = "simd")]
@@ -238,7 +238,7 @@ fn vector_valued_map_from_vector_tests() {
                             VectorValuedMapFromVector::<$scalar, $batch>::sym_diff_quotient(
                                 proj_fn::<$scalar, $batch>,
                                 a,
-                                1e-6,
+                                EPS_F64,
                             );
                         let auto_grad =
                             VectorValuedMapFromVector::<$dual_scalar, $batch>::fw_autodiff(
@@ -257,7 +257,7 @@ fn vector_valued_map_from_vector_tests() {
                             VectorValuedMapFromVector::<$scalar, $batch>::static_sym_diff_quotient(
                                 proj_fn::<$scalar, $batch>,
                                 a,
-                                1e-6,
+                                EPS_F64,
                             );
                         let sauto_grad =
                             VectorValuedMapFromVector::<$dual_scalar, $batch>::static_fw_autodiff(
@@ -292,7 +292,7 @@ fn vector_valued_map_from_vector_tests() {
                         VectorValuedMapFromMatrix::<$scalar, $batch>::sym_diff_quotient(
                             f::<$scalar, $batch>,
                             mat,
-                            1e-6,
+                            EPS_F64,
                         );
                     let auto_grad = VectorValuedMapFromMatrix::<$dual_scalar, $batch>::fw_autodiff(
                         f::<$dual_scalar, $batch>,
