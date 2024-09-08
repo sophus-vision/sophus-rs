@@ -1,5 +1,7 @@
 use super::traits::IsLieGroupImpl;
 use super::traits::IsRealLieGroupImpl;
+use crate::groups::isometry2::Isometry2F64;
+use crate::groups::isometry3::Isometry3F64;
 use crate::lie_group::LieGroup;
 use crate::prelude::*;
 use crate::Isometry2;
@@ -625,7 +627,7 @@ def_real_group_test_template!(
     8
 );
 
-def_real_group_test_template!(f64, DualScalar, Isometry2<f64, 1>, Isometry2<DualScalar, 1>,  1);
+def_real_group_test_template!(f64, DualScalar, Isometry2F64, Isometry2<DualScalar, 1>,  1);
 #[cfg(feature = "simd")]
 def_real_group_test_template!(
     BatchScalarF64<8>,
@@ -645,7 +647,7 @@ def_real_group_test_template!(
     8
 );
 
-def_real_group_test_template!(f64, DualScalar, Isometry3<f64, 1>, Isometry3<DualScalar, 1>,  1);
+def_real_group_test_template!(f64, DualScalar, Isometry3F64, Isometry3<DualScalar, 1>,  1);
 #[cfg(feature = "simd")]
 def_real_group_test_template!(
     BatchScalarF64<8>,

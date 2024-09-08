@@ -115,14 +115,14 @@ fn isometry3_prop_tests() {
     #[cfg(feature = "simd")]
     use sophus_core::linalg::BatchScalarF64;
 
-    Isometry3::<f64, 1>::test_suite();
+    Isometry3F64::test_suite();
     #[cfg(feature = "simd")]
     Isometry3::<BatchScalarF64<8>, 8>::test_suite();
     Isometry3::<DualScalar, 1>::test_suite();
     #[cfg(feature = "simd")]
     Isometry3::<DualBatchScalar<8>, 8>::test_suite();
 
-    Isometry3::<f64, 1>::run_real_tests();
+    Isometry3F64::run_real_tests();
     #[cfg(feature = "simd")]
     Isometry3::<BatchScalarF64<8>, 8>::run_real_tests();
 }

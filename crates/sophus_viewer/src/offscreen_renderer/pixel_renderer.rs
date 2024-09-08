@@ -1,5 +1,5 @@
 /// Line renderer
-pub mod line;
+pub mod pixel_line;
 /// Pixel point renderer
 pub mod pixel_point;
 
@@ -11,10 +11,10 @@ use std::num::NonZeroU64;
 use wgpu::util::DeviceExt;
 use wgpu::DepthStencilState;
 
-use crate::offscreen_renderer::pixel_renderer::line::PixelLineRenderer;
+use crate::offscreen_renderer::pixel_renderer::pixel_line::PixelLineRenderer;
 use crate::offscreen_renderer::pixel_renderer::pixel_point::PixelPointRenderer;
-use crate::offscreen_renderer::renderer::TranslationAndScaling;
-use crate::offscreen_renderer::renderer::Zoom2d;
+use crate::offscreen_renderer::TranslationAndScaling;
+use crate::offscreen_renderer::Zoom2d;
 use crate::offscreen_renderer::textures::ZBufferTexture;
 use crate::views::interactions::InteractionEnum;
 use crate::ViewerRenderState;
@@ -184,11 +184,6 @@ impl PixelRenderer {
         }
     }
 
-    pub(crate) fn clear_vertex_data(&mut self) {
-        self.line_renderer.vertex_data.clear();
-        self.point_renderer.vertex_data.clear();
-    }
-
     pub(crate) fn prepare(
         &self,
         state: &ViewerRenderState,
@@ -196,16 +191,6 @@ impl PixelRenderer {
         intrinsics: &DynCamera<f64, 1>,
         zoom_2d: TranslationAndScaling,
     ) {
-        state.queue.write_buffer(
-            &self.point_renderer.vertex_buffer,
-            0,
-            bytemuck::cast_slice(self.point_renderer.vertex_data.as_slice()),
-        );
-        state.queue.write_buffer(
-            &self.line_renderer.vertex_buffer,
-            0,
-            bytemuck::cast_slice(self.line_renderer.vertex_data.as_slice()),
-        );
 
         let ortho_cam_uniforms = OrthoCam {
             virtual_camera_width: intrinsics.image_size().width as f32,

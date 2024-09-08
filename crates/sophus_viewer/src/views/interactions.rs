@@ -7,10 +7,10 @@ use eframe::egui;
 use sophus_core::linalg::VecF64;
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::ImageSize;
-use sophus_lie::Isometry3;
+use sophus_lie::Isometry3F64;
 use sophus_sensor::dyn_camera::DynCamera;
 
-use crate::offscreen_renderer::renderer::TranslationAndScaling;
+use crate::offscreen_renderer::TranslationAndScaling;
 use crate::views::aspect_ratio::ViewportSize;
 use crate::views::interactions::inplane_interaction::InplaneInteraction;
 use crate::views::interactions::orbit_interaction::OrbitalInteraction;
@@ -60,7 +60,7 @@ pub enum InteractionEnum {
 
 impl InteractionEnum {
     /// Get scene_from_camera isometry
-    pub fn scene_from_camera(&self) -> Isometry3<f64, 1> {
+    pub fn scene_from_camera(&self) -> Isometry3F64 {
         match self {
             InteractionEnum::Orbital(orbit) => orbit.scene_from_camera,
             InteractionEnum::InPlane(inplane) => inplane.scene_from_camera(),

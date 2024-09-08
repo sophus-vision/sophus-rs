@@ -2,15 +2,20 @@ use std::num::NonZeroU32;
 
 use crate::ViewerRenderState;
 use eframe::egui::{self};
+use sophus_image::arc_image::ArcImage4F32;
 use sophus_image::arc_image::ArcImageF32;
+use sophus_image::image_view::ImageView4F32;
 use sophus_image::image_view::ImageViewF32;
 use sophus_image::ImageSize;
 use wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
 
+/// rgba texture
 #[derive(Debug)]
-pub(crate) struct RgbaTexture {
+pub struct RgbaTexture {
+    /// rgba texture
+    pub rgba_texture: wgpu::Texture,
     pub(crate) rgba_texture_view: wgpu::TextureView,
-    pub(crate) rgba_tex_id: egui::TextureId,
+    pub(crate) egui_tex_id: egui::TextureId,
 }
 
 impl RgbaTexture {
@@ -45,9 +50,78 @@ impl RgbaTexture {
         );
 
         RgbaTexture {
+            rgba_texture: render_target,
             rgba_texture_view: texture_view,
-            rgba_tex_id: tex_id,
+            egui_tex_id: tex_id,
         }
+    }
+
+    /// Method to download RGBA image as ndarray
+    pub fn download_rgba_image(
+        &self,
+        state: &ViewerRenderState,
+        mut command_encoder: wgpu::CommandEncoder,
+        view_port_size: &ImageSize,
+    ) -> ArcImage4F32 {
+        let w = view_port_size.width as u32;
+        let h = view_port_size.height as u32;
+        let bytes_per_pixel = 4 * std::mem::size_of::<f32>() as u32;
+        let bytes_per_row = bytes_per_pixel * w;
+
+        let buffer = state.device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            size: (bytes_per_row * h) as wgpu::BufferAddress,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+
+        command_encoder.copy_texture_to_buffer(
+            wgpu::ImageCopyTexture {
+                texture: &self.rgba_texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::ImageCopyBuffer {
+                buffer: &buffer,
+                layout: wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(bytes_per_row),
+                    rows_per_image: Some(h),
+                },
+            },
+            wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+        );
+
+        state.queue.submit(Some(command_encoder.finish()));
+
+        // Wait for buffer to be mapped and retrieve data
+        let buffer_slice = buffer.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx.send(result).unwrap();
+        });
+        state.device.poll(wgpu::Maintain::Wait);
+        rx.try_recv().unwrap().unwrap();
+
+        let data = buffer_slice.get_mapped_range();
+
+        let view = ImageView4F32::from_size_and_slice(
+            ImageSize {
+                width: w as usize,
+                height: h as usize,
+            },
+            bytemuck::cast_slice(&data[..]),
+        );
+        let img = ArcImage4F32::make_copy_from(&view);
+
+        buffer.unmap();
+
+        img
     }
 }
 
@@ -55,7 +129,6 @@ impl RgbaTexture {
 pub(crate) struct ZBufferTexture {
     pub(crate) _depth_texture: wgpu::Texture,
     pub(crate) depth_texture_view: wgpu::TextureView,
-    pub(crate) _depth_texture_sampler: wgpu::Sampler,
 }
 
 impl ZBufferTexture {
@@ -80,25 +153,11 @@ impl ZBufferTexture {
         };
         let texture = render_state.device.create_texture(&desc);
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = render_state
-            .device
-            .create_sampler(&wgpu::SamplerDescriptor {
-                address_mode_u: wgpu::AddressMode::ClampToEdge,
-                address_mode_v: wgpu::AddressMode::ClampToEdge,
-                address_mode_w: wgpu::AddressMode::ClampToEdge,
-                mag_filter: wgpu::FilterMode::Linear,
-                min_filter: wgpu::FilterMode::Linear,
-                mipmap_filter: wgpu::FilterMode::Nearest,
-                compare: Some(wgpu::CompareFunction::LessEqual),
-                lod_min_clamp: 0.0,
-                lod_max_clamp: 100.0,
-                ..Default::default()
-            });
+
 
         ZBufferTexture {
             _depth_texture: texture,
             depth_texture_view: view,
-            _depth_texture_sampler: sampler,
         }
     }
 }
@@ -108,6 +167,9 @@ pub(crate) struct DepthTexture {
     pub(crate) depth_output_staging_buffer: wgpu::Buffer,
     pub(crate) depth_render_target_f32: wgpu::Texture,
     pub(crate) depth_texture_view_f32: wgpu::TextureView,
+
+    pub visual_texture: wgpu::Texture,
+    pub(crate) egui_tex_id: egui::TextureId,
 }
 
 impl DepthTexture {
@@ -172,10 +234,37 @@ impl DepthTexture {
                 base_array_layer: 0,
                 array_layer_count: None,
             });
+
+        let visual_texture = render_state
+            .device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: None,
+                size: wgpu::Extent3d {
+                    width: w,
+                    height: h,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                usage:  wgpu::TextureUsages::COPY_DST
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[wgpu::TextureFormat::Rgba8UnormSrgb],
+            });
+
+        let visual_texture_view = visual_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let egui_tex_id = render_state.wgpu_state.write().register_native_texture(
+            render_state.device.as_ref(),
+            &visual_texture_view,
+            wgpu::FilterMode::Linear,
+        );
         Self {
             depth_output_staging_buffer,
             depth_texture_view_f32,
             depth_render_target_f32,
+            visual_texture,
+            egui_tex_id,
         }
     }
 
@@ -223,7 +312,7 @@ impl DepthTexture {
         {
             let buffer_slice = self.depth_output_staging_buffer.slice(..);
 
-            let (tx, mut rx) = tokio::sync::oneshot::channel();
+            let (tx, rx) = std::sync::mpsc::channel();
             buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
                 tx.send(result).unwrap();
             });

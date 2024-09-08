@@ -10,6 +10,7 @@ use crate::variables::VarKind;
 use crate::variables::VarPool;
 use crate::variables::VarPoolBuilder;
 use sophus_core::linalg::VecF64;
+use sophus_lie::Isometry2F64;
 use sophus_lie::Isometry2;
 use std::collections::HashMap;
 
@@ -17,12 +18,12 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 pub struct PoseCircleProblem {
     /// true poses
-    pub true_world_from_robot: Vec<Isometry2<f64, 1>>,
+    pub true_world_from_robot: Vec<Isometry2F64>,
     /// estimated poses
-    pub est_world_from_robot: Vec<Isometry2<f64, 1>>,
+    pub est_world_from_robot: Vec<Isometry2F64>,
     /// pose-pose constraints
     pub obs_pose_a_from_pose_b_poses:
-        CostSignature<2, Isometry2<f64, 1>, PoseGraphCostTermSignature>,
+        CostSignature<2, Isometry2F64, PoseGraphCostTermSignature>,
 }
 
 impl Default for PoseCircleProblem {
@@ -37,7 +38,7 @@ impl PoseCircleProblem {
         let mut true_world_from_robot_poses = vec![];
         let mut est_world_from_robot_poses = vec![];
         let mut obs_pose_a_from_pose_b_poses =
-            CostSignature::<2, Isometry2<f64, 1>, PoseGraphCostTermSignature> {
+            CostSignature::<2, Isometry2F64, PoseGraphCostTermSignature> {
                 family_names: ["poses".into(), "poses".into()],
                 terms: vec![],
             };
@@ -105,7 +106,7 @@ impl PoseCircleProblem {
     }
 
     /// Calculate the error of the current estimate
-    pub fn calc_error(&self, est_world_from_robot: &[Isometry2<f64, 1>]) -> f64 {
+    pub fn calc_error(&self, est_world_from_robot: &[Isometry2F64]) -> f64 {
         let mut res_err = 0.0;
         for obs in self.obs_pose_a_from_pose_b_poses.terms.clone() {
             let residual = super::cost_fn::pose_graph::res_fn(
@@ -124,7 +125,7 @@ impl PoseCircleProblem {
         let mut constants = HashMap::new();
         constants.insert(0, ());
 
-        let family: VarFamily<Isometry2<f64, 1>> = VarFamily::new_with_const_ids(
+        let family: VarFamily<Isometry2F64> = VarFamily::new_with_const_ids(
             VarKind::Free,
             self.est_world_from_robot.clone(),
             constants,
@@ -154,7 +155,7 @@ fn pose_circle_opt_tests() {
     assert!(res_err > 1.0, "{} > thr?", res_err);
 
     let up_var_pool = pose_graph.optimize();
-    let refined_world_from_robot = up_var_pool.get_members::<Isometry2<f64, 1>>("poses".into());
+    let refined_world_from_robot = up_var_pool.get_members::<Isometry2F64>("poses".into());
 
     let res_err = pose_graph.calc_error(&refined_world_from_robot);
     assert!(res_err < 0.05, "{} < thr?", res_err);

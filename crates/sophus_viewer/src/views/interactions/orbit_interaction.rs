@@ -4,12 +4,13 @@ use sophus_core::IsTensorLike;
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::image_view::IsImageView;
 use sophus_image::ImageSize;
+use sophus_lie::Isometry3F64;
 use sophus_lie::traits::IsTranslationProductGroup;
 use sophus_lie::Isometry3;
 use sophus_sensor::DynCamera;
 
-use crate::offscreen_renderer::renderer::ClippingPlanes;
-use crate::offscreen_renderer::renderer::TranslationAndScaling;
+use crate::offscreen_renderer::ClippingPlanes;
+use crate::offscreen_renderer::TranslationAndScaling;
 use crate::views::interactions::SceneFocus;
 use crate::views::interactions::ViewportScale;
 
@@ -28,12 +29,12 @@ pub struct OrbitalInteraction {
     pub(crate) maybe_scroll_state: Option<OrbitalScrollState>,
     pub(crate) maybe_scene_focus: Option<SceneFocus>,
     pub(crate) clipping_planes: ClippingPlanes,
-    pub(crate) scene_from_camera: Isometry3<f64, 1>,
+    pub(crate) scene_from_camera: Isometry3F64,
 }
 
 impl OrbitalInteraction {
     pub(crate) fn new(
-        scene_from_camera: Isometry3<f64, 1>,
+        scene_from_camera: Isometry3F64,
         clipping_planes: ClippingPlanes,
     ) -> OrbitalInteraction {
         OrbitalInteraction {
@@ -124,25 +125,36 @@ impl OrbitalInteraction {
             self.maybe_scroll_state = None;
         }
 
+        if self.maybe_scene_focus.is_none() {
+            return;
+        }
+
+        let scene_focus = self.maybe_scene_focus.unwrap();
+        let pixel = scene_focus.uv_in_virtual_camera;
+        let depth = scene_focus.depth;
+        let focus_point_in_camera = cam.cam_unproj_with_z(&pixel, depth);
+
         if smooth_scroll_delta.y != 0.0 {
             // TODO: make sure the zoom is centered around the scene focus
-            let zoom: f64 = (1.0 + 0.01 * smooth_scroll_delta.y) as f64;
             let mut scene_from_camera = self.scene_from_camera;
 
-            scene_from_camera.set_translation(&(scene_from_camera.translation() * zoom));
+            let camera_in_scene = scene_from_camera.translation();
+            let zoom: f64 = (0.01 * smooth_scroll_delta.y) as f64;
+            let camera_to_focus_point_vec_in_scene =
+                self.scene_from_camera.transform(&focus_point_in_camera) - camera_in_scene;
+
+            let vec = camera_to_focus_point_vec_in_scene * zoom;
+
+            scene_from_camera.set_translation(&(camera_in_scene + vec));
+
             self.scene_from_camera = scene_from_camera;
         }
 
         if smooth_scroll_delta.x != 0.0 {
-            // TODO: make sure the in-plane rotation is centered around the scene focus
             let delta_z: f64 = (smooth_scroll_delta.x) as f64;
-
-            let scene_focus = self.maybe_scene_focus.unwrap();
-            let pixel = scene_focus.uv_in_virtual_camera;
-            let depth = scene_focus.depth;
             let delta = 0.01 * VecF64::<6>::new(0.0, 0.0, 0.0, 0.0, 0.0, delta_z);
-            let camera_from_scene_point =
-                Isometry3::from_translation(&cam.cam_unproj_with_z(&pixel, depth));
+            let camera_from_scene_point = Isometry3::from_translation(&focus_point_in_camera);
+
             self.scene_from_camera =
                 self.scene_from_camera
                     .group_mul(&camera_from_scene_point.group_mul(

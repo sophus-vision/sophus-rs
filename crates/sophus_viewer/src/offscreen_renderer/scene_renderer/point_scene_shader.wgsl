@@ -51,3 +51,8 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     var v = i32(in.position.y);
     return in.color;
 }
+
+@fragment
+fn depth_fs_main(in: VertexOut) -> @location(0) vec4<f32> {
+    return vec4<f32>(in.position.z, 0.0, 0.0, 1.0);
+}

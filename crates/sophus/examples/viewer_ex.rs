@@ -6,10 +6,8 @@ use sophus_image::mut_image::MutImageF32;
 use sophus_image::mut_image_view::IsMutImageView;
 use sophus_lie::Isometry3;
 use sophus_sensor::DynCamera;
-use sophus_viewer::offscreen_renderer::renderer::ClippingPlanes;
+use sophus_viewer::offscreen_renderer::ClippingPlanes;
 use sophus_viewer::renderables::color::Color;
-use sophus_viewer::renderables::renderable2d::Points2;
-use sophus_viewer::renderables::renderable2d::Renderable2d;
 use sophus_viewer::renderables::renderable2d::View2dPacket;
 use sophus_viewer::renderables::renderable3d::View3dPacket;
 use sophus_viewer::simple_viewer::NullPlugin;
@@ -18,11 +16,11 @@ use sophus_viewer::simple_viewer::ViewerBuilder;
 use sophus_viewer::simple_viewer::ViewerCamera;
 
 use crate::frame::Frame;
-use crate::renderable2d::Lines2;
-use crate::renderable3d::Lines3;
-use crate::renderable3d::Mesh3;
-use crate::renderable3d::Points3;
-use crate::renderable3d::Renderable3d;
+use crate::renderable2d::make_line2;
+use crate::renderable2d::make_point2;
+use crate::renderable3d::make_line3;
+use crate::renderable3d::make_mesh3_at;
+use crate::renderable3d::make_point3;
 
 fn create_view2_packet() -> Packet {
     let img = make_example_image(ImageSize {
@@ -37,11 +35,18 @@ fn create_view2_packet() -> Packet {
         frame: Some(Frame::from_image(&img)),
     };
 
-    let points2 = Points2::make("points2", &[[16.0, 12.0], [32.0, 24.0]], &Color::red(), 5.0);
-    packet_2d.renderables2d.push(Renderable2d::Points2(points2));
-
-    let lines2 = Lines2::make("lines2", &[[[0.0, 0.0], [20.0, 20.0]]], &Color::red(), 5.0);
-    packet_2d.renderables2d.push(Renderable2d::Lines2(lines2));
+    packet_2d.renderables2d.push(make_point2(
+        "points2",
+        &[[16.0, 12.0], [32.0, 24.0]],
+        &Color::red(),
+        5.0,
+    ));
+    packet_2d.renderables2d.push(make_line2(
+        "lines2",
+        &[[[0.0, 0.0], [20.0, 20.0]]],
+        &Color::red(),
+        5.0,
+    ));
 
     Packet::View2d(packet_2d)
 }
@@ -64,20 +69,19 @@ fn create_tiny_view2_packet() -> Packet {
         frame: Some(Frame::from_image(&img.to_shared().to_rgba())),
     };
 
-    let lines2 = Lines2::make(
+    packet_2d.renderables2d.push(make_line2(
         "lines2",
         &[[[-0.5, -0.5], [0.5, 0.5]], [[0.5, -0.5], [-0.5, 0.5]]],
         &Color::red(),
         2.0,
-    );
-    packet_2d.renderables2d.push(Renderable2d::Lines2(lines2));
+    ));
 
     Packet::View2d(packet_2d)
 }
 
 fn create_view3_packet() -> Packet {
     let initial_camera = ViewerCamera {
-        intrinsics: DynCamera::default_distorted(ImageSize::new(639, 477)),
+        intrinsics: DynCamera::default_pinhole(ImageSize::new(639, 477)),
         clipping_planes: ClippingPlanes::default(),
         scene_from_camera: Isometry3::trans_z(-5.0),
     };
@@ -89,10 +93,11 @@ fn create_view3_packet() -> Packet {
 
     let trig_points = [[0.0, 0.0, -0.1], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]];
 
-    let points3 = Points3::make("points3", &trig_points, &Color::red(), 5.0);
-    packet_3d.renderables3d.push(Renderable3d::Points3(points3));
+    packet_3d
+        .renderables3d
+        .push(make_point3("points3", &trig_points, &Color::red(), 5.0));
 
-    let lines3 = Lines3::make(
+    packet_3d.renderables3d.push(make_line3(
         "lines3",
         &[
             [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
@@ -101,21 +106,21 @@ fn create_view3_packet() -> Packet {
         ],
         &Color::green(),
         5.0,
-    );
-    packet_3d.renderables3d.push(Renderable3d::Lines3(lines3));
+    ));
 
     let blue = Color::blue();
-    let mesh = Mesh3::make("mesh", &[(trig_points, blue)]);
-    packet_3d
-        .renderables3d
-        .push(renderable3d::Renderable3d::Mesh3(mesh));
+    packet_3d.renderables3d.push(make_mesh3_at(
+        "mesh",
+        &[(trig_points, blue)],
+        Isometry3::trans_z(3.0),
+    ));
 
     Packet::View3d(packet_3d)
 }
 
 pub async fn run_viewer_example() {
-    let (message_tx, message_rx) = tokio::sync::mpsc::unbounded_channel();
-    let (cancel_tx, _cancel_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (message_tx, message_rx) = std::sync::mpsc::channel();
+    let (cancel_tx, _cancel_rx) = std::sync::mpsc::channel();
 
     tokio::spawn(async move {
         let mut packets = Packets { packets: vec![] };
@@ -130,7 +135,6 @@ pub async fn run_viewer_example() {
         cancel_request_sender: cancel_tx,
         plugin: NullPlugin {},
     };
-    env_logger::init();
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default().with_inner_size([640.0, 480.0]),
         renderer: eframe::Renderer::Wgpu,
@@ -151,6 +155,8 @@ pub async fn run_viewer_example() {
 }
 
 fn main() {
+    env_logger::init();
+
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()

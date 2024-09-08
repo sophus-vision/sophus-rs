@@ -27,16 +27,17 @@ egui_extras.workspace = true
 env_logger.workspace = true
 nalgebra.workspace = true
 ndarray.workspace = true
-tokio.workspace = true
 wgpu.workspace = true
+
+tokio = {version = "1", features = ["full"]}
 
 
 [features]
 simd = [
-    "sophus_core/simd",
-    "sophus_image/simd",
-    "sophus_lie/simd",
-    "sophus_opt/simd",
-    "sophus_sensor/simd",
-    "sophus_viewer/simd",
+  "sophus_core/simd",
+  "sophus_image/simd",
+  "sophus_lie/simd",
+  "sophus_opt/simd",
+  "sophus_sensor/simd",
+  "sophus_viewer/simd",
 ]

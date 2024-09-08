@@ -1,6 +1,8 @@
 use crate::prelude::*;
 use dyn_clone::DynClone;
 use sophus_core::linalg::VecF64;
+use sophus_lie::Isometry2F64;
+use sophus_lie::Isometry3F64;
 use sophus_lie::Isometry2;
 use sophus_lie::Isometry3;
 use sophus_sensor::BrownConradyCamera;
@@ -163,7 +165,7 @@ impl<const N: usize> IsVariable for VecF64<N> {
     }
 }
 
-impl IsVariable for Isometry2<f64, 1> {
+impl IsVariable for Isometry2F64 {
     const DOF: usize = 3;
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
@@ -178,7 +180,7 @@ impl IsVariable for Isometry2<f64, 1> {
     }
 }
 
-impl IsVariable for Isometry3<f64, 1> {
+impl IsVariable for Isometry3F64 {
     const DOF: usize = 6;
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {

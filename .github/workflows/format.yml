@@ -21,8 +21,8 @@ jobs:
           run: pre-commit run --all-files
         - uses: actions-rs/toolchain@v1
           with:
-            toolchain: nightly
+            toolchain: nightly-2024-09-01
         - name: cargo doc
           run: |
-            rustup default nightly
+            rustup default nightly-2024-09-01
             cargo doc --no-deps --all-features

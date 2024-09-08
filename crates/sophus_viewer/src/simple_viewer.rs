@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use eframe::egui;
-
 use eframe::egui::Response;
 use eframe::egui::Ui;
 use linked_hash_map::LinkedHashMap;
@@ -9,9 +8,10 @@ use sophus_core::linalg::VecF64;
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3;
+use sophus_lie::Isometry3F64;
 use sophus_sensor::DynCamera;
 
-use crate::offscreen_renderer::renderer::ClippingPlanes;
+use crate::offscreen_renderer::ClippingPlanes;
 use crate::renderables::Packet;
 use crate::renderables::Packets;
 use crate::views::aspect_ratio::get_adjusted_view_size;
@@ -34,7 +34,7 @@ pub struct ViewerCamera {
     /// Clipping planes
     pub clipping_planes: ClippingPlanes,
     /// Scene from camera pose
-    pub scene_from_camera: Isometry3<f64, 1>,
+    pub scene_from_camera: Isometry3F64,
 }
 
 impl Default for ViewerCamera {
@@ -67,7 +67,7 @@ pub trait IsUiPlugin: std::marker::Sized {
         &mut self,
         _view_name: &str,
         _response: &Response,
-        _scene_from_camera: &Isometry3<f64, 1>,
+        _scene_from_camera: &Isometry3F64,
     ) {
     }
 }
@@ -81,17 +81,19 @@ impl IsUiPlugin for NullPlugin {}
 pub struct Viewer<Plugin: IsUiPlugin> {
     state: ViewerRenderState,
     views: LinkedHashMap<String, View>,
-    message_recv: tokio::sync::mpsc::UnboundedReceiver<Packets>,
-    cancel_request_sender: tokio::sync::mpsc::UnboundedSender<CancelRequest>,
+    message_recv: std::sync::mpsc::Receiver<Packets>,
+    cancel_request_sender: std::sync::mpsc::Sender<CancelRequest>,
+    show_depth: bool,
+    backface_culling: bool,
     plugin: Plugin,
 }
 
 /// Simple viewer builder.
 pub struct ViewerBuilder<Plugin: IsUiPlugin> {
     /// Message receiver.
-    pub message_recv: tokio::sync::mpsc::UnboundedReceiver<Packets>,
+    pub message_recv: std::sync::mpsc::Receiver<Packets>,
     /// Cancel request sender.
-    pub cancel_request_sender: tokio::sync::mpsc::UnboundedSender<CancelRequest>,
+    pub cancel_request_sender: std::sync::mpsc::Sender<CancelRequest>,
     /// Plugin
     pub plugin: Plugin,
 }
@@ -107,6 +109,8 @@ impl<Plugin: IsUiPlugin> Viewer<Plugin> {
             views: LinkedHashMap::new(),
             message_recv: builder.message_recv,
             cancel_request_sender: builder.cancel_request_sender,
+            show_depth: false,
+            backface_culling: false,
             plugin: builder.plugin,
         })
     }
@@ -152,6 +156,10 @@ impl<Plugin: IsUiPlugin> eframe::App for Viewer<Plugin> {
             for (view_label, view) in self.views.iter_mut() {
                 ui.checkbox(view.enabled_mut(), view_label);
             }
+            ui.separator();
+            ui.checkbox(&mut self.show_depth, "show depth");
+            ui.checkbox(&mut self.backface_culling, "backface culling");
+            ui.separator();
             self.plugin.update_left_panel(ui, ctx);
         });
 
@@ -186,7 +194,15 @@ impl<Plugin: IsUiPlugin> eframe::App for Viewer<Plugin> {
                                     view.interaction.zoom2d(),
                                     view.interaction.scene_from_camera(),
                                     &view.interaction,
+                                    self.show_depth,
+                                    self.backface_culling,
                                 );
+
+                                let egui_texture = if self.show_depth {
+                                    render_result.depth_egui_tex_id
+                                } else {
+                                    render_result.rgba_egui_tex_id
+                                };
 
                                 let ui_response = ui.add(
                                     egui::Image::new(egui::load::SizedTexture {
@@ -194,7 +210,7 @@ impl<Plugin: IsUiPlugin> eframe::App for Viewer<Plugin> {
                                             adjusted_size.width,
                                             adjusted_size.height,
                                         ),
-                                        id: render_result.rgba_tex_id,
+                                        id: egui_texture,
                                     })
                                     .fit_to_exact_size(egui::Vec2 {
                                         x: adjusted_size.width,
@@ -228,6 +244,8 @@ impl<Plugin: IsUiPlugin> eframe::App for Viewer<Plugin> {
                                     view.interaction.zoom2d(),
                                     view.interaction.scene_from_camera(),
                                     &view.interaction,
+                                    false,
+                                    self.backface_culling,
                                 );
 
                                 let ui_response = ui.add(
@@ -236,7 +254,7 @@ impl<Plugin: IsUiPlugin> eframe::App for Viewer<Plugin> {
                                             adjusted_size.width,
                                             adjusted_size.height,
                                         ),
-                                        id: render_result.rgba_tex_id,
+                                        id: render_result.rgba_egui_tex_id,
                                     })
                                     .fit_to_exact_size(egui::Vec2 {
                                         x: adjusted_size.width,

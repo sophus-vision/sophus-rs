@@ -1,11 +1,12 @@
 use std::sync::Mutex;
 
+use sophus_lie::Isometry3F64;
 use sophus_sensor::distortion_table::DistortTable;
 use sophus_sensor::DynCamera;
 use wgpu::util::DeviceExt;
 
-use crate::offscreen_renderer::renderer::ClippingPlanes;
-use crate::offscreen_renderer::renderer::Zoom2d;
+use crate::offscreen_renderer::ClippingPlanes;
+use crate::offscreen_renderer::Zoom2d;
 use crate::ViewerRenderState;
 
 #[repr(C)]
@@ -39,18 +40,44 @@ struct View {
     scene_from_camera: [[f32; 4]; 4],
 }
 
+pub(crate) struct ViewUniform {
+    pub(crate) camera_from_entity_buffer: wgpu::Buffer,
+}
+
+impl ViewUniform {
+    pub(crate) fn update_given_camera_and_entity(&self, queue: &wgpu::Queue,
+        scene_from_camera: &Isometry3F64,
+        scene_from_entity: &Isometry3F64,
+    ) {
+        let camera_from_entity_mat4x4 = (scene_from_camera
+            .inverse()
+            .group_mul(scene_from_entity))
+        .matrix();
+
+        let mut camera_from_entity_uniform: [[f32; 4]; 4] = [[0.0; 4]; 4];
+        for i in 0..4 {
+            for j in 0..4 {
+                camera_from_entity_uniform[j][i] = camera_from_entity_mat4x4[(i, j)] as f32;
+            }
+        }
+        queue.write_buffer(
+            &self.camera_from_entity_buffer,
+            0,
+            bytemuck::cast_slice(&[camera_from_entity_uniform]),
+        );
+    }
+}
+
 /// Buffers for rendering a scene
 pub struct SceneRenderBuffers {
     pub(crate) bind_group: wgpu::BindGroup,
     pub(crate) frustum_uniform_buffer: wgpu::Buffer,
-    pub(crate) view_uniform_buffer: wgpu::Buffer,
+    pub(crate) view_uniform: ViewUniform,
     pub(crate) camara_params_buffer: wgpu::Buffer,
     pub(crate) zoom_buffer: wgpu::Buffer,
     pub(crate) dist_texture: wgpu::Texture,
     pub(crate) dist_bind_group: wgpu::BindGroup,
     pub(crate) distortion_lut: Mutex<Option<DistortTable>>,
-    pub(crate) background_texture: wgpu::Texture,
-    pub(crate) background_bind_group: wgpu::BindGroup,
 }
 
 impl SceneRenderBuffers {
@@ -190,73 +217,6 @@ impl SceneRenderBuffers {
             depth_or_array_layers: 1,
         };
 
-        let background_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
-                label: Some("background_texture_bind_group_layout"),
-            });
-
-        let background_texture_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Nearest,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
-
-        let background_texture_size = wgpu::Extent3d {
-            width: intrinsics.image_size().width as u32,
-            height: intrinsics.image_size().height as u32,
-            depth_or_array_layers: 1,
-        };
-        let background_texture = device.create_texture(&wgpu::TextureDescriptor {
-            size: background_texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            label: Some("dist_texture"),
-            view_formats: &[],
-        });
-
-        let background_texture_view =
-            background_texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-        let background_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &background_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&background_texture_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&background_texture_sampler),
-                },
-            ],
-            label: Some("background_bind_group"),
-        });
-
         let dist_texture = device.create_texture(&wgpu::TextureDescriptor {
             size: texture_size,
             mip_level_count: 1,
@@ -297,13 +257,13 @@ impl SceneRenderBuffers {
         Self {
             bind_group,
             frustum_uniform_buffer,
-            view_uniform_buffer: view_buffer,
+            view_uniform: ViewUniform {
+                camera_from_entity_buffer: view_buffer,
+            },
             camara_params_buffer: distortion_buffer,
             dist_texture,
             dist_bind_group,
             distortion_lut: Mutex::new(None),
-            background_bind_group,
-            background_texture,
             zoom_buffer,
         }
     }

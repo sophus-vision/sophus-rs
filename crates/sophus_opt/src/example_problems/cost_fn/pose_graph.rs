@@ -5,6 +5,7 @@ use crate::robust_kernel;
 use crate::term::MakeTerm;
 use crate::term::Term;
 use crate::variables::VarKind;
+use sophus_lie::Isometry2F64;
 use sophus_lie::Isometry2;
 
 /// residual function for a pose-pose constraint
@@ -23,15 +24,15 @@ pub fn res_fn<S: IsSingleScalar>(
 #[derive(Copy, Clone, Debug)]
 pub struct PoseGraphCostFn {}
 
-impl IsResidualFn<12, 2, (Isometry2<f64, 1>, Isometry2<f64, 1>), Isometry2<f64, 1>>
+impl IsResidualFn<12, 2, (Isometry2F64, Isometry2F64), Isometry2F64>
     for PoseGraphCostFn
 {
     fn eval(
         &self,
-        world_from_pose_x: (Isometry2<f64, 1>, Isometry2<f64, 1>),
+        world_from_pose_x: (Isometry2F64, Isometry2F64),
         var_kinds: [VarKind; 2],
         robust_kernel: Option<robust_kernel::RobustKernel>,
-        obs: &Isometry2<f64, 1>,
+        obs: &Isometry2F64,
     ) -> Term<12, 2> {
         let world_from_pose_a = world_from_pose_x.0;
         let world_from_pose_b = world_from_pose_x.1;
@@ -60,13 +61,13 @@ impl IsResidualFn<12, 2, (Isometry2<f64, 1>, Isometry2<f64, 1>), Isometry2<f64, 
 #[derive(Debug, Clone)]
 pub struct PoseGraphCostTermSignature {
     /// 2d relative pose constraint
-    pub pose_a_from_pose_b: Isometry2<f64, 1>,
+    pub pose_a_from_pose_b: Isometry2F64,
     /// ids of the two poses
     pub entity_indices: [usize; 2],
 }
 
 impl IsTermSignature<2> for PoseGraphCostTermSignature {
-    type Constants = Isometry2<f64, 1>;
+    type Constants = Isometry2F64;
 
     fn c_ref(&self) -> &Self::Constants {
         &self.pose_a_from_pose_b

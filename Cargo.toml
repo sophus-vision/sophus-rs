@@ -36,7 +36,7 @@ sophus_viewer = {path = "crates/sophus_viewer", version = "0.9.0"}
 
 approx = "0.5"
 as-any = "0.3"
-assertables = "7.0"
+assertables = "8.3"
 async-trait = "0.1"
 bytemuck = {version = "1.14", features = ["derive"]}
 concat-arrays = "0.1"
@@ -58,10 +58,12 @@ num-traits = "0.2"
 numpy = "0.21"
 png = "0.17"
 rand = "0.8"
-tokio = {version = "1", features = ["full"]}
 typenum = {version = "1.17", features = ["const-generics"]}
 wgpu = "0.20.1"
 winit = {version = "0.30", features = ["android-native-activity"]}
+
+[workspace.resolutions]
+eframe = "0.28.0"
 
 [profile.release]
 debug = 1

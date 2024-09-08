@@ -1,7 +1,7 @@
 use linked_hash_map::LinkedHashMap;
 use sophus_sensor::DynCamera;
 
-use crate::offscreen_renderer::renderer::OffscreenRenderer;
+use crate::offscreen_renderer::OffscreenRenderer;
 use crate::renderables::renderable2d::View2dPacket;
 use crate::views::aspect_ratio::HasAspectRatio;
 use crate::views::interactions::inplane_interaction::InplaneInteraction;

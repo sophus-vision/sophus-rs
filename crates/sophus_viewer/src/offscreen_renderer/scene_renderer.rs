@@ -15,21 +15,20 @@ pub mod textured_mesh;
 
 use sophus_core::calculus::region::IsRegion;
 use sophus_core::tensor::tensor_view::IsTensorLike;
-use sophus_image::arc_image::ArcImage4U8;
 use sophus_image::image_view::IsImageView;
-use sophus_lie::Isometry3;
+use sophus_lie::Isometry3F64;
 use sophus_sensor::distortion_table::distort_table;
 use sophus_sensor::dyn_camera::DynCamera;
 use wgpu::DepthStencilState;
 
-use crate::offscreen_renderer::renderer::ClippingPlanes;
-use crate::offscreen_renderer::renderer::TranslationAndScaling;
-use crate::offscreen_renderer::renderer::Zoom2d;
 use crate::offscreen_renderer::scene_renderer::buffers::Frustum;
 use crate::offscreen_renderer::scene_renderer::buffers::SceneRenderBuffers;
 use crate::offscreen_renderer::scene_renderer::mesh::MeshRenderer;
 use crate::offscreen_renderer::scene_renderer::point::ScenePointRenderer;
 use crate::offscreen_renderer::textures::ZBufferTexture;
+use crate::offscreen_renderer::ClippingPlanes;
+use crate::offscreen_renderer::TranslationAndScaling;
+use crate::offscreen_renderer::Zoom2d;
 use crate::ViewerRenderState;
 
 /// Scene renderer
@@ -153,13 +152,22 @@ impl SceneRenderer {
             ],
             push_constant_ranges: &[],
         });
+
+        let mesh_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("scene pipeline"),
+            bind_group_layouts: &[
+                &uniform_bind_group_layout,
+                &distortion_texture_bind_group_layout,
+            ],
+            push_constant_ranges: &[],
+        });
         let buffers = SceneRenderBuffers::new(wgpu_render_state, intrinsics);
 
         Self {
             buffers,
             mesh_renderer: MeshRenderer::new(
                 wgpu_render_state,
-                &pipeline_layout,
+                &mesh_pipeline_layout,
                 depth_stencil.clone(),
             ),
             textured_mesh_renderer: textured_mesh::TexturedMeshRenderer::new(
@@ -169,12 +177,12 @@ impl SceneRenderer {
             ),
             point_renderer: ScenePointRenderer::new(
                 wgpu_render_state,
-                &pipeline_layout,
+                &mesh_pipeline_layout,
                 depth_stencil.clone(),
             ),
             line_renderer: line::SceneLineRenderer::new(
                 wgpu_render_state,
-                &pipeline_layout,
+                &mesh_pipeline_layout,
                 depth_stencil,
             ),
         }
@@ -182,9 +190,12 @@ impl SceneRenderer {
 
     pub(crate) fn paint<'rp>(
         &'rp self,
+        state: &ViewerRenderState,
+        scene_from_camera: &Isometry3F64,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         texture_view: &'rp wgpu::TextureView,
         depth: &ZBufferTexture,
+        backface_culling: bool,
     ) {
         let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
@@ -208,34 +219,40 @@ impl SceneRenderer {
             timestamp_writes: None,
         });
         self.mesh_renderer.paint(
+            state,
+            scene_from_camera,
+            &self.buffers,
             &mut render_pass,
-            &self.buffers.bind_group,
-            &self.buffers.dist_bind_group,
-            &self.buffers.background_bind_group,
+            backface_culling
         );
         self.textured_mesh_renderer.paint(
+            state,
+            scene_from_camera,
+            &self.buffers,
             &mut render_pass,
-            &self.buffers.bind_group,
-            &self.buffers.dist_bind_group,
-            &self.buffers.background_bind_group,
         );
         self.point_renderer.paint(
+            state,
+            scene_from_camera,
+            &self.buffers,
             &mut render_pass,
-            &self.buffers.bind_group,
-            &self.buffers.dist_bind_group,
         );
         self.line_renderer.paint(
+            state,
+            scene_from_camera,
+            &self.buffers,
             &mut render_pass,
-            &self.buffers.bind_group,
-            &self.buffers.dist_bind_group,
         );
     }
 
     pub(crate) fn depth_paint<'rp>(
         &'rp self,
+        state: &ViewerRenderState,
+        scene_from_camera: &Isometry3F64,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         depth_texture_view: &'rp wgpu::TextureView,
         depth: &ZBufferTexture,
+        backface_culling: bool,
     ) {
         let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
@@ -259,30 +276,30 @@ impl SceneRenderer {
             timestamp_writes: None,
         });
         self.mesh_renderer.depth_paint(
+            state,
+            scene_from_camera,
+            &self.buffers,
             &mut render_pass,
-            &self.buffers.bind_group,
-            &self.buffers.dist_bind_group,
-            &self.buffers.background_bind_group,
+            backface_culling
         );
         self.textured_mesh_renderer.depth_paint(
+            state,
+            scene_from_camera,
+            &self.buffers,
             &mut render_pass,
-            &self.buffers.bind_group,
-            &self.buffers.dist_bind_group,
-            &self.buffers.background_bind_group,
         );
         self.line_renderer.depth_paint(
+            state,
+            scene_from_camera,
+            &self.buffers,
             &mut render_pass,
-            &self.buffers.bind_group,
-            &self.buffers.dist_bind_group,
         );
-    }
-
-    /// Clear the vertex data
-    pub fn clear_vertex_data(&mut self) {
-        self.line_renderer.vertex_data.clear();
-        self.point_renderer.vertex_data.clear();
-        self.mesh_renderer.vertices.clear();
-        self.textured_mesh_renderer.vertices.clear();
+        self.point_renderer.depth_paint(
+            state,
+            scene_from_camera,
+            &self.buffers,
+            &mut render_pass,
+        );
     }
 
     pub(crate) fn prepare(
@@ -290,30 +307,7 @@ impl SceneRenderer {
         state: &ViewerRenderState,
         zoom_2d: TranslationAndScaling,
         intrinsics: &DynCamera<f64, 1>,
-        scene_from_camera: &Isometry3<f64, 1>,
-        background_image: &Option<ArcImage4U8>,
     ) {
-        state.queue.write_buffer(
-            &self.point_renderer.vertex_buffer,
-            0,
-            bytemuck::cast_slice(self.point_renderer.vertex_data.as_slice()),
-        );
-        state.queue.write_buffer(
-            &self.line_renderer.vertex_buffer,
-            0,
-            bytemuck::cast_slice(self.line_renderer.vertex_data.as_slice()),
-        );
-        state.queue.write_buffer(
-            &self.mesh_renderer.vertex_buffer,
-            0,
-            bytemuck::cast_slice(self.mesh_renderer.vertices.as_slice()),
-        );
-        state.queue.write_buffer(
-            &self.textured_mesh_renderer.vertex_buffer,
-            0,
-            bytemuck::cast_slice(self.textured_mesh_renderer.vertices.as_slice()),
-        );
-
         let frustum_uniforms = Frustum {
             camera_image_width: intrinsics.image_size().width as f32,
             camera_image_height: intrinsics.image_size().height as f32,
@@ -377,35 +371,5 @@ impl SceneRenderer {
             );
         }
 
-        let mut scene_from_camera_uniform: [[f32; 4]; 4] = [[0.0; 4]; 4];
-        for i in 0..4 {
-            for j in 0..4 {
-                scene_from_camera_uniform[j][i] =
-                    scene_from_camera.inverse().matrix()[(i, j)] as f32;
-            }
-        }
-        state.queue.write_buffer(
-            &self.buffers.view_uniform_buffer,
-            0,
-            bytemuck::cast_slice(&[scene_from_camera_uniform]),
-        );
-
-        if let Some(background_image) = background_image {
-            state.queue.write_texture(
-                wgpu::ImageCopyTexture {
-                    texture: &self.buffers.background_texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                bytemuck::cast_slice(background_image.tensor.scalar_view().as_slice().unwrap()),
-                wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: Some(4 * background_image.image_size().width as u32),
-                    rows_per_image: Some(background_image.image_size().height as u32),
-                },
-                self.buffers.background_texture.size(),
-            );
-        }
     }
 }

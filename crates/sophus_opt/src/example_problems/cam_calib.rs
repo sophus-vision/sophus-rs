@@ -14,6 +14,7 @@ use crate::variables::VarPoolBuilder;
 use sophus_core::linalg::MatF64;
 use sophus_core::linalg::VecF64;
 use sophus_image::ImageSize;
+use sophus_lie::Isometry3F64;
 use sophus_lie::Isometry3;
 use sophus_lie::Rotation3;
 use sophus_sensor::PinholeCamera;
@@ -25,7 +26,7 @@ pub struct CamCalibProblem {
     /// intrinsics
     pub intrinsics: PinholeCamera<f64, 1>,
     /// world from camera isometries
-    pub world_from_cameras: Vec<Isometry3<f64, 1>>,
+    pub world_from_cameras: Vec<Isometry3F64>,
     /// points in world
     pub points_in_world: Vec<VecF64<3>>,
     /// observations
@@ -34,7 +35,7 @@ pub struct CamCalibProblem {
     /// true intrinsics
     pub true_intrinsics: PinholeCamera<f64, 1>,
     /// true world from camera isometries
-    pub true_world_from_cameras: Vec<Isometry3<f64, 1>>,
+    pub true_world_from_cameras: Vec<Isometry3F64>,
     /// true points in world
     pub true_points_in_world: Vec<VecF64<3>>,
 }
@@ -147,7 +148,7 @@ impl CamCalibProblem {
         id.insert(0, ());
         id.insert(1, ());
 
-        let pose_family: VarFamily<Isometry3<f64, 1>> = VarFamily::new_with_const_ids(
+        let pose_family: VarFamily<Isometry3F64> = VarFamily::new_with_const_ids(
             VarKind::Free,
             self.world_from_cameras.clone(),
             id.clone(),
@@ -178,7 +179,7 @@ impl CamCalibProblem {
             },
         );
 
-        let refined_world_from_robot = up_var_pool.get_members::<Isometry3<f64, 1>>("poses".into());
+        let refined_world_from_robot = up_var_pool.get_members::<Isometry3F64>("poses".into());
 
         approx::assert_abs_diff_eq!(
             refined_world_from_robot[2].translation(),
@@ -190,7 +191,7 @@ impl CamCalibProblem {
     /// optimize with priors
     pub fn optimize_with_priors(&self) {
         let priors =
-            CostSignature::<1, (Isometry3<f64, 1>, MatF64<6, 6>), Isometry3PriorTermSignature> {
+            CostSignature::<1, (Isometry3F64, MatF64<6, 6>), Isometry3PriorTermSignature> {
                 family_names: ["poses".into()],
                 terms: vec![
                     Isometry3PriorTermSignature {
@@ -218,7 +219,7 @@ impl CamCalibProblem {
         let cam_family: VarFamily<PinholeCamera<f64, 1>> =
             VarFamily::new(VarKind::Conditioned, vec![self.intrinsics]);
 
-        let pose_family: VarFamily<Isometry3<f64, 1>> =
+        let pose_family: VarFamily<Isometry3F64> =
             VarFamily::new(VarKind::Free, self.world_from_cameras.clone());
 
         let point_family: VarFamily<VecF64<3>> =
@@ -242,7 +243,7 @@ impl CamCalibProblem {
             },
         );
 
-        let refined_world_from_robot = up_var_pool.get_members::<Isometry3<f64, 1>>("poses".into());
+        let refined_world_from_robot = up_var_pool.get_members::<Isometry3F64>("poses".into());
 
         println!(
             "refined_world_from_robot[0].translation(): {:?}",
