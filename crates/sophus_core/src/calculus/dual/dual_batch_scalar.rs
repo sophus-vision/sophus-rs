@@ -5,6 +5,7 @@ use crate::linalg::scalar::NumberCategory;
 use crate::linalg::BatchMatF64;
 use crate::linalg::BatchScalarF64;
 use crate::linalg::BatchVecF64;
+use crate::linalg::EPS_F64;
 use crate::prelude::*;
 use crate::tensor::mut_tensor::InnerScalarToVec;
 use crate::tensor::mut_tensor::MutTensorDD;
@@ -314,6 +315,10 @@ where
 
     fn to_real_array(&self) -> [f64; BATCH] {
         self.real_part.to_real_array()
+    }
+
+    fn eps() -> Self {
+        Self::from_f64(EPS_F64)
     }
 
     fn extract_single(&self, i: usize) -> Self::SingleScalar {

@@ -1,7 +1,6 @@
 use eframe::egui;
 use sophus_core::linalg::VecF64;
 use sophus_image::ImageSize;
-use sophus_lie::traits::IsTranslationProductGroup;
 use sophus_lie::Isometry3;
 use sophus_sensor::DynCamera;
 

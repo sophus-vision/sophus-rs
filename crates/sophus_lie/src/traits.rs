@@ -257,3 +257,20 @@ pub trait IsTranslationProductGroup<
     /// get factor group element
     fn factor(&self) -> FactorGroup;
 }
+
+/// slice is empty
+#[derive(Debug)]
+pub struct EmptySliceError;
+
+/// Lie Group trait
+pub trait HasAverage<
+    S: IsSingleScalar,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+>: IsLieGroup<S, DOF, PARAMS, POINT, AMBIENT, 1> + std::marker::Sized
+{
+    /// Lie group average
+    fn average(parent_from_body_transforms: &[Self]) -> Result<Self, EmptySliceError>;
+}

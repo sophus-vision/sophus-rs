@@ -3,6 +3,7 @@ use crate::calculus::dual::DualScalar;
 use crate::calculus::dual::DualVector;
 use crate::linalg::MatF64;
 use crate::linalg::VecF64;
+use crate::linalg::EPS_F64;
 use crate::prelude::*;
 use approx::assert_abs_diff_eq;
 use approx::AbsDiffEq;
@@ -137,6 +138,9 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
 
     /// cosine
     fn cos(self) -> Self;
+
+    /// eps
+    fn eps() -> Self;
 
     /// Returns value of single lane
     fn extract_single(&self, i: usize) -> Self::SingleScalar;
@@ -292,6 +296,10 @@ impl IsScalar<1> for f64 {
 
     fn cos(self) -> f64 {
         f64::cos(self)
+    }
+
+    fn eps() -> f64 {
+        EPS_F64
     }
 
     fn sin(self) -> f64 {

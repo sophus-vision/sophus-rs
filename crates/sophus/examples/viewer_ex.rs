@@ -1,11 +1,9 @@
 use sophus::examples::viewer_example::make_example_image;
 use sophus::image::ImageSize;
 use sophus::viewer::renderables::*;
-use sophus_core::linalg::VecF64;
 use sophus_image::intensity_image::intensity_arc_image::IsIntensityArcImage;
 use sophus_image::mut_image::MutImageF32;
 use sophus_image::mut_image_view::IsMutImageView;
-use sophus_lie::traits::IsTranslationProductGroup;
 use sophus_lie::Isometry3;
 use sophus_sensor::DynCamera;
 use sophus_viewer::offscreen_renderer::renderer::ClippingPlanes;
@@ -14,8 +12,9 @@ use sophus_viewer::renderables::renderable2d::Points2;
 use sophus_viewer::renderables::renderable2d::Renderable2d;
 use sophus_viewer::renderables::renderable2d::View2dPacket;
 use sophus_viewer::renderables::renderable3d::View3dPacket;
+use sophus_viewer::simple_viewer::NullPlugin;
 use sophus_viewer::simple_viewer::SimpleViewer;
-use sophus_viewer::simple_viewer::SimplerViewerBuilder;
+use sophus_viewer::simple_viewer::ViewerBuilder;
 use sophus_viewer::simple_viewer::ViewerCamera;
 
 use crate::frame::Frame;
@@ -80,7 +79,7 @@ fn create_view3_packet() -> Packet {
     let initial_camera = ViewerCamera {
         intrinsics: DynCamera::default_distorted(ImageSize::new(639, 477)),
         clipping_planes: ClippingPlanes::default(),
-        scene_from_camera: Isometry3::from_t(&VecF64::<3>::new(0.0, 0.0, -5.0)),
+        scene_from_camera: Isometry3::trans_z(-5.0),
     };
     let mut packet_3d = View3dPacket {
         view_label: "view_3d".to_owned(),
@@ -126,9 +125,10 @@ pub async fn run_viewer_example() {
         message_tx.send(packets).unwrap();
     });
 
-    let builder = SimplerViewerBuilder {
+    let builder = ViewerBuilder::<NullPlugin> {
         message_recv: message_rx,
         cancel_request_sender: cancel_tx,
+        plugin: NullPlugin {},
     };
     env_logger::init();
     let options = eframe::NativeOptions {

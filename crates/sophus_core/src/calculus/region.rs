@@ -45,21 +45,18 @@ impl<const D: usize> IRegion<D> {
 }
 
 /// Traits for regions
-pub trait IsRegion<const D: usize, P: IsPoint<D>> {
-    /// Region type
-    type Region;
-
+pub trait IsRegion<const D: usize, P: IsPoint<D>>: std::marker::Sized {
     /// create unbounded region
     fn unbounded() -> Self;
 
     /// create empty region
-    fn empty() -> Self::Region;
+    fn empty() -> Self;
 
     /// create region from min and max values
-    fn from_min_max(min: P, max: P) -> Self::Region;
+    fn from_min_max(min: P, max: P) -> Self;
 
     /// create region from point
-    fn from_point(point: P) -> Self::Region {
+    fn from_point(point: P) -> Self {
         Self::from_min_max(point, point)
     }
 
@@ -107,6 +104,18 @@ pub trait IsRegion<const D: usize, P: IsPoint<D>> {
     /// clamp point to the region
     fn clamp(&self, p: P) -> P;
 
+    /// intersect
+    fn intersect(self, other: Self) -> Self {
+        if other.is_empty() {
+            return other;
+        }
+        if self.is_empty() {
+            return self;
+        }
+
+        Self::from_min_max(self.clamp(other.min()), self.clamp(other.max()))
+    }
+
     /// check if the region contains a point
     fn contains(&self, p: P) -> bool {
         if self.is_empty() {
@@ -123,21 +132,19 @@ pub trait IsRegion<const D: usize, P: IsPoint<D>> {
 }
 
 impl IsRegion<1, f64> for Interval {
-    type Region = Self;
-
     fn unbounded() -> Self {
         Self {
             min_max: Option::Some((f64::NEG_INFINITY, f64::INFINITY)),
         }
     }
 
-    fn empty() -> Self::Region {
+    fn empty() -> Self {
         Self {
             min_max: Option::None,
         }
     }
 
-    fn from_min_max(min: f64, max: f64) -> Self::Region {
+    fn from_min_max(min: f64, max: f64) -> Self {
         Self {
             min_max: Option::Some((min, max)),
         }
@@ -195,8 +202,6 @@ impl IsRegion<1, f64> for Interval {
 }
 
 impl<const D: usize> IsRegion<D, SVector<f64, D>> for Region<D> {
-    type Region = Self;
-
     fn unbounded() -> Self {
         let s: SVector<f64, D> = SVector::<f64, D>::smallest();
         let l: SVector<f64, D> = SVector::<f64, D>::largest();
@@ -269,21 +274,19 @@ impl<const D: usize> IsRegion<D, SVector<f64, D>> for Region<D> {
 }
 
 impl IsRegion<1, i64> for IInterval {
-    type Region = Self;
-
     fn unbounded() -> Self {
         Self {
             min_max: Option::Some((i64::MIN, i64::MAX)),
         }
     }
 
-    fn empty() -> Self::Region {
+    fn empty() -> Self {
         Self {
             min_max: Option::None,
         }
     }
 
-    fn from_min_max(min: i64, max: i64) -> Self::Region {
+    fn from_min_max(min: i64, max: i64) -> Self {
         Self {
             min_max: Option::Some((min, max)),
         }
@@ -338,8 +341,6 @@ impl IsRegion<1, i64> for IInterval {
 }
 
 impl<const D: usize> IsRegion<D, SVector<i64, D>> for IRegion<D> {
-    type Region = Self;
-
     fn unbounded() -> Self {
         let s: SVector<i64, D> = SVector::<i64, D>::smallest();
         let l: SVector<i64, D> = SVector::<i64, D>::largest();

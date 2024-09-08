@@ -21,7 +21,7 @@ pub fn make_lines2d(name: &str, viz_lines_2d: Vec<Line2>) -> Renderable2d {
     })
 }
 
-/// Create 2d points  
+/// Create 2d points
 pub fn make_points2d(name: &str, viz_points_2d: Vec<Point2>) -> Renderable2d {
     Renderable2d::Points2(Points2 {
         name: name.to_owned(),

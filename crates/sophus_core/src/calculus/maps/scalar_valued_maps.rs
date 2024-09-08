@@ -137,6 +137,7 @@ fn scalar_valued_map_tests() {
     use crate::calculus::dual::DualBatchScalar;
     #[cfg(feature = "simd")]
     use crate::linalg::BatchScalarF64;
+    use crate::linalg::EPS_F64;
 
     #[cfg(test)]
     trait Test {
@@ -161,7 +162,9 @@ fn scalar_valued_map_tests() {
                     }
 
                     let finite_diff =
-                        ScalarValuedMapFromVector::<$scalar, $batch>::sym_diff_quotient(f, a, 1e-6);
+                        ScalarValuedMapFromVector::<$scalar, $batch>::sym_diff_quotient(
+                            f, a, EPS_F64,
+                        );
                     let auto_grad =
                         ScalarValuedMapFromVector::<$dual_scalar, $batch>::fw_autodiff(f, a);
                     approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
@@ -191,7 +194,7 @@ fn scalar_valued_map_tests() {
                         ScalarValuedMapFromMatrix::<$scalar, $batch>::sym_diff_quotient(
                             determinant_fn,
                             mat,
-                            1e-6,
+                            EPS_F64,
                         );
                     let auto_grad = ScalarValuedMapFromMatrix::<$dual_scalar, $batch>::fw_autodiff(
                         determinant_fn,

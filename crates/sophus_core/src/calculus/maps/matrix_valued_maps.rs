@@ -159,6 +159,7 @@ fn matrix_valued_map_from_vector_tests() {
     use crate::calculus::maps::matrix_valued_maps::MatrixValuedMapFromVector;
     use crate::linalg::scalar::IsScalar;
     use crate::linalg::vector::IsVector;
+    use crate::linalg::EPS_F64;
     use crate::tensor::tensor_view::IsTensorLike;
 
     #[cfg(feature = "simd")]
@@ -222,7 +223,7 @@ fn matrix_valued_map_from_vector_tests() {
                             MatrixValuedMapFromVector::<$scalar, $batch>::sym_diff_quotient(
                                 hat_fn::<$scalar, $batch>,
                                 a,
-                                1e-6,
+                                EPS_F64,
                             );
                         let auto_grad =
                             MatrixValuedMapFromVector::<$dual_scalar, $batch>::fw_autodiff(
@@ -268,7 +269,7 @@ fn matrix_valued_map_from_vector_tests() {
                         MatrixValuedMapFromMatrix::<$scalar, $batch>::sym_diff_quotient(
                             f::<$scalar, $batch>,
                             a,
-                            1e-6,
+                            EPS_F64,
                         );
                     let auto_grad = MatrixValuedMapFromMatrix::<$dual_scalar, $batch>::fw_autodiff(
                         f::<$dual_scalar, $batch>,

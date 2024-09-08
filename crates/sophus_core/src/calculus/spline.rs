@@ -1,6 +1,8 @@
 /// Cubic B-Spline details
 pub mod spline_segment;
 
+use log::debug;
+
 use crate::calculus::spline::spline_segment::CubicBSplineSegment;
 use crate::calculus::spline::spline_segment::SegmentCase;
 use crate::prelude::*;
@@ -178,22 +180,22 @@ impl<S: IsSingleScalar + 'static, const DIMS: usize> CubicBSpline<S, DIMS> {
             segment_idx: normalized_t.i64_floor() as usize,
             u: normalized_t.clone().fract(),
         };
-        println!("{:?}", idx_and_u);
+        debug!("{:?}", idx_and_u);
 
         let eps = 0.00001;
 
         if idx_and_u.u.single_real_scalar() > eps {
-            println!("case A");
+            debug!("case A");
             return idx_and_u;
         }
 
         // i < N/2
         if idx_and_u.segment_idx < self.num_segments() / 2 {
-            println!("case B");
+            debug!("case B");
             return idx_and_u;
         }
 
-        println!("case C");
+        debug!("case C");
 
         idx_and_u.segment_idx -= 1;
         idx_and_u.u += S::from_f64(1.0);
@@ -224,6 +226,7 @@ mod test {
         use super::super::spline::CubicBSpline;
         use super::super::spline::CubicBSplineParams;
         use crate::points::example_points;
+        use log::info;
 
         let points = example_points::<f64, 2, 1>();
         for (t0, delta_t) in [(0.0, 1.0)] {
@@ -234,7 +237,7 @@ mod test {
             points.reverse();
             let rspline = CubicBSpline::new(points, params);
 
-            println!("tmax: {}", spline.t_max());
+            info!("tmax: {}", spline.t_max());
 
             let mut t = t0;
 
@@ -243,15 +246,15 @@ mod test {
                     break;
                 }
 
-                println!("t {}", t);
-                println!("{:?}", spline.idx_involved(t));
+                info!("t {}", t);
+                info!("{:?}", spline.idx_involved(t));
 
-                println!("i: {}", spline.interpolate(t));
-                println!("i': {}", rspline.interpolate(spline.t_max() - t));
+                info!("i: {}", spline.interpolate(t));
+                info!("i': {}", rspline.interpolate(spline.t_max() - t));
 
                 for i in 0..spline.num_segments() {
-                    println!("dx: {} {}", i, spline.dxi_interpolate(t, i));
-                    println!(
+                    info!("dx: {} {}", i, spline.dxi_interpolate(t, i));
+                    info!(
                         "dx': {} {}",
                         i,
                         rspline.dxi_interpolate(spline.t_max() - t, spline.num_segments() - i)
@@ -260,7 +263,7 @@ mod test {
                 t += 0.1;
             }
 
-            println!("{:?}", spline.idx_involved(1.01));
+            info!("{:?}", spline.idx_involved(1.01));
         }
     }
 }

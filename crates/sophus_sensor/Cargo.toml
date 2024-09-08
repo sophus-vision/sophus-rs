@@ -16,6 +16,7 @@ sophus_image.workspace = true
 
 approx.workspace = true
 assertables.workspace = true
+log.workspace = true
 nalgebra.workspace = true
 ndarray.workspace = true
 num-traits.workspace = true

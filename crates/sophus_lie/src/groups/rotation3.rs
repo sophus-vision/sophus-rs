@@ -1,10 +1,16 @@
+use crate::average::iterative_average;
+use crate::average::IterativeAverageError;
 use crate::lie_group::LieGroup;
 use crate::prelude::*;
+use crate::traits::EmptySliceError;
+use crate::traits::HasAverage;
 use crate::traits::IsLieGroupImpl;
 use crate::traits::IsRealLieFactorGroupImpl;
 use crate::traits::IsRealLieGroupImpl;
+use log::warn;
 use sophus_core::linalg::vector::cross;
 use sophus_core::linalg::MatF64;
+use sophus_core::linalg::EPS_F64;
 use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
 use std::marker::PhantomData;
@@ -50,7 +56,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 4, BATCH> for Rotatio
         let norm = params.norm();
         (norm - S::from_f64(1.0))
             .abs()
-            .less_equal(&S::from_f64(1e-6))
+            .less_equal(&S::from_f64(EPS_F64))
     }
 }
 
@@ -89,7 +95,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsLieGroupImpl<S, 3, 4, 3, 3, BATCH
     }
 
     fn exp(omega: &S::Vector<3>) -> S::Vector<4> {
-        const EPS: f64 = 1e-8;
+        const EPS: f64 = EPS_F64;
         let theta_sq = omega.squared_norm();
 
         let theta_po4 = theta_sq.clone() * theta_sq.clone();
@@ -115,7 +121,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsLieGroupImpl<S, 3, 4, 3, 3, BATCH
     }
 
     fn log(params: &S::Vector<4>) -> S::Vector<3> {
-        const EPS: f64 = 1e-8;
+        const EPS: f64 = EPS_F64;
         let ivec: S::Vector<3> = params.get_fixed_subvec::<3>(1);
 
         let squared_n = ivec.squared_norm();
@@ -233,7 +239,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsLieGroupImpl<S, 3, 4, 3, 3, BATCH
 
         if ((params.norm() - S::from_f64(1.0))
             .abs()
-            .greater_equal(&S::from_f64(1e-7)))
+            .greater_equal(&S::from_f64(EPS_F64)))
         .any()
         {
             // todo: use tailor approximation for norm close to 1
@@ -290,11 +296,9 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
     fn dx_exp(omega: &S::Vector<3>) -> S::Matrix<4, 3> {
         let theta_sq = omega.squared_norm();
 
-        let near_zero = theta_sq.less_equal(&S::from_f64(1e-6));
+        let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
 
         let dx0 = Self::dx_exp_x_at_0();
-
-        println!("dx0\n{:?}", dx0);
 
         let omega_0 = omega.get_elem(0);
         let omega_1 = omega.get_elem(1);
@@ -331,7 +335,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
         let w = params.get_elem(0);
         let squared_n = ivec.squared_norm();
 
-        let near_zero = squared_n.less_equal(&S::from_f64(1e-6));
+        let near_zero = squared_n.less_equal(&S::from_f64(EPS_F64));
 
         let m0 = S::Matrix::<3, 4>::block_mat1x2(
             S::Matrix::<3, 1>::zeros(),
@@ -360,7 +364,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
         let theta = Self::log(params).norm();
         (theta - S::from_f64(std::f64::consts::PI))
             .abs()
-            .less_equal(&S::from_f64(1e-6))
+            .less_equal(&S::from_f64(EPS_F64))
     }
 }
 
@@ -376,7 +380,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> crate::traits::IsLieFactorGroupImpl
         let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH>::hat(omega);
         let mat_omega_sq = mat_omega.clone().mat_mul(mat_omega.clone());
 
-        let near_zero = theta_sq.less_equal(&S::from_f64(1e-6));
+        let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
 
         let mat_v0 = S::Matrix::<3, 3>::identity() + mat_omega.scaled(S::from_f64(0.5));
 
@@ -393,7 +397,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> crate::traits::IsLieFactorGroupImpl
         let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH>::hat(omega);
         let mat_omega_sq = mat_omega.clone().mat_mul(mat_omega.clone());
 
-        let near_zero = theta_sq.less_equal(&S::from_f64(1e-6));
+        let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
 
         let mat_v_inv0 = S::Matrix::<3, 3>::identity() - mat_omega.scaled(S::from_f64(0.5))
             + mat_omega_sq.scaled(S::from_f64(1. / 12.));
@@ -430,7 +434,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
         let dt_mat_omega_pos_idx = [[2, 1], [0, 2], [1, 0]];
         let dt_mat_omega_neg_idx = [[1, 2], [2, 0], [0, 1]];
 
-        let near_zero = theta_sq.less_equal(&S::from_f64(1e-6));
+        let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
 
         let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH>::hat(omega);
         let mat_omega_sq = mat_omega.clone().mat_mul(mat_omega.clone());
@@ -471,20 +475,12 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
         ];
 
         let a = S::from_f64(0.5).select(&near_zero, a);
-        println!("a = {:?}", a);
-
-        println!("omega = {:?}", omega);
-        println!("b = {:?}", b);
-        println!("dt_b = {:?}", dt_b);
-
-        println!("dt_mat_omega_sq = {:?}", dt_mat_omega_sq);
 
         let set = |i| {
             let tmp0 = mat_omega.clone().scaled(dt_a * domega_theta.get_elem(i));
             let tmp1 = dt_mat_omega_sq[i].scaled(b);
             let tmp2 = mat_omega_sq.scaled(dt_b * domega_theta.get_elem(i));
 
-            println!("tmp2 = {:?}", tmp2);
             let mut l_i: S::Matrix<3, 3> =
                 S::Matrix::zeros().select(&near_zero, tmp0 + tmp1 + tmp2);
             let pos_idx = dt_mat_omega_pos_idx[i];
@@ -552,7 +548,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
         let omega_y = omega.get_elem(1);
         let omega_z = omega.get_elem(2);
 
-        let near_zero = theta_sq.less_equal(&S::from_f64(1e-6));
+        let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
 
         let domega_theta =
             S::Vector::from_array([omega_x / theta, omega_y / theta, omega_z / theta]);
@@ -641,7 +637,7 @@ impl<S: IsSingleScalar + PartialOrd> Rotation3<S, 1> {
     /// From a 3x3 rotation matrix. The matrix must be a valid rotation matrix,
     /// i.e., it must be orthogonal with determinant 1, otherwise None is returned.
     pub fn try_from_mat(mat_r: &S::SingleMatrix<3, 3>) -> Option<Rotation3<S, 1>> {
-        if !Self::is_orthogonal_with_positive_det(&mat_r.single_real_matrix(), 1e-5) {
+        if !Self::is_orthogonal_with_positive_det(&mat_r.single_real_matrix(), EPS_F64) {
             return None;
         }
         // Quaternions, Ken Shoemake
@@ -797,28 +793,49 @@ fn rotation3_prop_tests() {
     Rotation3::<BatchScalarF64<8>, 8>::run_real_factor_tests();
 }
 
+impl<S: IsSingleScalar + PartialOrd> HasAverage<S, 3, 4, 3, 3> for Rotation3<S, 1> {
+    fn average(parent_from_body_transforms: &[Rotation3<S, 1>]) -> Result<Self, EmptySliceError> {
+        // todo: Implement close form solution.
+
+        match iterative_average(parent_from_body_transforms, 50) {
+            Ok(parent_from_body_average) => Ok(parent_from_body_average),
+            Err(err) => match err {
+                IterativeAverageError::EmptySlice => Err(EmptySliceError),
+                IterativeAverageError::NotConverged(not_conv) => {
+                    warn!(
+                        "iterative_average did not converge (iters={}), returning best guess.",
+                        not_conv.max_iteration_count
+                    );
+                    Ok(not_conv.parent_from_body_estimate)
+                }
+            },
+        }
+    }
+}
+
 #[test]
 fn from_matrix_test() {
     use approx::assert_relative_eq;
+    use log::info;
 
     for q in Rotation3::<f64, 1>::element_examples() {
         let mat: MatF64<3, 3> = q.matrix();
 
-        println!("mat = {:?}", mat);
+        info!("mat = {:?}", mat);
         let q2: Rotation3<f64, 1> = Rotation3::try_from_mat(&mat).unwrap();
         let mat2 = q2.matrix();
 
-        println!("mat2 = {:?}", mat2);
-        assert_relative_eq!(mat, mat2, epsilon = 1e-6);
+        info!("mat2 = {:?}", mat2);
+        assert_relative_eq!(mat, mat2, epsilon = EPS_F64);
     }
 
     // Iterate over all tangent too, just to get more examples.
     for t in Rotation3::<f64, 1>::tangent_examples() {
         let mat: MatF64<3, 3> = Rotation3::<f64, 1>::exp(&t).matrix();
-        println!("mat = {:?}", mat);
+        info!("mat = {:?}", mat);
         let t2: Rotation3<f64, 1> = Rotation3::try_from_mat(&mat).unwrap();
         let mat2 = t2.matrix();
-        println!("mat2 = {:?}", mat2);
-        assert_relative_eq!(mat, mat2, epsilon = 1e-6);
+        info!("mat2 = {:?}", mat2);
+        assert_relative_eq!(mat, mat2, epsilon = EPS_F64);
     }
 }

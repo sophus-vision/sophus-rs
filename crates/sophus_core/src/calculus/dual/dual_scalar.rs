@@ -5,6 +5,7 @@ use crate::linalg::scalar::NumberCategory;
 
 use crate::linalg::MatF64;
 use crate::linalg::VecF64;
+use crate::linalg::EPS_F64;
 use crate::prelude::*;
 use crate::tensor::mut_tensor::InnerScalarToVec;
 use crate::tensor::mut_tensor::MutTensorDD;
@@ -77,7 +78,7 @@ impl AbsDiffEq for DualScalar {
     type Epsilon = f64;
 
     fn default_epsilon() -> Self::Epsilon {
-        1e-6
+        EPS_F64
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
@@ -87,7 +88,7 @@ impl AbsDiffEq for DualScalar {
 
 impl RelativeEq for DualScalar {
     fn default_max_relative() -> Self::Epsilon {
-        1e-6
+        EPS_F64
     }
 
     fn relative_eq(
@@ -506,6 +507,10 @@ impl IsScalar<1> for DualScalar {
     fn greater_equal(&self, rhs: &Self) -> Self::Mask {
         self.real_part.greater_equal(&rhs.real_part)
     }
+
+    fn eps() -> Self {
+        Self::from_real_scalar(EPS_F64)
+    }
 }
 
 impl AddAssign<DualScalar> for DualScalar {
@@ -634,7 +639,8 @@ fn dual_scalar_tests() {
                         fn dual_square_fn(x: $dual_scalar) -> $dual_scalar {
                             x.clone() * x
                         }
-                        let finite_diff = ScalarValuedCurve::sym_diff_quotient(square_fn, a, 1e-6);
+                        let finite_diff =
+                            ScalarValuedCurve::sym_diff_quotient(square_fn, a, EPS_F64);
                         let auto_grad = ScalarValuedCurve::fw_autodiff(dual_square_fn, a);
                         approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
@@ -647,7 +653,7 @@ fn dual_scalar_tests() {
                             }
 
                             let finite_diff =
-                                ScalarValuedCurve::sym_diff_quotient(|x| add_fn(x, b), a, 1e-6);
+                                ScalarValuedCurve::sym_diff_quotient(|x| add_fn(x, b), a, EPS_F64);
                             let auto_grad = ScalarValuedCurve::fw_autodiff(
                                 |x| dual_add_fn(x, <$dual_scalar>::from_real_scalar(b)),
                                 a,
@@ -655,7 +661,7 @@ fn dual_scalar_tests() {
                             approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
                             let finite_diff =
-                                ScalarValuedCurve::sym_diff_quotient(|x| add_fn(b, x), a, 1e-6);
+                                ScalarValuedCurve::sym_diff_quotient(|x| add_fn(b, x), a, EPS_F64);
                             let auto_grad = ScalarValuedCurve::fw_autodiff(
                                 |x| dual_add_fn(<$dual_scalar>::from_real_scalar(b), x),
                                 a,
@@ -671,7 +677,7 @@ fn dual_scalar_tests() {
                                 x - y
                             }
                             let finite_diff =
-                                ScalarValuedCurve::sym_diff_quotient(|x| sub_fn(x, b), a, 1e-6);
+                                ScalarValuedCurve::sym_diff_quotient(|x| sub_fn(x, b), a, EPS_F64);
                             let auto_grad = ScalarValuedCurve::fw_autodiff(
                                 |x| dual_sub_fn(x, <$dual_scalar>::from_real_scalar(b)),
                                 a,
@@ -679,7 +685,7 @@ fn dual_scalar_tests() {
                             approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
                             let finite_diff =
-                                ScalarValuedCurve::sym_diff_quotient(|x| sub_fn(b, x), a, 1e-6);
+                                ScalarValuedCurve::sym_diff_quotient(|x| sub_fn(b, x), a, EPS_F64);
                             let auto_grad = ScalarValuedCurve::fw_autodiff(
                                 |x| dual_sub_fn(<$dual_scalar>::from_real_scalar(b), x),
                                 a,
@@ -695,7 +701,7 @@ fn dual_scalar_tests() {
                                 x * y
                             }
                             let finite_diff =
-                                ScalarValuedCurve::sym_diff_quotient(|x| mul_fn(x, b), a, 1e-6);
+                                ScalarValuedCurve::sym_diff_quotient(|x| mul_fn(x, b), a, EPS_F64);
                             let auto_grad = ScalarValuedCurve::fw_autodiff(
                                 |x| dual_mul_fn(x, <$dual_scalar>::from_real_scalar(b)),
                                 a,
@@ -703,7 +709,7 @@ fn dual_scalar_tests() {
                             approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
                             let finite_diff =
-                                ScalarValuedCurve::sym_diff_quotient(|x| mul_fn(x, b), a, 1e-6);
+                                ScalarValuedCurve::sym_diff_quotient(|x| mul_fn(x, b), a, EPS_F64);
                             let auto_grad = ScalarValuedCurve::fw_autodiff(
                                 |x| dual_mul_fn(x, <$dual_scalar>::from_real_scalar(b)),
                                 a,
@@ -718,7 +724,7 @@ fn dual_scalar_tests() {
                             x / y
                         }
                         let finite_diff =
-                            ScalarValuedCurve::sym_diff_quotient(|x| div_fn(x, b), a, 1e-6);
+                            ScalarValuedCurve::sym_diff_quotient(|x| div_fn(x, b), a, EPS_F64);
                         let auto_grad = ScalarValuedCurve::fw_autodiff(
                             |x| dual_div_fn(x, <$dual_scalar>::from_real_scalar(b)),
                             a,
@@ -726,7 +732,7 @@ fn dual_scalar_tests() {
                         approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
                         let finite_diff =
-                            ScalarValuedCurve::sym_diff_quotient(|x| div_fn(x, b), a, 1e-6);
+                            ScalarValuedCurve::sym_diff_quotient(|x| div_fn(x, b), a, EPS_F64);
                         let auto_grad = ScalarValuedCurve::fw_autodiff(
                             |x| dual_div_fn(x, <$dual_scalar>::from_real_scalar(b)),
                             a,
@@ -734,7 +740,7 @@ fn dual_scalar_tests() {
                         approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
                         let finite_diff =
-                            ScalarValuedCurve::sym_diff_quotient(|x| div_fn(b, x), a, 1e-6);
+                            ScalarValuedCurve::sym_diff_quotient(|x| div_fn(b, x), a, EPS_F64);
                         let auto_grad = ScalarValuedCurve::fw_autodiff(
                             |x| dual_div_fn(<$dual_scalar>::from_real_scalar(b), x),
                             a,
@@ -742,7 +748,7 @@ fn dual_scalar_tests() {
                         approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
                         let finite_diff =
-                            ScalarValuedCurve::sym_diff_quotient(|x| div_fn(x, b), a, 1e-6);
+                            ScalarValuedCurve::sym_diff_quotient(|x| div_fn(x, b), a, EPS_F64);
                         let auto_grad = ScalarValuedCurve::fw_autodiff(
                             |x| dual_div_fn(x, <$dual_scalar>::from_real_scalar(b)),
                             a,

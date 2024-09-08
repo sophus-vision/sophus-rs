@@ -112,6 +112,7 @@ pub trait RealLieGroupTest {
         Self::exp_log_jacobians_tests();
         Self::hat_jacobians_tests();
         Self::mul_jacobians_tests();
+        Self::interpolation_test();
     }
 
     /// Test hat and vee operators.
@@ -125,6 +126,9 @@ pub trait RealLieGroupTest {
 
     /// exp_log_jacobians_tests
     fn exp_log_jacobians_tests();
+
+    /// interpolation_test
+    fn interpolation_test();
 }
 
 macro_rules! def_real_group_test_template {
@@ -508,6 +512,101 @@ macro_rules! def_real_group_test_template {
                             );
                         let analytic_diff = Self::db_a_mul_b(&a, &b);
                         assert_relative_eq!(analytic_diff, auto_diff, epsilon = 0.001);
+                    }
+                }
+            }
+
+
+            fn interpolation_test() {
+                let group_examples: Vec<_> = Self::element_examples();
+
+                for foo_from_bar in &group_examples {
+                    for foo_from_daz in &group_examples {
+                        let foo_from_bar0 = foo_from_bar.interpolate(foo_from_daz, <$scalar>::zeros());
+                        approx::assert_relative_eq!(
+                            foo_from_bar.matrix(),
+                            foo_from_bar0.matrix(),
+                            epsilon = 0.0001
+                        );
+
+                        let foo_from_daz1 = foo_from_bar.interpolate(foo_from_daz, <$scalar>::ones());
+                        approx::assert_relative_eq!(
+                            foo_from_daz.matrix(),
+                            foo_from_daz1.matrix(),
+                            epsilon = 0.0001
+                        );
+                    }
+                }
+                for alpha in [<$scalar>::from_f64(0.1), <$scalar>::from_f64(0.5), <$scalar>::from_f64(0.99)] {
+                    for foo_from_bar in &group_examples {
+                        for foo_from_daz in &group_examples {
+                            if foo_from_bar.inverse().group_mul(foo_from_daz).has_shortest_path_ambiguity().any() {
+                                // interpolation not uniquely defined, let's skip these cases
+                                continue;
+                            }
+
+                            let foo_from_quiz = foo_from_bar.interpolate(foo_from_daz, alpha);
+
+                            // test left-invariance:
+                            //
+                            // dash_from_foo * interp(foo_from_bar, foo_from_daz)
+                            //   == interp(dash_from_foo * foo_from_bar,
+                            //             dash_from_foo * foo_from_daz)
+
+                            for dash_from_foo in &group_examples {
+
+                                let dash_from_quiz = dash_from_foo.group_mul(foo_from_bar).interpolate(
+                                    &dash_from_foo.group_mul(foo_from_daz), alpha);
+
+                                    approx::assert_relative_eq!(
+                                        dash_from_quiz.matrix(),
+                                        dash_from_foo.group_mul(&foo_from_quiz).matrix(),
+                                        epsilon = 0.0001
+                                    );
+                            }
+
+                            // test inverse-invariance:
+                            //
+                            // interp(foo_from_bar, foo_from_daz).inverse()
+                            //   == interp(dash_from_foo.inverse(),
+                            //             dash_from_foo.inverse())
+
+                            let quiz_from_foo = foo_from_bar.inverse().interpolate(&foo_from_daz.inverse(), alpha);
+
+                            approx::assert_relative_eq!(
+                                foo_from_quiz.inverse().matrix(),
+                                quiz_from_foo.matrix(),
+                                epsilon = 0.0001
+                            );
+                        }
+                    }
+                    for a_from_bar in &group_examples {
+                        for b_from_bar in &group_examples {
+                            if a_from_bar.group_mul(&b_from_bar.inverse()).has_shortest_path_ambiguity().any() {
+                                // interpolation not uniquely defined, let's skip these cases
+                                continue;
+                            }
+
+                            let c_from_bar = a_from_bar.interpolate(b_from_bar, alpha);
+
+                             // test right-invariance:
+                            //
+                            // interp(a_from_bar, b_from_bar) * bar_from_foo
+                            //   == interp(a_from_bar * bar_from_foo,
+                            //             b_from_bar * bar_from_foo)
+                            for bar_from_foo in &group_examples {
+
+                                let c_from_foo = a_from_bar.group_mul(bar_from_foo).interpolate(
+                                    &b_from_bar.group_mul(bar_from_foo), alpha);
+
+                                    approx::assert_relative_eq!(
+                                        c_from_foo.matrix(),
+                                        c_from_bar.group_mul(&bar_from_foo).matrix(),
+                                        epsilon = 0.0001
+                                    );
+                            }
+
+                        }
                     }
                 }
             }

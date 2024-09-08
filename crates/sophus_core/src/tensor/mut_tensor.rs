@@ -440,6 +440,8 @@ mut_tensor_is_view!(5, 2, 3);
 fn mut_tensor_tests() {
     #[cfg(feature = "simd")]
     use crate::linalg::BatchMatF64;
+
+    use log::info;
     {
         let _rank1_tensor = MutTensorD::<u8>::default();
         //assert!(rank1_tensor.is_empty());
@@ -478,7 +480,7 @@ fn mut_tensor_tests() {
             };
             let pattern = MutTensorDR::<f32, 3>::from_map(&tensor_f32.view(), op);
 
-            println!("p :{}", pattern.mut_array);
+            info!("p :{}", pattern.mut_array);
             // assert_eq!(
             //     pattern.slice(),
             //     MutTensorDR::from_shape_and_val(shape, op(1.0)).slice()
@@ -495,8 +497,8 @@ fn mut_tensor_tests() {
                 value
             };
             let pattern = MutTensorDDR::from_map(&tensor_f32.view(), op);
-            println!("p :{}", pattern.mut_array);
-            println!("p :{}", pattern.view().scalar_view());
+            info!("p :{}", pattern.mut_array);
+            info!("p :{}", pattern.view().scalar_view());
         }
         let shape = [3, 2, 4];
         {
@@ -509,8 +511,8 @@ fn mut_tensor_tests() {
                 value
             };
             let pattern = MutTensorDDDR::from_map(&tensor_f32.view(), op);
-            println!("p :{}", pattern.mut_array);
-            println!("p :{}", pattern.view().scalar_view());
+            info!("p :{}", pattern.mut_array);
+            info!("p :{}", pattern.view().scalar_view());
         }
     }
 

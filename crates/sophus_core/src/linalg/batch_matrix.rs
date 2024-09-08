@@ -138,6 +138,10 @@ where
     fn set_elem(&mut self, idx: [usize; 2], val: BatchScalarF64<BATCH>) {
         self[(idx[0], idx[1])] = val;
     }
+
+    fn transposed(self) -> BatchMatF64<COLS, ROWS, BATCH> {
+        self.transpose()
+    }
 }
 
 impl<const ROWS: usize, const COLS: usize, const BATCH: usize>

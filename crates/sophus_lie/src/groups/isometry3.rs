@@ -1,7 +1,13 @@
+use log::warn;
+
 use super::rotation3::Rotation3Impl;
 use super::translation_product_product::TranslationProductGroupImpl;
+use crate::average::iterative_average;
+use crate::average::IterativeAverageError;
 use crate::lie_group::LieGroup;
 use crate::prelude::*;
+use crate::traits::EmptySliceError;
+use crate::traits::HasAverage;
 use crate::Rotation3;
 
 /// 3D isometry group implementation struct - SE(3)
@@ -70,6 +76,32 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry3<S, BATCH> {
     /// get rotation
     pub fn rotation(&self) -> Rotation3<S, BATCH> {
         self.factor()
+    }
+}
+
+impl<S: IsSingleScalar + PartialOrd> HasAverage<S, 6, 7, 3, 4> for Isometry3<S, 1> {
+    /// Average Isometry3 poses [parent_from_body0, ..., ].
+    ///
+    /// Note: This function can be used when there is no well-defined body center, since
+    ///       this average is right-hand invariance. It does nor depend on what frame on the
+    ///       body is chosen.
+    ///       If there is a well defined body center for the purpose of averaging, it is likely
+    ///       better to average body center positions - using "1/n sum_i pos_i" - and rotations
+    ///       independently.
+    fn average(parent_from_body_transforms: &[Isometry3<S, 1>]) -> Result<Self, EmptySliceError> {
+        match iterative_average(parent_from_body_transforms, 50) {
+            Ok(parent_from_body_average) => Ok(parent_from_body_average),
+            Err(err) => match err {
+                IterativeAverageError::EmptySlice => Err(EmptySliceError),
+                IterativeAverageError::NotConverged(not_conv) => {
+                    warn!(
+                        "iterative_average did not converge (iters={}), returning best guess.",
+                        not_conv.max_iteration_count
+                    );
+                    Ok(not_conv.parent_from_body_estimate)
+                }
+            },
+        }
     }
 }
 

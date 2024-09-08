@@ -119,6 +119,9 @@ pub trait IsMatrix<
     /// set column vectors
     fn set_col_vec(&mut self, c: usize, v: S::Vector<ROWS>);
 
+    /// transpose
+    fn transposed(self) -> S::Matrix<COLS, ROWS>;
+
     /// Return dual matrix
     ///
     /// If self is a real matrix, this will return a dual matrix with the infinitesimal part set to
@@ -300,5 +303,9 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF
 
     fn set_elem(&mut self, idx: [usize; 2], val: f64) {
         self[(idx[0], idx[1])] = val;
+    }
+
+    fn transposed(self) -> MatF64<COLS, ROWS> {
+        self.transpose()
     }
 }

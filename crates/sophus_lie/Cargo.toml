@@ -14,11 +14,11 @@ version.workspace = true
 
 approx.workspace = true
 assertables.workspace = true
+log.workspace = true
 nalgebra.workspace = true
 num-traits.workspace = true
 
-sophus_core = {workspace=true}
-
+sophus_core = {workspace = true}
 
 [features]
 simd = ["sophus_core/simd"]

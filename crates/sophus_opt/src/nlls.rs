@@ -2,6 +2,8 @@ use crate::cost::IsCost;
 use crate::cost_fn::IsCostFn;
 use crate::solvers::solve;
 use crate::variables::VarPool;
+use log::debug;
+use log::info;
 use std::fmt::Debug;
 
 /// Optimization parameters
@@ -47,7 +49,7 @@ pub fn optimize(
     let now = Instant::now();
 
     for _i in 0..params.num_iter {
-        //println!("nu: {:?}", nu);
+        debug!("nu: {:?}", nu);
 
         let mut evaluated_costs: Vec<Box<dyn IsCost>> = Vec::new();
         for cost_fn in cost_fns.iter_mut() {
@@ -73,8 +75,8 @@ pub fn optimize(
             nu *= 2.0;
         }
     }
-    println!("e^2: {:?} -> {:?}", initial_mse, mse);
-    println!("{} iters took: {:.2?}", params.num_iter, now.elapsed());
+    info!("e^2: {:?} -> {:?}", initial_mse, mse);
+    info!("{} iters took: {:.2?}", params.num_iter, now.elapsed());
 
     variables
 }

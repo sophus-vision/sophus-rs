@@ -414,6 +414,7 @@ fn arc_tensor_tests() {
     // multi_threading
     use crate::tensor::arc_tensor::ArcTensorDDRC;
     use crate::tensor::mut_tensor::MutTensorDDRC;
+    use log::info;
     use std::thread;
 
     let shape = [4, 6];
@@ -422,10 +423,10 @@ fn arc_tensor_tests() {
 
     thread::scope(|s| {
         s.spawn(|| {
-            println!("{:?}", img);
+            info!("{:?}", img);
         });
         s.spawn(|| {
-            println!("{:?}", img);
+            info!("{:?}", img);
         });
     });
 }

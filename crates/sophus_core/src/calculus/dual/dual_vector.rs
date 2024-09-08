@@ -519,6 +519,7 @@ fn dual_vector_tests() {
     use crate::calculus::maps::scalar_valued_maps::ScalarValuedMapFromVector;
     use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
     use crate::linalg::vector::IsVector;
+    use crate::linalg::EPS_F64;
     use crate::points::example_points;
 
     #[cfg(feature = "simd")]
@@ -552,7 +553,7 @@ fn dual_vector_tests() {
                                     ScalarValuedMapFromVector::<$scalar, $batch>::sym_diff_quotient(
                                         |x| dot_fn(x, p1),
                                         p,
-                                        1e-6,
+                                        EPS_F64,
                                     );
                                 let auto_grad =
                                     ScalarValuedMapFromVector::<$dual_scalar, $batch>::fw_autodiff(
@@ -577,7 +578,7 @@ fn dual_vector_tests() {
                             let finite_diff = VectorValuedMapFromVector::<$scalar, $batch>::sym_diff_quotient(
                                 |x| dot_fn::<$scalar, $batch>(x, <$scalar>::from_f64(0.99)),
                                 p,
-                                1e-6,
+                                EPS_F64,
                             );
                             let auto_grad = VectorValuedMapFromVector::<$dual_scalar, $batch>::fw_autodiff(
                                 |x| dot_fn::<$dual_scalar, $batch>(x, <$dual_scalar>::from_f64(0.99)),
@@ -594,7 +595,7 @@ fn dual_vector_tests() {
                             let finite_diff = VectorValuedMapFromVector::<$scalar, $batch>::sym_diff_quotient(
                                 |x| dot_fn::<$scalar, $batch>(p1, x[0]),
                                 p,
-                                1e-6,
+                                EPS_F64,
                             );
                             let auto_grad = VectorValuedMapFromVector::<$dual_scalar, $batch>::fw_autodiff(
                                 |x| {

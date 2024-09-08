@@ -143,6 +143,14 @@ impl<
         Self::from_params(&G::exp(omega))
     }
 
+    /// Interpolate between "(w-1) * self" and "w * other".
+    ///
+    /// w is typically in [0, 1]. If w=0, self is returned. If w=1 other is returned.
+    ///
+    pub fn interpolate(&self, other: &Self, w: S) -> Self {
+        self.group_mul(&Self::exp(&self.inverse().group_mul(other).log().scaled(w)))
+    }
+
     /// logarithmic map
     pub fn log(&self) -> S::Vector<DOF> {
         G::log(&self.params)

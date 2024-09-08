@@ -1,6 +1,8 @@
 use crate::distortions::affine::AffineDistortionImpl;
 use crate::prelude::*;
 use crate::traits::IsCameraDistortionImpl;
+use log::warn;
+use sophus_core::linalg::EPS_F64;
 use sophus_core::params::ParamsImpl;
 use std::marker::PhantomData;
 
@@ -194,12 +196,10 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> BrownConradyDistortionImpl<S, BATCH
             let j_inv: S::Matrix<2, 2> = m.scaled(S::from_f64(1.0) / (a * d - b * c));
             let step: S::Vector<2> = j_inv * f_xy;
 
-            let eps = 1e-10;
-
             if step
                 .norm()
                 .real_part()
-                .less_equal(&S::RealScalar::from_f64(eps))
+                .less_equal(&S::RealScalar::from_f64(EPS_F64))
                 .all()
             {
                 break;
@@ -213,11 +213,11 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> BrownConradyDistortionImpl<S, BATCH
         if !f_xy
             .norm()
             .real_part()
-            .less_equal(&S::RealScalar::from_f64(1e-6))
+            .less_equal(&S::RealScalar::from_f64(EPS_F64))
             .any()
         {
-            println!(
-                "WARNING: Newton did not converge: f_xy: {:?}: pixel {:?}",
+            warn!(
+                "Newton did not converge: f_xy: {:?}: pixel {:?}",
                 f_xy, dbg_info_distorted_point
             );
         }

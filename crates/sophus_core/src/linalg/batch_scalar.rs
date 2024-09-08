@@ -7,6 +7,7 @@ use crate::linalg::BatchMatF64;
 use crate::linalg::BatchScalar;
 use crate::linalg::BatchScalarF64;
 use crate::linalg::BatchVecF64;
+use crate::linalg::EPS_F64;
 use crate::prelude::IsCoreScalar;
 use crate::prelude::*;
 use approx::AbsDiffEq;
@@ -208,6 +209,10 @@ where
 
     fn extract_single(&self, i: usize) -> f64 {
         self.0[i]
+    }
+
+    fn eps() -> Self {
+        Self::from_f64(EPS_F64)
     }
 
     fn from_real_scalar(val: BatchScalarF64<BATCH>) -> Self {

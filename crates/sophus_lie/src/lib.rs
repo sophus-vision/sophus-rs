@@ -26,6 +26,9 @@ pub mod traits;
 /// Real lie group
 pub mod real_lie_group;
 
+/// Lie group average
+pub mod average;
+
 /// sophus_lie prelude
 pub mod prelude {
     pub use crate::traits::IsLieGroup;

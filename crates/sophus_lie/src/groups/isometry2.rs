@@ -1,8 +1,14 @@
+use crate::average::iterative_average;
+use crate::average::IterativeAverageError;
 use crate::groups::rotation2::Rotation2Impl;
 use crate::groups::translation_product_product::TranslationProductGroupImpl;
 use crate::lie_group::LieGroup;
 use crate::prelude::*;
+use crate::traits::EmptySliceError;
+use crate::traits::HasAverage;
 use crate::Rotation2;
+
+use log::warn;
 
 /// 2D isometry group implementation struct - SE(2)
 pub type Isometry2Impl<S, const BATCH: usize> =
@@ -56,6 +62,34 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry2<S, BATCH> {
     /// get rotation
     pub fn rotation(&self) -> Rotation2<S, BATCH> {
         self.factor()
+    }
+}
+
+impl<S: IsSingleScalar + PartialOrd> HasAverage<S, 3, 4, 2, 3> for Isometry2<S, 1> {
+    /// Average Isometry2 poses [parent_from_body0, ..., ].
+    ///
+    /// Note: This function can be used when there is no well-defined body center, since
+    ///       this average is right-hand invariance. It does nor depend on what frame on the
+    ///       body is chosen.
+    ///       If there is a well defined body center for the purpose of averaging, it is likely
+    ///       better to average body center positions - using "1/n sum_i pos_i" - and rotations
+    ///       independently.
+    fn average(parent_from_body_transforms: &[Isometry2<S, 1>]) -> Result<Self, EmptySliceError> {
+        // todo: Implement close form solution from
+        //       ftp://ftp-sop.inria.fr/epidaure/Publications/Arsigny/arsigny_rr_biinvariant_average.pdf.
+        match iterative_average(parent_from_body_transforms, 50) {
+            Ok(parent_from_body_average) => Ok(parent_from_body_average),
+            Err(err) => match err {
+                IterativeAverageError::EmptySlice => Err(EmptySliceError),
+                IterativeAverageError::NotConverged(not_conv) => {
+                    warn!(
+                        "iterative_average did not converge (iters={}), returning best guess.",
+                        not_conv.max_iteration_count
+                    );
+                    Ok(not_conv.parent_from_body_estimate)
+                }
+            },
+        }
     }
 }
 

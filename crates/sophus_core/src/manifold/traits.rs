@@ -13,8 +13,6 @@ pub trait ManifoldImpl<
     S: IsScalar<BATCH_SIZE>,
     const DOF: usize,
     const PARAMS: usize,
-    const POINT: usize,
-    const AMBIENT_DIM: usize,
     const BATCH_SIZE: usize,
 >: ParamsImpl<S, PARAMS, BATCH_SIZE> + TangentImpl<S, DOF, BATCH_SIZE>
 {
@@ -32,8 +30,6 @@ pub trait IsManifold<
     const BATCH_SIZE: usize,
 >: HasParams<S, PARAMS, BATCH_SIZE> + std::fmt::Debug + Clone
 {
-    /// manifold parameters
-    fn params(&self) -> &S::Vector<PARAMS>;
     /// o-plus operation
     fn oplus(&self, tangent: &S::Vector<DOF>) -> Self;
     /// o-minus operation
@@ -47,9 +43,5 @@ impl<const N: usize> IsManifold<f64, N, N, 1> for VecF64<N> {
 
     fn ominus(&self, rhs: &Self) -> VecF64<N> {
         self - rhs
-    }
-
-    fn params(&self) -> &VecF64<N> {
-        self
     }
 }

@@ -5,6 +5,9 @@ use sophus_core::params::ParamsImpl;
 use std::fmt::Debug;
 
 /// Left group manifold
+///
+/// A ⊕ t := exp(t) * A
+/// A ⊖ B :=  log(inv(A) * B)
 #[derive(Debug, Clone)]
 pub struct LeftGroupManifold<
     S: IsScalar<BATCH_SIZE>,
@@ -88,9 +91,5 @@ impl<
 
     fn ominus(&self, rhs: &Self) -> <S as IsScalar<BATCH_SIZE>>::Vector<DOF> {
         self.group.inverse().group_mul(&rhs.group).log()
-    }
-
-    fn params(&self) -> &<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS> {
-        self.group.params()
     }
 }

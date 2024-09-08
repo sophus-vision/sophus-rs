@@ -70,6 +70,7 @@ pub trait RealFactorLieGroupTest {
 macro_rules! def_real_group_test_template {
     ($scalar:ty, $dual_scalar:ty, $group: ty, $dual_group: ty, $batch:literal
 ) => {
+
         impl RealFactorLieGroupTest for $group {
             fn mat_v_test() {
                 use crate::traits::IsLieGroup;
@@ -90,6 +91,7 @@ macro_rules! def_real_group_test_template {
             }
 
             fn test_mat_v_jacobian() {
+                use log::info;
                 use crate::traits::IsLieGroup;
                 use sophus_core::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
                 use sophus_core::linalg::scalar::IsScalar;
@@ -116,7 +118,7 @@ macro_rules! def_real_group_test_template {
                     );
 
                     for i in 0..DOF {
-                        println!("i: {}", i);
+                        info!("i: {}", i);
                         assert_relative_eq!(mat_v_jacobian[i], num_diff.get([i]), epsilon = 0.001);
                     }
 
@@ -127,7 +129,7 @@ macro_rules! def_real_group_test_template {
                     let num_diff = MatrixValuedMapFromVector::sym_diff_quotient(mat_v_x_inv, t, 0.0001);
 
                     for i in 0..DOF {
-                        println!("i: {}", i);
+                        info!("i: {}", i);
                         assert_relative_eq!(mat_v_inv_jacobian[i], num_diff.get([i]), epsilon = 0.001);
                     }
                 }

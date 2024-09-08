@@ -55,6 +55,9 @@ pub type MatF32<const ROWS: usize, const COLS: usize> = nalgebra::SMatrix<f32, R
 /// f64 matrix
 pub type MatF64<const ROWS: usize, const COLS: usize> = nalgebra::SMatrix<f64, ROWS, COLS>;
 
+/// f64 epsilon.
+pub const EPS_F64: f64 = 1e-6;
+
 #[cfg(feature = "simd")]
 /// Batch of scalar
 #[derive(Clone, Debug, PartialEq, Copy)]
