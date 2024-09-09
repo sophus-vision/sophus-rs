@@ -10,11 +10,11 @@ use pyo3::Py;
 use pyo3::PyRef;
 use pyo3::PyRefMut;
 use pyo3::Python;
-use sophus_lie::Isometry2F64;
-use sophus_lie::Isometry3F64;
 use sophus_lie::prelude::*;
 use sophus_lie::Isometry2;
+use sophus_lie::Isometry2F64;
 use sophus_lie::Isometry3;
+use sophus_lie::Isometry3F64;
 use sophus_lie::Rotation2;
 use sophus_lie::Rotation3;
 
@@ -410,10 +410,13 @@ augment_py_product_group_class!(
     Isometry2F64,
     PyRotation2,
     "Isometry2",
-    2);
+    2
+);
 augment_py_product_group_class!(
     PyBaseIsometry3,
     PyIsometry3,
     Isometry3F64,
     PyRotation3,
-    "Isometry3",3);
+    "Isometry3",
+    3
+);

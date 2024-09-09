@@ -223,7 +223,7 @@ impl SceneRenderer {
             scene_from_camera,
             &self.buffers,
             &mut render_pass,
-            backface_culling
+            backface_culling,
         );
         self.textured_mesh_renderer.paint(
             state,
@@ -231,18 +231,10 @@ impl SceneRenderer {
             &self.buffers,
             &mut render_pass,
         );
-        self.point_renderer.paint(
-            state,
-            scene_from_camera,
-            &self.buffers,
-            &mut render_pass,
-        );
-        self.line_renderer.paint(
-            state,
-            scene_from_camera,
-            &self.buffers,
-            &mut render_pass,
-        );
+        self.point_renderer
+            .paint(state, scene_from_camera, &self.buffers, &mut render_pass);
+        self.line_renderer
+            .paint(state, scene_from_camera, &self.buffers, &mut render_pass);
     }
 
     pub(crate) fn depth_paint<'rp>(
@@ -280,7 +272,7 @@ impl SceneRenderer {
             scene_from_camera,
             &self.buffers,
             &mut render_pass,
-            backface_culling
+            backface_culling,
         );
         self.textured_mesh_renderer.depth_paint(
             state,
@@ -288,18 +280,10 @@ impl SceneRenderer {
             &self.buffers,
             &mut render_pass,
         );
-        self.line_renderer.depth_paint(
-            state,
-            scene_from_camera,
-            &self.buffers,
-            &mut render_pass,
-        );
-        self.point_renderer.depth_paint(
-            state,
-            scene_from_camera,
-            &self.buffers,
-            &mut render_pass,
-        );
+        self.line_renderer
+            .depth_paint(state, scene_from_camera, &self.buffers, &mut render_pass);
+        self.point_renderer
+            .depth_paint(state, scene_from_camera, &self.buffers, &mut render_pass);
     }
 
     pub(crate) fn prepare(
@@ -370,6 +354,5 @@ impl SceneRenderer {
                 ]),
             );
         }
-
     }
 }

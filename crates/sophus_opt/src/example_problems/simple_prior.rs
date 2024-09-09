@@ -12,10 +12,10 @@ use crate::variables::VarKind;
 use crate::variables::VarPoolBuilder;
 use sophus_core::linalg::MatF64;
 use sophus_core::linalg::VecF64;
-use sophus_lie::Isometry2F64;
-use sophus_lie::Isometry3F64;
 use sophus_lie::Isometry2;
+use sophus_lie::Isometry2F64;
 use sophus_lie::Isometry3;
+use sophus_lie::Isometry3F64;
 
 /// Simple 2D isometry prior problem
 pub struct SimpleIso2PriorProblem {

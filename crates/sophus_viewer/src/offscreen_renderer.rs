@@ -367,6 +367,16 @@ impl OffscreenRenderer {
                 .depth
                 .download_image(&self.state, command_encoder, view_port_size);
 
+        // Example how to download rgba image.
+        //
+        // todo: Create complete offscreen rendering API with static "view_port_size".
+        //
+        // let rgba_img_u8 =
+        //     self.textures
+        //         .rgba
+        //         .download_rgba_image(&self.state, command_encoder, view_port_size);
+        // save_as_png(&rgba_img_u8.image_view(), std::path::Path::new("foo.png"));
+
         if compute_visual_depth {
             let mut image_rgba = MutImage4U8::from_image_size_and_val(
                 depth_image.image_size(),

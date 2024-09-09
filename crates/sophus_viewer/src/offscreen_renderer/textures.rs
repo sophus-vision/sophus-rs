@@ -2,9 +2,9 @@ use std::num::NonZeroU32;
 
 use crate::ViewerRenderState;
 use eframe::egui::{self};
-use sophus_image::arc_image::ArcImage4F32;
+use sophus_image::arc_image::ArcImage4U8;
 use sophus_image::arc_image::ArcImageF32;
-use sophus_image::image_view::ImageView4F32;
+use sophus_image::image_view::ImageView4U8;
 use sophus_image::image_view::ImageViewF32;
 use sophus_image::ImageSize;
 use wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
@@ -19,6 +19,20 @@ pub struct RgbaTexture {
 }
 
 impl RgbaTexture {
+    const BYTES_PER_PIXEL: u32 = 4; // r, g, b, a as u8
+    fn bytes_per_row(width: u32) -> u32 {
+        let unaligned_bytes_per_row = width * Self::BYTES_PER_PIXEL;
+        let align = COPY_BYTES_PER_ROW_ALIGNMENT;
+
+        if unaligned_bytes_per_row % align == 0 {
+            // already aligned
+            unaligned_bytes_per_row
+        } else {
+            // align to the next multiple of `align`
+            (unaligned_bytes_per_row / align + 1) * align
+        }
+    }
+
     pub(crate) fn new(render_state: &ViewerRenderState, view_port_size: &ImageSize) -> Self {
         let w = view_port_size.width as u32;
         let h = view_port_size.height as u32;
@@ -56,17 +70,16 @@ impl RgbaTexture {
         }
     }
 
-    /// Method to download RGBA image as ndarray
+    /// Method to download ArcImage4U8
     pub fn download_rgba_image(
         &self,
         state: &ViewerRenderState,
         mut command_encoder: wgpu::CommandEncoder,
         view_port_size: &ImageSize,
-    ) -> ArcImage4F32 {
+    ) -> ArcImage4U8 {
         let w = view_port_size.width as u32;
         let h = view_port_size.height as u32;
-        let bytes_per_pixel = 4 * std::mem::size_of::<f32>() as u32;
-        let bytes_per_row = bytes_per_pixel * w;
+        let bytes_per_row = RgbaTexture::bytes_per_row(w);
 
         let buffer = state.device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
@@ -99,29 +112,34 @@ impl RgbaTexture {
 
         state.queue.submit(Some(command_encoder.finish()));
 
-        // Wait for buffer to be mapped and retrieve data
-        let buffer_slice = buffer.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            tx.send(result).unwrap();
-        });
-        state.device.poll(wgpu::Maintain::Wait);
-        rx.try_recv().unwrap().unwrap();
+        #[allow(unused_assignments)]
+        let mut maybe_rgba_image = None;
+        {
+            // Wait for buffer to be mapped and retrieve data
+            let buffer_slice = buffer.slice(..);
+            let (tx, rx) = std::sync::mpsc::channel();
+            buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+                tx.send(result).unwrap();
+            });
+            state.device.poll(wgpu::Maintain::Wait);
+            rx.try_recv().unwrap().unwrap();
 
-        let data = buffer_slice.get_mapped_range();
+            let data = buffer_slice.get_mapped_range();
 
-        let view = ImageView4F32::from_size_and_slice(
-            ImageSize {
-                width: w as usize,
-                height: h as usize,
-            },
-            bytemuck::cast_slice(&data[..]),
-        );
-        let img = ArcImage4F32::make_copy_from(&view);
+            let view = ImageView4U8::from_stride_and_slice(
+                ImageSize {
+                    width: w as usize,
+                    height: h as usize,
+                },
+                (bytes_per_row / Self::BYTES_PER_PIXEL) as usize,
+                bytemuck::cast_slice(&data[..]),
+            );
+            maybe_rgba_image = Some(ArcImage4U8::make_copy_from(&view));
+        }
 
         buffer.unmap();
 
-        img
+        maybe_rgba_image.unwrap()
     }
 }
 
@@ -153,7 +171,6 @@ impl ZBufferTexture {
         };
         let texture = render_state.device.create_texture(&desc);
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-
 
         ZBufferTexture {
             _depth_texture: texture,
@@ -248,12 +265,12 @@ impl DepthTexture {
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                usage:  wgpu::TextureUsages::COPY_DST
-                    | wgpu::TextureUsages::TEXTURE_BINDING,
+                usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[wgpu::TextureFormat::Rgba8UnormSrgb],
             });
 
-        let visual_texture_view = visual_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let visual_texture_view =
+            visual_texture.create_view(&wgpu::TextureViewDescriptor::default());
         let egui_tex_id = render_state.wgpu_state.write().register_native_texture(
             render_state.device.as_ref(),
             &visual_texture_view,
@@ -269,9 +286,6 @@ impl DepthTexture {
     }
 
     // download the depth image from the GPU to ArcImageF32
-    //
-    // Note: The depth image return might have a greater width than the requested width, to ensure
-    //       that the bytes per row is a multiple of COPY_BYTES_PER_ROW_ALIGNMENT (i.e. 256).
     pub fn download_image(
         &self,
         state: &ViewerRenderState,
@@ -321,11 +335,12 @@ impl DepthTexture {
 
             let data = buffer_slice.get_mapped_range();
 
-            let view = ImageViewF32::from_size_and_slice(
+            let view = ImageViewF32::from_stride_and_slice(
                 ImageSize {
-                    width: (bytes_per_row / Self::BYTES_PER_PIXEL) as usize,
+                    width: w as usize,
                     height: h as usize,
                 },
+                (bytes_per_row / Self::BYTES_PER_PIXEL) as usize,
                 bytemuck::cast_slice(&data[..]),
             );
             let img = ArcImageF32::make_copy_from(&view);

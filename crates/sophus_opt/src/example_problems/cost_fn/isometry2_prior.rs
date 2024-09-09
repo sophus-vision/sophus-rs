@@ -9,8 +9,8 @@ use sophus_core::calculus::dual::DualScalar;
 use sophus_core::calculus::dual::DualVector;
 use sophus_core::calculus::maps::VectorValuedMapFromVector;
 use sophus_core::linalg::VecF64;
-use sophus_lie::Isometry2F64;
 use sophus_lie::Isometry2;
+use sophus_lie::Isometry2F64;
 
 /// Cost function for a prior on an 2d isometry
 #[derive(Copy, Clone)]

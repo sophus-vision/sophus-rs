@@ -13,9 +13,9 @@ use wgpu::DepthStencilState;
 
 use crate::offscreen_renderer::pixel_renderer::pixel_line::PixelLineRenderer;
 use crate::offscreen_renderer::pixel_renderer::pixel_point::PixelPointRenderer;
+use crate::offscreen_renderer::textures::ZBufferTexture;
 use crate::offscreen_renderer::TranslationAndScaling;
 use crate::offscreen_renderer::Zoom2d;
-use crate::offscreen_renderer::textures::ZBufferTexture;
 use crate::views::interactions::InteractionEnum;
 use crate::ViewerRenderState;
 
@@ -191,7 +191,6 @@ impl PixelRenderer {
         intrinsics: &DynCamera<f64, 1>,
         zoom_2d: TranslationAndScaling,
     ) {
-
         let ortho_cam_uniforms = OrthoCam {
             virtual_camera_width: intrinsics.image_size().width as f32,
             virtual_camera_height: intrinsics.image_size().height as f32,

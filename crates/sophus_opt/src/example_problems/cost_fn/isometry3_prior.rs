@@ -10,8 +10,8 @@ use sophus_core::calculus::dual::DualVector;
 use sophus_core::calculus::maps::VectorValuedMapFromVector;
 use sophus_core::linalg::MatF64;
 use sophus_core::linalg::VecF64;
-use sophus_lie::Isometry3F64;
 use sophus_lie::Isometry3;
+use sophus_lie::Isometry3F64;
 
 /// Cost function for a prior on an 3d isometry
 #[derive(Copy, Clone)]
@@ -47,9 +47,7 @@ fn res_fn<Scalar: IsScalar<1> + IsSingleScalar>(
     Isometry3::<Scalar, 1>::group_mul(&isometry, &isometry_prior_mean.inverse()).log()
 }
 
-impl IsResidualFn<6, 1, Isometry3F64, (Isometry3F64, MatF64<6, 6>)>
-    for Isometry3PriorCostFn
-{
+impl IsResidualFn<6, 1, Isometry3F64, (Isometry3F64, MatF64<6, 6>)> for Isometry3PriorCostFn {
     fn eval(
         &self,
         args: Isometry3F64,

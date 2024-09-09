@@ -10,8 +10,8 @@ use crate::variables::VarKind;
 use crate::variables::VarPool;
 use crate::variables::VarPoolBuilder;
 use sophus_core::linalg::VecF64;
-use sophus_lie::Isometry2F64;
 use sophus_lie::Isometry2;
+use sophus_lie::Isometry2F64;
 use std::collections::HashMap;
 
 /// Pose graph example problem
@@ -22,8 +22,7 @@ pub struct PoseCircleProblem {
     /// estimated poses
     pub est_world_from_robot: Vec<Isometry2F64>,
     /// pose-pose constraints
-    pub obs_pose_a_from_pose_b_poses:
-        CostSignature<2, Isometry2F64, PoseGraphCostTermSignature>,
+    pub obs_pose_a_from_pose_b_poses: CostSignature<2, Isometry2F64, PoseGraphCostTermSignature>,
 }
 
 impl Default for PoseCircleProblem {

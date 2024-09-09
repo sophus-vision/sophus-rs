@@ -4,9 +4,9 @@ use sophus_core::IsTensorLike;
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::image_view::IsImageView;
 use sophus_image::ImageSize;
-use sophus_lie::Isometry3F64;
 use sophus_lie::traits::IsTranslationProductGroup;
 use sophus_lie::Isometry3;
+use sophus_lie::Isometry3F64;
 use sophus_sensor::DynCamera;
 
 use crate::offscreen_renderer::ClippingPlanes;

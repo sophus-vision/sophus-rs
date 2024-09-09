@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::ImageSize;
+use ndarray::ShapeBuilder;
 use sophus_core::linalg::SVec;
 use sophus_core::tensor::tensor_view::TensorView;
 
@@ -129,6 +130,32 @@ macro_rules! image_view {
                     >::from_shape_and_slice(
                         [image_size.height, image_size.width], slice
                     ),
+                }
+            }
+
+            /// Create a new image view from an image size, stride and a slice of data
+            pub fn from_stride_and_slice(
+                image_size: ImageSize,
+                stride: usize,
+                slice: &'a [STensor],
+            ) -> Self {
+                let elem_view = ndarray::ArrayView::from_shape(
+                    (image_size.height, image_size.width).strides((stride, 1)),
+                    slice,
+                )
+                .unwrap();
+
+                Self {
+                    tensor_view: TensorView::<
+                        'a,
+                        $scalar_rank,
+                        2,
+                        $srank,
+                        Scalar,
+                        STensor,
+                        ROWS,
+                        COLS,
+                    >::new(elem_view),
                 }
             }
 

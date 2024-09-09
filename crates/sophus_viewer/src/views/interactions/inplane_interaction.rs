@@ -1,8 +1,8 @@
 use eframe::egui;
 use sophus_core::linalg::VecF64;
 use sophus_image::ImageSize;
-use sophus_lie::Isometry3F64;
 use sophus_lie::Isometry3;
+use sophus_lie::Isometry3F64;
 use sophus_sensor::DynCamera;
 
 use crate::offscreen_renderer::OffscreenRenderer;
