@@ -147,7 +147,7 @@ pub async fn run_viewer_example() {
         Box::new(|cc| {
             Ok(SimpleViewer::new(
                 builder,
-                sophus_viewer::ViewerRenderState::new(cc),
+                sophus_viewer::ViewerRenderState::from_egui_cc(cc),
             ))
         }),
     )

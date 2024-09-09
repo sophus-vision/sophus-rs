@@ -196,6 +196,7 @@ impl<Plugin: IsUiPlugin> eframe::App for Viewer<Plugin> {
                                     &view.interaction,
                                     self.show_depth,
                                     self.backface_culling,
+                                    false,
                                 );
 
                                 let egui_texture = if self.show_depth {
@@ -246,6 +247,7 @@ impl<Plugin: IsUiPlugin> eframe::App for Viewer<Plugin> {
                                     &view.interaction,
                                     false,
                                     self.backface_culling,
+                                    false,
                                 );
 
                                 let ui_response = ui.add(

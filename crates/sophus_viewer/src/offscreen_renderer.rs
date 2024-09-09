@@ -83,10 +83,14 @@ pub struct OffscreenRenderer {
 
 /// Render result
 pub struct OffscreenRenderResult {
-    /// depth image - might have a greater width than the requested width
-    pub depth: GenArcImage<2, 0, f32, f32, 1, 1>,
+    /// rgba image
+    pub image_4u8: Option<ArcImage4U8>,
+
     /// rgba egui texture id
     pub rgba_egui_tex_id: egui::TextureId,
+
+    /// depth image - might have a greater width than the requested width
+    pub depth: GenArcImage<2, 0, f32, f32, 1, 1>,
 
     /// depth egui texture id
     pub depth_egui_tex_id: egui::TextureId,
@@ -311,6 +315,7 @@ impl OffscreenRenderer {
         maybe_interaction_enum: Option<&InteractionEnum>,
         compute_visual_depth: bool,
         backface_culling: bool,
+        download_rgba: bool,
     ) -> OffscreenRenderResult {
         if self.textures.view_port_size != *view_port_size {
             self.textures = OffscreenTextures::new(&self.state, view_port_size);
@@ -367,16 +372,18 @@ impl OffscreenRenderer {
                 .depth
                 .download_image(&self.state, command_encoder, view_port_size);
 
-        // Example how to download rgba image.
-        //
-        // todo: Create complete offscreen rendering API with static "view_port_size".
-        //
-        // let rgba_img_u8 =
-        //     self.textures
-        //         .rgba
-        //         .download_rgba_image(&self.state, command_encoder, view_port_size);
-        // save_as_png(&rgba_img_u8.image_view(), std::path::Path::new("foo.png"));
-
+        let mut image_4u8 = None;
+        if download_rgba {
+            let command_encoder = self
+                .state
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            image_4u8 = Some(self.textures.rgba.download_rgba_image(
+                &self.state,
+                command_encoder,
+                view_port_size,
+            ));
+        }
         if compute_visual_depth {
             let mut image_rgba = MutImage4U8::from_image_size_and_val(
                 depth_image.image_size(),
@@ -412,8 +419,9 @@ impl OffscreenRenderer {
         }
 
         OffscreenRenderResult {
-            depth: depth_image,
+            image_4u8,
             rgba_egui_tex_id: self.textures.rgba.egui_tex_id,
+            depth: depth_image,
             depth_egui_tex_id: self.textures.depth.egui_tex_id,
         }
     }
@@ -427,6 +435,7 @@ impl OffscreenRenderer {
         interaction_enum: &InteractionEnum,
         compute_visual_depth: bool,
         backface_culling: bool,
+        download_rgba: bool,
     ) -> OffscreenRenderResult {
         self.render_impl(
             view_port_size,
@@ -435,6 +444,7 @@ impl OffscreenRenderer {
             Some(interaction_enum),
             compute_visual_depth,
             backface_culling,
+            download_rgba,
         )
     }
 
@@ -446,6 +456,7 @@ impl OffscreenRenderer {
         scene_from_camera: Isometry3F64,
         compute_visual_depth: bool,
         backface_culling: bool,
+        download_rgba: bool,
     ) -> OffscreenRenderResult {
         self.render_impl(
             view_port_size,
@@ -454,6 +465,7 @@ impl OffscreenRenderer {
             None,
             compute_visual_depth,
             backface_culling,
+            download_rgba,
         )
     }
 }
