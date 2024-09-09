@@ -1,15 +1,11 @@
-/// aspect ratio
-pub mod aspect_ratio;
-/// Interactions
-pub mod interactions;
 /// 2d view
 pub mod view2d;
 /// 3d view
 pub mod view3d;
 
-use crate::views::aspect_ratio::HasAspectRatio;
-use crate::views::view2d::View2d;
-use crate::views::view3d::View3d;
+use crate::viewer::aspect_ratio::HasAspectRatio;
+use crate::viewer::views::view2d::View2d;
+use crate::viewer::views::view3d::View3d;
 
 /// The view enum.
 pub(crate) enum View {

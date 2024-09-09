@@ -5,9 +5,9 @@ use sophus_sensor::distortion_table::DistortTable;
 use sophus_sensor::DynCamera;
 use wgpu::util::DeviceExt;
 
-use crate::offscreen_renderer::ClippingPlanes;
-use crate::offscreen_renderer::Zoom2d;
-use crate::ViewerRenderState;
+use crate::renderer::types::ClippingPlanes;
+use crate::renderer::types::Zoom2d;
+use crate::RenderContext;
 
 #[repr(C)]
 // This is so we can store this in a buffer
@@ -81,11 +81,8 @@ pub struct SceneRenderBuffers {
 }
 
 impl SceneRenderBuffers {
-    pub(crate) fn new(
-        wgpu_render_state: &ViewerRenderState,
-        intrinsics: &DynCamera<f64, 1>,
-    ) -> Self {
-        let device = &wgpu_render_state.device;
+    pub(crate) fn new(wgpu_render_state: &RenderContext, intrinsics: &DynCamera<f64, 1>) -> Self {
+        let device = &wgpu_render_state.wgpu_device;
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("scene render layout"),

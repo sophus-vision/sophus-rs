@@ -1,143 +1,16 @@
 use std::collections::HashMap;
 
 use eframe::egui;
-use eframe::egui::Response;
-use eframe::egui::Ui;
-use linked_hash_map::LinkedHashMap;
-use sophus_core::linalg::VecF64;
-use sophus_image::arc_image::ArcImageF32;
-use sophus_image::ImageSize;
-use sophus_lie::Isometry3;
-use sophus_lie::Isometry3F64;
-use sophus_sensor::DynCamera;
 
-use crate::offscreen_renderer::ClippingPlanes;
-use crate::renderables::Packet;
-use crate::renderables::Packets;
-use crate::views::aspect_ratio::get_adjusted_view_size;
-use crate::views::aspect_ratio::get_max_size;
-use crate::views::aspect_ratio::HasAspectRatio;
-use crate::views::interactions::ViewportScale;
-use crate::views::view2d::View2d;
-use crate::views::view3d::View3d;
-use crate::views::View;
-use crate::ViewerRenderState;
-
-/// Cancel request.
-pub struct CancelRequest {}
-
-/// Viewer camera configuration.
-#[derive(Clone, Debug)]
-pub struct ViewerCamera {
-    /// Camera intrinsics
-    pub intrinsics: DynCamera<f64, 1>,
-    /// Clipping planes
-    pub clipping_planes: ClippingPlanes,
-    /// Scene from camera pose
-    pub scene_from_camera: Isometry3F64,
-}
-
-impl Default for ViewerCamera {
-    fn default() -> Self {
-        ViewerCamera::default_from(ImageSize::new(639, 479))
-    }
-}
-
-impl ViewerCamera {
-    /// Create default viewer camera from image size
-    pub fn default_from(image_size: ImageSize) -> ViewerCamera {
-        ViewerCamera {
-            intrinsics: DynCamera::default_pinhole(image_size),
-            clipping_planes: ClippingPlanes::default(),
-            scene_from_camera: Isometry3::from_translation(&VecF64::<3>::new(0.0, 0.0, -5.0)),
-        }
-    }
-}
-
-/// plugin
-pub trait IsUiPlugin: std::marker::Sized {
-    /// update left panel
-    fn update_left_panel(&mut self, _left_ui: &mut Ui, _ctx: &egui::Context) {}
-
-    /// view response
-    fn process_view2d_response(&mut self, _view_name: &str, _response: &Response) {}
-
-    /// view 3d response
-    fn process_view3d_response(
-        &mut self,
-        _view_name: &str,
-        _response: &Response,
-        _scene_from_camera: &Isometry3F64,
-    ) {
-    }
-}
-
-/// Null plugin
-pub struct NullPlugin {}
-
-impl IsUiPlugin for NullPlugin {}
-
-/// The simple viewer top-level struct.
-pub struct Viewer<Plugin: IsUiPlugin> {
-    state: ViewerRenderState,
-    views: LinkedHashMap<String, View>,
-    message_recv: std::sync::mpsc::Receiver<Packets>,
-    cancel_request_sender: std::sync::mpsc::Sender<CancelRequest>,
-    show_depth: bool,
-    backface_culling: bool,
-    plugin: Plugin,
-}
-
-/// Simple viewer builder.
-pub struct ViewerBuilder<Plugin: IsUiPlugin> {
-    /// Message receiver.
-    pub message_recv: std::sync::mpsc::Receiver<Packets>,
-    /// Cancel request sender.
-    pub cancel_request_sender: std::sync::mpsc::Sender<CancelRequest>,
-    /// Plugin
-    pub plugin: Plugin,
-}
-
-impl<Plugin: IsUiPlugin> Viewer<Plugin> {
-    /// Create a new simple viewer.
-    pub fn new(
-        builder: ViewerBuilder<Plugin>,
-        render_state: ViewerRenderState,
-    ) -> Box<Viewer<Plugin>> {
-        Box::new(Viewer::<Plugin> {
-            state: render_state.clone(),
-            views: LinkedHashMap::new(),
-            message_recv: builder.message_recv,
-            cancel_request_sender: builder.cancel_request_sender,
-            show_depth: false,
-            backface_culling: false,
-            plugin: builder.plugin,
-        })
-    }
-
-    fn add_renderables_to_tables(&mut self) {
-        loop {
-            let maybe_stream = self.message_recv.try_recv();
-            if maybe_stream.is_err() {
-                break;
-            }
-            let stream = maybe_stream.unwrap();
-            for packet in stream.packets {
-                match packet {
-                    Packet::View3d(packet) => View3d::update(&mut self.views, packet, &self.state),
-                    Packet::View2d(packet) => View2d::update(&mut self.views, packet, &self.state),
-                }
-            }
-        }
-    }
-}
-
-struct ResponseStruct {
-    ui_response: egui::Response,
-    depth_image: ArcImageF32,
-    scales: ViewportScale,
-    view_port_size: ImageSize,
-}
+use crate::viewer::aspect_ratio::get_adjusted_view_size;
+use crate::viewer::aspect_ratio::get_max_size;
+use crate::viewer::aspect_ratio::HasAspectRatio;
+use crate::viewer::interactions::ViewportScale;
+use crate::viewer::plugin::IsUiPlugin;
+use crate::viewer::types::CancelRequest;
+use crate::viewer::types::ResponseStruct;
+use crate::viewer::views::View;
+use crate::viewer::Viewer;
 
 impl<Plugin: IsUiPlugin> eframe::App for Viewer<Plugin> {
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
@@ -317,6 +190,3 @@ impl<Plugin: IsUiPlugin> eframe::App for Viewer<Plugin> {
         ctx.request_repaint();
     }
 }
-
-/// simple viewer
-pub type SimpleViewer = Viewer<NullPlugin>;

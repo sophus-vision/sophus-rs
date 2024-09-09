@@ -21,15 +21,15 @@ use sophus_sensor::distortion_table::distort_table;
 use sophus_sensor::dyn_camera::DynCamera;
 use wgpu::DepthStencilState;
 
-use crate::offscreen_renderer::scene_renderer::buffers::Frustum;
-use crate::offscreen_renderer::scene_renderer::buffers::SceneRenderBuffers;
-use crate::offscreen_renderer::scene_renderer::mesh::MeshRenderer;
-use crate::offscreen_renderer::scene_renderer::point::ScenePointRenderer;
-use crate::offscreen_renderer::textures::ZBufferTexture;
-use crate::offscreen_renderer::ClippingPlanes;
-use crate::offscreen_renderer::TranslationAndScaling;
-use crate::offscreen_renderer::Zoom2d;
-use crate::ViewerRenderState;
+use crate::renderer::scene_renderer::buffers::Frustum;
+use crate::renderer::scene_renderer::buffers::SceneRenderBuffers;
+use crate::renderer::scene_renderer::mesh::MeshRenderer;
+use crate::renderer::scene_renderer::point::ScenePointRenderer;
+use crate::renderer::textures::ZBufferTexture;
+use crate::renderer::types::ClippingPlanes;
+use crate::renderer::types::TranslationAndScaling;
+use crate::renderer::types::Zoom2d;
+use crate::RenderContext;
 
 /// Scene renderer
 pub struct SceneRenderer {
@@ -48,11 +48,11 @@ pub struct SceneRenderer {
 impl SceneRenderer {
     /// Create a new scene renderer
     pub fn new(
-        wgpu_render_state: &ViewerRenderState,
+        wgpu_render_state: &RenderContext,
         intrinsics: &DynCamera<f64, 1>,
         depth_stencil: Option<DepthStencilState>,
     ) -> Self {
-        let device = &wgpu_render_state.device;
+        let device = &wgpu_render_state.wgpu_device;
 
         let uniform_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -190,7 +190,7 @@ impl SceneRenderer {
 
     pub(crate) fn paint<'rp>(
         &'rp self,
-        state: &ViewerRenderState,
+        state: &RenderContext,
         scene_from_camera: &Isometry3F64,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         texture_view: &'rp wgpu::TextureView,
@@ -239,7 +239,7 @@ impl SceneRenderer {
 
     pub(crate) fn depth_paint<'rp>(
         &'rp self,
-        state: &ViewerRenderState,
+        state: &RenderContext,
         scene_from_camera: &Isometry3F64,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         depth_texture_view: &'rp wgpu::TextureView,
@@ -288,7 +288,7 @@ impl SceneRenderer {
 
     pub(crate) fn prepare(
         &self,
-        state: &ViewerRenderState,
+        state: &RenderContext,
         zoom_2d: TranslationAndScaling,
         intrinsics: &DynCamera<f64, 1>,
     ) {
@@ -303,7 +303,7 @@ impl SceneRenderer {
             py: intrinsics.pinhole_params()[3] as f32,
         };
 
-        state.queue.write_buffer(
+        state.wgpu_queue.write_buffer(
             &self.buffers.frustum_uniform_buffer,
             0,
             bytemuck::cast_slice(&[frustum_uniforms]),
@@ -316,7 +316,7 @@ impl SceneRenderer {
             scaling_y: zoom_2d.scaling[1] as f32,
         };
 
-        state.queue.write_buffer(
+        state.wgpu_queue.write_buffer(
             &self.buffers.zoom_buffer,
             0,
             bytemuck::cast_slice(&[zoom_uniform]),
@@ -328,7 +328,7 @@ impl SceneRenderer {
             let distort_lut = distort_table(intrinsics);
             *maybe_dist_lut = Some(distort_lut.clone());
 
-            state.queue.write_texture(
+            state.wgpu_queue.write_texture(
                 wgpu::ImageCopyTexture {
                     texture: &self.buffers.dist_texture,
                     mip_level: 0,
@@ -343,7 +343,7 @@ impl SceneRenderer {
                 },
                 self.buffers.dist_texture.size(),
             );
-            state.queue.write_buffer(
+            state.wgpu_queue.write_buffer(
                 &self.buffers.camara_params_buffer,
                 0,
                 bytemuck::cast_slice(&[

@@ -3,22 +3,22 @@ use sophus_image::png::save_as_png;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3;
 use sophus_sensor::DynCamera;
-use sophus_viewer::offscreen_renderer::OffscreenRenderer;
-use sophus_viewer::offscreen_renderer::TranslationAndScaling;
 use sophus_viewer::renderables::color::Color;
 use sophus_viewer::renderables::renderable3d::make_line3;
 use sophus_viewer::renderables::renderable3d::make_mesh3_at;
 use sophus_viewer::renderables::renderable3d::make_point3;
-use sophus_viewer::ViewerRenderState;
+use sophus_viewer::renderer::types::TranslationAndScaling;
+use sophus_viewer::renderer::Renderer;
+use sophus_viewer::RenderContext;
 
 struct OffscreenExample {
-    renderer: OffscreenRenderer,
+    renderer: Renderer,
 }
 
 impl OffscreenExample {
-    pub fn new(render_state: &ViewerRenderState) -> OffscreenExample {
+    pub fn new(render_state: &RenderContext) -> OffscreenExample {
         OffscreenExample {
-            renderer: OffscreenRenderer::new(
+            renderer: Renderer::new(
                 render_state,
                 &DynCamera::default_pinhole(ImageSize::new(639, 477)),
             ),
@@ -27,7 +27,7 @@ impl OffscreenExample {
 }
 
 pub async fn run_offscreen() {
-    let render_state = ViewerRenderState::new().await;
+    let render_state = RenderContext::new().await;
 
     let mut offscreen = OffscreenExample::new(&render_state);
 

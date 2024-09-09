@@ -5,10 +5,10 @@ use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
 use sophus_sensor::DynCamera;
 
-use crate::offscreen_renderer::OffscreenRenderer;
-use crate::offscreen_renderer::TranslationAndScaling;
-use crate::views::interactions::SceneFocus;
-use crate::views::interactions::ViewportScale;
+use crate::renderer::types::TranslationAndScaling;
+use crate::renderer::Renderer;
+use crate::viewer::interactions::SceneFocus;
+use crate::viewer::interactions::ViewportScale;
 
 #[derive(Clone, Copy)]
 pub(crate) struct InplaneScrollState {}
@@ -79,7 +79,7 @@ impl InplaneInteraction {
             let uv_in_virtual_camera = zoom2d.apply(scales.apply(uv_view_port));
 
             self.maybe_scene_focus = Some(SceneFocus {
-                depth: OffscreenRenderer::BACKGROUND_IMAGE_PLANE,
+                depth: Renderer::BACKGROUND_IMAGE_PLANE,
                 uv_in_virtual_camera,
             });
 

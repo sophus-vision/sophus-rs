@@ -5,7 +5,7 @@ use sophus_lie::Isometry3F64;
 
 use crate::renderables::color::Color;
 use crate::renderables::renderable2d::HasToVec2F32;
-use crate::simple_viewer::ViewerCamera;
+use crate::viewer::types::ViewerCamera;
 
 /// View3d renderable
 #[derive(Clone, Debug)]

@@ -1,6 +1,6 @@
 use std::num::NonZeroU32;
 
-use crate::ViewerRenderState;
+use crate::RenderContext;
 use eframe::egui::{self};
 use sophus_image::arc_image::ArcImage4U8;
 use sophus_image::arc_image::ArcImageF32;
@@ -33,12 +33,12 @@ impl RgbaTexture {
         }
     }
 
-    pub(crate) fn new(render_state: &ViewerRenderState, view_port_size: &ImageSize) -> Self {
+    pub(crate) fn new(render_state: &RenderContext, view_port_size: &ImageSize) -> Self {
         let w = view_port_size.width as u32;
         let h = view_port_size.height as u32;
 
         let render_target = render_state
-            .device
+            .wgpu_device
             .create_texture(&wgpu::TextureDescriptor {
                 label: None,
                 size: wgpu::Extent3d {
@@ -57,11 +57,14 @@ impl RgbaTexture {
             });
 
         let texture_view = render_target.create_view(&wgpu::TextureViewDescriptor::default());
-        let tex_id = render_state.wgpu_state.write().register_native_texture(
-            render_state.device.as_ref(),
-            &texture_view,
-            wgpu::FilterMode::Linear,
-        );
+        let tex_id = render_state
+            .egui_wgpu_renderer
+            .write()
+            .register_native_texture(
+                render_state.wgpu_device.as_ref(),
+                &texture_view,
+                wgpu::FilterMode::Linear,
+            );
 
         RgbaTexture {
             rgba_texture: render_target,
@@ -73,7 +76,7 @@ impl RgbaTexture {
     /// Method to download ArcImage4U8
     pub fn download_rgba_image(
         &self,
-        state: &ViewerRenderState,
+        state: &RenderContext,
         mut command_encoder: wgpu::CommandEncoder,
         view_port_size: &ImageSize,
     ) -> ArcImage4U8 {
@@ -81,7 +84,7 @@ impl RgbaTexture {
         let h = view_port_size.height as u32;
         let bytes_per_row = RgbaTexture::bytes_per_row(w);
 
-        let buffer = state.device.create_buffer(&wgpu::BufferDescriptor {
+        let buffer = state.wgpu_device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
             size: (bytes_per_row * h) as wgpu::BufferAddress,
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
@@ -110,7 +113,7 @@ impl RgbaTexture {
             },
         );
 
-        state.queue.submit(Some(command_encoder.finish()));
+        state.wgpu_queue.submit(Some(command_encoder.finish()));
 
         #[allow(unused_assignments)]
         let mut maybe_rgba_image = None;
@@ -121,7 +124,7 @@ impl RgbaTexture {
             buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
                 tx.send(result).unwrap();
             });
-            state.device.poll(wgpu::Maintain::Wait);
+            state.wgpu_device.poll(wgpu::Maintain::Wait);
             rx.try_recv().unwrap().unwrap();
 
             let data = buffer_slice.get_mapped_range();
@@ -150,7 +153,7 @@ pub(crate) struct ZBufferTexture {
 }
 
 impl ZBufferTexture {
-    pub(crate) fn new(render_state: &ViewerRenderState, view_port_size: &ImageSize) -> Self {
+    pub(crate) fn new(render_state: &RenderContext, view_port_size: &ImageSize) -> Self {
         pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
         let size = wgpu::Extent3d {
@@ -169,7 +172,7 @@ impl ZBufferTexture {
                         | wgpu::TextureUsages::TEXTURE_BINDING|wgpu::TextureUsages::COPY_SRC,
             view_formats: &[],
         };
-        let texture = render_state.device.create_texture(&desc);
+        let texture = render_state.wgpu_device.create_texture(&desc);
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         ZBufferTexture {
@@ -205,7 +208,7 @@ impl DepthTexture {
     }
 
     /// Create a new depth renderer.
-    pub fn new(render_state: &ViewerRenderState, view_port_size: &ImageSize) -> Self {
+    pub fn new(render_state: &RenderContext, view_port_size: &ImageSize) -> Self {
         let w = view_port_size.width as u32;
         let h = view_port_size.height as u32;
         let bytes_per_row = DepthTexture::bytes_per_row(w);
@@ -213,16 +216,18 @@ impl DepthTexture {
         let required_buffer_size = bytes_per_row * h; // Total bytes needed in the buffer
 
         let depth_output_staging_buffer =
-            render_state.device.create_buffer(&wgpu::BufferDescriptor {
-                label: None,
-                size: required_buffer_size as wgpu::BufferAddress,
-                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-                mapped_at_creation: false,
-            });
+            render_state
+                .wgpu_device
+                .create_buffer(&wgpu::BufferDescriptor {
+                    label: None,
+                    size: required_buffer_size as wgpu::BufferAddress,
+                    usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                    mapped_at_creation: false,
+                });
 
         let depth_render_target_f32 =
             render_state
-                .device
+                .wgpu_device
                 .create_texture(&wgpu::TextureDescriptor {
                     label: None,
                     size: wgpu::Extent3d {
@@ -253,7 +258,7 @@ impl DepthTexture {
             });
 
         let visual_texture = render_state
-            .device
+            .wgpu_device
             .create_texture(&wgpu::TextureDescriptor {
                 label: None,
                 size: wgpu::Extent3d {
@@ -271,11 +276,14 @@ impl DepthTexture {
 
         let visual_texture_view =
             visual_texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let egui_tex_id = render_state.wgpu_state.write().register_native_texture(
-            render_state.device.as_ref(),
-            &visual_texture_view,
-            wgpu::FilterMode::Linear,
-        );
+        let egui_tex_id = render_state
+            .egui_wgpu_renderer
+            .write()
+            .register_native_texture(
+                render_state.wgpu_device.as_ref(),
+                &visual_texture_view,
+                wgpu::FilterMode::Linear,
+            );
         Self {
             depth_output_staging_buffer,
             depth_texture_view_f32,
@@ -288,7 +296,7 @@ impl DepthTexture {
     // download the depth image from the GPU to ArcImageF32
     pub fn download_image(
         &self,
-        state: &ViewerRenderState,
+        state: &RenderContext,
         mut command_encoder: wgpu::CommandEncoder,
         view_port_size: &ImageSize,
     ) -> ArcImageF32 {
@@ -319,7 +327,7 @@ impl DepthTexture {
             },
         );
 
-        state.queue.submit(Some(command_encoder.finish()));
+        state.wgpu_queue.submit(Some(command_encoder.finish()));
 
         #[allow(unused_assignments)]
         let mut maybe_depth_image = None;
@@ -330,7 +338,7 @@ impl DepthTexture {
             buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
                 tx.send(result).unwrap();
             });
-            state.device.poll(wgpu::Maintain::Wait);
+            state.wgpu_device.poll(wgpu::Maintain::Wait);
             rx.try_recv().unwrap().unwrap();
 
             let data = buffer_slice.get_mapped_range();
@@ -361,7 +369,7 @@ pub(crate) struct OffscreenTextures {
 }
 
 impl OffscreenTextures {
-    pub(crate) fn new(render_state: &ViewerRenderState, view_port_size: &ImageSize) -> Self {
+    pub(crate) fn new(render_state: &RenderContext, view_port_size: &ImageSize) -> Self {
         Self {
             view_port_size: *view_port_size,
             rgba: RgbaTexture::new(render_state, view_port_size),

@@ -11,13 +11,13 @@ use std::num::NonZeroU64;
 use wgpu::util::DeviceExt;
 use wgpu::DepthStencilState;
 
-use crate::offscreen_renderer::pixel_renderer::pixel_line::PixelLineRenderer;
-use crate::offscreen_renderer::pixel_renderer::pixel_point::PixelPointRenderer;
-use crate::offscreen_renderer::textures::ZBufferTexture;
-use crate::offscreen_renderer::TranslationAndScaling;
-use crate::offscreen_renderer::Zoom2d;
-use crate::views::interactions::InteractionEnum;
-use crate::ViewerRenderState;
+use crate::renderer::pixel_renderer::pixel_line::PixelLineRenderer;
+use crate::renderer::pixel_renderer::pixel_point::PixelPointRenderer;
+use crate::renderer::textures::ZBufferTexture;
+use crate::renderer::types::TranslationAndScaling;
+use crate::renderer::types::Zoom2d;
+use crate::viewer::interactions::InteractionEnum;
+use crate::RenderContext;
 
 /// Renderer for pixel data
 pub struct PixelRenderer {
@@ -60,11 +60,11 @@ pub struct PointVertex2 {
 impl PixelRenderer {
     /// Create a new pixel renderer
     pub fn new(
-        wgpu_render_state: &ViewerRenderState,
+        wgpu_render_state: &RenderContext,
         image_size: &ImageSize,
         depth_stencil: Option<DepthStencilState>,
     ) -> Self {
-        let device = &wgpu_render_state.device;
+        let device = &wgpu_render_state.wgpu_device;
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("pixel render layout"),
@@ -153,7 +153,7 @@ impl PixelRenderer {
 
     pub(crate) fn show_interaction_marker(
         &self,
-        state: &ViewerRenderState,
+        state: &RenderContext,
         interaction: &InteractionEnum,
     ) {
         if let Some(scene_focus) = interaction.maybe_scene_focus() {
@@ -171,7 +171,7 @@ impl PixelRenderer {
                             _point_size: 5.0,
                         });
                     }
-                    state.queue.write_buffer(
+                    state.wgpu_queue.write_buffer(
                         &self.point_renderer.interaction_vertex_buffer,
                         0,
                         bytemuck::cast_slice(&vertex_data),
@@ -186,7 +186,7 @@ impl PixelRenderer {
 
     pub(crate) fn prepare(
         &self,
-        state: &ViewerRenderState,
+        state: &RenderContext,
         viewport_size: &ImageSize,
         intrinsics: &DynCamera<f64, 1>,
         zoom_2d: TranslationAndScaling,
@@ -198,7 +198,7 @@ impl PixelRenderer {
             dummy: 0.0,
         };
 
-        state.queue.write_buffer(
+        state.wgpu_queue.write_buffer(
             &self.ortho_cam_buffer,
             0,
             bytemuck::cast_slice(&[ortho_cam_uniforms]),
@@ -212,7 +212,7 @@ impl PixelRenderer {
         };
 
         state
-            .queue
+            .wgpu_queue
             .write_buffer(&self.zoom_buffer, 0, bytemuck::cast_slice(&[zoom_uniform]));
     }
 

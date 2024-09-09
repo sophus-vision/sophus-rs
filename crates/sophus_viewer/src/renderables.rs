@@ -14,7 +14,7 @@ use crate::renderables::renderable2d::Renderable2d;
 use crate::renderables::renderable2d::View2dPacket;
 use crate::renderables::renderable3d::Renderable3d;
 use crate::renderables::renderable3d::View3dPacket;
-use crate::simple_viewer::ViewerCamera;
+use crate::viewer::types::ViewerCamera;
 
 /// Image view renderable
 #[derive(Clone, Debug)]
