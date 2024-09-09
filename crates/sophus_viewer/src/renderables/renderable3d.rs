@@ -139,7 +139,7 @@ pub fn make_textured_mesh3_at(
     let mut mesh = TexturedTriangleMesh3 {
         name: name.to_string(),
         triangles: vec![],
-        scene_from_entity
+        scene_from_entity,
     };
 
     for trig in arr {

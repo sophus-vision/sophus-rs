@@ -14,8 +14,8 @@ use crate::variables::VarPoolBuilder;
 use sophus_core::linalg::MatF64;
 use sophus_core::linalg::VecF64;
 use sophus_image::ImageSize;
-use sophus_lie::Isometry3F64;
 use sophus_lie::Isometry3;
+use sophus_lie::Isometry3F64;
 use sophus_lie::Rotation3;
 use sophus_sensor::PinholeCamera;
 use std::collections::HashMap;
@@ -190,26 +190,25 @@ impl CamCalibProblem {
 
     /// optimize with priors
     pub fn optimize_with_priors(&self) {
-        let priors =
-            CostSignature::<1, (Isometry3F64, MatF64<6, 6>), Isometry3PriorTermSignature> {
-                family_names: ["poses".into()],
-                terms: vec![
-                    Isometry3PriorTermSignature {
-                        entity_indices: [0],
-                        isometry_prior: (
-                            self.true_world_from_cameras[0],
-                            MatF64::<6, 6>::new_scaling(10000.0),
-                        ),
-                    },
-                    Isometry3PriorTermSignature {
-                        entity_indices: [1],
-                        isometry_prior: (
-                            self.true_world_from_cameras[1],
-                            MatF64::<6, 6>::new_scaling(10000.0),
-                        ),
-                    },
-                ],
-            };
+        let priors = CostSignature::<1, (Isometry3F64, MatF64<6, 6>), Isometry3PriorTermSignature> {
+            family_names: ["poses".into()],
+            terms: vec![
+                Isometry3PriorTermSignature {
+                    entity_indices: [0],
+                    isometry_prior: (
+                        self.true_world_from_cameras[0],
+                        MatF64::<6, 6>::new_scaling(10000.0),
+                    ),
+                },
+                Isometry3PriorTermSignature {
+                    entity_indices: [1],
+                    isometry_prior: (
+                        self.true_world_from_cameras[1],
+                        MatF64::<6, 6>::new_scaling(10000.0),
+                    ),
+                },
+            ],
+        };
 
         let reproj_obs = CostSignature::<3, VecF64<2>, ReprojTermSignature> {
             family_names: ["cams".into(), "poses".into(), "points".into()],

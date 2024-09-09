@@ -9,8 +9,8 @@ use sophus_core::calculus::dual::DualScalar;
 use sophus_core::calculus::dual::DualVector;
 use sophus_core::calculus::maps::VectorValuedMapFromVector;
 use sophus_core::linalg::VecF64;
-use sophus_lie::Isometry3F64;
 use sophus_lie::Isometry3;
+use sophus_lie::Isometry3F64;
 use sophus_sensor::PinholeCamera;
 
 /// Camera re-projection cost function

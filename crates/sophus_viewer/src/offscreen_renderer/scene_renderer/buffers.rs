@@ -45,14 +45,14 @@ pub(crate) struct ViewUniform {
 }
 
 impl ViewUniform {
-    pub(crate) fn update_given_camera_and_entity(&self, queue: &wgpu::Queue,
+    pub(crate) fn update_given_camera_and_entity(
+        &self,
+        queue: &wgpu::Queue,
         scene_from_camera: &Isometry3F64,
         scene_from_entity: &Isometry3F64,
     ) {
-        let camera_from_entity_mat4x4 = (scene_from_camera
-            .inverse()
-            .group_mul(scene_from_entity))
-        .matrix();
+        let camera_from_entity_mat4x4 =
+            (scene_from_camera.inverse().group_mul(scene_from_entity)).matrix();
 
         let mut camera_from_entity_uniform: [[f32; 4]; 4] = [[0.0; 4]; 4];
         for i in 0..4 {

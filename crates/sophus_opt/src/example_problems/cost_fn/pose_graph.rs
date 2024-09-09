@@ -5,8 +5,8 @@ use crate::robust_kernel;
 use crate::term::MakeTerm;
 use crate::term::Term;
 use crate::variables::VarKind;
-use sophus_lie::Isometry2F64;
 use sophus_lie::Isometry2;
+use sophus_lie::Isometry2F64;
 
 /// residual function for a pose-pose constraint
 pub fn res_fn<S: IsSingleScalar>(
@@ -24,9 +24,7 @@ pub fn res_fn<S: IsSingleScalar>(
 #[derive(Copy, Clone, Debug)]
 pub struct PoseGraphCostFn {}
 
-impl IsResidualFn<12, 2, (Isometry2F64, Isometry2F64), Isometry2F64>
-    for PoseGraphCostFn
-{
+impl IsResidualFn<12, 2, (Isometry2F64, Isometry2F64), Isometry2F64> for PoseGraphCostFn {
     fn eval(
         &self,
         world_from_pose_x: (Isometry2F64, Isometry2F64),
