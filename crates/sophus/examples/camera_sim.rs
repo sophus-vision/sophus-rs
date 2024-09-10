@@ -1,35 +1,25 @@
 use sophus::prelude::IsImageView;
-use sophus_image::png::save_as_png;
+use sophus_image::io::png::save_as_png;
+use sophus_image::io::tiff::save_as_tiff;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3;
 use sophus_sensor::DynCamera;
+use sophus_viewer::camera_simulator::CameraSimulator;
 use sophus_viewer::renderables::color::Color;
 use sophus_viewer::renderables::renderable3d::make_line3;
 use sophus_viewer::renderables::renderable3d::make_mesh3_at;
 use sophus_viewer::renderables::renderable3d::make_point3;
-use sophus_viewer::renderer::types::TranslationAndScaling;
-use sophus_viewer::renderer::Renderer;
+use sophus_viewer::renderer::types::ClippingPlanesF64;
 use sophus_viewer::RenderContext;
-
-struct OffscreenExample {
-    renderer: Renderer,
-}
-
-impl OffscreenExample {
-    pub fn new(render_state: &RenderContext) -> OffscreenExample {
-        OffscreenExample {
-            renderer: Renderer::new(
-                render_state,
-                &DynCamera::default_pinhole(ImageSize::new(639, 477)),
-            ),
-        }
-    }
-}
 
 pub async fn run_offscreen() {
     let render_state = RenderContext::new().await;
 
-    let mut offscreen = OffscreenExample::new(&render_state);
+    let mut sim = CameraSimulator::new(
+        &render_state,
+        DynCamera::default_pinhole(ImageSize::new(639, 477)),
+        ClippingPlanesF64::default(),
+    );
 
     let mut renderables3d = vec![];
     let trig_points = [[0.0, 0.0, -0.1], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]];
@@ -51,25 +41,20 @@ pub async fn run_offscreen() {
         Isometry3::trans_z(3.0),
     ));
 
-    offscreen.renderer.update_3d_renderables(renderables3d);
+    sim.update_3d_renderables(renderables3d);
 
-    let view_port_size = offscreen.renderer.intrinsics().image_size();
+    let result = sim.render(Isometry3::trans_z(-5.0));
 
-    let result = offscreen.renderer.render(
-        &view_port_size,
-        TranslationAndScaling::identity(),
-        Isometry3::trans_z(-5.0),
-        false,
-        false,
-        true,
-    );
+    save_as_png(&result.rgba_image.image_view(), "rgba.png").unwrap();
 
-    let rgba_img_u8 = result.image_4u8.unwrap();
+    let color_mapped_depth = result.depth_image.color_mapped();
+    save_as_png(&color_mapped_depth.image_view(), "color_mapped_depth.png").unwrap();
 
-    save_as_png(
-        &rgba_img_u8.image_view(),
-        std::path::Path::new("11rgba.png"),
-    );
+    save_as_tiff(
+        &result.depth_image.metric_depth().image_view(),
+        "depth.tiff",
+    )
+    .unwrap();
 }
 
 fn main() {

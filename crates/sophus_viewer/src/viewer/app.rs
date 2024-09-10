@@ -107,7 +107,7 @@ impl<Plugin: IsUiPlugin> eframe::App for Viewer<Plugin> {
                                             view.intrinsics().image_size(),
                                             adjusted_size,
                                         ),
-                                        depth_image: render_result.depth,
+                                        z_image: render_result.depth_image.ndc_z_image,
                                         view_port_size: adjusted_size.image_size(),
                                     },
                                 );
@@ -149,7 +149,7 @@ impl<Plugin: IsUiPlugin> eframe::App for Viewer<Plugin> {
                                             view.intrinsics().image_size(),
                                             adjusted_size,
                                         ),
-                                        depth_image: render_result.depth,
+                                        z_image: render_result.depth_image.ndc_z_image,
                                         view_port_size: adjusted_size.image_size(),
                                     },
                                 );
@@ -169,7 +169,7 @@ impl<Plugin: IsUiPlugin> eframe::App for Viewer<Plugin> {
                             &response.ui_response,
                             &response.scales,
                             response.view_port_size,
-                            &response.depth_image,
+                            &response.z_image,
                         );
                     }
                 }
@@ -180,7 +180,7 @@ impl<Plugin: IsUiPlugin> eframe::App for Viewer<Plugin> {
                             &response.ui_response,
                             &response.scales,
                             response.view_port_size,
-                            &response.depth_image,
+                            &response.z_image,
                         );
                     }
                 }

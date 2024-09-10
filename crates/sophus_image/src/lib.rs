@@ -4,18 +4,20 @@
 
 /// image with shared ownership
 pub mod arc_image;
+/// color maps
+pub mod color_map;
 /// image view
 pub mod image_view;
 /// image of intensity (aka percentage) values
 pub mod intensity_image;
 /// bilinear interpolation
 pub mod interpolation;
+/// image io
+pub mod io;
 /// mutable image
 pub mod mut_image;
 /// mutable image view
 pub mod mut_image_view;
-/// png image io
-pub mod png;
 
 pub use crate::arc_image::ArcImage;
 pub use crate::image_view::ImageView;

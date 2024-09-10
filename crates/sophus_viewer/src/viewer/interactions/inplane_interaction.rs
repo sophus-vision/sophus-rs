@@ -6,7 +6,7 @@ use sophus_lie::Isometry3F64;
 use sophus_sensor::DynCamera;
 
 use crate::renderer::types::TranslationAndScaling;
-use crate::renderer::Renderer;
+use crate::renderer::OffscreenRenderer;
 use crate::viewer::interactions::SceneFocus;
 use crate::viewer::interactions::ViewportScale;
 
@@ -79,7 +79,7 @@ impl InplaneInteraction {
             let uv_in_virtual_camera = zoom2d.apply(scales.apply(uv_view_port));
 
             self.maybe_scene_focus = Some(SceneFocus {
-                depth: Renderer::BACKGROUND_IMAGE_PLANE,
+                depth: OffscreenRenderer::BACKGROUND_IMAGE_PLANE,
                 uv_in_virtual_camera,
             });
 

@@ -26,7 +26,7 @@ use crate::renderer::scene_renderer::buffers::SceneRenderBuffers;
 use crate::renderer::scene_renderer::mesh::MeshRenderer;
 use crate::renderer::scene_renderer::point::ScenePointRenderer;
 use crate::renderer::textures::ZBufferTexture;
-use crate::renderer::types::ClippingPlanes;
+use crate::renderer::types::ClippingPlanesF64;
 use crate::renderer::types::TranslationAndScaling;
 use crate::renderer::types::Zoom2d;
 use crate::RenderContext;
@@ -43,13 +43,15 @@ pub struct SceneRenderer {
     pub point_renderer: ScenePointRenderer,
     /// Line renderer
     pub line_renderer: line::SceneLineRenderer,
+    clipping_planes: ClippingPlanesF64,
 }
 
 impl SceneRenderer {
     /// Create a new scene renderer
     pub fn new(
         wgpu_render_state: &RenderContext,
-        intrinsics: &DynCamera<f64, 1>,
+        intrinsics: DynCamera<f64, 1>,
+        clipping_planes: ClippingPlanesF64,
         depth_stencil: Option<DepthStencilState>,
     ) -> Self {
         let device = &wgpu_render_state.wgpu_device;
@@ -161,7 +163,7 @@ impl SceneRenderer {
             ],
             push_constant_ranges: &[],
         });
-        let buffers = SceneRenderBuffers::new(wgpu_render_state, intrinsics);
+        let buffers = SceneRenderBuffers::new(wgpu_render_state, &intrinsics, clipping_planes);
 
         Self {
             buffers,
@@ -185,6 +187,7 @@ impl SceneRenderer {
                 &mesh_pipeline_layout,
                 depth_stencil,
             ),
+            clipping_planes,
         }
     }
 
@@ -295,8 +298,8 @@ impl SceneRenderer {
         let frustum_uniforms = Frustum {
             camera_image_width: intrinsics.image_size().width as f32,
             camera_image_height: intrinsics.image_size().height as f32,
-            near: ClippingPlanes::DEFAULT_NEAR as f32,
-            far: ClippingPlanes::DEFAULT_FAR as f32,
+            near: self.clipping_planes.near as f32,
+            far: self.clipping_planes.far as f32,
             fx: intrinsics.pinhole_params()[0] as f32,
             fy: intrinsics.pinhole_params()[1] as f32,
             px: intrinsics.pinhole_params()[2] as f32,

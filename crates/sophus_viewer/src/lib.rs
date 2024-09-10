@@ -4,6 +4,8 @@
 
 //! Simple viewer for 2D and 3D visualizations.
 
+/// The high-level camera sim rendering API
+pub mod camera_simulator;
 /// The render context
 pub mod render_context;
 /// The renderable structs.

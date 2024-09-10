@@ -2,7 +2,7 @@ use linked_hash_map::LinkedHashMap;
 use sophus_sensor::DynCamera;
 
 use crate::renderables::renderable3d::View3dPacket;
-use crate::renderer::Renderer;
+use crate::renderer::OffscreenRenderer;
 use crate::viewer::aspect_ratio::HasAspectRatio;
 use crate::viewer::interactions::orbit_interaction::OrbitalInteraction;
 use crate::viewer::interactions::InteractionEnum;
@@ -10,7 +10,7 @@ use crate::viewer::views::View;
 use crate::RenderContext;
 
 pub(crate) struct View3d {
-    pub(crate) renderer: Renderer,
+    pub(crate) renderer: OffscreenRenderer,
     pub(crate) interaction: InteractionEnum,
     pub(crate) enabled: bool,
 }
@@ -25,7 +25,11 @@ impl View3d {
             views.insert(
                 packet.view_label.clone(),
                 View::View3d(View3d {
-                    renderer: Renderer::new(state, &packet.initial_camera.intrinsics),
+                    renderer: OffscreenRenderer::new(
+                        state,
+                        packet.initial_camera.intrinsics.clone(),
+                        packet.initial_camera.clipping_planes.clone(),
+                    ),
                     interaction: InteractionEnum::Orbital(OrbitalInteraction::new(
                         packet.initial_camera.scene_from_camera,
                         packet.initial_camera.clipping_planes,

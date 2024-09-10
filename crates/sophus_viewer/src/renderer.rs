@@ -10,13 +10,10 @@ pub mod scene_renderer;
 /// Types used in the renderer API
 pub mod types;
 
-use sophus_core::linalg::SVec;
 use sophus_core::linalg::VecF64;
 use sophus_core::IsTensorLike;
 use sophus_image::arc_image::ArcImage4U8;
-use sophus_image::mut_image::MutImage4U8;
 use sophus_image::prelude::IsImageView;
-use sophus_image::prelude::IsMutImageView;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;
 use sophus_sensor::DynCamera;
@@ -33,14 +30,17 @@ use crate::renderer::scene_renderer::point::Point3dEntity;
 use crate::renderer::scene_renderer::textured_mesh::TexturedMeshEntity;
 use crate::renderer::scene_renderer::SceneRenderer;
 use crate::renderer::textures::OffscreenTextures;
+use crate::renderer::types::ClippingPlanesF64;
+use crate::renderer::types::DepthImage;
 use crate::renderer::types::RenderResult;
 use crate::renderer::types::TranslationAndScaling;
 use crate::viewer::interactions::InteractionEnum;
 use crate::RenderContext;
 
 /// Offscreen renderer
-pub struct Renderer {
+pub struct OffscreenRenderer {
     intrinsics: DynCamera<f64, 1>,
+    pub(crate) clipping_planes: ClippingPlanesF64,
     state: RenderContext,
     scene: SceneRenderer,
     pixel: PixelRenderer,
@@ -48,12 +48,16 @@ pub struct Renderer {
     maybe_background_image: Option<ArcImage4U8>,
 }
 
-impl Renderer {
+impl OffscreenRenderer {
     /// background image plane
     pub const BACKGROUND_IMAGE_PLANE: f64 = 900.0;
 
     /// create new offscreen renderer
-    pub fn new(state: &RenderContext, intrinsics: &DynCamera<f64, 1>) -> Self {
+    pub fn new(
+        state: &RenderContext,
+        intrinsics: DynCamera<f64, 1>,
+        clipping_planes: ClippingPlanesF64,
+    ) -> Self {
         let depth_bias_state = wgpu::DepthBiasState {
             constant: 2,      // Adjust this value as needed
             slope_scale: 1.0, // Adjust this value as needed
@@ -67,10 +71,16 @@ impl Renderer {
             bias: depth_bias_state,
         });
         Self {
-            scene: SceneRenderer::new(state, intrinsics, depth_stencil.clone()),
+            scene: SceneRenderer::new(
+                state,
+                intrinsics.clone(),
+                clipping_planes.clone(),
+                depth_stencil.clone(),
+            ),
             pixel: PixelRenderer::new(state, &intrinsics.image_size(), depth_stencil),
             textures: OffscreenTextures::new(state, &intrinsics.image_size()),
             intrinsics: intrinsics.clone(),
+            clipping_planes: clipping_planes.clone(),
             state: state.clone(),
             maybe_background_image: None,
         }
@@ -172,45 +182,13 @@ impl Renderer {
         }
     }
 
-    fn depth_to_rgb(depth: f32) -> (u8, u8, u8) {
-        let depth = depth.clamp(0.0, 1.0); // Ensure the depth value is between 0 and 1
-
-        let r = if depth < 0.375 {
-            0.0
-        } else if depth < 0.625 {
-            255.0 * (depth - 0.375) / 0.25
-        } else {
-            255.0 * (1.0 - (depth - 0.625) / 0.25)
-        };
-
-        let g = if depth < 0.25 {
-            255.0 * depth / 0.25
-        } else if depth < 0.75 {
-            255.0
-        } else {
-            255.0 * (1.0 - (depth - 0.75) / 0.25)
-        };
-
-        let b = if depth < 0.125 {
-            255.0 * (0.125 - depth) / 0.125
-        } else if depth < 0.375 {
-            255.0
-        } else if depth < 0.625 {
-            255.0 * (1.0 - (depth - 0.375) / 0.25)
-        } else {
-            0.0
-        };
-
-        (r as u8, g as u8, b as u8)
-    }
-
     fn render_impl(
         &mut self,
         view_port_size: &ImageSize,
         zoom: TranslationAndScaling,
         scene_from_camera: Isometry3F64,
         maybe_interaction_enum: Option<&InteractionEnum>,
-        compute_visual_depth: bool,
+        compute_depth_texture: bool,
         backface_culling: bool,
         download_rgba: bool,
     ) -> RenderResult {
@@ -264,11 +242,14 @@ impl Renderer {
             backface_culling,
         );
 
-        let depth_image =
-            self.textures
-                .depth
-                .download_image(&self.state, command_encoder, view_port_size);
-
+        let depth_image = DepthImage {
+            ndc_z_image: self.textures.depth.download_image(
+                &self.state,
+                command_encoder,
+                view_port_size,
+            ),
+            clipping_planes: self.clipping_planes.cast(),
+        };
         let mut image_4u8 = None;
         if download_rgba {
             let command_encoder = self
@@ -281,22 +262,8 @@ impl Renderer {
                 view_port_size,
             ));
         }
-        if compute_visual_depth {
-            let mut image_rgba = MutImage4U8::from_image_size_and_val(
-                depth_image.image_size(),
-                SVec::<u8, 4>::new(0, 255, 0, 255),
-            );
-
-            for v in 0..depth_image.image_size().height {
-                for u in 0..depth_image.image_size().width {
-                    let z = depth_image.pixel(u, v);
-                    let (r, g, b) = Self::depth_to_rgb(z);
-
-                    *image_rgba.mut_pixel(u, v) = SVec::<u8, 4>::new(r, g, b, 255);
-                }
-            }
-
-            let image_rgba = ArcImage4U8::from(image_rgba);
+        if compute_depth_texture {
+            let image_rgba = depth_image.color_mapped();
 
             self.state.wgpu_queue.write_texture(
                 wgpu::ImageCopyTexture {
@@ -316,9 +283,9 @@ impl Renderer {
         }
 
         RenderResult {
-            image_4u8,
+            rgba_image: image_4u8,
             rgba_egui_tex_id: self.textures.rgba.egui_tex_id,
-            depth: depth_image,
+            depth_image,
             depth_egui_tex_id: self.textures.depth.egui_tex_id,
         }
     }
@@ -330,7 +297,7 @@ impl Renderer {
         zoom: TranslationAndScaling,
         scene_from_camera: Isometry3F64,
         interaction_enum: &InteractionEnum,
-        compute_visual_depth: bool,
+        compute_depth_texture: bool,
         backface_culling: bool,
         download_rgba: bool,
     ) -> RenderResult {
@@ -339,7 +306,7 @@ impl Renderer {
             zoom,
             scene_from_camera,
             Some(interaction_enum),
-            compute_visual_depth,
+            compute_depth_texture,
             backface_culling,
             download_rgba,
         )
@@ -351,7 +318,7 @@ impl Renderer {
         view_port_size: &ImageSize,
         zoom: TranslationAndScaling,
         scene_from_camera: Isometry3F64,
-        compute_visual_depth: bool,
+        compute_depth_texture: bool,
         backface_culling: bool,
         download_rgba: bool,
     ) -> RenderResult {
@@ -360,7 +327,7 @@ impl Renderer {
             zoom,
             scene_from_camera,
             None,
-            compute_visual_depth,
+            compute_depth_texture,
             backface_culling,
             download_rgba,
         )

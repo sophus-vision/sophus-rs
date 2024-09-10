@@ -9,7 +9,7 @@ use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
 use sophus_sensor::DynCamera;
 
-use crate::renderer::types::ClippingPlanes;
+use crate::renderer::types::ClippingPlanesF64;
 use crate::renderer::types::TranslationAndScaling;
 use crate::viewer::interactions::SceneFocus;
 use crate::viewer::interactions::ViewportScale;
@@ -28,14 +28,14 @@ pub struct OrbitalInteraction {
     pub(crate) maybe_pointer_state: Option<OrbitalPointerState>,
     pub(crate) maybe_scroll_state: Option<OrbitalScrollState>,
     pub(crate) maybe_scene_focus: Option<SceneFocus>,
-    pub(crate) clipping_planes: ClippingPlanes,
+    pub(crate) clipping_planes: ClippingPlanesF64,
     pub(crate) scene_from_camera: Isometry3F64,
 }
 
 impl OrbitalInteraction {
     pub(crate) fn new(
         scene_from_camera: Isometry3F64,
-        clipping_planes: ClippingPlanes,
+        clipping_planes: ClippingPlanesF64,
     ) -> OrbitalInteraction {
         OrbitalInteraction {
             maybe_pointer_state: None,
@@ -66,7 +66,7 @@ impl OrbitalInteraction {
             0.5
         };
 
-        self.clipping_planes.z_from_ndc(ndc_z)
+        self.clipping_planes.metric_z_from_ndc_z(ndc_z)
     }
 
     /// Process "scroll" events
@@ -110,9 +110,9 @@ impl OrbitalInteraction {
 
         if scroll_started {
             let uv_in_virtual_camera = scales.apply(uv_viewport);
-            let mut z = self
-                .clipping_planes
-                .z_from_ndc(z_buffer.pixel(uv_viewport.x as usize, uv_viewport.y as usize) as f64);
+            let mut z = self.clipping_planes.metric_z_from_ndc_z(
+                z_buffer.pixel(uv_viewport.x as usize, uv_viewport.y as usize) as f64,
+            );
             if z >= self.clipping_planes.far {
                 z = self.median_scene_depth(z_buffer);
             }
@@ -190,9 +190,9 @@ impl OrbitalInteraction {
 
             let uv_in_virtual_camera = scales.apply(uv_viewport);
 
-            let mut z = self
-                .clipping_planes
-                .z_from_ndc(z_buffer.pixel(uv_viewport.x as usize, uv_viewport.y as usize) as f64);
+            let mut z = self.clipping_planes.metric_z_from_ndc_z(
+                z_buffer.pixel(uv_viewport.x as usize, uv_viewport.y as usize) as f64,
+            );
 
             if z >= self.clipping_planes.far {
                 z = self.median_scene_depth(z_buffer);

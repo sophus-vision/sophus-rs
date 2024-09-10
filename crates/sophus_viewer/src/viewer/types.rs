@@ -7,6 +7,7 @@ use sophus_lie::Isometry3F64;
 use sophus_sensor::DynCamera;
 
 use crate::renderer::types::ClippingPlanes;
+use crate::renderer::types::ClippingPlanesF64;
 use crate::viewer::interactions::ViewportScale;
 
 /// Cancel request.
@@ -18,7 +19,7 @@ pub struct ViewerCamera {
     /// Camera intrinsics
     pub intrinsics: DynCamera<f64, 1>,
     /// Clipping planes
-    pub clipping_planes: ClippingPlanes,
+    pub clipping_planes: ClippingPlanesF64,
     /// Scene from camera pose
     pub scene_from_camera: Isometry3F64,
 }
@@ -42,7 +43,7 @@ impl ViewerCamera {
 
 pub(crate) struct ResponseStruct {
     pub(crate) ui_response: egui::Response,
-    pub(crate) depth_image: ArcImageF32,
+    pub(crate) z_image: ArcImageF32,
     pub(crate) scales: ViewportScale,
     pub(crate) view_port_size: ImageSize,
 }
