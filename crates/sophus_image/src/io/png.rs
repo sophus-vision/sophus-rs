@@ -78,7 +78,7 @@ pub fn load_png(path: impl ToString) -> std::io::Result<DynIntensityMutImage> {
                 },
                 bytes,
             )
-            .map_err(|e| std::io::Error::other(e))?;
+            .map_err(std::io::Error::other)?;
             Ok(DynIntensityMutImage::GrayscaleAlphaU8(image))
         }
         (png::ColorType::GrayscaleAlpha, png::BitDepth::Sixteen) => {
@@ -89,7 +89,7 @@ pub fn load_png(path: impl ToString) -> std::io::Result<DynIntensityMutImage> {
                 },
                 bytes,
             )
-            .map_err(|e| std::io::Error::other(e))?;
+            .map_err(std::io::Error::other)?;
             Ok(DynIntensityMutImage::GrayscaleAlphaU16(image))
         }
         (png::ColorType::Rgb, png::BitDepth::Eight) => {
@@ -100,7 +100,7 @@ pub fn load_png(path: impl ToString) -> std::io::Result<DynIntensityMutImage> {
                 },
                 bytes,
             )
-            .map_err(|e| std::io::Error::other(e))?;
+            .map_err(std::io::Error::other)?;
             Ok(DynIntensityMutImage::RgbU8(image))
         }
         (png::ColorType::Rgb, png::BitDepth::Sixteen) => {
@@ -111,7 +111,7 @@ pub fn load_png(path: impl ToString) -> std::io::Result<DynIntensityMutImage> {
                 },
                 bytemuck::cast_slice(bytes),
             )
-            .map_err(|e| std::io::Error::other(e))?;
+            .map_err(std::io::Error::other)?;
             Ok(DynIntensityMutImage::RgbU16(image))
         }
         (png::ColorType::Rgba, png::BitDepth::Eight) => {
@@ -122,7 +122,7 @@ pub fn load_png(path: impl ToString) -> std::io::Result<DynIntensityMutImage> {
                 },
                 bytes,
             )
-            .map_err(|e| std::io::Error::other(e))?;
+            .map_err(std::io::Error::other)?;
             Ok(DynIntensityMutImage::RgbaU8(image))
         }
         (png::ColorType::Rgba, png::BitDepth::Sixteen) => {
@@ -133,7 +133,7 @@ pub fn load_png(path: impl ToString) -> std::io::Result<DynIntensityMutImage> {
                 },
                 bytemuck::cast_slice(bytes),
             )
-            .map_err(|e| std::io::Error::other(e))?;
+            .map_err(std::io::Error::other)?;
             Ok(DynIntensityMutImage::RgbaU16(image))
         }
         _ => Err(std::io::Error::other(format!(

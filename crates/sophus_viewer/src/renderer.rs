@@ -74,13 +74,13 @@ impl OffscreenRenderer {
             scene: SceneRenderer::new(
                 state,
                 intrinsics.clone(),
-                clipping_planes.clone(),
+                clipping_planes,
                 depth_stencil.clone(),
             ),
             pixel: PixelRenderer::new(state, &intrinsics.image_size(), depth_stencil),
             textures: OffscreenTextures::new(state, &intrinsics.image_size()),
             intrinsics: intrinsics.clone(),
-            clipping_planes: clipping_planes.clone(),
+            clipping_planes,
             state: state.clone(),
             maybe_background_image: None,
         }

@@ -77,20 +77,6 @@ impl<Scalar: IsIntensityScalar + 'static> IsIntensityMutImage<Scalar, Scalar> fo
         })
     }
 
-    // fn into_dyn_image_view(img: Self) -> DynIntensityMutImage {
-    //     if TypeId::of::<Scalar>() == TypeId::of::<u8>() {
-    //         DynIntensityMutImage::GrayscaleU8(img)
-    //     } else if TypeId::of::<Scalar>() == TypeId::of::<u16>() {
-    //         DynIntensityMutImage::GrayscaleU16(img.cast::<u16>())
-    //     } else {
-    //         panic!("Unsupported type for IntensityScalar");
-    //     }
-    // }
-
-    // fn try_into_dyn_image_view_u(img: Self) -> Option<DynIntensityMutImageU> {
-    //     todo!()
-    // }
-
     fn convert_to<OtherScalar: IsIntensityScalar>(img: Self) -> MutImage<OtherScalar> {
         MutImage::<OtherScalar>::from_map(&img.image_view(), |rgb: &Scalar| -> OtherScalar {
             OtherScalar::from(*rgb)

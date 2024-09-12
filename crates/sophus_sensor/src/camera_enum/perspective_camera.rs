@@ -1,6 +1,7 @@
 use crate::distortions::affine::AffineDistortionImpl;
 use crate::distortions::brown_conrady::BrownConradyDistortionImpl;
 use crate::distortions::kannala_brandt::KannalaBrandtDistortionImpl;
+use crate::distortions::unified_extended::UnifiedExtendedDistortionImpl;
 use crate::prelude::*;
 use crate::projections::perspective::PerspectiveProjectionImpl;
 use crate::Camera;
@@ -27,6 +28,15 @@ pub type BrownConradyCamera<S, const BATCH: usize> = Camera<
     BrownConradyDistortionImpl<S, BATCH>,
     PerspectiveProjectionImpl<S, BATCH>,
 >;
+/// Unified Extended camera
+pub type UnifiedExtendedCamera<S, const BATCH: usize> = Camera<
+    S,
+    2,
+    6,
+    BATCH,
+    UnifiedExtendedDistortionImpl<S, BATCH>,
+    PerspectiveProjectionImpl<S, BATCH>,
+>;
 
 /// Pinhole camera with f64 scalar type
 pub type PinholeCameraF64 = PinholeCamera<f64, 1>;
@@ -34,6 +44,8 @@ pub type PinholeCameraF64 = PinholeCamera<f64, 1>;
 pub type KannalaBrandtCameraF64 = KannalaBrandtCamera<f64, 1>;
 /// Brown-Conrady camera with f64 scalar type
 pub type BrownConradyCameraF64 = BrownConradyCamera<f64, 1>;
+/// Unified Extended camera with f64 scalar type
+pub type UnifiedExtendedCameraF64 = UnifiedExtendedCamera<f64, 1>;
 
 /// Perspective camera enum
 #[derive(Debug, Clone)]
@@ -44,6 +56,8 @@ pub enum PerspectiveCameraEnum<S: IsScalar<BATCH>, const BATCH: usize> {
     KannalaBrandt(KannalaBrandtCamera<S, BATCH>),
     /// Brown-Conrady camera
     BrownConrady(BrownConradyCamera<S, BATCH>),
+    /// Unified Extended camera
+    UnifiedExtended(UnifiedExtendedCamera<S, BATCH>),
 }
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
@@ -51,13 +65,6 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
 {
     fn new_pinhole(params: &S::Vector<4>, image_size: ImageSize) -> Self {
         Self::Pinhole(PinholeCamera::from_params_and_size(params, image_size))
-    }
-    fn image_size(&self) -> ImageSize {
-        match self {
-            PerspectiveCameraEnum::Pinhole(camera) => camera.image_size(),
-            PerspectiveCameraEnum::KannalaBrandt(camera) => camera.image_size(),
-            PerspectiveCameraEnum::BrownConrady(camera) => camera.image_size(),
-        }
     }
 
     fn new_kannala_brandt(params: &S::Vector<8>, image_size: ImageSize) -> Self {
@@ -70,11 +77,30 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
         Self::BrownConrady(BrownConradyCamera::from_params_and_size(params, image_size))
     }
 
+    fn new_unified_extended(
+        params: &<S as IsScalar<BATCH>>::Vector<6>,
+        image_size: ImageSize,
+    ) -> Self {
+        Self::UnifiedExtended(UnifiedExtendedCamera::from_params_and_size(
+            params, image_size,
+        ))
+    }
+
+    fn image_size(&self) -> ImageSize {
+        match self {
+            PerspectiveCameraEnum::Pinhole(camera) => camera.image_size(),
+            PerspectiveCameraEnum::KannalaBrandt(camera) => camera.image_size(),
+            PerspectiveCameraEnum::BrownConrady(camera) => camera.image_size(),
+            PerspectiveCameraEnum::UnifiedExtended(camera) => camera.image_size(),
+        }
+    }
+
     fn cam_proj(&self, point_in_camera: &S::Vector<3>) -> S::Vector<2> {
         match self {
             PerspectiveCameraEnum::Pinhole(camera) => camera.cam_proj(point_in_camera),
             PerspectiveCameraEnum::KannalaBrandt(camera) => camera.cam_proj(point_in_camera),
             PerspectiveCameraEnum::BrownConrady(camera) => camera.cam_proj(point_in_camera),
+            PerspectiveCameraEnum::UnifiedExtended(camera) => camera.cam_proj(point_in_camera),
         }
     }
 
@@ -87,6 +113,9 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
             PerspectiveCameraEnum::BrownConrady(camera) => {
                 camera.cam_unproj_with_z(point_in_camera, z)
             }
+            PerspectiveCameraEnum::UnifiedExtended(camera) => {
+                camera.cam_unproj_with_z(point_in_camera, z)
+            }
         }
     }
 
@@ -95,6 +124,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
             PerspectiveCameraEnum::Pinhole(camera) => camera.distort(point_in_camera),
             PerspectiveCameraEnum::KannalaBrandt(camera) => camera.distort(point_in_camera),
             PerspectiveCameraEnum::BrownConrady(camera) => camera.distort(point_in_camera),
+            PerspectiveCameraEnum::UnifiedExtended(camera) => camera.distort(point_in_camera),
         }
     }
 
@@ -103,6 +133,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
             PerspectiveCameraEnum::Pinhole(camera) => camera.undistort(point_in_camera),
             PerspectiveCameraEnum::KannalaBrandt(camera) => camera.undistort(point_in_camera),
             PerspectiveCameraEnum::BrownConrady(camera) => camera.undistort(point_in_camera),
+            PerspectiveCameraEnum::UnifiedExtended(camera) => camera.undistort(point_in_camera),
         }
     }
 
@@ -111,6 +142,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
             PerspectiveCameraEnum::Pinhole(camera) => camera.dx_distort_x(point_in_camera),
             PerspectiveCameraEnum::KannalaBrandt(camera) => camera.dx_distort_x(point_in_camera),
             PerspectiveCameraEnum::BrownConrady(camera) => camera.dx_distort_x(point_in_camera),
+            PerspectiveCameraEnum::UnifiedExtended(camera) => camera.dx_distort_x(point_in_camera),
         }
     }
 
@@ -119,6 +151,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
             PerspectiveCameraEnum::Pinhole(_) => None,
             PerspectiveCameraEnum::KannalaBrandt(_) => None,
             PerspectiveCameraEnum::BrownConrady(camera) => Some(camera),
+            PerspectiveCameraEnum::UnifiedExtended(_) => None,
         }
     }
 
@@ -127,6 +160,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
             PerspectiveCameraEnum::Pinhole(_) => None,
             PerspectiveCameraEnum::KannalaBrandt(camera) => Some(camera),
             PerspectiveCameraEnum::BrownConrady(_) => None,
+            PerspectiveCameraEnum::UnifiedExtended(_) => None,
         }
     }
 
@@ -135,6 +169,16 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
             PerspectiveCameraEnum::Pinhole(camera) => Some(camera),
             PerspectiveCameraEnum::KannalaBrandt(_) => None,
             PerspectiveCameraEnum::BrownConrady(_) => None,
+            PerspectiveCameraEnum::UnifiedExtended(_) => None,
+        }
+    }
+
+    fn try_get_unified_extended(self) -> Option<UnifiedExtendedCamera<S, BATCH>> {
+        match self {
+            PerspectiveCameraEnum::Pinhole(_) => None,
+            PerspectiveCameraEnum::KannalaBrandt(_) => None,
+            PerspectiveCameraEnum::BrownConrady(_) => None,
+            PerspectiveCameraEnum::UnifiedExtended(camera) => Some(camera),
         }
     }
 }
@@ -149,6 +193,9 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsPerspectiveCameraEnum<S, BATCH>
                 camera.params().get_fixed_subvec::<4>(0)
             }
             PerspectiveCameraEnum::BrownConrady(camera) => camera.params().get_fixed_subvec::<4>(0),
+            PerspectiveCameraEnum::UnifiedExtended(camera) => {
+                camera.params().get_fixed_subvec::<4>(0)
+            }
         }
     }
 }

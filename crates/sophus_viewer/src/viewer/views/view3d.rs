@@ -28,7 +28,7 @@ impl View3d {
                     renderer: OffscreenRenderer::new(
                         state,
                         packet.initial_camera.intrinsics.clone(),
-                        packet.initial_camera.clipping_planes.clone(),
+                        packet.initial_camera.clipping_planes,
                     ),
                     interaction: InteractionEnum::Orbital(OrbitalInteraction::new(
                         packet.initial_camera.scene_from_camera,
