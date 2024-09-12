@@ -1,13 +1,14 @@
 use linked_hash_map::LinkedHashMap;
 use sophus_sensor::DynCamera;
 
-use crate::offscreen_renderer::OffscreenRenderer;
 use crate::renderables::renderable2d::View2dPacket;
-use crate::views::aspect_ratio::HasAspectRatio;
-use crate::views::interactions::inplane_interaction::InplaneInteraction;
-use crate::views::interactions::InteractionEnum;
-use crate::views::View;
-use crate::ViewerRenderState;
+use crate::renderer::types::ClippingPlanes;
+use crate::renderer::OffscreenRenderer;
+use crate::viewer::aspect_ratio::HasAspectRatio;
+use crate::viewer::interactions::inplane_interaction::InplaneInteraction;
+use crate::viewer::interactions::InteractionEnum;
+use crate::viewer::views::View;
+use crate::RenderContext;
 
 pub(crate) struct View2d {
     pub(crate) renderer: OffscreenRenderer,
@@ -19,7 +20,7 @@ impl View2d {
     fn create_if_new(
         views: &mut LinkedHashMap<String, View>,
         packet: &View2dPacket,
-        state: &ViewerRenderState,
+        state: &RenderContext,
     ) -> bool {
         if views.contains_key(&packet.view_label) {
             return false;
@@ -28,7 +29,11 @@ impl View2d {
             views.insert(
                 packet.view_label.clone(),
                 View::View2d(View2d {
-                    renderer: OffscreenRenderer::new(state, frame.intrinsics()),
+                    renderer: OffscreenRenderer::new(
+                        state,
+                        frame.intrinsics().clone(),
+                        ClippingPlanes::default(),
+                    ),
                     interaction: InteractionEnum::InPlane(InplaneInteraction::new()),
                     enabled: true,
                 }),
@@ -42,7 +47,7 @@ impl View2d {
     pub fn update(
         views: &mut LinkedHashMap<String, View>,
         packet: View2dPacket,
-        state: &ViewerRenderState,
+        state: &RenderContext,
     ) {
         Self::create_if_new(views, &packet, state);
         let view = views.get_mut(&packet.view_label).unwrap();
@@ -58,7 +63,11 @@ impl View2d {
             // We got a new frame, hence we need to clear all renderables and then add the
             // intrinsics and background image if present. The easiest and most error-proof way to
             // do this is to create a new SceneRenderer and PixelRenderer and replace the old ones.
-            view.renderer = OffscreenRenderer::new(state, new_intrinsics);
+            view.renderer = OffscreenRenderer::new(
+                state,
+                new_intrinsics.clone(),
+                view.renderer.clipping_planes,
+            );
 
             view.renderer
                 .reset_2d_frame(new_intrinsics, frame.maybe_image());

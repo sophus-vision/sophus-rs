@@ -6,9 +6,9 @@ use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use sophus_lie::Isometry3F64;
 use wgpu::DepthStencilState;
 
-use crate::offscreen_renderer::scene_renderer::buffers::SceneRenderBuffers;
 use crate::renderables::renderable3d::TriangleMesh3;
-use crate::ViewerRenderState;
+use crate::renderer::scene_renderer::buffers::SceneRenderBuffers;
+use crate::RenderContext;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -25,7 +25,7 @@ pub(crate) struct Mesh3dEntity {
 
 impl Mesh3dEntity {
     /// Create a new 3D mesh entity
-    pub fn new(wgpu_render_state: &ViewerRenderState, mesh: &TriangleMesh3) -> Self {
+    pub fn new(wgpu_render_state: &RenderContext, mesh: &TriangleMesh3) -> Self {
         let vertex_data: Vec<MeshVertex3> = mesh
             .triangles
             .iter()
@@ -49,7 +49,7 @@ impl Mesh3dEntity {
 
         let vertex_buffer =
             wgpu_render_state
-                .device
+                .wgpu_device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some(&format!("3D mesh vertex buffer: {}", mesh.name)),
                     contents: bytemuck::cast_slice(&vertex_data),
@@ -155,11 +155,11 @@ impl MeshRenderer {
 
     /// Create a new scene mesh renderer
     pub fn new(
-        wgpu_render_state: &ViewerRenderState,
+        wgpu_render_state: &RenderContext,
         pipeline_layout: &wgpu::PipelineLayout,
         depth_stencil: Option<DepthStencilState>,
     ) -> Self {
-        let device = &wgpu_render_state.device;
+        let device = &wgpu_render_state.wgpu_device;
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("scene mesh shader"),
@@ -216,7 +216,7 @@ impl MeshRenderer {
 
     pub(crate) fn paint<'rp>(
         &'rp self,
-        wgpu_render_state: &ViewerRenderState,
+        wgpu_render_state: &RenderContext,
         scene_from_camera: &Isometry3F64,
         buffers: &'rp SceneRenderBuffers,
         render_pass: &mut wgpu::RenderPass<'rp>,
@@ -233,7 +233,7 @@ impl MeshRenderer {
 
         for mesh in self.mesh_table.values() {
             buffers.view_uniform.update_given_camera_and_entity(
-                &wgpu_render_state.queue,
+                &wgpu_render_state.wgpu_queue,
                 scene_from_camera,
                 &mesh.scene_from_entity,
             );
@@ -244,7 +244,7 @@ impl MeshRenderer {
 
     pub(crate) fn depth_paint<'rp>(
         &'rp self,
-        wgpu_render_state: &ViewerRenderState,
+        wgpu_render_state: &RenderContext,
         scene_from_camera: &Isometry3F64,
         buffers: &'rp SceneRenderBuffers,
         depth_render_pass: &mut wgpu::RenderPass<'rp>,
@@ -260,7 +260,7 @@ impl MeshRenderer {
         depth_render_pass.set_bind_group(1, &buffers.dist_bind_group, &[]);
         for mesh in self.mesh_table.values() {
             buffers.view_uniform.update_given_camera_and_entity(
-                &wgpu_render_state.queue,
+                &wgpu_render_state.wgpu_queue,
                 scene_from_camera,
                 &mesh.scene_from_entity,
             );

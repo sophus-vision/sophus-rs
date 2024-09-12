@@ -9,9 +9,9 @@ use sophus_image::image_view::IsImageView;
 use sophus_lie::Isometry3F64;
 use wgpu::DepthStencilState;
 
-use crate::offscreen_renderer::scene_renderer::buffers::SceneRenderBuffers;
 use crate::renderables::renderable3d::TexturedTriangleMesh3;
-use crate::ViewerRenderState;
+use crate::renderer::scene_renderer::buffers::SceneRenderBuffers;
+use crate::RenderContext;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -30,7 +30,7 @@ pub(crate) struct TexturedMeshEntity {
 
 impl TexturedMeshEntity {
     pub(crate) fn new(
-        wgpu_render_state: &ViewerRenderState,
+        wgpu_render_state: &RenderContext,
         mesh: &TexturedTriangleMesh3,
         image: ArcImage4U8,
     ) -> Self {
@@ -57,14 +57,14 @@ impl TexturedMeshEntity {
 
         let vertex_buffer =
             wgpu_render_state
-                .device
+                .wgpu_device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some(&format!("3D mesh vertex buffer: {}", mesh.name)),
                     contents: bytemuck::cast_slice(&vertex_data),
                     usage: wgpu::BufferUsages::VERTEX,
                 });
 
-        let device = &wgpu_render_state.device;
+        let device = &wgpu_render_state.wgpu_device;
 
         let background_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -132,7 +132,7 @@ impl TexturedMeshEntity {
             label: Some("background_bind_group"),
         });
 
-        wgpu_render_state.queue.write_texture(
+        wgpu_render_state.wgpu_queue.write_texture(
             wgpu::ImageCopyTexture {
                 texture: &texture,
                 mip_level: 0,
@@ -167,11 +167,11 @@ pub struct TexturedMeshRenderer {
 
 impl TexturedMeshRenderer {
     pub(crate) fn new(
-        wgpu_render_state: &ViewerRenderState,
+        wgpu_render_state: &RenderContext,
         pipeline_layout: &wgpu::PipelineLayout,
         depth_stencil: Option<DepthStencilState>,
     ) -> Self {
-        let device = &wgpu_render_state.device;
+        let device = &wgpu_render_state.wgpu_device;
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("texture scene mesh shader"),
@@ -243,7 +243,7 @@ impl TexturedMeshRenderer {
     }
     pub(crate) fn paint<'rp>(
         &'rp self,
-        wgpu_render_state: &ViewerRenderState,
+        wgpu_render_state: &RenderContext,
         scene_from_camera: &Isometry3F64,
         buffers: &'rp SceneRenderBuffers,
         render_pass: &mut wgpu::RenderPass<'rp>,
@@ -254,7 +254,7 @@ impl TexturedMeshRenderer {
 
         for mesh in self.mesh_table.values() {
             buffers.view_uniform.update_given_camera_and_entity(
-                &wgpu_render_state.queue,
+                &wgpu_render_state.wgpu_queue,
                 scene_from_camera,
                 &mesh.scene_from_entity,
             );
@@ -266,7 +266,7 @@ impl TexturedMeshRenderer {
 
     pub(crate) fn depth_paint<'rp>(
         &'rp self,
-        wgpu_render_state: &ViewerRenderState,
+        wgpu_render_state: &RenderContext,
         scene_from_camera: &Isometry3F64,
         buffers: &'rp SceneRenderBuffers,
         depth_render_pass: &mut wgpu::RenderPass<'rp>,
@@ -277,7 +277,7 @@ impl TexturedMeshRenderer {
 
         for mesh in self.mesh_table.values() {
             buffers.view_uniform.update_given_camera_and_entity(
-                &wgpu_render_state.queue,
+                &wgpu_render_state.wgpu_queue,
                 scene_from_camera,
                 &mesh.scene_from_entity,
             );

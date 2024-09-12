@@ -7,144 +7,45 @@ pub mod pixel_renderer;
 /// The scene renderer for 3D rendering.
 pub mod scene_renderer;
 
-use eframe::egui;
-use sophus_core::linalg::SVec;
+/// Types used in the renderer API
+pub mod types;
+
 use sophus_core::linalg::VecF64;
 use sophus_core::IsTensorLike;
 use sophus_image::arc_image::ArcImage4U8;
-use sophus_image::arc_image::GenArcImage;
-use sophus_image::mut_image::MutImage4U8;
 use sophus_image::prelude::IsImageView;
-use sophus_image::prelude::IsMutImageView;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;
 use sophus_sensor::DynCamera;
 
-use crate::offscreen_renderer::pixel_renderer::pixel_line::Line2dEntity;
-use crate::offscreen_renderer::pixel_renderer::pixel_point::Point2dEntity;
-use crate::offscreen_renderer::pixel_renderer::PixelRenderer;
-use crate::offscreen_renderer::scene_renderer::line::Line3dEntity;
-use crate::offscreen_renderer::scene_renderer::mesh::Mesh3dEntity;
-use crate::offscreen_renderer::scene_renderer::point::Point3dEntity;
-use crate::offscreen_renderer::scene_renderer::textured_mesh::TexturedMeshEntity;
-use crate::offscreen_renderer::scene_renderer::SceneRenderer;
-use crate::offscreen_renderer::textures::OffscreenTextures;
 use crate::renderables::renderable2d::Renderable2d;
 use crate::renderables::renderable3d::make_textured_mesh3;
 use crate::renderables::renderable3d::Renderable3d;
-use crate::views::aspect_ratio::HasAspectRatio;
-use crate::views::interactions::InteractionEnum;
-use crate::ViewerRenderState;
-
-/// Clipping planes for the Wgpu renderer
-#[derive(Clone, Copy, Debug)]
-pub struct ClippingPlanes {
-    /// Near clipping plane
-    pub near: f64,
-    /// Far clipping plane
-    pub far: f64,
-}
-
-impl ClippingPlanes {
-    /// default near clipping plabe
-    pub const DEFAULT_NEAR: f64 = 1.0;
-    /// default far clipping plabe
-    pub const DEFAULT_FAR: f64 = 1000.0;
-}
-
-impl Default for ClippingPlanes {
-    fn default() -> Self {
-        ClippingPlanes {
-            near: ClippingPlanes::DEFAULT_NEAR,
-            far: ClippingPlanes::DEFAULT_FAR,
-        }
-    }
-}
-
-impl ClippingPlanes {
-    pub(crate) fn z_from_ndc(&self, ndc: f64) -> f64 {
-        -(self.far * self.near) / (-self.far + ndc * self.far - ndc * self.near)
-    }
-
-    pub(crate) fn _ndc_from_z(&self, z: f64) -> f64 {
-        (self.far * (z - self.near)) / (z * (self.far - self.near))
-    }
-}
+use crate::renderer::pixel_renderer::pixel_line::Line2dEntity;
+use crate::renderer::pixel_renderer::pixel_point::Point2dEntity;
+use crate::renderer::pixel_renderer::PixelRenderer;
+use crate::renderer::scene_renderer::line::Line3dEntity;
+use crate::renderer::scene_renderer::mesh::Mesh3dEntity;
+use crate::renderer::scene_renderer::point::Point3dEntity;
+use crate::renderer::scene_renderer::textured_mesh::TexturedMeshEntity;
+use crate::renderer::scene_renderer::SceneRenderer;
+use crate::renderer::textures::OffscreenTextures;
+use crate::renderer::types::ClippingPlanesF64;
+use crate::renderer::types::DepthImage;
+use crate::renderer::types::RenderResult;
+use crate::renderer::types::TranslationAndScaling;
+use crate::viewer::interactions::InteractionEnum;
+use crate::RenderContext;
 
 /// Offscreen renderer
 pub struct OffscreenRenderer {
     intrinsics: DynCamera<f64, 1>,
-    state: ViewerRenderState,
+    pub(crate) clipping_planes: ClippingPlanesF64,
+    state: RenderContext,
     scene: SceneRenderer,
     pixel: PixelRenderer,
     textures: OffscreenTextures,
     maybe_background_image: Option<ArcImage4U8>,
-}
-
-/// Render result
-pub struct OffscreenRenderResult {
-    /// depth image - might have a greater width than the requested width
-    pub depth: GenArcImage<2, 0, f32, f32, 1, 1>,
-    /// rgba egui texture id
-    pub rgba_egui_tex_id: egui::TextureId,
-
-    /// depth egui texture id
-    pub depth_egui_tex_id: egui::TextureId,
-}
-
-impl HasAspectRatio for OffscreenRenderer {
-    fn aspect_ratio(&self) -> f32 {
-        self.intrinsics.image_size().aspect_ratio()
-    }
-}
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub(crate) struct Zoom2d {
-    pub(crate) translation_x: f32,
-    pub(crate) translation_y: f32,
-    pub(crate) scaling_x: f32,
-    pub(crate) scaling_y: f32,
-}
-
-impl Default for Zoom2d {
-    fn default() -> Self {
-        Zoom2d {
-            translation_x: 0.0,
-            translation_y: 0.0,
-            scaling_x: 1.0,
-            scaling_y: 1.0,
-        }
-    }
-}
-
-/// Translation and scaling
-///
-/// todo: move to sophus_lie
-#[derive(Clone, Copy, Debug)]
-pub struct TranslationAndScaling {
-    /// translation
-    pub translation: VecF64<2>,
-    /// scaling
-    pub scaling: VecF64<2>,
-}
-
-impl TranslationAndScaling {
-    /// identity
-    pub fn identity() -> Self {
-        TranslationAndScaling {
-            translation: VecF64::<2>::zeros(),
-            scaling: VecF64::<2>::new(1.0, 1.0),
-        }
-    }
-
-    /// apply translation and scaling
-    pub fn apply(&self, xy: VecF64<2>) -> VecF64<2> {
-        VecF64::<2>::new(
-            xy[0] * self.scaling[0] + self.translation[0],
-            xy[1] * self.scaling[1] + self.translation[1],
-        )
-    }
 }
 
 impl OffscreenRenderer {
@@ -152,7 +53,11 @@ impl OffscreenRenderer {
     pub const BACKGROUND_IMAGE_PLANE: f64 = 900.0;
 
     /// create new offscreen renderer
-    pub fn new(state: &ViewerRenderState, intrinsics: &DynCamera<f64, 1>) -> Self {
+    pub fn new(
+        state: &RenderContext,
+        intrinsics: DynCamera<f64, 1>,
+        clipping_planes: ClippingPlanesF64,
+    ) -> Self {
         let depth_bias_state = wgpu::DepthBiasState {
             constant: 2,      // Adjust this value as needed
             slope_scale: 1.0, // Adjust this value as needed
@@ -166,10 +71,16 @@ impl OffscreenRenderer {
             bias: depth_bias_state,
         });
         Self {
-            scene: SceneRenderer::new(state, intrinsics, depth_stencil.clone()),
+            scene: SceneRenderer::new(
+                state,
+                intrinsics.clone(),
+                clipping_planes.clone(),
+                depth_stencil.clone(),
+            ),
             pixel: PixelRenderer::new(state, &intrinsics.image_size(), depth_stencil),
             textures: OffscreenTextures::new(state, &intrinsics.image_size()),
             intrinsics: intrinsics.clone(),
+            clipping_planes: clipping_planes.clone(),
             state: state.clone(),
             maybe_background_image: None,
         }
@@ -271,47 +182,16 @@ impl OffscreenRenderer {
         }
     }
 
-    fn depth_to_rgb(depth: f32) -> (u8, u8, u8) {
-        let depth = depth.clamp(0.0, 1.0); // Ensure the depth value is between 0 and 1
-
-        let r = if depth < 0.375 {
-            0.0
-        } else if depth < 0.625 {
-            255.0 * (depth - 0.375) / 0.25
-        } else {
-            255.0 * (1.0 - (depth - 0.625) / 0.25)
-        };
-
-        let g = if depth < 0.25 {
-            255.0 * depth / 0.25
-        } else if depth < 0.75 {
-            255.0
-        } else {
-            255.0 * (1.0 - (depth - 0.75) / 0.25)
-        };
-
-        let b = if depth < 0.125 {
-            255.0 * (0.125 - depth) / 0.125
-        } else if depth < 0.375 {
-            255.0
-        } else if depth < 0.625 {
-            255.0 * (1.0 - (depth - 0.375) / 0.25)
-        } else {
-            0.0
-        };
-
-        (r as u8, g as u8, b as u8)
-    }
-
     fn render_impl(
         &mut self,
         view_port_size: &ImageSize,
         zoom: TranslationAndScaling,
         scene_from_camera: Isometry3F64,
         maybe_interaction_enum: Option<&InteractionEnum>,
-        compute_visual_depth: bool,
+        compute_depth_texture: bool,
         backface_culling: bool,
-    ) -> OffscreenRenderResult {
+        download_rgba: bool,
+    ) -> RenderResult {
         if self.textures.view_port_size != *view_port_size {
             self.textures = OffscreenTextures::new(&self.state, view_port_size);
         }
@@ -324,7 +204,7 @@ impl OffscreenRenderer {
 
         let mut command_encoder = self
             .state
-            .device
+            .wgpu_device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
         self.scene.paint(
@@ -347,11 +227,11 @@ impl OffscreenRenderer {
             &self.textures.z_buffer,
         );
 
-        self.state.queue.submit(Some(command_encoder.finish()));
+        self.state.wgpu_queue.submit(Some(command_encoder.finish()));
 
         let mut command_encoder = self
             .state
-            .device
+            .wgpu_device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
         self.scene.depth_paint(
             &self.state,
@@ -362,39 +242,30 @@ impl OffscreenRenderer {
             backface_culling,
         );
 
-        let depth_image =
-            self.textures
-                .depth
-                .download_image(&self.state, command_encoder, view_port_size);
+        let depth_image = DepthImage {
+            ndc_z_image: self.textures.depth.download_image(
+                &self.state,
+                command_encoder,
+                view_port_size,
+            ),
+            clipping_planes: self.clipping_planes.cast(),
+        };
+        let mut image_4u8 = None;
+        if download_rgba {
+            let command_encoder = self
+                .state
+                .wgpu_device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            image_4u8 = Some(self.textures.rgba.download_rgba_image(
+                &self.state,
+                command_encoder,
+                view_port_size,
+            ));
+        }
+        if compute_depth_texture {
+            let image_rgba = depth_image.color_mapped();
 
-        // Example how to download rgba image.
-        //
-        // todo: Create complete offscreen rendering API with static "view_port_size".
-        //
-        // let rgba_img_u8 =
-        //     self.textures
-        //         .rgba
-        //         .download_rgba_image(&self.state, command_encoder, view_port_size);
-        // save_as_png(&rgba_img_u8.image_view(), std::path::Path::new("foo.png"));
-
-        if compute_visual_depth {
-            let mut image_rgba = MutImage4U8::from_image_size_and_val(
-                depth_image.image_size(),
-                SVec::<u8, 4>::new(0, 255, 0, 255),
-            );
-
-            for v in 0..depth_image.image_size().height {
-                for u in 0..depth_image.image_size().width {
-                    let z = depth_image.pixel(u, v);
-                    let (r, g, b) = Self::depth_to_rgb(z);
-
-                    *image_rgba.mut_pixel(u, v) = SVec::<u8, 4>::new(r, g, b, 255);
-                }
-            }
-
-            let image_rgba = ArcImage4U8::from(image_rgba);
-
-            self.state.queue.write_texture(
+            self.state.wgpu_queue.write_texture(
                 wgpu::ImageCopyTexture {
                     texture: &self.textures.depth.visual_texture,
                     mip_level: 0,
@@ -411,9 +282,10 @@ impl OffscreenRenderer {
             );
         }
 
-        OffscreenRenderResult {
-            depth: depth_image,
+        RenderResult {
+            rgba_image: image_4u8,
             rgba_egui_tex_id: self.textures.rgba.egui_tex_id,
+            depth_image,
             depth_egui_tex_id: self.textures.depth.egui_tex_id,
         }
     }
@@ -425,16 +297,18 @@ impl OffscreenRenderer {
         zoom: TranslationAndScaling,
         scene_from_camera: Isometry3F64,
         interaction_enum: &InteractionEnum,
-        compute_visual_depth: bool,
+        compute_depth_texture: bool,
         backface_culling: bool,
-    ) -> OffscreenRenderResult {
+        download_rgba: bool,
+    ) -> RenderResult {
         self.render_impl(
             view_port_size,
             zoom,
             scene_from_camera,
             Some(interaction_enum),
-            compute_visual_depth,
+            compute_depth_texture,
             backface_culling,
+            download_rgba,
         )
     }
 
@@ -444,16 +318,18 @@ impl OffscreenRenderer {
         view_port_size: &ImageSize,
         zoom: TranslationAndScaling,
         scene_from_camera: Isometry3F64,
-        compute_visual_depth: bool,
+        compute_depth_texture: bool,
         backface_culling: bool,
-    ) -> OffscreenRenderResult {
+        download_rgba: bool,
+    ) -> RenderResult {
         self.render_impl(
             view_port_size,
             zoom,
             scene_from_camera,
             None,
-            compute_visual_depth,
+            compute_depth_texture,
             backface_culling,
+            download_rgba,
         )
     }
 }

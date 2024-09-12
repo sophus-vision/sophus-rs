@@ -4,9 +4,9 @@ use std::sync::Mutex;
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use wgpu::DepthStencilState;
 
-use crate::offscreen_renderer::pixel_renderer::PointVertex2;
 use crate::renderables::renderable2d::PointCloud2;
-use crate::ViewerRenderState;
+use crate::renderer::pixel_renderer::PointVertex2;
+use crate::RenderContext;
 
 pub(crate) struct Point2dEntity {
     pub(crate) vertex_data: Vec<PointVertex2>,
@@ -14,7 +14,7 @@ pub(crate) struct Point2dEntity {
 }
 
 impl Point2dEntity {
-    pub(crate) fn new(wgpu_render_state: &ViewerRenderState, points: &PointCloud2) -> Self {
+    pub(crate) fn new(wgpu_render_state: &RenderContext, points: &PointCloud2) -> Self {
         let mut vertex_data = vec![];
 
         for point in points.points.iter() {
@@ -30,7 +30,7 @@ impl Point2dEntity {
 
         let vertex_buffer =
             wgpu_render_state
-                .device
+                .wgpu_device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some(&format!("Pixel point vertex buffer: {}", points.name)),
                     contents: bytemuck::cast_slice(&vertex_data),
@@ -55,11 +55,11 @@ pub struct PixelPointRenderer {
 impl PixelPointRenderer {
     /// Create a new pixel point renderer
     pub fn new(
-        wgpu_render_state: &ViewerRenderState,
+        wgpu_render_state: &RenderContext,
         pipeline_layout: &wgpu::PipelineLayout,
         depth_stencil: Option<DepthStencilState>,
     ) -> Self {
-        let device = &wgpu_render_state.device;
+        let device = &wgpu_render_state.wgpu_device;
 
         let point_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("pixel point shader"),

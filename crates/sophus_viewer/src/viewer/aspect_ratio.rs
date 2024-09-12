@@ -1,7 +1,7 @@
 use linked_hash_map::LinkedHashMap;
 use sophus_image::ImageSize;
 
-use crate::views::View;
+use crate::viewer::views::View;
 
 pub(crate) trait HasAspectRatio {
     fn aspect_ratio(&self) -> f32;

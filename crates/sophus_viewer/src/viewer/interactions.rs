@@ -10,10 +10,10 @@ use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;
 use sophus_sensor::dyn_camera::DynCamera;
 
-use crate::offscreen_renderer::TranslationAndScaling;
-use crate::views::aspect_ratio::ViewportSize;
-use crate::views::interactions::inplane_interaction::InplaneInteraction;
-use crate::views::interactions::orbit_interaction::OrbitalInteraction;
+use crate::renderer::types::TranslationAndScaling;
+use crate::viewer::aspect_ratio::ViewportSize;
+use crate::viewer::interactions::inplane_interaction::InplaneInteraction;
+use crate::viewer::interactions::orbit_interaction::OrbitalInteraction;
 
 /// Scene focus
 #[derive(Clone, Copy)]

@@ -23,6 +23,7 @@ approx.workspace = true
 assertables.workspace = true
 bytemuck.workspace = true
 eframe.workspace = true
+egui-wgpu.workspace = true
 egui_extras.workspace = true
 env_logger.workspace = true
 nalgebra.workspace = true
@@ -30,7 +31,6 @@ ndarray.workspace = true
 wgpu.workspace = true
 
 tokio = {version = "1", features = ["full"]}
-
 
 [features]
 simd = [

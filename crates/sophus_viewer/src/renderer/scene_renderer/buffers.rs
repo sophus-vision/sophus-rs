@@ -5,9 +5,9 @@ use sophus_sensor::distortion_table::DistortTable;
 use sophus_sensor::DynCamera;
 use wgpu::util::DeviceExt;
 
-use crate::offscreen_renderer::ClippingPlanes;
-use crate::offscreen_renderer::Zoom2d;
-use crate::ViewerRenderState;
+use crate::renderer::types::ClippingPlanesF64;
+use crate::renderer::types::Zoom2d;
+use crate::RenderContext;
 
 #[repr(C)]
 // This is so we can store this in a buffer
@@ -82,10 +82,11 @@ pub struct SceneRenderBuffers {
 
 impl SceneRenderBuffers {
     pub(crate) fn new(
-        wgpu_render_state: &ViewerRenderState,
+        wgpu_render_state: &RenderContext,
         intrinsics: &DynCamera<f64, 1>,
+        clipping_planes: ClippingPlanesF64,
     ) -> Self {
-        let device = &wgpu_render_state.device;
+        let device = &wgpu_render_state.wgpu_device;
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("scene render layout"),
@@ -143,8 +144,8 @@ impl SceneRenderBuffers {
         let frustum_uniforms = Frustum {
             camera_image_width: intrinsics.image_size().width as f32,
             camera_image_height: intrinsics.image_size().height as f32,
-            near: ClippingPlanes::DEFAULT_NEAR as f32,
-            far: ClippingPlanes::DEFAULT_FAR as f32,
+            near: clipping_planes.near as f32,
+            far: clipping_planes.far as f32,
             fx: intrinsics.pinhole_params()[0] as f32,
             fy: intrinsics.pinhole_params()[1] as f32,
             px: intrinsics.pinhole_params()[2] as f32,

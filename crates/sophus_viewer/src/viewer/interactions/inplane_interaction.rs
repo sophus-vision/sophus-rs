@@ -5,10 +5,10 @@ use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
 use sophus_sensor::DynCamera;
 
-use crate::offscreen_renderer::OffscreenRenderer;
-use crate::offscreen_renderer::TranslationAndScaling;
-use crate::views::interactions::SceneFocus;
-use crate::views::interactions::ViewportScale;
+use crate::renderer::types::TranslationAndScaling;
+use crate::renderer::OffscreenRenderer;
+use crate::viewer::interactions::SceneFocus;
+use crate::viewer::interactions::ViewportScale;
 
 #[derive(Clone, Copy)]
 pub(crate) struct InplaneScrollState {}

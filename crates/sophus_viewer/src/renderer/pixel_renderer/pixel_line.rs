@@ -3,9 +3,9 @@ use std::collections::BTreeMap;
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use wgpu::DepthStencilState;
 
-use crate::offscreen_renderer::pixel_renderer::LineVertex2;
 use crate::renderables::renderable2d::LineSegments2;
-use crate::ViewerRenderState;
+use crate::renderer::pixel_renderer::LineVertex2;
+use crate::RenderContext;
 
 pub(crate) struct Line2dEntity {
     pub(crate) vertex_data: Vec<LineVertex2>,
@@ -13,7 +13,7 @@ pub(crate) struct Line2dEntity {
 }
 
 impl Line2dEntity {
-    pub(crate) fn new(wgpu_render_state: &ViewerRenderState, lines: &LineSegments2) -> Self {
+    pub(crate) fn new(wgpu_render_state: &RenderContext, lines: &LineSegments2) -> Self {
         let mut vertex_data = vec![];
         for line in lines.segments.iter() {
             let p0 = line.p0;
@@ -43,7 +43,7 @@ impl Line2dEntity {
 
         let vertex_buffer =
             wgpu_render_state
-                .device
+                .wgpu_device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some(&format!("Pixel line vertex buffer: {}", lines.name)),
                     contents: bytemuck::cast_slice(&vertex_data),
@@ -66,11 +66,11 @@ pub struct PixelLineRenderer {
 impl PixelLineRenderer {
     /// Create a new pixel line renderer
     pub fn new(
-        wgpu_render_state: &ViewerRenderState,
+        wgpu_render_state: &RenderContext,
         pipeline_layout: &wgpu::PipelineLayout,
         depth_stencil: Option<DepthStencilState>,
     ) -> Self {
-        let device = &wgpu_render_state.device;
+        let device = &wgpu_render_state.wgpu_device;
 
         let line_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("pixel line shader"),

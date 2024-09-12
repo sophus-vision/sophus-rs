@@ -6,14 +6,14 @@ use sophus_image::mut_image::MutImageF32;
 use sophus_image::mut_image_view::IsMutImageView;
 use sophus_lie::Isometry3;
 use sophus_sensor::DynCamera;
-use sophus_viewer::offscreen_renderer::ClippingPlanes;
 use sophus_viewer::renderables::color::Color;
 use sophus_viewer::renderables::renderable2d::View2dPacket;
 use sophus_viewer::renderables::renderable3d::View3dPacket;
-use sophus_viewer::simple_viewer::NullPlugin;
-use sophus_viewer::simple_viewer::SimpleViewer;
-use sophus_viewer::simple_viewer::ViewerBuilder;
-use sophus_viewer::simple_viewer::ViewerCamera;
+use sophus_viewer::renderer::types::ClippingPlanes;
+use sophus_viewer::viewer::plugin::NullPlugin;
+use sophus_viewer::viewer::types::ViewerCamera;
+use sophus_viewer::viewer::SimpleViewer;
+use sophus_viewer::viewer::SimpleViewerBuilder;
 
 use crate::frame::Frame;
 use crate::renderable2d::make_line2;
@@ -130,7 +130,7 @@ pub async fn run_viewer_example() {
         message_tx.send(packets).unwrap();
     });
 
-    let builder = ViewerBuilder::<NullPlugin> {
+    let builder = SimpleViewerBuilder {
         message_recv: message_rx,
         cancel_request_sender: cancel_tx,
         plugin: NullPlugin {},
@@ -147,7 +147,7 @@ pub async fn run_viewer_example() {
         Box::new(|cc| {
             Ok(SimpleViewer::new(
                 builder,
-                sophus_viewer::ViewerRenderState::new(cc),
+                sophus_viewer::RenderContext::from_egui_cc(cc),
             ))
         }),
     )
