@@ -97,6 +97,11 @@ impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
         Self::from_model(CameraType::new_brown_conrady(params, image_size))
     }
 
+    /// Create a Unified Extended camera instance
+    pub fn new_unified_extended(params: &S::Vector<6>, image_size: ImageSize) -> Self {
+        Self::from_model(CameraType::new_unified_extended(params, image_size))
+    }
+
     /// Projects a 3D point in the camera frame to a pixel in the image
     pub fn cam_proj(&self, point_in_camera: &S::Vector<3>) -> S::Vector<2> {
         self.camera_type.cam_proj(point_in_camera)
@@ -157,6 +162,11 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> DynCamera<S, BATCH> {
 
 #[test]
 fn dyn_camera_tests() {
+    use crate::distortions::affine::AffineDistortionImpl;
+    
+    use crate::distortions::kannala_brandt::KannalaBrandtDistortionImpl;
+    use crate::distortions::unified_extended::UnifiedExtendedDistortionImpl;
+    use crate::traits::IsCameraDistortionImpl;
     use approx::assert_relative_eq;
     use sophus_core::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
     use sophus_core::linalg::VecF64;
@@ -168,15 +178,23 @@ fn dyn_camera_tests() {
     {
         let mut cameras: Vec<DynCameraF64> = vec![];
         cameras.push(DynCameraF64::new_pinhole(
-            &VecF64::<4>::new(600.0, 600.0, 1.0, 0.5),
+            &VecF64::<4>::new(600.0, 599.0, 1.0, 0.5),
             ImageSize {
                 width: 3,
                 height: 2,
             },
         ));
 
+        cameras.push(DynCamera::new_unified_extended(
+            &VecF64::<6>::from_vec(vec![998.0, 1000.0, 320.0, 280.0, 0.5, 1.2]),
+            ImageSize {
+                width: 640,
+                height: 480,
+            },
+        ));
+
         cameras.push(DynCamera::new_kannala_brandt(
-            &VecF64::<8>::from_vec(vec![1000.0, 1000.0, 320.0, 280.0, 0.1, 0.01, 0.001, 0.0001]),
+            &VecF64::<8>::from_vec(vec![999.0, 1000.0, 320.0, 280.0, 0.1, 0.01, 0.001, 0.0001]),
             ImageSize {
                 width: 640,
                 height: 480,
@@ -185,8 +203,8 @@ fn dyn_camera_tests() {
 
         cameras.push(DynCamera::new_brown_conrady(
             &VecF64::<12>::from_vec(vec![
-                286.0,
-                286.0,
+                288.0,
+                284.0,
                 0.5 * (424.0 - 1.0),
                 0.5 * (400.0 - 1.0),
                 0.726405,
@@ -206,7 +224,6 @@ fn dyn_camera_tests() {
 
         for camera in cameras {
             let pixels_in_image = vec![
-                VecF64::<2>::new(0.0, 0.0),
                 VecF64::<2>::new(2.0, 1.0),
                 VecF64::<2>::new(2.9, 1.9),
                 VecF64::<2>::new(2.5, 1.5),
@@ -217,6 +234,9 @@ fn dyn_camera_tests() {
                 VecF64::<2>::new(319.5, 239.5),
                 VecF64::<2>::new(100.0, 40.0),
                 VecF64::<2>::new(639.0, 479.0),
+                VecF64::<2>::new(0.0, 1.0),
+                VecF64::<2>::new(1.0, 0.0),
+                VecF64::<2>::new(0.0, 0.0),
             ];
 
             for pixel in pixels_in_image.clone() {
@@ -244,8 +264,65 @@ fn dyn_camera_tests() {
                     pixel,
                     EPS_F64,
                 );
+                println!("dx: {:?}", dx);
+                println!("numeric_dx: {:?}", numeric_dx);
 
                 assert_relative_eq!(dx, numeric_dx, epsilon = 1e-4);
+
+                match camera.camera_type {
+                    PerspectiveCameraEnum::Pinhole(camera) => {
+                        let dx_params = camera.dx_distort_params(&pixel);
+
+                        let params = *camera.params();
+                        let numeric_dx_params = VectorValuedMapFromVector::static_sym_diff_quotient(
+                            |p: VecF64<4>| AffineDistortionImpl::<f64, 1>::distort(&p, &pixel),
+                            params,
+                            EPS_F64,
+                        );
+                        assert_relative_eq!(dx_params, numeric_dx_params, epsilon = 1e-4);
+                    }
+                    PerspectiveCameraEnum::KannalaBrandt(camera) => {
+                        let dx_params = camera.dx_distort_params(&pixel);
+
+                        let params = *camera.params();
+                        let numeric_dx_params = VectorValuedMapFromVector::static_sym_diff_quotient(
+                            |p: VecF64<8>| {
+                                KannalaBrandtDistortionImpl::<f64, 1>::distort(&p, &pixel)
+                            },
+                            params,
+                            EPS_F64,
+                        );
+                        println!("dx_params: {:?}", dx_params);
+                        assert_relative_eq!(dx_params, numeric_dx_params, epsilon = 1e-4);
+                    }
+                    PerspectiveCameraEnum::BrownConrady(_camera) => {
+                        // let dx_params = camera.dx_distort_params(&pixel);
+
+                        // let params = camera.params();
+                        // let numeric_dx_params = VectorValuedMapFromVector::static_sym_diff_quotient(
+                        //     |p: VecF64<12>| {
+                        //         BrownConradyDistortionImpl::<f64, 1>::distort(&p, &pixel)
+                        //     },
+                        //     params.clone(),
+                        //     EPS_F64,
+                        // );
+                        // assert_relative_eq!(dx_params, numeric_dx_params, epsilon = 1e-4);
+                    }
+                    PerspectiveCameraEnum::UnifiedExtended(camera) => {
+                        let dx_params = camera.dx_distort_params(&pixel);
+
+                        let params = camera.params();
+                        let numeric_dx_params = VectorValuedMapFromVector::static_sym_diff_quotient(
+                            |p: VecF64<6>| {
+                                UnifiedExtendedDistortionImpl::<f64, 1>::distort(&p, &pixel)
+                            },
+                            *params,
+                            EPS_F64,
+                        );
+
+                        assert_relative_eq!(dx_params, numeric_dx_params, epsilon = 1e-4);
+                    }
+                }
             }
         }
     }

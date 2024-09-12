@@ -4,3 +4,5 @@ pub mod affine;
 pub mod brown_conrady;
 /// Kannala-Brandt distortion - for fisheye cameras
 pub mod kannala_brandt;
+/// Unified Extended distortion - for fisheye cameras
+pub mod unified_extended;

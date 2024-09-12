@@ -59,4 +59,24 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 0, 4, BAT
             [S::zeros(), params.get_elem(1)],
         ])
     }
+
+    fn dx_distort_params(
+        _params: &S::Vector<4>,
+        proj_point_in_camera_z1_plane: &S::Vector<2>,
+    ) -> S::Matrix<2, 4> {
+        S::Matrix::<2, 4>::from_array2([
+            [
+                proj_point_in_camera_z1_plane.get_elem(0),
+                S::zeros(),
+                S::ones(),
+                S::zeros(),
+            ],
+            [
+                S::zeros(),
+                proj_point_in_camera_z1_plane.get_elem(1),
+                S::zeros(),
+                S::ones(),
+            ],
+        ])
+    }
 }

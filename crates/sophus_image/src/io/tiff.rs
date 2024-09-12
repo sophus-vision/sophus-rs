@@ -176,10 +176,10 @@ pub fn load_tiff(path: impl ToString) -> std::io::Result<DynIntensityMutImage> {
             ));
         }
         _ => {
-            return Err(std::io::Error::other(format!(
+            Err(std::io::Error::other(format!(
                 "unsupported decoding: {:?}",
                 decoding_result
-            )));
+            )))
         }
     }
 }

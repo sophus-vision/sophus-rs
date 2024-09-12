@@ -63,7 +63,7 @@ pub fn solve(variables: &VarPool, costs: Vec<Box<dyn IsCost>>, nu: f64) -> VarPo
         let delta = sne.solve();
         variables.update(delta)
     } else {
-        todo!("Schur complement")
+        todo!()
     }
 }
 

@@ -179,27 +179,3 @@ impl<'a> IsIntensityViewImageF32<'a> for ImageView4F32<'a> {
         self.as_scalar_slice()
     }
 }
-
-// impl<'a> IsIntensityViewImageF32<'a> for ImageView3F32<'a> {
-//     const PNG_COLOR_TYPE: png::ColorType = png::ColorType::Rgb;
-
-//     fn size(&'a self) -> ImageSize {
-//         self.image_size()
-//     }
-
-//     fn raw_u8_slice(&self) -> &[u8] {
-//         self.as_scalar_slice()
-//     }
-// }
-
-// impl<'a> IsIntensityViewImageF32<'a> for ImageView4F32<'a> {
-//     const PNG_COLOR_TYPE: png::ColorType = png::ColorType::Rgba;
-
-//     fn size(&'a self) -> ImageSize {
-//         self.image_size()
-//     }
-
-//     fn raw_u8_slice(&self) -> &[u8] {
-//         self.as_scalar_slice()
-//     }
-// }

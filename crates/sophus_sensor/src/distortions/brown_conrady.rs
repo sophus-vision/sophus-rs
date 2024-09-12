@@ -308,23 +308,28 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 8, 12, BA
         let c20 = a.clone() * b.clone();
         let c21 = -c14.clone() * c20.clone() + c15.clone() * c20.clone() * c7.clone();
         let c22 = c17.clone() * fy;
-        S::Matrix::from_array2([
-            [
-                c18.clone()
-                    * (-c14.clone() * c2.clone()
-                        + c7.clone() * (c15.clone() * c2.clone() + c16.clone())
-                        + c8.clone() * (b.clone() * c1.clone() + S::from_f64(6.0) * c0.clone())),
-                c22.clone()
-                    * (c21.clone()
-                        + c8.clone()
-                            * (two.clone() * a.clone() * d2.clone() + two.clone() * c19.clone())),
-            ],
-            [
-                c18 * (c21 + c8.clone() * (a * c1 + two.clone() * c19)),
-                c22 * (-c14 * c3.clone()
-                    + c7 * (c15 * c3 + c16)
-                    + c8 * (S::from_f64(6.0) * b * d2.clone() + two.clone() * c0)),
-            ],
-        ])
+
+        let dfx_dfx = c18.clone()
+            * (-c14.clone() * c2.clone()
+                + c7.clone() * (c15.clone() * c2.clone() + c16.clone())
+                + c8.clone() * (b.clone() * c1.clone() + S::from_f64(6.0) * c0.clone()));
+        let dfy_dfx = c22.clone()
+            * (c21.clone()
+                + c8.clone() * (two.clone() * a.clone() * d2.clone() + two.clone() * c19.clone()));
+
+        let dfx_dfy = c18 * (c21 + c8.clone() * (a * c1 + two.clone() * c19));
+        let dfy_dfy = c22
+            * (-c14 * c3.clone()
+                + c7 * (c15 * c3 + c16)
+                + c8 * (S::from_f64(6.0) * b * d2.clone() + two.clone() * c0));
+
+        S::Matrix::from_array2([[dfx_dfx, dfx_dfy], [dfy_dfx, dfy_dfy]])
+    }
+
+    fn dx_distort_params(
+        _params: &S::Vector<12>,
+        _proj_point_in_camera_z1_plane: &S::Vector<2>,
+    ) -> S::Matrix<2, 12> {
+        todo!()
     }
 }

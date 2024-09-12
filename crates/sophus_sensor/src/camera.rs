@@ -65,6 +65,14 @@ impl<
         Distort::dx_distort_x(&self.params, proj_point_in_camera_z1_plane)
     }
 
+    /// Derivative of the distortion w.r.t. the parameters
+    pub fn dx_distort_params(
+        &self,
+        proj_point_in_camera_z1_plane: &S::Vector<2>,
+    ) -> S::Matrix<2, PARAMS> {
+        Distort::dx_distort_params(&self.params, proj_point_in_camera_z1_plane)
+    }
+
     /// Projects a 3D point in the camera frame to a pixel in the image
     pub fn cam_proj(&self, point_in_camera: &S::Vector<3>) -> S::Vector<2> {
         self.distort(&Proj::proj(point_in_camera))

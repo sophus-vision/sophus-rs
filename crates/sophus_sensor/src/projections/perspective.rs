@@ -2,6 +2,7 @@ use crate::traits::IsProjection;
 use sophus_core::linalg::matrix::IsMatrix;
 use sophus_core::linalg::scalar::IsScalar;
 use sophus_core::linalg::vector::IsVector;
+use sophus_core::prelude::IsSingleScalar;
 
 /// Perspective camera projection - using z=1 plane
 ///
@@ -47,5 +48,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsProjection<S, BATCH>
     }
 }
 
-/// f64 perspective projection
-pub type Perspective = PerspectiveProjectionImpl<f64, 1>;
+/// Perspective projection for single scalar
+pub fn perspect_proj<S: IsSingleScalar>(point_in_camera: &S::Vector<3>) -> S::Vector<2> {
+    PerspectiveProjectionImpl::<S, 1>::proj(point_in_camera)
+}
