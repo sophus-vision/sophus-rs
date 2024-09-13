@@ -1,3 +1,4 @@
+use crate::camera_enum::perspective_camera::UnifiedExtendedCamera;
 use crate::camera_enum::GeneralCameraEnum;
 use crate::camera_enum::PerspectiveCameraEnum;
 use crate::prelude::*;
@@ -150,6 +151,11 @@ impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
     /// Returns the pinhole parameters
     pub fn try_get_pinhole(self) -> Option<PinholeCamera<S, BATCH>> {
         self.camera_type.try_get_pinhole()
+    }
+
+    /// Returns the Unified Extended camera
+    pub fn try_get_unified_extended(self) -> Option<UnifiedExtendedCamera<S, BATCH>> {
+        self.camera_type.try_get_unified_extended()
     }
 }
 

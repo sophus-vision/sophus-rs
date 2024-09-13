@@ -10,11 +10,8 @@ use sophus_viewer::renderables::color::Color;
 use sophus_viewer::renderables::renderable2d::View2dPacket;
 use sophus_viewer::renderables::renderable3d::View3dPacket;
 use sophus_viewer::renderer::types::ClippingPlanes;
-use sophus_viewer::viewer::plugin::NullPlugin;
 use sophus_viewer::viewer::types::ViewerCamera;
-use sophus_viewer::viewer::SimpleViewer;
-use sophus_viewer::viewer::SimpleViewerBuilder;
-
+use sophus_viewer::viewer::simple_viewer::SimpleViewer;
 use crate::frame::Frame;
 use crate::renderable2d::make_line2;
 use crate::renderable2d::make_point2;
@@ -120,7 +117,6 @@ fn create_view3_packet() -> Packet {
 
 pub async fn run_viewer_example() {
     let (message_tx, message_rx) = std::sync::mpsc::channel();
-    let (cancel_tx, _cancel_rx) = std::sync::mpsc::channel();
 
     tokio::spawn(async move {
         let mut packets = Packets { packets: vec![] };
@@ -130,11 +126,6 @@ pub async fn run_viewer_example() {
         message_tx.send(packets).unwrap();
     });
 
-    let builder = SimpleViewerBuilder {
-        message_recv: message_rx,
-        cancel_request_sender: cancel_tx,
-        plugin: NullPlugin {},
-    };
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default().with_inner_size([640.0, 480.0]),
         renderer: eframe::Renderer::Wgpu,
@@ -142,12 +133,12 @@ pub async fn run_viewer_example() {
         ..Default::default()
     };
     eframe::run_native(
-        "Egui actor",
+        "Viewer Example",
         options,
         Box::new(|cc| {
             Ok(SimpleViewer::new(
-                builder,
                 sophus_viewer::RenderContext::from_egui_cc(cc),
+                message_rx,
             ))
         }),
     )

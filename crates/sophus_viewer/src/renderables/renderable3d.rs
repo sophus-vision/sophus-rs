@@ -29,6 +29,46 @@ impl Renderable3d {
     }
 }
 
+/// creates a named line segment at a given pose
+pub fn named_line3_at(
+    name: impl ToString,
+    line_segments: Vec<LineSegment3>,
+    scene_from_entity: Isometry3F64,
+) -> Renderable3d {
+    let lines = LineSegments3 {
+        name: name.to_string(),
+        segments: line_segments,
+        scene_from_entity,
+    };
+
+    Renderable3d::Line(lines)
+}
+
+/// creates a named line segment
+pub fn named_line3(name: impl ToString, line_segments: Vec<LineSegment3>) -> Renderable3d {
+    named_line3_at(name, line_segments, Isometry3::identity())
+}
+
+/// creates a named point cloud at a given pose
+pub fn named_point3_at(
+    name: impl ToString,
+    points: Vec<Point3>,
+    scene_from_entity: Isometry3F64,
+) -> Renderable3d {
+    let points = PointCloud3 {
+        name: name.to_string(),
+        points,
+        scene_from_entity,
+    };
+
+    Renderable3d::Point(points)
+}
+
+/// creates a named point cloud
+pub fn named_point3(name: impl ToString, points: Vec<Point3>) -> Renderable3d {
+    named_point3_at(name, points, Isometry3::identity())
+}
+
 /// make 3d points at a given pose
 pub fn make_point3_at(
     name: impl ToString,
@@ -78,7 +118,7 @@ pub fn make_line3_at(
     };
 
     for tuple in arr {
-        lines.segments.push(Line3 {
+        lines.segments.push(LineSegment3 {
             p0: tuple[0].to_vec3(),
             p1: tuple[1].to_vec3(),
             color: *color,
@@ -177,7 +217,7 @@ pub struct View3dPacket {
 
 /// 3D line
 #[derive(Clone, Debug)]
-pub struct Line3 {
+pub struct LineSegment3 {
     /// Start point
     pub p0: SVector<f32, 3>,
     /// End point
@@ -274,7 +314,7 @@ pub struct LineSegments3 {
     /// Name of the entity
     pub name: String,
     /// List of segments
-    pub segments: Vec<Line3>,
+    pub segments: Vec<LineSegment3>,
     /// scene-anchored pose of the entity
     pub scene_from_entity: Isometry3F64,
 }
@@ -302,7 +342,7 @@ pub struct TexturedTriangleMesh3 {
 }
 
 /// Make axis
-pub fn make_axis(world_from_local: Isometry3F64, scale: f64) -> Vec<Line3> {
+pub fn make_axis(world_from_local: Isometry3F64, scale: f64) -> Vec<LineSegment3> {
     let zero_in_local = VecF64::<3>::zeros();
     let x_axis_local = VecF64::<3>::new(scale, 0.0, 0.0);
     let y_axis_local = VecF64::<3>::new(0.0, scale, 0.0);
@@ -315,7 +355,7 @@ pub fn make_axis(world_from_local: Isometry3F64, scale: f64) -> Vec<Line3> {
     let axis_y_in_world = world_from_local.transform(&y_axis_local);
     let axis_z_in_world = world_from_local.transform(&z_axis_local);
 
-    lines.push(Line3 {
+    lines.push(LineSegment3 {
         p0: zero_in_world.cast(),
         p1: axis_x_in_world.cast(),
         color: Color {
@@ -326,7 +366,7 @@ pub fn make_axis(world_from_local: Isometry3F64, scale: f64) -> Vec<Line3> {
         },
         line_width: 2.0,
     });
-    lines.push(Line3 {
+    lines.push(LineSegment3 {
         p0: zero_in_world.cast(),
         p1: axis_y_in_world.cast(),
         color: Color {
@@ -337,7 +377,7 @@ pub fn make_axis(world_from_local: Isometry3F64, scale: f64) -> Vec<Line3> {
         },
         line_width: 2.0,
     });
-    lines.push(Line3 {
+    lines.push(LineSegment3 {
         p0: zero_in_world.cast(),
         p1: axis_z_in_world.cast(),
         color: Color {

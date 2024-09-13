@@ -5,6 +5,7 @@ use sophus_lie::Isometry2;
 use sophus_lie::Isometry2F64;
 use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
+use sophus_sensor::camera_enum::perspective_camera::UnifiedExtendedCameraF64;
 use sophus_sensor::BrownConradyCamera;
 use sophus_sensor::PinholeCamera;
 use std::collections::BTreeMap;
@@ -53,6 +54,15 @@ impl IsVariable for PinholeCamera<f64, 1> {
 
 impl IsVariable for BrownConradyCamera<f64, 1> {
     const DOF: usize = 12;
+
+    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
+        let new_params = *self.params() + delta;
+        self.set_params(&new_params);
+    }
+}
+
+impl IsVariable for UnifiedExtendedCameraF64 {
+    const DOF: usize = 6;
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
         let new_params = *self.params() + delta;
