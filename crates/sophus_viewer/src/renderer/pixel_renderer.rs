@@ -13,7 +13,7 @@ use wgpu::DepthStencilState;
 
 use crate::renderer::pixel_renderer::pixel_line::PixelLineRenderer;
 use crate::renderer::pixel_renderer::pixel_point::PixelPointRenderer;
-use crate::renderer::textures::ZBufferTexture;
+use crate::renderer::textures::depth::DepthTextures;
 use crate::renderer::types::TranslationAndScaling;
 use crate::renderer::types::Zoom2d;
 use crate::viewer::interactions::InteractionEnum;
@@ -220,7 +220,7 @@ impl PixelRenderer {
         &'rp self,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         texture_view: &'rp wgpu::TextureView,
-        depth: &ZBufferTexture,
+        depth: &DepthTextures,
     ) {
         let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
@@ -233,7 +233,7 @@ impl PixelRenderer {
                 },
             })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &depth.render_path_ndc_z_texture_view,
+                view: &depth.main_render_ndc_z_texture.ndc_z_texture_view,
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(1.0),
                     store: wgpu::StoreOp::Store,

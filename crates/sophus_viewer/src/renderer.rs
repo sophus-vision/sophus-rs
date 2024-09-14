@@ -29,7 +29,7 @@ use crate::renderer::scene_renderer::mesh::Mesh3dEntity;
 use crate::renderer::scene_renderer::point::Point3dEntity;
 use crate::renderer::scene_renderer::textured_mesh::TexturedMeshEntity;
 use crate::renderer::scene_renderer::SceneRenderer;
-use crate::renderer::textures::OffscreenTextures;
+use crate::renderer::textures::Textures;
 use crate::renderer::types::ClippingPlanesF64;
 use crate::renderer::types::DepthImage;
 use crate::renderer::types::RenderResult;
@@ -44,7 +44,7 @@ pub struct OffscreenRenderer {
     state: RenderContext,
     scene: SceneRenderer,
     pixel: PixelRenderer,
-    textures: OffscreenTextures,
+    textures: Textures,
     maybe_background_image: Option<ArcImage4U8>,
 }
 
@@ -70,14 +70,13 @@ impl OffscreenRenderer {
             stencil: wgpu::StencilState::default(),
             bias: depth_bias_state,
         });
-        let textures = OffscreenTextures::new(state, &intrinsics.image_size());
+        let textures = Textures::new(state, &intrinsics.image_size());
         Self {
             scene: SceneRenderer::new(
                 state,
                 intrinsics.clone(),
                 clipping_planes,
                 depth_stencil.clone(),
-                &textures.z_buffer.render_path_ndc_z_texture_view,
             ),
             pixel: PixelRenderer::new(state, &intrinsics.image_size(), depth_stencil),
             textures,
@@ -195,7 +194,7 @@ impl OffscreenRenderer {
         download_rgba: bool,
     ) -> RenderResult {
         if self.textures.view_port_size != *view_port_size {
-            self.textures = OffscreenTextures::new(&self.state, view_port_size);
+            self.textures = Textures::new(&self.state, view_port_size);
         }
 
         self.scene.prepare(&self.state, zoom, &self.intrinsics);
@@ -216,15 +215,14 @@ impl OffscreenRenderer {
             &scene_from_camera,
             &mut command_encoder,
             &self.textures.rgba.rgba_texture_view,
-            &self.textures.z_buffer,
+            &self.textures.depth,
             backface_culling,
         );
 
-        let depth_image = self.textures.z_buffer.download_depth_image(
-            &self.state,
-            command_encoder,
-            view_port_size,
-        );
+        let depth_image =
+            self.textures
+                .depth
+                .download_depth_image(&self.state, command_encoder, view_port_size);
         let mut command_encoder = self
             .state
             .wgpu_device
@@ -233,7 +231,7 @@ impl OffscreenRenderer {
         self.pixel.paint(
             &mut command_encoder,
             &self.textures.rgba.rgba_texture_view,
-            &self.textures.z_buffer,
+            &self.textures.depth,
         );
 
         self.state.wgpu_queue.submit(Some(command_encoder.finish()));
@@ -264,7 +262,7 @@ impl OffscreenRenderer {
 
             self.state.wgpu_queue.write_texture(
                 wgpu::ImageCopyTexture {
-                    texture: &self.textures.z_buffer.visual_depth_texture.visual_texture,
+                    texture: &self.textures.depth.visual_depth_texture.visual_texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
@@ -276,7 +274,7 @@ impl OffscreenRenderer {
                     rows_per_image: Some(image_rgba.image_size().height as u32),
                 },
                 self.textures
-                    .z_buffer
+                    .depth
                     .visual_depth_texture
                     .visual_texture
                     .size(),
@@ -287,7 +285,7 @@ impl OffscreenRenderer {
             rgba_image: image_4u8,
             rgba_egui_tex_id: self.textures.rgba.egui_tex_id,
             depth_image,
-            depth_egui_tex_id: self.textures.z_buffer.visual_depth_texture.egui_tex_id,
+            depth_egui_tex_id: self.textures.depth.visual_depth_texture.egui_tex_id,
         }
     }
 

@@ -20,13 +20,12 @@ use sophus_lie::Isometry3F64;
 use sophus_sensor::distortion_table::distort_table;
 use sophus_sensor::dyn_camera::DynCamera;
 use wgpu::DepthStencilState;
-use wgpu::PipelineCompilationOptions;
 
 use crate::renderer::scene_renderer::buffers::Frustum;
 use crate::renderer::scene_renderer::buffers::SceneRenderBuffers;
 use crate::renderer::scene_renderer::mesh::MeshRenderer;
 use crate::renderer::scene_renderer::point::ScenePointRenderer;
-use crate::renderer::textures::ZBufferTexture;
+use crate::renderer::textures::depth::DepthTextures;
 use crate::renderer::types::ClippingPlanesF64;
 use crate::renderer::types::TranslationAndScaling;
 use crate::renderer::types::Zoom2d;
@@ -54,7 +53,6 @@ impl SceneRenderer {
         intrinsics: DynCamera<f64, 1>,
         clipping_planes: ClippingPlanesF64,
         depth_stencil: Option<DepthStencilState>,
-        ndc_z_texture_view: &wgpu::TextureView,
     ) -> Self {
         let device = &wgpu_render_state.wgpu_device;
 
@@ -199,7 +197,7 @@ impl SceneRenderer {
         scene_from_camera: &Isometry3F64,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         texture_view: &'rp wgpu::TextureView,
-        depth: &ZBufferTexture,
+        depth: &DepthTextures,
         backface_culling: bool,
     ) {
         let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -213,7 +211,7 @@ impl SceneRenderer {
                 },
             })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &depth.render_path_ndc_z_texture_view,
+                view: &depth.main_render_ndc_z_texture.ndc_z_texture_view,
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(1.0),
                     store: wgpu::StoreOp::Store,
