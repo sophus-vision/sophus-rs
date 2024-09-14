@@ -150,6 +150,7 @@ impl RgbaTexture {
 pub(crate) struct ZBufferTexture {
     pub(crate) _depth_texture: wgpu::Texture,
     pub(crate) depth_texture_view: wgpu::TextureView,
+    pub(crate) staging_buffer: wgpu::Buffer,
 }
 
 impl ZBufferTexture {
@@ -194,7 +195,19 @@ impl ZBufferTexture {
         let texture = render_state.wgpu_device.create_texture(&desc);
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
+        let depth_buffer_size = ZBufferTexture::bytes_per_row(view_port_size.width as u32)
+            * view_port_size.height as u32;
+        let staging_buffer = render_state
+            .wgpu_device
+            .create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Depth Buffer Staging"),
+                size: depth_buffer_size as u64,
+                usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+
         ZBufferTexture {
+            staging_buffer,
             _depth_texture: texture,
             depth_texture_view: view,
         }

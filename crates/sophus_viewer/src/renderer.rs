@@ -212,11 +212,6 @@ impl OffscreenRenderer {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
         // pixel currently invalidates the z-buffer
-        self.pixel.paint(
-            &mut command_encoder,
-            &self.textures.rgba.rgba_texture_view,
-            &self.textures.z_buffer,
-        );
 
         self.scene.paint(
             &self.state,
@@ -230,18 +225,18 @@ impl OffscreenRenderer {
         let w = view_port_size.width as usize;
         let h = view_port_size.height as usize;
 
-        // After rendering to the main depth buffer
-        let depth_buffer_size = ZBufferTexture::bytes_per_row(view_port_size.width as u32)
-            * view_port_size.height as u32;
-        let staging_buffer = self
-            .state
-            .wgpu_device
-            .create_buffer(&wgpu::BufferDescriptor {
-                label: Some("Depth Buffer Staging"),
-                size: depth_buffer_size as u64,
-                usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
+        // // After rendering to the main depth buffer
+        // let depth_buffer_size = ZBufferTexture::bytes_per_row(view_port_size.width as u32)
+        //     * view_port_size.height as u32;
+        // let staging_buffer = self
+        //     .state
+        //     .wgpu_device
+        //     .create_buffer(&wgpu::BufferDescriptor {
+        //         label: Some("Depth Buffer Staging"),
+        //         size: depth_buffer_size as u64,
+        //         usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+        //         mapped_at_creation: false,
+        //     });
 
         let bytes_per_row = ZBufferTexture::bytes_per_row(view_port_size.width as u32);
 
@@ -254,7 +249,7 @@ impl OffscreenRenderer {
                 aspect: wgpu::TextureAspect::All,
             },
             wgpu::ImageCopyBuffer {
-                buffer: &staging_buffer,
+                buffer: &self.textures.z_buffer.staging_buffer,
                 layout: wgpu::ImageDataLayout {
                     offset: 0,
                     bytes_per_row: Some(bytes_per_row),
@@ -274,7 +269,7 @@ impl OffscreenRenderer {
         device.poll(wgpu::Maintain::Wait);
 
         // Read staging buffer
-        let buffer_slice = staging_buffer.slice(..);
+        let buffer_slice = self.textures.z_buffer.staging_buffer.slice(..);
         let (tx, rx) = std::sync::mpsc::channel();
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
             tx.send(result).unwrap();
@@ -308,7 +303,20 @@ impl OffscreenRenderer {
             // println!("Min depth: {}, Max depth: {}", min_depth, max_depth);
             // // let depth_range = max_depth - min_depth;
         }
-        staging_buffer.unmap();
+        self.textures.z_buffer.staging_buffer.unmap();
+
+        let mut command_encoder = self
+            .state
+            .wgpu_device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+
+        self.pixel.paint(
+            &mut command_encoder,
+            &self.textures.rgba.rgba_texture_view,
+            &self.textures.z_buffer,
+        );
+
+        self.state.wgpu_queue.submit(Some(command_encoder.finish()));
 
         if let Some(interaction_enum) = maybe_interaction_enum {
             self.pixel
