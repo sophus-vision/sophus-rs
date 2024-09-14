@@ -13,7 +13,6 @@ pub mod types;
 use sophus_core::linalg::VecF64;
 use sophus_core::IsTensorLike;
 use sophus_image::arc_image::ArcImage4U8;
-use sophus_image::arc_image::ArcImageF32;
 use sophus_image::prelude::IsImageView;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;
@@ -31,7 +30,6 @@ use crate::renderer::scene_renderer::point::Point3dEntity;
 use crate::renderer::scene_renderer::textured_mesh::TexturedMeshEntity;
 use crate::renderer::scene_renderer::SceneRenderer;
 use crate::renderer::textures::OffscreenTextures;
-use crate::renderer::textures::ZBufferTexture;
 use crate::renderer::types::ClippingPlanesF64;
 use crate::renderer::types::DepthImage;
 use crate::renderer::types::RenderResult;
@@ -79,7 +77,7 @@ impl OffscreenRenderer {
                 intrinsics.clone(),
                 clipping_planes,
                 depth_stencil.clone(),
-                &textures.z_buffer.depth_texture_view,
+                &textures.z_buffer.render_path_ndc_z_texture_view,
             ),
             pixel: PixelRenderer::new(state, &intrinsics.image_size(), depth_stencil),
             textures,
@@ -244,13 +242,6 @@ impl OffscreenRenderer {
             self.pixel
                 .show_interaction_marker(&self.state, interaction_enum);
         }
-
-        //self.state.wgpu_queue.submit(Some(command_encoder.finish()));
-
-        let mut command_encoder = self
-            .state
-            .wgpu_device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
         let depth_image = DepthImage {
             ndc_z_image: depth_image,

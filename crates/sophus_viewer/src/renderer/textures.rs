@@ -148,8 +148,8 @@ impl RgbaTexture {
 
 #[derive(Debug)]
 pub(crate) struct ZBufferTexture {
-    pub(crate) depth_texture: wgpu::Texture,
-    pub(crate) depth_texture_view: wgpu::TextureView,
+    pub(crate) render_path_ndc_z_texture: wgpu::Texture,
+    pub(crate) render_path_ndc_z_texture_view: wgpu::TextureView,
     pub(crate) staging_buffer: wgpu::Buffer,
 }
 
@@ -208,8 +208,8 @@ impl ZBufferTexture {
 
         ZBufferTexture {
             staging_buffer,
-            depth_texture: texture,
-            depth_texture_view: view,
+            render_path_ndc_z_texture: texture,
+            render_path_ndc_z_texture_view: view,
         }
     }
 
@@ -219,28 +219,15 @@ impl ZBufferTexture {
         mut command_encoder: wgpu::CommandEncoder,
         view_port_size: &ImageSize,
     ) -> ArcImageF32 {
-        let w = view_port_size.width as usize;
-        let h = view_port_size.height as usize;
-
-        // // After rendering to the main depth buffer
-        // let depth_buffer_size = ZBufferTexture::bytes_per_row(view_port_size.width as u32)
-        //     * view_port_size.height as u32;
-        // let staging_buffer = self
-        //     .state
-        //     .wgpu_device
-        //     .create_buffer(&wgpu::BufferDescriptor {
-        //         label: Some("Depth Buffer Staging"),
-        //         size: depth_buffer_size as u64,
-        //         usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-        //         mapped_at_creation: false,
-        //     });
+        let w = view_port_size.width;
+        let h = view_port_size.height;
 
         let bytes_per_row = ZBufferTexture::bytes_per_row(view_port_size.width as u32);
 
         // Copy depth texture to staging buffer
         command_encoder.copy_texture_to_buffer(
             wgpu::ImageCopyTexture {
-                texture: &self.depth_texture,
+                texture: &self.render_path_ndc_z_texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
@@ -263,14 +250,10 @@ impl ZBufferTexture {
         // Submit command encoder and wait for GPU
         let device = state.wgpu_device.clone();
         state.wgpu_queue.submit(Some(command_encoder.finish()));
-        device.poll(wgpu::Maintain::Wait);
 
         // Read staging buffer
         let buffer_slice = self.staging_buffer.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            tx.send(result).unwrap();
-        });
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {});
         device.poll(wgpu::Maintain::Wait);
 
         let depth_image;
@@ -278,27 +261,16 @@ impl ZBufferTexture {
         #[allow(unused_assignments)]
         {
             let data = buffer_slice.get_mapped_range();
-            let depth_values: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
-
-            use sophus_image::image_view::ImageViewF32;
 
             let view = ImageViewF32::from_stride_and_slice(
                 ImageSize {
-                    width: w as usize,
-                    height: h as usize,
+                    width: w,
+                    height: h,
                 },
                 (bytes_per_row / ZBufferTexture::BYTES_PER_PIXEL) as usize,
                 bytemuck::cast_slice(&data[..]),
             );
             depth_image = ArcImageF32::make_copy_from(&view);
-
-            // let min_depth = depth_values.iter().cloned().fold(f32::INFINITY, f32::min);
-            // let max_depth = depth_values
-            //     .iter()
-            //     .cloned()
-            //     .fold(f32::NEG_INFINITY, f32::max);
-            // println!("Min depth: {}, Max depth: {}", min_depth, max_depth);
-            // // let depth_range = max_depth - min_depth;
         }
         self.staging_buffer.unmap();
 
