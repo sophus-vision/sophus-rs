@@ -13,6 +13,7 @@ pub mod types;
 use sophus_core::linalg::VecF64;
 use sophus_core::IsTensorLike;
 use sophus_image::arc_image::ArcImage4U8;
+use sophus_image::arc_image::ArcImageF32;
 use sophus_image::prelude::IsImageView;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;
@@ -30,6 +31,7 @@ use crate::renderer::scene_renderer::point::Point3dEntity;
 use crate::renderer::scene_renderer::textured_mesh::TexturedMeshEntity;
 use crate::renderer::scene_renderer::SceneRenderer;
 use crate::renderer::textures::OffscreenTextures;
+use crate::renderer::textures::ZBufferTexture;
 use crate::renderer::types::ClippingPlanesF64;
 use crate::renderer::types::DepthImage;
 use crate::renderer::types::RenderResult;
@@ -70,15 +72,17 @@ impl OffscreenRenderer {
             stencil: wgpu::StencilState::default(),
             bias: depth_bias_state,
         });
+        let textures = OffscreenTextures::new(state, &intrinsics.image_size());
         Self {
             scene: SceneRenderer::new(
                 state,
                 intrinsics.clone(),
                 clipping_planes,
                 depth_stencil.clone(),
+                &textures.z_buffer.depth_texture_view,
             ),
             pixel: PixelRenderer::new(state, &intrinsics.image_size(), depth_stencil),
-            textures: OffscreenTextures::new(state, &intrinsics.image_size()),
+            textures,
             intrinsics: intrinsics.clone(),
             clipping_planes,
             state: state.clone(),
@@ -216,38 +220,151 @@ impl OffscreenRenderer {
             backface_culling,
         );
 
+        // // Depth visualization pass
+        // self.scene.render_depth_visualization(
+        //     &mut command_encoder,
+        //     &self.textures.depth.depth_texture_view_f32,
+        // );
+
+        let w = view_port_size.width as usize;
+        let h = view_port_size.height as usize;
+
+        // After rendering to the main depth buffer
+        let depth_buffer_size = ZBufferTexture::bytes_per_row(view_port_size.width as u32)
+            * view_port_size.height as u32;
+        let staging_buffer = self
+            .state
+            .wgpu_device
+            .create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Depth Buffer Staging"),
+                size: depth_buffer_size as u64,
+                usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+
+        let bytes_per_row = ZBufferTexture::bytes_per_row(view_port_size.width as u32);
+
+        // Copy depth texture to staging buffer
+        command_encoder.copy_texture_to_buffer(
+            wgpu::ImageCopyTexture {
+                texture: &self.textures.z_buffer._depth_texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::ImageCopyBuffer {
+                buffer: &staging_buffer,
+                layout: wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(bytes_per_row),
+                    rows_per_image: Some(view_port_size.height as u32),
+                },
+            },
+            wgpu::Extent3d {
+                width: view_port_size.width as u32,
+                height: view_port_size.height as u32,
+                depth_or_array_layers: 1,
+            },
+        );
+
+        // Submit command encoder and wait for GPU
+        let device = self.state.wgpu_device.clone();
+        self.state.wgpu_queue.submit(Some(command_encoder.finish()));
+        device.poll(wgpu::Maintain::Wait);
+
+        // Read staging buffer
+        let buffer_slice = staging_buffer.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx.send(result).unwrap();
+        });
+        device.poll(wgpu::Maintain::Wait);
+
+        let depth_image;
+
+        #[allow(unused_assignments)]
+        {
+            let data = buffer_slice.get_mapped_range();
+            let depth_values: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
+
+            use sophus_image::image_view::ImageViewF32;
+
+            let view = ImageViewF32::from_stride_and_slice(
+                ImageSize {
+                    width: w as usize,
+                    height: h as usize,
+                },
+                (bytes_per_row / ZBufferTexture::BYTES_PER_PIXEL) as usize,
+                bytemuck::cast_slice(&data[..]),
+            );
+            depth_image = ArcImageF32::make_copy_from(&view);
+
+            // // Create a visualization image
+            // let mut image =
+            //     image::RgbImage::new(view_port_size.width as u32, view_port_size.height as u32);
+
+            let min_depth = depth_values.iter().cloned().fold(f32::INFINITY, f32::min);
+            let max_depth = depth_values
+                .iter()
+                .cloned()
+                .fold(f32::NEG_INFINITY, f32::max);
+            println!("Min depth: {}, Max depth: {}", min_depth, max_depth);
+            // let depth_range = max_depth - min_depth;
+        }
+        staging_buffer.unmap();
+
+        // for (i, &depth) in depth_values.iter().enumerate() {
+        //     let x = i as u32 % view_port_size.width as u32;
+        //     let y = i as u32 / view_port_size.width as u32;
+
+        //     let normalized_depth = if depth_range > 0.0 {
+        //         (depth - min_depth) / depth_range
+        //     } else {
+        //         0.0
+        //     };
+
+        //     let color = (normalized_depth * 255.0) as u8;
+        //     image.put_pixel(x, y, image::Rgb([color, color, color]));
+
+        // Save the visualization
+        //  image.save("depth_visualization.png").unwrap();
+
+        // staging_buffer.unmap();
+
         if let Some(interaction_enum) = maybe_interaction_enum {
             self.pixel
                 .show_interaction_marker(&self.state, interaction_enum);
         }
 
-        self.pixel.paint(
-            &mut command_encoder,
-            &self.textures.rgba.rgba_texture_view,
-            &self.textures.z_buffer,
-        );
+        // self.pixel.paint(
+        //     &mut command_encoder,
+        //     &self.textures.rgba.rgba_texture_view,
+        //     &self.textures.z_buffer,
+        // );
 
-        self.state.wgpu_queue.submit(Some(command_encoder.finish()));
+        //self.state.wgpu_queue.submit(Some(command_encoder.finish()));
 
-        let mut command_encoder = self
+        let command_encoder = self
             .state
             .wgpu_device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-        self.scene.depth_paint(
-            &self.state,
-            &scene_from_camera,
-            &mut command_encoder,
-            &self.textures.depth.depth_texture_view_f32,
-            &self.textures.z_buffer,
-            backface_culling,
-        );
+        // self.scene.depth_paint(
+        //     &self.state,
+        //     &scene_from_camera,
+        //     &mut command_encoder,
+        //     &self.textures.depth.depth_texture_view_f32,
+        //     &self.textures.z_buffer,
+        //     backface_culling,
+        // );
 
         let depth_image = DepthImage {
-            ndc_z_image: self.textures.depth.download_image(
-                &self.state,
-                command_encoder,
-                view_port_size,
-            ),
+            ndc_z_image: depth_image,
+
+            // self.textures.depth.download_image(
+            //     &self.state,
+            //     command_encoder,
+            //     view_port_size,
+            // ),
             clipping_planes: self.clipping_planes.cast(),
         };
         let mut image_4u8 = None;

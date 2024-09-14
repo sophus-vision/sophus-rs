@@ -84,6 +84,8 @@ impl RgbaTexture {
         let h = view_port_size.height as u32;
         let bytes_per_row = RgbaTexture::bytes_per_row(w);
 
+        let required_buffer_size = bytes_per_row * h; // Total bytes needed in the buffer
+
         let buffer = state.wgpu_device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
             size: (bytes_per_row * h) as wgpu::BufferAddress,
@@ -153,7 +155,25 @@ pub(crate) struct ZBufferTexture {
 }
 
 impl ZBufferTexture {
+    pub const BYTES_PER_PIXEL: u32 = 4;
+    pub fn bytes_per_row(width: u32) -> u32 {
+        let unaligned_bytes_per_row = width * Self::BYTES_PER_PIXEL;
+        let align = COPY_BYTES_PER_ROW_ALIGNMENT;
+
+        if unaligned_bytes_per_row % align == 0 {
+            // already aligned
+            unaligned_bytes_per_row
+        } else {
+            // align to the next multiple of `align`
+            (unaligned_bytes_per_row / align + 1) * align
+        }
+    }
+
     pub(crate) fn new(render_state: &RenderContext, view_port_size: &ImageSize) -> Self {
+        let w = view_port_size.width as u32;
+        let h = view_port_size.height as u32;
+        let bytes_per_row = ZBufferTexture::bytes_per_row(w);
+
         pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
         let size = wgpu::Extent3d {
@@ -168,8 +188,9 @@ impl ZBufferTexture {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: DEPTH_FORMAT,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT // 3.
-                        | wgpu::TextureUsages::TEXTURE_BINDING|wgpu::TextureUsages::COPY_SRC,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         };
         let texture = render_state.wgpu_device.create_texture(&desc);
@@ -193,8 +214,8 @@ pub(crate) struct DepthTexture {
 }
 
 impl DepthTexture {
-    const BYTES_PER_PIXEL: u32 = 4;
-    fn bytes_per_row(width: u32) -> u32 {
+    pub const BYTES_PER_PIXEL: u32 = 4;
+    pub fn bytes_per_row(width: u32) -> u32 {
         let unaligned_bytes_per_row = width * Self::BYTES_PER_PIXEL;
         let align = COPY_BYTES_PER_ROW_ALIGNMENT;
 
@@ -364,7 +385,7 @@ impl DepthTexture {
 pub(crate) struct OffscreenTextures {
     pub(crate) view_port_size: ImageSize,
     pub(crate) rgba: RgbaTexture,
-    pub(crate) z_buffer: ZBufferTexture,
+    pub z_buffer: ZBufferTexture,
     pub(crate) depth: DepthTexture,
 }
 
