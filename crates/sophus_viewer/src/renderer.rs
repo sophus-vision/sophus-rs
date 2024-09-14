@@ -264,7 +264,7 @@ impl OffscreenRenderer {
 
             self.state.wgpu_queue.write_texture(
                 wgpu::ImageCopyTexture {
-                    texture: &self.textures.depth.visual_texture,
+                    texture: &self.textures.z_buffer.visual_depth_texture.visual_texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
@@ -275,7 +275,11 @@ impl OffscreenRenderer {
                     bytes_per_row: Some(4 * image_rgba.image_size().width as u32),
                     rows_per_image: Some(image_rgba.image_size().height as u32),
                 },
-                self.textures.depth.visual_texture.size(),
+                self.textures
+                    .z_buffer
+                    .visual_depth_texture
+                    .visual_texture
+                    .size(),
             );
         }
 
@@ -283,7 +287,7 @@ impl OffscreenRenderer {
             rgba_image: image_4u8,
             rgba_egui_tex_id: self.textures.rgba.egui_tex_id,
             depth_image,
-            depth_egui_tex_id: self.textures.depth.egui_tex_id,
+            depth_egui_tex_id: self.textures.z_buffer.visual_depth_texture.egui_tex_id,
         }
     }
 

@@ -151,6 +151,7 @@ pub(crate) struct ZBufferTexture {
     pub(crate) render_path_ndc_z_texture: wgpu::Texture,
     pub(crate) render_path_ndc_z_texture_view: wgpu::TextureView,
     pub(crate) staging_buffer: wgpu::Buffer,
+    pub(crate) visual_depth_texture: VisualDepthTexture,
 }
 
 impl ZBufferTexture {
@@ -210,6 +211,7 @@ impl ZBufferTexture {
             staging_buffer,
             render_path_ndc_z_texture: texture,
             render_path_ndc_z_texture_view: view,
+            visual_depth_texture: VisualDepthTexture::new(render_state, view_port_size),
         }
     }
 
@@ -279,12 +281,12 @@ impl ZBufferTexture {
 }
 
 #[derive(Debug)]
-pub(crate) struct DepthTexture {
+pub(crate) struct VisualDepthTexture {
     pub visual_texture: wgpu::Texture,
     pub(crate) egui_tex_id: egui::TextureId,
 }
 
-impl DepthTexture {
+impl VisualDepthTexture {
     pub const BYTES_PER_PIXEL: u32 = 4;
     pub fn bytes_per_row(width: u32) -> u32 {
         let unaligned_bytes_per_row = width * Self::BYTES_PER_PIXEL;
@@ -303,7 +305,7 @@ impl DepthTexture {
     pub fn new(render_state: &RenderContext, view_port_size: &ImageSize) -> Self {
         let w = view_port_size.width as u32;
         let h = view_port_size.height as u32;
-        let bytes_per_row = DepthTexture::bytes_per_row(w);
+        let bytes_per_row = VisualDepthTexture::bytes_per_row(w);
 
         let required_buffer_size = bytes_per_row * h; // Total bytes needed in the buffer
 
@@ -346,7 +348,6 @@ pub(crate) struct OffscreenTextures {
     pub(crate) view_port_size: ImageSize,
     pub(crate) rgba: RgbaTexture,
     pub z_buffer: ZBufferTexture,
-    pub(crate) depth: DepthTexture,
 }
 
 impl OffscreenTextures {
@@ -355,7 +356,6 @@ impl OffscreenTextures {
             view_port_size: *view_port_size,
             rgba: RgbaTexture::new(render_state, view_port_size),
             z_buffer: ZBufferTexture::new(render_state, view_port_size),
-            depth: DepthTexture::new(render_state, view_port_size),
         }
     }
 }
