@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use crate::traits::IsCameraDistortionImpl;
-use log::warn;
 use sophus_core::params::ParamsImpl;
 use sophus_core::prelude::IsMatrix;
 use sophus_core::prelude::IsScalar;

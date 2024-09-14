@@ -5,7 +5,6 @@ use sophus_sensor::dyn_camera::DynCameraF64;
 use crate::renderables::renderable3d::Renderable3d;
 use crate::renderer::textures::depth_image::DepthImage;
 use crate::renderer::types::ClippingPlanesF64;
-use crate::renderer::types::TranslationAndScaling;
 use crate::renderer::OffscreenRenderer;
 use crate::RenderContext;
 
@@ -48,18 +47,11 @@ impl CameraSimulator {
     pub fn render(&mut self, scene_from_camera: Isometry3F64) -> SimulatedImage {
         let view_port_size = self.renderer.intrinsics().image_size();
 
-        let compute_depth_texture = false;
-        let backface_culling = false;
-        let download_rgba = true;
-
-        let result = self.renderer.render(
-            &view_port_size,
-            TranslationAndScaling::identity(),
-            scene_from_camera,
-            compute_depth_texture,
-            backface_culling,
-            download_rgba,
-        );
+        let result = self
+            .renderer
+            .render_params(&view_port_size, &scene_from_camera)
+            .download_rgba(true)
+            .render();
 
         SimulatedImage {
             rgba_image: result.rgba_image.unwrap(),

@@ -42,6 +42,79 @@ pub struct OffscreenRenderer {
     maybe_background_image: Option<ArcImage4U8>,
 }
 
+struct RenderParams<'a> {
+    view_port_size: ImageSize,
+    zoom: TranslationAndScaling,
+    scene_from_camera: Isometry3F64,
+    maybe_interaction_enum: Option<&'a InteractionEnum>,
+    compute_depth_texture: bool,
+    backface_culling: bool,
+    download_rgba: bool,
+}
+
+/// Render builder
+pub struct RenderBuilder<'a> {
+    params: RenderParams<'a>,
+    offscreen_renderer: &'a mut OffscreenRenderer,
+}
+
+impl<'a> RenderBuilder<'a> {
+    /// new
+    pub fn new(
+        view_port_size: ImageSize,
+        scene_from_camera: Isometry3F64,
+        offscreen_renderer: &'a mut OffscreenRenderer,
+    ) -> Self {
+        Self {
+            params: RenderParams {
+                view_port_size,
+                zoom: TranslationAndScaling::identity(),
+                scene_from_camera,
+                maybe_interaction_enum: None,
+                compute_depth_texture: false,
+                backface_culling: false,
+                download_rgba: false,
+            },
+            offscreen_renderer,
+        }
+    }
+
+    /// set zoom
+    pub fn zoom(mut self, zoom: TranslationAndScaling) -> Self {
+        self.params.zoom = zoom;
+        self
+    }
+
+    /// set interaction
+    pub fn interaction(mut self, interaction_enum: &'a InteractionEnum) -> Self {
+        self.params.maybe_interaction_enum = Some(interaction_enum);
+        self
+    }
+
+    /// set compute depth texture
+    pub fn compute_depth_texture(mut self, compute_depth_texture: bool) -> Self {
+        self.params.compute_depth_texture = compute_depth_texture;
+        self
+    }
+
+    /// set backface culling
+    pub fn backface_culling(mut self, backface_culling: bool) -> Self {
+        self.params.backface_culling = backface_culling;
+        self
+    }
+
+    /// set download rgba
+    pub fn download_rgba(mut self, download_rgba: bool) -> Self {
+        self.params.download_rgba = download_rgba;
+        self
+    }
+
+    /// render
+    pub fn render(self) -> RenderResult {
+        self.offscreen_renderer.render_impl(&self.params)
+    }
+}
+
 impl OffscreenRenderer {
     /// background image plane
     pub const BACKGROUND_IMAGE_PLANE: f64 = 900.0;
@@ -177,25 +250,30 @@ impl OffscreenRenderer {
         }
     }
 
-    fn render_impl(
+    /// render
+    pub fn render_params(
         &mut self,
         view_port_size: &ImageSize,
-        zoom: TranslationAndScaling,
-        scene_from_camera: Isometry3F64,
-        maybe_interaction_enum: Option<&InteractionEnum>,
-        compute_depth_texture: bool,
-        backface_culling: bool,
-        download_rgba: bool,
-    ) -> RenderResult {
-        if self.textures.view_port_size != *view_port_size {
-            self.textures = Textures::new(&self.state, view_port_size);
+        world_from_camera: &Isometry3F64,
+    ) -> RenderBuilder {
+        RenderBuilder::new(*view_port_size, *world_from_camera, self)
+    }
+
+    fn render_impl(&mut self, state: &RenderParams) -> RenderResult {
+        if self.textures.view_port_size != state.view_port_size {
+            self.textures = Textures::new(&self.state, &state.view_port_size);
         }
 
-        self.scene.prepare(&self.state, zoom, &self.intrinsics);
+        self.scene
+            .prepare(&self.state, state.zoom, &self.intrinsics);
 
         self.maybe_background_image = None;
-        self.pixel
-            .prepare(&self.state, view_port_size, &self.intrinsics, zoom);
+        self.pixel.prepare(
+            &self.state,
+            &state.view_port_size,
+            &self.intrinsics,
+            state.zoom,
+        );
 
         let mut command_encoder = self
             .state
@@ -206,17 +284,17 @@ impl OffscreenRenderer {
 
         self.scene.paint(
             &self.state,
-            &scene_from_camera,
+            &state.scene_from_camera,
             &mut command_encoder,
             &self.textures.rgba.rgba_texture_view,
             &self.textures.depth,
-            backface_culling,
+            state.backface_culling,
         );
 
         let depth_image = self.textures.depth.download_depth_image(
             &self.state,
             command_encoder,
-            view_port_size,
+            &state.view_port_size,
             &self.clipping_planes,
         );
         let mut command_encoder = self
@@ -232,13 +310,13 @@ impl OffscreenRenderer {
 
         self.state.wgpu_queue.submit(Some(command_encoder.finish()));
 
-        if let Some(interaction_enum) = maybe_interaction_enum {
+        if let Some(interaction_enum) = state.maybe_interaction_enum {
             self.pixel
                 .show_interaction_marker(&self.state, interaction_enum);
         }
 
         let mut image_4u8 = None;
-        if download_rgba {
+        if state.download_rgba {
             let command_encoder = self
                 .state
                 .wgpu_device
@@ -246,10 +324,10 @@ impl OffscreenRenderer {
             image_4u8 = Some(self.textures.rgba.download_rgba_image(
                 &self.state,
                 command_encoder,
-                view_port_size,
+                &state.view_port_size,
             ));
         }
-        if compute_depth_texture {
+        if state.compute_depth_texture {
             self.textures
                 .depth
                 .compute_visual_depth_texture(&self.state, &depth_image);
@@ -261,48 +339,5 @@ impl OffscreenRenderer {
             depth_image,
             depth_egui_tex_id: self.textures.depth.visual_depth_texture.egui_tex_id,
         }
-    }
-
-    /// render with interaction marker
-    pub fn render_with_interaction_marker(
-        &mut self,
-        view_port_size: &ImageSize,
-        zoom: TranslationAndScaling,
-        scene_from_camera: Isometry3F64,
-        interaction_enum: &InteractionEnum,
-        compute_depth_texture: bool,
-        backface_culling: bool,
-        download_rgba: bool,
-    ) -> RenderResult {
-        self.render_impl(
-            view_port_size,
-            zoom,
-            scene_from_camera,
-            Some(interaction_enum),
-            compute_depth_texture,
-            backface_culling,
-            download_rgba,
-        )
-    }
-
-    /// render
-    pub fn render(
-        &mut self,
-        view_port_size: &ImageSize,
-        zoom: TranslationAndScaling,
-        scene_from_camera: Isometry3F64,
-        compute_depth_texture: bool,
-        backface_culling: bool,
-        download_rgba: bool,
-    ) -> RenderResult {
-        self.render_impl(
-            view_port_size,
-            zoom,
-            scene_from_camera,
-            None,
-            compute_depth_texture,
-            backface_culling,
-            download_rgba,
-        )
     }
 }

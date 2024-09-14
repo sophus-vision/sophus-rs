@@ -15,7 +15,6 @@ use crate::viewer::views::view3d::View3d;
 use crate::viewer::views::View;
 use crate::RenderContext;
 
-
 /// Viewer top-level struct.
 pub struct ViewerBase {
     state: RenderContext,
@@ -32,7 +31,7 @@ impl ViewerBase {
         render_state: RenderContext,
         message_recv: std::sync::mpsc::Receiver<Packets>,
     ) -> ViewerBase {
-       ViewerBase {
+        ViewerBase {
             state: render_state.clone(),
             views: LinkedHashMap::new(),
             message_recv,
@@ -118,15 +117,17 @@ impl ViewerBase {
                         get_adjusted_view_size(view_aspect_ratio, max_width, max_height);
                     match view {
                         View::View3d(view) => {
-                            let render_result = view.renderer.render_with_interaction_marker(
-                                &adjusted_size.image_size(),
-                                view.interaction.zoom2d(),
-                                view.interaction.scene_from_camera(),
-                                &view.interaction,
-                                self.show_depth,
-                                self.backface_culling,
-                                false,
-                            );
+                            let render_result = view
+                                .renderer
+                                .render_params(
+                                    &adjusted_size.image_size(),
+                                    &view.interaction.scene_from_camera(),
+                                )
+                                .zoom(view.interaction.zoom2d())
+                                .interaction(&view.interaction)
+                                .backface_culling(self.backface_culling)
+                                .compute_depth_texture(self.show_depth)
+                                .render();
 
                             let egui_texture = if self.show_depth {
                                 render_result.depth_egui_tex_id
@@ -163,15 +164,16 @@ impl ViewerBase {
                             );
                         }
                         View::View2d(view) => {
-                            let render_result = view.renderer.render_with_interaction_marker(
-                                &adjusted_size.image_size(),
-                                view.interaction.zoom2d(),
-                                view.interaction.scene_from_camera(),
-                                &view.interaction,
-                                false,
-                                self.backface_culling,
-                                false,
-                            );
+                            let render_result = view
+                                .renderer
+                                .render_params(
+                                    &adjusted_size.image_size(),
+                                    &view.interaction.scene_from_camera(),
+                                )
+                                .zoom(view.interaction.zoom2d())
+                                .interaction(&view.interaction)
+                                .backface_culling(self.backface_culling)
+                                .render();
 
                             let ui_response = ui.add(
                                 egui::Image::new(egui::load::SizedTexture {

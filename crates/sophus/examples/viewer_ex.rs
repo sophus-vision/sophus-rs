@@ -1,3 +1,9 @@
+use crate::frame::Frame;
+use crate::renderable2d::make_line2;
+use crate::renderable2d::make_point2;
+use crate::renderable3d::make_line3;
+use crate::renderable3d::make_mesh3_at;
+use crate::renderable3d::make_point3;
 use sophus::examples::viewer_example::make_example_image;
 use sophus::image::ImageSize;
 use sophus::viewer::renderables::*;
@@ -10,14 +16,8 @@ use sophus_viewer::renderables::color::Color;
 use sophus_viewer::renderables::renderable2d::View2dPacket;
 use sophus_viewer::renderables::renderable3d::View3dPacket;
 use sophus_viewer::renderer::types::ClippingPlanes;
-use sophus_viewer::viewer::types::ViewerCamera;
 use sophus_viewer::viewer::simple_viewer::SimpleViewer;
-use crate::frame::Frame;
-use crate::renderable2d::make_line2;
-use crate::renderable2d::make_point2;
-use crate::renderable3d::make_line3;
-use crate::renderable3d::make_mesh3_at;
-use crate::renderable3d::make_point3;
+use sophus_viewer::viewer::types::ViewerCamera;
 
 fn create_view2_packet() -> Packet {
     let img = make_example_image(ImageSize {
