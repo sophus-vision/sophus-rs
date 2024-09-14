@@ -49,6 +49,7 @@ fn res_fn<Scalar: IsSingleScalar + IsScalar<1>>(
 impl IsResidualFn<3, 1, Isometry2F64, Isometry2F64> for Isometry2PriorCostFn {
     fn eval(
         &self,
+        idx: [usize; 1],
         args: Isometry2F64,
         var_kinds: [VarKind; 1],
         robust_kernel: Option<robust_kernel::RobustKernel>,
@@ -70,6 +71,6 @@ impl IsResidualFn<3, 1, Isometry2F64, Isometry2F64> for Isometry2PriorCostFn {
         let zeros: VecF64<3> = VecF64::<3>::zeros();
 
         (|| VectorValuedMapFromVector::<DualScalar, 1>::static_fw_autodiff(dx_res_fn, zeros),)
-            .make_term(var_kinds, residual, robust_kernel, None)
+            .make_term(idx,var_kinds, residual, robust_kernel, None)
     }
 }

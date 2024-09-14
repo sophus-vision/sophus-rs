@@ -27,6 +27,7 @@ pub struct PoseGraphCostFn {}
 impl IsResidualFn<12, 2, (Isometry2F64, Isometry2F64), Isometry2F64> for PoseGraphCostFn {
     fn eval(
         &self,
+        idx: [usize; 2],
         world_from_pose_x: (Isometry2F64, Isometry2F64),
         var_kinds: [VarKind; 2],
         robust_kernel: Option<robust_kernel::RobustKernel>,
@@ -51,7 +52,7 @@ impl IsResidualFn<12, 2, (Isometry2F64, Isometry2F64), Isometry2F64> for PoseGra
                 )
             },
         )
-            .make_term(var_kinds, residual, robust_kernel, None)
+            .make_term(idx, var_kinds, residual, robust_kernel, None)
     }
 }
 

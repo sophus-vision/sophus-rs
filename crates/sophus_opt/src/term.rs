@@ -16,7 +16,9 @@ pub struct Term<const NUM: usize, const NUM_ARGS: usize> {
     /// cost: 0.5 * residual^T * precision_mat * residual
     pub cost: f64,
     /// indices of the variable families
-    pub idx: Vec<[usize; NUM_ARGS]>,
+    pub idx: [usize; NUM_ARGS],
+    /// number of sub-terms
+    pub num_sub_terms: usize,
 }
 
 trait RowLoop<const NUM: usize, const R: usize> {
@@ -192,6 +194,7 @@ pub trait MakeTerm<const R: usize, const N: usize> {
     ///                    If `None`, the identity matrix is used: `0.5 * residual^T * residual`.
     fn make_term<const NUM: usize, const NUM_ARGS: usize>(
         self,
+        idx: [usize; NUM_ARGS],
         var_kinds: [VarKind; N],
         residual: VecF64<R>,
         robust_kernel: Option<robust_kernel::RobustKernel>,
@@ -210,6 +213,7 @@ where
 {
     fn make_term<const NUM: usize, const NUM_ARGS: usize>(
         self,
+        idx: [usize; NUM_ARGS],
         var_kinds: [VarKind; 1],
         residual: VecF64<R>,
         robust_kernel: Option<robust_kernel::RobustKernel>,
@@ -258,7 +262,8 @@ where
             hessian,
             gradient,
             cost: (residual.transpose() * lambda_res)[0],
-            idx: Vec::new(),
+            idx,
+            num_sub_terms: 1,
         }
     }
 }
@@ -270,6 +275,7 @@ where
 {
     fn make_term<const NUM: usize, const NUM_ARGS: usize>(
         self,
+        idx: [usize; NUM_ARGS], 
         var_kinds: [VarKind; 2],
         residual: VecF64<R>,
         robust_kernel: Option<robust_kernel::RobustKernel>,
@@ -325,7 +331,8 @@ where
             hessian,
             gradient,
             cost: (residual.transpose() * lambda_res)[0],
-            idx: Vec::new(),
+            idx,
+            num_sub_terms: 1,
         }
     }
 }
@@ -339,6 +346,7 @@ where
 {
     fn make_term<const NUM: usize, const NUM_ARGS: usize>(
         self,
+        idx: [usize; NUM_ARGS],
         var_kinds: [VarKind; 3],
         residual: VecF64<R>,
         robust_kernel: Option<robust_kernel::RobustKernel>,
@@ -401,7 +409,8 @@ where
             hessian,
             gradient,
             cost: (residual.transpose() * lambda_res)[0],
-            idx: Vec::new(),
+            idx,
+            num_sub_terms: 1,
         }
     }
 }
@@ -425,6 +434,7 @@ where
 {
     fn make_term<const NUM: usize, const NUM_ARGS: usize>(
         self,
+        idx: [usize; NUM_ARGS],
         var_kinds: [VarKind; 4],
         residual: VecF64<R>,
         robust_kernel: Option<robust_kernel::RobustKernel>,
@@ -494,7 +504,8 @@ where
             hessian,
             gradient,
             cost: (residual.transpose() * lambda_res)[0],
-            idx: Vec::new(),
+            idx,
+            num_sub_terms: 1,
         }
     }
 }

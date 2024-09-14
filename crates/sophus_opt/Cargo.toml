@@ -25,7 +25,7 @@ log.workspace = true
 nalgebra.workspace = true
 ndarray.workspace = true
 rand.workspace = true
-
+itertools = "0.13"
 [features]
 simd = [
   "sophus_core/simd",

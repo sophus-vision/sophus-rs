@@ -47,6 +47,7 @@ pub trait IsResidualFn<
     /// evaluate the residual function which shall be defined by the user
     fn eval(
         &self,
+        idx: [usize; NUM_ARGS],
         args: Args,
         derivatives: [VarKind; NUM_ARGS],
         robust_kernel: Option<RobustKernel>,
@@ -151,13 +152,12 @@ where
             TermSignature::DOF_TUPLE,
         );
 
-        let mut i = 0;
-
         let var_family_tuple =
             VarTuple::ref_var_family_tuple(var_pool, self.signature.family_names.clone());
 
         let eval_res = |term_signature: &TermSignature| {
             self.residual_fn.eval(
+                *term_signature.idx_ref(),
                 VarTuple::extract(&var_family_tuple, *term_signature.idx_ref()),
                 var_kind_array,
                 self.robust_kernel,
@@ -167,31 +167,34 @@ where
 
         evaluated_terms.terms.reserve(self.signature.terms.len());
 
+        let mut i = 0;
         while i < self.signature.terms.len() {
             let term_signature = &self.signature.terms[i];
             let outer_idx = term_signature.idx_ref();
-            let mut evaluated_term_sum: Option<Term<NUM, NUM_ARGS>> = None;
 
-            // perform reduction over conditioned variables
-            while i < self.signature.terms.len()
-                && !less.free_vars_equal(outer_idx, self.signature.terms[i].idx_ref())
-            {
-                let evaluated_term = eval_res(&self.signature.terms[i]);
+            println!("outer_idx: {:?}", outer_idx);
 
-                match evaluated_term_sum.as_mut() {
-                    Some(evaluated_term_sum) => {
-                        evaluated_term_sum.hessian.mat += evaluated_term.hessian.mat;
-                        evaluated_term_sum.gradient.vec += evaluated_term.gradient.vec;
-                        evaluated_term_sum.cost += evaluated_term.cost;
+            let evaluated_term_sum = self.signature.terms[i..]
+                .iter()
+                .take_while(|term| less.free_vars_equal(outer_idx, term.idx_ref()))
+                .fold(None, |acc: Option<Term<NUM, NUM_ARGS>>, term| {
+                    let evaluated_term = eval_res(term);
+                    match acc {
+                        Some(mut sum) => {
+                            sum.hessian.mat += evaluated_term.hessian.mat;
+                            sum.gradient.vec += evaluated_term.gradient.vec;
+                            sum.cost += evaluated_term.cost;
+                            sum.num_sub_terms += evaluated_term.num_sub_terms;
+                            Some(sum)
+                        }
+                        None => Some(evaluated_term),
                     }
-                    None => {
-                        evaluated_term_sum = Some(evaluated_term);
-                    }
-                }
-                i += 1;
-            }
+                });
 
-            evaluated_terms.terms.push(evaluated_term_sum.unwrap());
+            let sum = evaluated_term_sum.unwrap();
+            i += sum.num_sub_terms;
+            println!("sum: {:?}", sum.num_sub_terms);
+            evaluated_terms.terms.push(sum);
         }
 
         Box::new(evaluated_terms)
