@@ -26,7 +26,7 @@ pub enum VarKind {
 }
 
 ///A decision variables
-pub trait IsVariable: Clone + Debug {
+pub trait IsVariable: Clone + Debug + Send + Sync + 'static {
     /// number of degrees of freedom
     const DOF: usize;
 
@@ -71,12 +71,12 @@ impl IsVariable for UnifiedExtendedCameraF64 {
 }
 
 /// Tuple of variables (one for each argument of the cost function)
-pub trait IsVarTuple<const NUM_ARGS: usize> {
+pub trait IsVarTuple<const NUM_ARGS: usize>: Send + Sync + 'static {
     /// number of degrees of freedom for each variable
     const DOF_T: [usize; NUM_ARGS];
 
     /// Tuple variable families
-    type VarFamilyTupleRef<'a>;
+    type VarFamilyTupleRef<'a>: Send + Sync;
 
     /// reference to the variable family tuple
     fn ref_var_family_tuple(
@@ -91,7 +91,7 @@ pub trait IsVarTuple<const NUM_ARGS: usize> {
     fn var_kind_array(families: &VarPool, names: [String; NUM_ARGS]) -> [VarKind; NUM_ARGS];
 }
 
-impl<M0: IsVariable + 'static> IsVarTuple<1> for M0 {
+impl<M0: IsVariable + 'static + Send + Sync> IsVarTuple<1> for M0 {
     const DOF_T: [usize; 1] = [M0::DOF];
     type VarFamilyTupleRef<'a> = &'a VarFamily<M0>;
 
@@ -108,7 +108,9 @@ impl<M0: IsVariable + 'static> IsVarTuple<1> for M0 {
     }
 }
 
-impl<M0: IsVariable + 'static, M1: IsVariable + 'static> IsVarTuple<2> for (M0, M1) {
+impl<M0: IsVariable + 'static + Send + Sync, M1: IsVariable + 'static + Send + Sync> IsVarTuple<2>
+    for (M0, M1)
+{
     const DOF_T: [usize; 2] = [M0::DOF, M1::DOF];
     type VarFamilyTupleRef<'a> = (&'a VarFamily<M0>, &'a VarFamily<M1>);
 
@@ -134,8 +136,11 @@ impl<M0: IsVariable + 'static, M1: IsVariable + 'static> IsVarTuple<2> for (M0, 
     }
 }
 
-impl<M0: IsVariable + 'static, M1: IsVariable + 'static, M2: IsVariable + 'static> IsVarTuple<3>
-    for (M0, M1, M2)
+impl<
+        M0: IsVariable + 'static + Send + Sync,
+        M1: IsVariable + 'static + Send + Sync,
+        M2: IsVariable + 'static + Send + Sync,
+    > IsVarTuple<3> for (M0, M1, M2)
 {
     const DOF_T: [usize; 3] = [M0::DOF, M1::DOF, M2::DOF];
     type VarFamilyTupleRef<'a> = (&'a VarFamily<M0>, &'a VarFamily<M1>, &'a VarFamily<M2>);

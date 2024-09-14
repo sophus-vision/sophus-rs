@@ -50,10 +50,10 @@ impl SimpleIso2PriorProblem {
         }];
 
         let obs_pose_a_from_pose_b_poses =
-            CostSignature::<1, Isometry2F64, Isometry2PriorTermSignature> {
-                family_names: ["poses".into()],
-                terms: cost_signature,
-            };
+            CostSignature::<1, Isometry2F64, Isometry2PriorTermSignature>::new(
+                ["poses".into()],
+                cost_signature,
+            );
 
         let family: VarFamily<Isometry2F64> =
             VarFamily::new(VarKind::Free, vec![self.est_world_from_robot]);
@@ -75,6 +75,7 @@ impl SimpleIso2PriorProblem {
             OptParams {
                 num_iter: 1,            // should converge in single iteration
                 initial_lm_nu: EPS_F64, // if lm prior param is tiny
+                parallelize: true,
             },
         );
         let refined_world_from_robot = up_families.get_members::<Isometry2F64>("poses".into());
@@ -121,10 +122,10 @@ impl SimpleIso3PriorProblem {
         }];
 
         let obs_pose_a_from_pose_b_poses =
-            CostSignature::<1, (Isometry3F64, MatF64<6, 6>), Isometry3PriorTermSignature> {
-                family_names: ["poses".into()],
-                terms: cost_signature,
-            };
+            CostSignature::<1, (Isometry3F64, MatF64<6, 6>), Isometry3PriorTermSignature>::new(
+                ["poses".into()],
+                cost_signature,
+            );
 
         let family: VarFamily<Isometry3F64> =
             VarFamily::new(VarKind::Free, vec![self.est_world_from_robot]);
@@ -146,6 +147,7 @@ impl SimpleIso3PriorProblem {
             OptParams {
                 num_iter: 1,            // should converge in single iteration
                 initial_lm_nu: EPS_F64, // if lm prior param is tiny
+                parallelize: true,
             },
         );
         let refined_world_from_robot = up_families.get_members::<Isometry3F64>("poses".into());

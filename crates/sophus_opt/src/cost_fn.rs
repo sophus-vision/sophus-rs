@@ -7,9 +7,10 @@ use crate::variables::IsVarTuple;
 use crate::variables::VarKind;
 use crate::variables::VarPool;
 use std::marker::PhantomData;
+use std::ops::Range;
 
 /// Signature of a term of a cost function
-pub trait IsTermSignature<const N: usize> {
+pub trait IsTermSignature<const N: usize>: Send + Sync + 'static {
     /// associated constants such as measurements, etc.
     type Constants;
 
@@ -34,6 +35,23 @@ pub struct CostSignature<
     pub family_names: [String; NUM_ARGS],
     /// terms of the unevaluated cost function
     pub terms: Vec<TermSignature>,
+    pub(crate) reduction_ranges: Option<Vec<Range<usize>>>,
+}
+
+impl<
+        const NUM_ARGS: usize,
+        Constants,
+        TermSignature: IsTermSignature<NUM_ARGS, Constants = Constants>,
+    > CostSignature<NUM_ARGS, Constants, TermSignature>
+{
+    /// Create a new cost signature
+    pub fn new(family_names: [String; NUM_ARGS], terms: Vec<TermSignature>) -> Self {
+        CostSignature {
+            family_names,
+            terms,
+            reduction_ranges: None,
+        }
+    }
 }
 
 /// Residual function
@@ -42,7 +60,7 @@ pub trait IsResidualFn<
     const NUM_ARGS: usize,
     Args: IsVarTuple<NUM_ARGS>,
     Constants,
->: Copy
+>: Copy + Send + Sync + 'static
 {
     /// evaluate the residual function which shall be defined by the user
     fn eval(
@@ -58,7 +76,12 @@ pub trait IsResidualFn<
 /// Quadratic cost function of the non-linear least squares problem
 pub trait IsCostFn {
     /// evaluate the cost function
-    fn eval(&self, var_pool: &VarPool, calc_derivatives: bool) -> Box<dyn IsCost>;
+    fn eval(
+        &self,
+        var_pool: &VarPool,
+        calc_derivatives: bool,
+        parallelize: bool,
+    ) -> Box<dyn IsCost>;
 
     /// sort the terms of the cost function (to ensure more efficient evaluation and reduction over
     /// conditioned variables)
@@ -136,16 +159,18 @@ impl<
 where
     ResidualFn: IsResidualFn<NUM, NUM_ARGS, VarTuple, Constants>,
 {
-    fn eval(&self, var_pool: &VarPool, calc_derivatives: bool) -> Box<dyn IsCost> {
-        use crate::cost_args::CompareIdx;
+    fn eval(
+        &self,
+        var_pool: &VarPool,
+        calc_derivatives: bool,
+        parallelize: bool,
+    ) -> Box<dyn IsCost> {
         let mut var_kind_array =
             VarTuple::var_kind_array(var_pool, self.signature.family_names.clone());
-        let c_array = c_from_var_kind(&var_kind_array);
 
         if !calc_derivatives {
             var_kind_array = var_kind_array.map(|_x| VarKind::Conditioned)
         }
-        let less = CompareIdx { c: c_array };
 
         let mut evaluated_terms = Cost::new(
             self.signature.family_names.clone(),
@@ -165,36 +190,125 @@ where
             )
         };
 
-        evaluated_terms.terms.reserve(self.signature.terms.len());
+        let reduction_ranges = self.signature.reduction_ranges.as_ref().unwrap();
 
-        let mut i = 0;
-        while i < self.signature.terms.len() {
-            let term_signature = &self.signature.terms[i];
-            let outer_idx = term_signature.idx_ref();
+        enum ParallelizationStrategy {
+            None,
+            OuterLoop,
+            InnerLoop,
+        }
+        const OUTER_LOOP_THRESHOLD: usize = 100;
+        const INNER_LOOP_THRESHOLD: f64 = 100.0;
+        const REDUCTION_RATIO_THRESHOLD: f64 = 1.0;
 
-            println!("outer_idx: {:?}", outer_idx);
+        let average_inner_loop_size =
+            reduction_ranges.len() as f64 / self.signature.terms.len() as f64;
+        let reduction_ratio = average_inner_loop_size / reduction_ranges.len() as f64;
 
-            let evaluated_term_sum = self.signature.terms[i..]
-                .iter()
-                .take_while(|term| less.free_vars_equal(outer_idx, term.idx_ref()))
-                .fold(None, |acc: Option<Term<NUM, NUM_ARGS>>, term| {
-                    let evaluated_term = eval_res(term);
-                    match acc {
-                        Some(mut sum) => {
-                            sum.hessian.mat += evaluated_term.hessian.mat;
-                            sum.gradient.vec += evaluated_term.gradient.vec;
-                            sum.cost += evaluated_term.cost;
-                            sum.num_sub_terms += evaluated_term.num_sub_terms;
-                            Some(sum)
-                        }
-                        None => Some(evaluated_term),
-                    }
-                });
+        let parallelization_strategy = match parallelize {
+            true => {
+                if reduction_ranges.len() >= OUTER_LOOP_THRESHOLD
+                    && reduction_ratio < REDUCTION_RATIO_THRESHOLD
+                {
+                    // There are many outer terms, and significantly less inner terms on average
+                    ParallelizationStrategy::OuterLoop
+                } else if average_inner_loop_size >= INNER_LOOP_THRESHOLD {
+                    // There are many inner terms on average.
+                    ParallelizationStrategy::InnerLoop
+                } else {
+                    ParallelizationStrategy::None
+                }
+            }
+            false => ParallelizationStrategy::None,
+        };
 
-            let sum = evaluated_term_sum.unwrap();
-            i += sum.num_sub_terms;
-            println!("sum: {:?}", sum.num_sub_terms);
-            evaluated_terms.terms.push(sum);
+        match parallelization_strategy {
+            ParallelizationStrategy::None => {
+                evaluated_terms.terms = reduction_ranges
+                    .iter() // sequential outer loop
+                    .map(|range| {
+                        let evaluated_term_sum = self.signature.terms[range.start..range.end]
+                            .iter() // sequential inner loop
+                            .fold(None, |acc: Option<Term<NUM, NUM_ARGS>>, term| {
+                                let evaluated_term = eval_res(term);
+                                match acc {
+                                    Some(mut sum) => {
+                                        sum.reduce(evaluated_term);
+                                        Some(sum)
+                                    }
+                                    None => Some(evaluated_term),
+                                }
+                            });
+
+                        evaluated_term_sum.unwrap()
+                    })
+                    .collect();
+            }
+            ParallelizationStrategy::OuterLoop => {
+                use rayon::prelude::*;
+
+                evaluated_terms.terms = reduction_ranges
+                    .par_iter() // parallelize over the outer terms
+                    .map(|range| {
+                        let evaluated_term_sum = self.signature.terms[range.start..range.end]
+                            .iter() // sequential inner loop
+                            .fold(None, |acc: Option<Term<NUM, NUM_ARGS>>, term| {
+                                let evaluated_term = eval_res(term);
+                                match acc {
+                                    Some(mut sum) => {
+                                        sum.reduce(evaluated_term);
+                                        Some(sum)
+                                    }
+                                    None => Some(evaluated_term),
+                                }
+                            });
+
+                        evaluated_term_sum.unwrap()
+                    })
+                    .collect();
+            }
+            ParallelizationStrategy::InnerLoop => {
+                use rayon::prelude::*;
+
+                evaluated_terms.terms = reduction_ranges
+                    .iter() // sequential outer loop
+                    .map(|range| {
+                        // We know on average there are many inner terms, however, there might be
+                        // outliers.
+                        //
+                        // todo: Consider adding an if statement here and only parallelize the
+                        //       inner loop if the range length is greater than some threshold.
+                        let evaluated_term_sum = self.signature.terms[range.start..range.end]
+                            .par_iter() // parallelize over the inner terms
+                            .fold(
+                                || None,
+                                |acc: Option<Term<NUM, NUM_ARGS>>, term| {
+                                    let evaluated_term = eval_res(term);
+                                    match acc {
+                                        Some(mut sum) => {
+                                            sum.reduce(evaluated_term);
+                                            Some(sum)
+                                        }
+                                        None => Some(evaluated_term),
+                                    }
+                                },
+                            )
+                            .reduce(
+                                || None,
+                                |acc, evaluated_term| match (acc, evaluated_term) {
+                                    (Some(mut sum), Some(evaluated_term)) => {
+                                        sum.reduce(evaluated_term);
+                                        Some(sum)
+                                    }
+                                    (None, Some(evaluated_term)) => Some(evaluated_term),
+                                    _ => None,
+                                },
+                            );
+
+                        evaluated_term_sum.unwrap()
+                    })
+                    .collect();
+            }
         }
 
         Box::new(evaluated_terms)
@@ -215,14 +329,32 @@ where
             .terms
             .sort_by(|a, b| less.le_than(*a.idx_ref(), *b.idx_ref()));
 
-        // for t in 0..self.signature.terms.len() - 1 {
-        //     assert!(
-        //         less.le_than(
-        //             *self.signature.terms[t].idx_ref(),
-        //             *self.signature.terms[t + 1].idx_ref()
-        //         ) == std::cmp::Ordering::Less
-        //     );
-        // }
+        for t in 0..self.signature.terms.len() - 1 {
+            assert!(
+                less.le_than(
+                    *self.signature.terms[t].idx_ref(),
+                    *self.signature.terms[t + 1].idx_ref()
+                ) != std::cmp::Ordering::Greater
+            );
+        }
+
+        let mut reduction_ranges: Vec<Range<usize>> = vec![];
+        let mut i = 0;
+        while i < self.signature.terms.len() {
+            let outer_term_signature = &self.signature.terms[i];
+            let outer_term_idx = i;
+            while i < self.signature.terms.len()
+                && less.free_vars_equal(
+                    outer_term_signature.idx_ref(),
+                    self.signature.terms[i].idx_ref(),
+                )
+            {
+                i += 1;
+            }
+            reduction_ranges.push(outer_term_idx..i);
+        }
+
+        self.signature.reduction_ranges = Some(reduction_ranges);
     }
 
     fn robust_kernel(&self) -> Option<RobustKernel> {

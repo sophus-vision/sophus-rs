@@ -21,6 +21,15 @@ pub struct Term<const NUM: usize, const NUM_ARGS: usize> {
     pub num_sub_terms: usize,
 }
 
+impl<const NUM: usize, const NUM_ARGS: usize> Term<NUM, NUM_ARGS> {
+    pub(crate) fn reduce(&mut self, other: Term<NUM, NUM_ARGS>) {
+        self.hessian.mat += other.hessian.mat;
+        self.gradient.vec += other.gradient.vec;
+        self.cost += other.cost;
+        self.num_sub_terms += other.num_sub_terms;
+    }
+}
+
 trait RowLoop<const NUM: usize, const R: usize> {
     fn set_off_diagonal(
         self,
@@ -275,7 +284,7 @@ where
 {
     fn make_term<const NUM: usize, const NUM_ARGS: usize>(
         self,
-        idx: [usize; NUM_ARGS], 
+        idx: [usize; NUM_ARGS],
         var_kinds: [VarKind; 2],
         residual: VecF64<R>,
         robust_kernel: Option<robust_kernel::RobustKernel>,

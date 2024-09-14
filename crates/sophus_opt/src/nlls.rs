@@ -13,6 +13,8 @@ pub struct OptParams {
     pub num_iter: usize,
     /// initial value of the Levenberg-Marquardt regularization parameter
     pub initial_lm_nu: f64,
+    /// whether to use parallelization
+    pub parallelize: bool,
 }
 
 impl Default for OptParams {
@@ -20,6 +22,7 @@ impl Default for OptParams {
         Self {
             num_iter: 20,
             initial_lm_nu: 10.0,
+            parallelize: true,
         }
     }
 }
@@ -34,7 +37,7 @@ pub fn optimize(
     for cost_fn in cost_fns.iter_mut() {
         // sort to achieve more efficient evaluation and reduction
         cost_fn.sort(&variables);
-        init_costs.push(cost_fn.eval(&variables, false));
+        init_costs.push(cost_fn.eval(&variables, false, params.parallelize));
     }
 
     let mut nu = params.initial_lm_nu;
@@ -53,14 +56,14 @@ pub fn optimize(
 
         let mut evaluated_costs: Vec<Box<dyn IsCost>> = Vec::new();
         for cost_fn in cost_fns.iter_mut() {
-            evaluated_costs.push(cost_fn.eval(&variables, true));
+            evaluated_costs.push(cost_fn.eval(&variables, true, params.parallelize));
         }
 
         let updated_families = solve(&variables, evaluated_costs, nu);
 
         let mut new_costs: Vec<Box<dyn IsCost>> = Vec::new();
         for cost_fn in cost_fns.iter_mut() {
-            new_costs.push(cost_fn.eval(&updated_families, true));
+            new_costs.push(cost_fn.eval(&updated_families, true, params.parallelize));
         }
         let mut new_mse = 0.0;
         for init_cost in new_costs.iter() {
