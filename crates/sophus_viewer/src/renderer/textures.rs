@@ -204,9 +204,8 @@ impl ZBufferTexture {
 #[derive(Debug)]
 pub(crate) struct DepthTexture {
     pub(crate) depth_output_staging_buffer: wgpu::Buffer,
-    pub(crate) depth_render_target_f32: wgpu::Texture,
-    pub(crate) depth_texture_view_f32: wgpu::TextureView,
-
+    // pub(crate) depth_render_target_f32: wgpu::Texture,
+    // pub(crate) depth_texture_view_f32: wgpu::TextureView,
     pub visual_texture: wgpu::Texture,
     pub(crate) egui_tex_id: egui::TextureId,
 }
@@ -244,37 +243,37 @@ impl DepthTexture {
                     mapped_at_creation: false,
                 });
 
-        let depth_render_target_f32 =
-            render_state
-                .wgpu_device
-                .create_texture(&wgpu::TextureDescriptor {
-                    label: None,
-                    size: wgpu::Extent3d {
-                        width: w,
-                        height: h,
-                        depth_or_array_layers: 1,
-                    },
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    format: wgpu::TextureFormat::R32Float,
-                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                        | wgpu::TextureUsages::COPY_SRC
-                        | wgpu::TextureUsages::TEXTURE_BINDING,
-                    view_formats: &[wgpu::TextureFormat::R32Float],
-                });
+        // let depth_render_target_f32 =
+        //     render_state
+        //         .wgpu_device
+        //         .create_texture(&wgpu::TextureDescriptor {
+        //             label: None,
+        //             size: wgpu::Extent3d {
+        //                 width: w,
+        //                 height: h,
+        //                 depth_or_array_layers: 1,
+        //             },
+        //             mip_level_count: 1,
+        //             sample_count: 1,
+        //             dimension: wgpu::TextureDimension::D2,
+        //             format: wgpu::TextureFormat::R32Float,
+        //             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+        //                 | wgpu::TextureUsages::COPY_SRC
+        //                 | wgpu::TextureUsages::TEXTURE_BINDING,
+        //             view_formats: &[wgpu::TextureFormat::R32Float],
+        //         });
 
-        let depth_texture_view_f32 =
-            depth_render_target_f32.create_view(&wgpu::TextureViewDescriptor {
-                label: None,
-                format: Some(wgpu::TextureFormat::R32Float),
-                dimension: Some(wgpu::TextureViewDimension::D2),
-                aspect: wgpu::TextureAspect::All,
-                base_mip_level: 0,
-                mip_level_count: None,
-                base_array_layer: 0,
-                array_layer_count: None,
-            });
+        // let depth_texture_view_f32 =
+        //     depth_render_target_f32.create_view(&wgpu::TextureViewDescriptor {
+        //         label: None,
+        //         format: Some(wgpu::TextureFormat::R32Float),
+        //         dimension: Some(wgpu::TextureViewDimension::D2),
+        //         aspect: wgpu::TextureAspect::All,
+        //         base_mip_level: 0,
+        //         mip_level_count: None,
+        //         base_array_layer: 0,
+        //         array_layer_count: None,
+        //     });
 
         let visual_texture = render_state
             .wgpu_device
@@ -305,78 +304,78 @@ impl DepthTexture {
             );
         Self {
             depth_output_staging_buffer,
-            depth_texture_view_f32,
-            depth_render_target_f32,
+            // depth_texture_view_f32,
+            // depth_render_target_f32,
             visual_texture,
             egui_tex_id,
         }
     }
 
-    // download the depth image from the GPU to ArcImageF32
-    pub fn download_image(
-        &self,
-        state: &RenderContext,
-        mut command_encoder: wgpu::CommandEncoder,
-        view_port_size: &ImageSize,
-    ) -> ArcImageF32 {
-        let w = view_port_size.width as u32;
-        let h = view_port_size.height as u32;
+    // // download the depth image from the GPU to ArcImageF32
+    // pub fn download_image(
+    //     &self,
+    //     state: &RenderContext,
+    //     mut command_encoder: wgpu::CommandEncoder,
+    //     view_port_size: &ImageSize,
+    // ) -> ArcImageF32 {
+    //     let w = view_port_size.width as u32;
+    //     let h = view_port_size.height as u32;
 
-        let bytes_per_row = DepthTexture::bytes_per_row(w);
+    //     let bytes_per_row = DepthTexture::bytes_per_row(w);
 
-        command_encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
-                texture: &self.depth_render_target_f32,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            wgpu::ImageCopyBuffer {
-                buffer: &self.depth_output_staging_buffer,
-                layout: wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: Some(NonZeroU32::new(bytes_per_row).unwrap().get()),
-                    rows_per_image: Some(h),
-                },
-            },
-            wgpu::Extent3d {
-                width: w,
-                height: h,
-                depth_or_array_layers: 1,
-            },
-        );
+    //     command_encoder.copy_texture_to_buffer(
+    //         wgpu::ImageCopyTexture {
+    //             texture: &self.depth_render_target_f32,
+    //             mip_level: 0,
+    //             origin: wgpu::Origin3d::ZERO,
+    //             aspect: wgpu::TextureAspect::All,
+    //         },
+    //         wgpu::ImageCopyBuffer {
+    //             buffer: &self.depth_output_staging_buffer,
+    //             layout: wgpu::ImageDataLayout {
+    //                 offset: 0,
+    //                 bytes_per_row: Some(NonZeroU32::new(bytes_per_row).unwrap().get()),
+    //                 rows_per_image: Some(h),
+    //             },
+    //         },
+    //         wgpu::Extent3d {
+    //             width: w,
+    //             height: h,
+    //             depth_or_array_layers: 1,
+    //         },
+    //     );
 
-        state.wgpu_queue.submit(Some(command_encoder.finish()));
+    //     state.wgpu_queue.submit(Some(command_encoder.finish()));
 
-        #[allow(unused_assignments)]
-        let mut maybe_depth_image = None;
-        {
-            let buffer_slice = self.depth_output_staging_buffer.slice(..);
+    //     #[allow(unused_assignments)]
+    //     let mut maybe_depth_image = None;
+    //     {
+    //         let buffer_slice = self.depth_output_staging_buffer.slice(..);
 
-            let (tx, rx) = std::sync::mpsc::channel();
-            buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-                tx.send(result).unwrap();
-            });
-            state.wgpu_device.poll(wgpu::Maintain::Wait);
-            rx.try_recv().unwrap().unwrap();
+    //         let (tx, rx) = std::sync::mpsc::channel();
+    //         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+    //             tx.send(result).unwrap();
+    //         });
+    //         state.wgpu_device.poll(wgpu::Maintain::Wait);
+    //         rx.try_recv().unwrap().unwrap();
 
-            let data = buffer_slice.get_mapped_range();
+    //         let data = buffer_slice.get_mapped_range();
 
-            let view = ImageViewF32::from_stride_and_slice(
-                ImageSize {
-                    width: w as usize,
-                    height: h as usize,
-                },
-                (bytes_per_row / Self::BYTES_PER_PIXEL) as usize,
-                bytemuck::cast_slice(&data[..]),
-            );
-            let img = ArcImageF32::make_copy_from(&view);
-            maybe_depth_image = Some(img);
-        }
-        self.depth_output_staging_buffer.unmap();
+    //         let view = ImageViewF32::from_stride_and_slice(
+    //             ImageSize {
+    //                 width: w as usize,
+    //                 height: h as usize,
+    //             },
+    //             (bytes_per_row / Self::BYTES_PER_PIXEL) as usize,
+    //             bytemuck::cast_slice(&data[..]),
+    //         );
+    //         let img = ArcImageF32::make_copy_from(&view);
+    //         maybe_depth_image = Some(img);
+    //     }
+    //     self.depth_output_staging_buffer.unmap();
 
-        maybe_depth_image.unwrap()
-    }
+    //     maybe_depth_image.unwrap()
+    // }
 }
 
 #[derive(Debug)]
