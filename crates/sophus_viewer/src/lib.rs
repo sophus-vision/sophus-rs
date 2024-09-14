@@ -2,17 +2,17 @@
 #![deny(missing_docs)]
 #![allow(clippy::needless_range_loop)]
 
-//! Simple viewer for 2D and 3D visualizations.
+ //! Simple viewer for 2D and 3D visualizations.
 
-/// The high-level camera sim rendering API
-pub mod camera_simulator;
-/// The render context
-pub mod render_context;
-/// The renderable structs.
-pub mod renderables;
-/// The rendering implementation
-pub mod renderer;
-/// The simple viewer.
-pub mod viewer;
+// /// The high-level camera sim rendering API
+// pub mod camera_simulator;
+// /// The render context
+// pub mod render_context;
+// /// The renderable structs.
+// pub mod renderables;
+// /// The rendering implementation
+// pub mod renderer;
+// /// The simple viewer.
+// pub mod viewer;
 
-pub use crate::render_context::RenderContext;
+// pub use crate::render_context::RenderContext;
