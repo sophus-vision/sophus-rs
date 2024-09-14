@@ -8,6 +8,7 @@ use crate::variables::VarKind;
 use crate::variables::VarPool;
 use std::marker::PhantomData;
 use std::ops::Range;
+use std::time::Instant;
 
 /// Signature of a term of a cost function
 pub trait IsTermSignature<const N: usize>: Send + Sync + 'static {
@@ -192,6 +193,7 @@ where
 
         let reduction_ranges = self.signature.reduction_ranges.as_ref().unwrap();
 
+        #[derive(Debug)]
         enum ParallelizationStrategy {
             None,
             OuterLoop,
@@ -202,7 +204,7 @@ where
         const REDUCTION_RATIO_THRESHOLD: f64 = 1.0;
 
         let average_inner_loop_size =
-            reduction_ranges.len() as f64 / self.signature.terms.len() as f64;
+            self.signature.terms.len() as f64 / reduction_ranges.len() as f64;
         let reduction_ratio = average_inner_loop_size / reduction_ranges.len() as f64;
 
         let parallelization_strategy = match parallelize {
@@ -224,25 +226,45 @@ where
 
         match parallelization_strategy {
             ParallelizationStrategy::None => {
-                evaluated_terms.terms = reduction_ranges
-                    .iter() // sequential outer loop
-                    .map(|range| {
-                        let evaluated_term_sum = self.signature.terms[range.start..range.end]
-                            .iter() // sequential inner loop
-                            .fold(None, |acc: Option<Term<NUM, NUM_ARGS>>, term| {
-                                let evaluated_term = eval_res(term);
-                                match acc {
-                                    Some(mut sum) => {
-                                        sum.reduce(evaluated_term);
-                                        Some(sum)
-                                    }
-                                    None => Some(evaluated_term),
-                                }
-                            });
+                // This functional style code is slightly less efficient, than the nested while
+                // loop below. 
+                //
+                // evaluated_terms.terms = reduction_ranges
+                //     .iter() // sequential outer loop
+                //     .map(|range| {
+                //         let evaluated_term_sum = self.signature.terms[range.start..range.end]
+                //             .iter() // sequential inner loop
+                //             .fold(None, |acc: Option<Term<NUM, NUM_ARGS>>, term| {
+                //                 let evaluated_term = eval_res(term);
+                //                 match acc {
+                //                     Some(mut sum) => {
+                //                         sum.reduce(evaluated_term);
+                //                         Some(sum)
+                //                     }
+                //                     None => Some(evaluated_term),
+                //                 }
+                //             });
 
-                        evaluated_term_sum.unwrap()
-                    })
-                    .collect();
+                //         evaluated_term_sum.unwrap()
+                //     })
+                //     .collect();
+
+                evaluated_terms.terms.reserve(reduction_ranges.len());
+                for range in reduction_ranges.iter() {
+                    let mut evaluated_term_sum: Option<Term<NUM, NUM_ARGS>> = None;
+
+                    for term in self.signature.terms[range.start..range.end].iter() {
+                        match evaluated_term_sum {
+                            Some(mut sum) => {
+                                sum.reduce(eval_res(term));
+                                evaluated_term_sum = Some(sum);
+                            }
+                            None => evaluated_term_sum = Some(eval_res(term)),
+                        }
+                    }
+
+                    evaluated_terms.terms.push(evaluated_term_sum.unwrap());
+                }
             }
             ParallelizationStrategy::OuterLoop => {
                 use rayon::prelude::*;
@@ -315,6 +337,8 @@ where
     }
 
     fn sort(&mut self, variables: &VarPool) {
+        let now = Instant::now();
+
         let var_kind_array =
             &VarTuple::var_kind_array(variables, self.signature.family_names.clone());
         use crate::cost_args::CompareIdx;
@@ -329,6 +353,10 @@ where
             .terms
             .sort_by(|a, b| less.le_than(*a.idx_ref(), *b.idx_ref()));
 
+        println!("sorting took: {:.2?}", now.elapsed());
+
+        let now = Instant::now();
+
         for t in 0..self.signature.terms.len() - 1 {
             assert!(
                 less.le_than(
@@ -337,6 +365,10 @@ where
                 ) != std::cmp::Ordering::Greater
             );
         }
+
+        println!("sorting val took: {:.2?}", now.elapsed());
+
+        let now = Instant::now();
 
         let mut reduction_ranges: Vec<Range<usize>> = vec![];
         let mut i = 0;
@@ -355,6 +387,8 @@ where
         }
 
         self.signature.reduction_ranges = Some(reduction_ranges);
+
+        println!("reduction_ranges took: {:.2?}", now.elapsed());
     }
 
     fn robust_kernel(&self) -> Option<RobustKernel> {

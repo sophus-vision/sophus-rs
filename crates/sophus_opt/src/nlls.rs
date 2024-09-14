@@ -34,12 +34,13 @@ pub fn optimize(
     params: OptParams,
 ) -> VarPool {
     let mut init_costs: Vec<Box<dyn IsCost>> = Vec::new();
+
     for cost_fn in cost_fns.iter_mut() {
         // sort to achieve more efficient evaluation and reduction
         cost_fn.sort(&variables);
         init_costs.push(cost_fn.eval(&variables, false, params.parallelize));
     }
-
+    
     let mut nu = params.initial_lm_nu;
 
     let mut mse = 0.0;
@@ -56,10 +57,16 @@ pub fn optimize(
 
         let mut evaluated_costs: Vec<Box<dyn IsCost>> = Vec::new();
         for cost_fn in cost_fns.iter_mut() {
+            let now = Instant::now();
             evaluated_costs.push(cost_fn.eval(&variables, true, params.parallelize));
+            println!("eval took: {:.2?}", now.elapsed());
         }
 
+        let now = Instant::now();
         let updated_families = solve(&variables, evaluated_costs, nu);
+        println!("solve took: {:.2?}", now.elapsed());
+     
+
 
         let mut new_costs: Vec<Box<dyn IsCost>> = Vec::new();
         for cost_fn in cost_fns.iter_mut() {
@@ -78,8 +85,8 @@ pub fn optimize(
             nu *= 2.0;
         }
     }
-    info!("e^2: {:?} -> {:?}", initial_mse, mse);
-    info!("{} iters took: {:.2?}", params.num_iter, now.elapsed());
+    println!("e^2: {:?} -> {:?}", initial_mse, mse);
+    println!("{} iters took: {:.2?}", params.num_iter, now.elapsed());
 
     variables
 }
