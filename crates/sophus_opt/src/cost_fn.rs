@@ -321,7 +321,7 @@ where
 
         let c_array = c_from_var_kind(var_kind_array);
 
-        let less = CompareIdx { c: c_array };
+        let less = CompareIdx::new(&c_array);
 
         assert!(!self.signature.terms.is_empty());
 
