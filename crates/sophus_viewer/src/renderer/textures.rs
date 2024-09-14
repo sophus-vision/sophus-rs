@@ -84,8 +84,6 @@ impl RgbaTexture {
         let h = view_port_size.height as u32;
         let bytes_per_row = RgbaTexture::bytes_per_row(w);
 
-        let required_buffer_size = bytes_per_row * h; // Total bytes needed in the buffer
-
         let buffer = state.wgpu_device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
             size: (bytes_per_row * h) as wgpu::BufferAddress,

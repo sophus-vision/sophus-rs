@@ -211,6 +211,13 @@ impl OffscreenRenderer {
             .wgpu_device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
+        // pixel currently invalidates the z-buffer
+        self.pixel.paint(
+            &mut command_encoder,
+            &self.textures.rgba.rgba_texture_view,
+            &self.textures.z_buffer,
+        );
+
         self.scene.paint(
             &self.state,
             &scene_from_camera,
@@ -336,18 +343,13 @@ impl OffscreenRenderer {
                 .show_interaction_marker(&self.state, interaction_enum);
         }
 
-        // self.pixel.paint(
-        //     &mut command_encoder,
-        //     &self.textures.rgba.rgba_texture_view,
-        //     &self.textures.z_buffer,
-        // );
-
         //self.state.wgpu_queue.submit(Some(command_encoder.finish()));
 
-        let command_encoder = self
+        let mut command_encoder = self
             .state
             .wgpu_device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+
         // self.scene.depth_paint(
         //     &self.state,
         //     &scene_from_camera,

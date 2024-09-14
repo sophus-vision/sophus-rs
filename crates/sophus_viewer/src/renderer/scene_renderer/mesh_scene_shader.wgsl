@@ -23,8 +23,3 @@ fn vs_main(
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     return in.color;
 }
-
-@fragment
-fn depth_fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    return vec4<f32>(in.position.z, 0.0, 0.0, 1.0);
-}

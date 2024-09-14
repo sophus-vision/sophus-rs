@@ -15,9 +15,7 @@ pub mod textured_mesh;
 
 use sophus_core::calculus::region::IsRegion;
 use sophus_core::tensor::tensor_view::IsTensorLike;
-use sophus_image::arc_image::ArcImageF32;
 use sophus_image::image_view::IsImageView;
-use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;
 use sophus_sensor::distortion_table::distort_table;
 use sophus_sensor::dyn_camera::DynCamera;
@@ -28,7 +26,6 @@ use crate::renderer::scene_renderer::buffers::Frustum;
 use crate::renderer::scene_renderer::buffers::SceneRenderBuffers;
 use crate::renderer::scene_renderer::mesh::MeshRenderer;
 use crate::renderer::scene_renderer::point::ScenePointRenderer;
-use crate::renderer::textures::DepthTexture;
 use crate::renderer::textures::ZBufferTexture;
 use crate::renderer::types::ClippingPlanesF64;
 use crate::renderer::types::TranslationAndScaling;
@@ -183,7 +180,7 @@ impl SceneRenderer {
         let depth_visualization_bind_group = Self::create_depth_visualization_bind_group(
             &wgpu_render_state.wgpu_device,
             &bind_group_layout,
-            &ndc_z_texture_view,
+            ndc_z_texture_view,
         );
 
         Self {
@@ -356,55 +353,6 @@ impl SceneRenderer {
         self.line_renderer
             .paint(state, scene_from_camera, &self.buffers, &mut render_pass);
     }
-
-    // pub(crate) fn depth_paint<'rp>(
-    //     &'rp self,
-    //     state: &RenderContext,
-    //     scene_from_camera: &Isometry3F64,
-    //     command_encoder: &'rp mut wgpu::CommandEncoder,
-    //     depth_texture_view: &'rp wgpu::TextureView,
-    //     depth: &ZBufferTexture,
-    //     backface_culling: bool,
-    // ) {
-    //     let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-    //         label: None,
-    //         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-    //             view: depth_texture_view,
-    //             resolve_target: None,
-    //             ops: wgpu::Operations {
-    //                 load: wgpu::LoadOp::Clear(wgpu::Color::WHITE),
-    //                 store: wgpu::StoreOp::Store,
-    //             },
-    //         })],
-    //         depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-    //             view: &depth.depth_texture_view,
-    //             depth_ops: Some(wgpu::Operations {
-    //                 load: wgpu::LoadOp::Clear(1.0),
-    //                 store: wgpu::StoreOp::Store,
-    //             }),
-    //             stencil_ops: None,
-    //         }),
-    //         occlusion_query_set: None,
-    //         timestamp_writes: None,
-    //     });
-    //     self.mesh_renderer.depth_paint(
-    //         state,
-    //         scene_from_camera,
-    //         &self.buffers,
-    //         &mut render_pass,
-    //         backface_culling,
-    //     );
-    //     self.textured_mesh_renderer.depth_paint(
-    //         state,
-    //         scene_from_camera,
-    //         &self.buffers,
-    //         &mut render_pass,
-    //     );
-    //     self.line_renderer
-    //         .depth_paint(state, scene_from_camera, &self.buffers, &mut render_pass);
-    //     self.point_renderer
-    //         .depth_paint(state, scene_from_camera, &self.buffers, &mut render_pass);
-    // }
 
     /// render depth visualization
     pub fn render_depth_visualization<'rp>(

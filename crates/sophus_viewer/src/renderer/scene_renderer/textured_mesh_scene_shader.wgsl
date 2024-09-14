@@ -29,10 +29,4 @@ fn vs_main(
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     return textureSample(mesh_texture, mesh_texture_sampler, in.texCoords);
-   // return vec4<f32>(1.0, 0.0, 0.0, 1.0);
-}
-
-@fragment
-fn depth_fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    return vec4<f32>(in.position.z, 0.0, 0.0, 1.0);
 }
