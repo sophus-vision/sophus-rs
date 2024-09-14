@@ -1,16 +1,10 @@
 use eframe::egui;
 use num_traits;
 use num_traits::cast;
-use sophus_core::linalg::SVec;
 use sophus_core::linalg::VecF64;
 use sophus_image::arc_image::ArcImage4U8;
-use sophus_image::arc_image::ArcImageF32;
-use sophus_image::color_map::BlueWhiteRedBlackColorMap;
-use sophus_image::mut_image::MutImage4U8;
-use sophus_image::mut_image::MutImageF32;
-use sophus_image::prelude::IsImageView;
-use sophus_image::prelude::IsMutImageView;
 
+use crate::renderer::textures::depth_image::DepthImage;
 use crate::renderer::OffscreenRenderer;
 use crate::viewer::aspect_ratio::HasAspectRatio;
 
@@ -69,55 +63,6 @@ impl<S: FloatingPointNumber> ClippingPlanes<S> {
             near: cast(self.near).unwrap(),
             far: cast(self.far).unwrap(),
         }
-    }
-}
-
-/// depth image
-pub struct DepthImage {
-    /// ndc depth values
-    pub ndc_z_image: ArcImageF32,
-    /// clipping planes
-    pub clipping_planes: ClippingPlanesF32,
-}
-
-impl DepthImage {
-    /// return color mapped depth
-    pub fn color_mapped(&self) -> ArcImage4U8 {
-        let mut image_rgba = MutImage4U8::from_image_size(self.ndc_z_image.image_size());
-
-        for v in 0..image_rgba.image_size().height {
-            for u in 0..image_rgba.image_size().width {
-                let z = self.ndc_z_image.pixel(u, v);
-                if z == 1.0 {
-                    // map background to pitch black
-                    *image_rgba.mut_pixel(u, v) = SVec::<u8, 4>::new(0, 0, 0, 255);
-                    continue;
-                }
-                // scale to [0.0 - 0.9] range, so that far away [dark red] differs from background [pitch black].
-                let z = 0.9 * z;
-                // z is squared to get higher dynamic range for far objects.
-                let rgb = BlueWhiteRedBlackColorMap::f32_to_rgb(z * z);
-
-                *image_rgba.mut_pixel(u, v) = SVec::<u8, 4>::new(rgb[0], rgb[1], rgb[2], 255);
-            }
-        }
-
-        ArcImage4U8::from(image_rgba)
-    }
-
-    /// return metric depth image
-    pub fn metric_depth(&self) -> ArcImageF32 {
-        let mut depth = MutImageF32::from_image_size(self.ndc_z_image.image_size());
-
-        for v in 0..depth.image_size().height {
-            for u in 0..depth.image_size().width {
-                let z = self.ndc_z_image.pixel(u, v);
-
-                *depth.mut_pixel(u, v) = self.clipping_planes.metric_z_from_ndc_z(z)
-            }
-        }
-
-        ArcImageF32::from(depth)
     }
 }
 

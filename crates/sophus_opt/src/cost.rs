@@ -1,5 +1,4 @@
 use crate::term::Term;
-use crate::variables::IsVarTuple;
 use crate::variables::VarKind;
 use crate::variables::VarPool;
 use dyn_clone::DynClone;
@@ -388,7 +387,10 @@ impl<const NUM: usize, const NUM_ARGS: usize> IsCost for Cost<NUM, NUM_ARGS> {
                 if j_free_start_idx != -1 {
                     let j_free_start_idx = j_free_start_idx as usize;
 
-                    println!("hessian_marg_free_vec: {:?}", track.hessian_marg_free_vec[j]);
+                    println!(
+                        "hessian_marg_free_vec: {:?}",
+                        track.hessian_marg_free_vec[j]
+                    );
                     println!("delta: {:?}", track.delta);
 
                     let val = track.hessian_marg_free_vec[j].transpose() * &track.delta;

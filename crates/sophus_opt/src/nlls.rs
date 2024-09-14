@@ -3,7 +3,6 @@ use crate::cost_fn::IsCostFn;
 use crate::solvers::solve;
 use crate::variables::VarPool;
 use log::debug;
-use log::info;
 use std::fmt::Debug;
 
 /// Optimization parameters
@@ -40,7 +39,7 @@ pub fn optimize(
         cost_fn.sort(&variables);
         init_costs.push(cost_fn.eval(&variables, false, params.parallelize));
     }
-    
+
     let mut nu = params.initial_lm_nu;
 
     let mut mse = 0.0;
@@ -65,8 +64,6 @@ pub fn optimize(
         let now = Instant::now();
         let updated_families = solve(&variables, evaluated_costs, nu);
         println!("solve took: {:.2?}", now.elapsed());
-     
-
 
         let mut new_costs: Vec<Box<dyn IsCost>> = Vec::new();
         for cost_fn in cost_fns.iter_mut() {

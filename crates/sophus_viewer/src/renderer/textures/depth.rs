@@ -1,8 +1,12 @@
+use crate::renderer::textures::depth_image::DepthImage;
 use crate::renderer::textures::main_render_z_buffer::MainRenderZBuffer;
 use crate::renderer::textures::visual_depth::VisualDepthTexture;
+use crate::renderer::types::ClippingPlanesF64;
 use crate::RenderContext;
+use sophus_core::IsTensorLike;
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::image_view::ImageViewF32;
+use sophus_image::prelude::IsImageView;
 use sophus_image::ImageSize;
 use wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
 
@@ -47,12 +51,35 @@ impl DepthTextures {
         }
     }
 
+    /// Uploads the depth image to the visual depth texture.
+    pub fn compute_visual_depth_texture(&self, state: &RenderContext, depth_image: &DepthImage) {
+        let image_rgba = depth_image.color_mapped();
+
+        state.wgpu_queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &self.visual_depth_texture.visual_texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            bytemuck::cast_slice(image_rgba.tensor.scalar_view().as_slice().unwrap()),
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * image_rgba.image_size().width as u32),
+                rows_per_image: Some(image_rgba.image_size().height as u32),
+            },
+            self.visual_depth_texture.visual_texture.size(),
+        );
+    }
+
+    /// Downloads the depth image from the main render z buffer texture.
     pub fn download_depth_image(
         &self,
         state: &RenderContext,
         mut command_encoder: wgpu::CommandEncoder,
         view_port_size: &ImageSize,
-    ) -> ArcImageF32 {
+        clipping_planes: &ClippingPlanesF64,
+    ) -> DepthImage {
         let w = view_port_size.width;
         let h = view_port_size.height;
 
@@ -108,6 +135,6 @@ impl DepthTextures {
         }
         self.staging_buffer.unmap();
 
-        depth_image
+        DepthImage::new(depth_image, clipping_planes.cast())
     }
 }

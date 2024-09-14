@@ -1,8 +1,6 @@
 use crate::cost::IsCost;
-use crate::cost_args::CompareIdx;
 use crate::ldlt::SparseLdlt;
 use crate::ldlt::SymmetricTripletMatrix;
-use crate::variables::IsVarTuple;
 use crate::variables::VarKind;
 use crate::variables::VarPool;
 
@@ -30,12 +28,7 @@ impl SparseNormalEquation {
         let mut neg_grad = nalgebra::DVector::<f64>::zeros(num_var_params);
 
         for cost in costs.iter() {
-            cost.populate_normal_equation(
-                variables,
-                nu,
-                &mut upper_hessian_triplet,
-                &mut neg_grad,
-            );
+            cost.populate_normal_equation(variables, nu, &mut upper_hessian_triplet, &mut neg_grad);
         }
 
         Self {

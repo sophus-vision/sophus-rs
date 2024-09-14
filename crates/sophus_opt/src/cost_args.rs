@@ -129,6 +129,7 @@ where
 mod test {
     use crate::cost_args::CompareIdx;
 
+    #[allow(dead_code)]
     fn le_than<const N: usize>(
         c: &[char; N],
         lhs: [usize; N],

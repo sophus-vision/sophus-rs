@@ -5,6 +5,8 @@ use sophus_image::ImageSize;
 
 /// Depth textures.
 pub mod depth;
+/// depth image
+pub mod depth_image;
 /// Main render z buffer texture.
 pub mod main_render_z_buffer;
 /// RGBA texture.

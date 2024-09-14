@@ -1,19 +1,14 @@
-/// offscreen texture for rendering
-pub mod textures;
-
 /// The pixel renderer for 2D rendering.
 pub mod pixel_renderer;
-
 /// The scene renderer for 3D rendering.
 pub mod scene_renderer;
-
+/// offscreen texture for rendering
+pub mod textures;
 /// Types used in the renderer API
 pub mod types;
 
 use sophus_core::linalg::VecF64;
-use sophus_core::IsTensorLike;
 use sophus_image::arc_image::ArcImage4U8;
-use sophus_image::prelude::IsImageView;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;
 use sophus_sensor::DynCamera;
@@ -31,7 +26,6 @@ use crate::renderer::scene_renderer::textured_mesh::TexturedMeshEntity;
 use crate::renderer::scene_renderer::SceneRenderer;
 use crate::renderer::textures::Textures;
 use crate::renderer::types::ClippingPlanesF64;
-use crate::renderer::types::DepthImage;
 use crate::renderer::types::RenderResult;
 use crate::renderer::types::TranslationAndScaling;
 use crate::viewer::interactions::InteractionEnum;
@@ -219,10 +213,12 @@ impl OffscreenRenderer {
             backface_culling,
         );
 
-        let depth_image =
-            self.textures
-                .depth
-                .download_depth_image(&self.state, command_encoder, view_port_size);
+        let depth_image = self.textures.depth.download_depth_image(
+            &self.state,
+            command_encoder,
+            view_port_size,
+            &self.clipping_planes,
+        );
         let mut command_encoder = self
             .state
             .wgpu_device
@@ -241,10 +237,6 @@ impl OffscreenRenderer {
                 .show_interaction_marker(&self.state, interaction_enum);
         }
 
-        let depth_image = DepthImage {
-            ndc_z_image: depth_image,
-            clipping_planes: self.clipping_planes.cast(),
-        };
         let mut image_4u8 = None;
         if download_rgba {
             let command_encoder = self
@@ -258,27 +250,9 @@ impl OffscreenRenderer {
             ));
         }
         if compute_depth_texture {
-            let image_rgba = depth_image.color_mapped();
-
-            self.state.wgpu_queue.write_texture(
-                wgpu::ImageCopyTexture {
-                    texture: &self.textures.depth.visual_depth_texture.visual_texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                bytemuck::cast_slice(image_rgba.tensor.scalar_view().as_slice().unwrap()),
-                wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: Some(4 * image_rgba.image_size().width as u32),
-                    rows_per_image: Some(image_rgba.image_size().height as u32),
-                },
-                self.textures
-                    .depth
-                    .visual_depth_texture
-                    .visual_texture
-                    .size(),
-            );
+            self.textures
+                .depth
+                .compute_visual_depth_texture(&self.state, &depth_image);
         }
 
         RenderResult {

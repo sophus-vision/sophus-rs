@@ -3,8 +3,8 @@ use sophus_lie::Isometry3F64;
 use sophus_sensor::dyn_camera::DynCameraF64;
 
 use crate::renderables::renderable3d::Renderable3d;
+use crate::renderer::textures::depth_image::DepthImage;
 use crate::renderer::types::ClippingPlanesF64;
-use crate::renderer::types::DepthImage;
 use crate::renderer::types::TranslationAndScaling;
 use crate::renderer::OffscreenRenderer;
 use crate::RenderContext;
