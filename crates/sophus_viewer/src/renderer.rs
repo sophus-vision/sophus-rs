@@ -227,12 +227,6 @@ impl OffscreenRenderer {
             backface_culling,
         );
 
-        // // Depth visualization pass
-        // self.scene.render_depth_visualization(
-        //     &mut command_encoder,
-        //     &self.textures.depth.depth_texture_view_f32,
-        // );
-
         let w = view_port_size.width as usize;
         let h = view_port_size.height as usize;
 
@@ -306,37 +300,15 @@ impl OffscreenRenderer {
             );
             depth_image = ArcImageF32::make_copy_from(&view);
 
-            // // Create a visualization image
-            // let mut image =
-            //     image::RgbImage::new(view_port_size.width as u32, view_port_size.height as u32);
-
-            let min_depth = depth_values.iter().cloned().fold(f32::INFINITY, f32::min);
-            let max_depth = depth_values
-                .iter()
-                .cloned()
-                .fold(f32::NEG_INFINITY, f32::max);
-            println!("Min depth: {}, Max depth: {}", min_depth, max_depth);
-            // let depth_range = max_depth - min_depth;
+            // let min_depth = depth_values.iter().cloned().fold(f32::INFINITY, f32::min);
+            // let max_depth = depth_values
+            //     .iter()
+            //     .cloned()
+            //     .fold(f32::NEG_INFINITY, f32::max);
+            // println!("Min depth: {}, Max depth: {}", min_depth, max_depth);
+            // // let depth_range = max_depth - min_depth;
         }
         staging_buffer.unmap();
-
-        // for (i, &depth) in depth_values.iter().enumerate() {
-        //     let x = i as u32 % view_port_size.width as u32;
-        //     let y = i as u32 / view_port_size.width as u32;
-
-        //     let normalized_depth = if depth_range > 0.0 {
-        //         (depth - min_depth) / depth_range
-        //     } else {
-        //         0.0
-        //     };
-
-        //     let color = (normalized_depth * 255.0) as u8;
-        //     image.put_pixel(x, y, image::Rgb([color, color, color]));
-
-        // Save the visualization
-        //  image.save("depth_visualization.png").unwrap();
-
-        // staging_buffer.unmap();
 
         if let Some(interaction_enum) = maybe_interaction_enum {
             self.pixel
@@ -350,23 +322,8 @@ impl OffscreenRenderer {
             .wgpu_device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
-        // self.scene.depth_paint(
-        //     &self.state,
-        //     &scene_from_camera,
-        //     &mut command_encoder,
-        //     &self.textures.depth.depth_texture_view_f32,
-        //     &self.textures.z_buffer,
-        //     backface_culling,
-        // );
-
         let depth_image = DepthImage {
             ndc_z_image: depth_image,
-
-            // self.textures.depth.download_image(
-            //     &self.state,
-            //     command_encoder,
-            //     view_port_size,
-            // ),
             clipping_planes: self.clipping_planes.cast(),
         };
         let mut image_4u8 = None;
