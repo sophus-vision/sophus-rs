@@ -108,7 +108,7 @@ where
     }
 
     /// Return true if all non-conditioned variables are equal
-    pub fn are_all_non_cond_vars_equal(&self, lhs: &[usize], rhs: &[usize]) -> bool {
+    pub fn free_vars_equal(&self, lhs: &[usize], rhs: &[usize]) -> bool {
         let mut i = 0;
         loop {
             if i >= lhs.len() {

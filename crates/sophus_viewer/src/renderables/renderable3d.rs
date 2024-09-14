@@ -69,6 +69,22 @@ pub fn named_point3(name: impl ToString, points: Vec<Point3>) -> Renderable3d {
     named_point3_at(name, points, Isometry3::identity())
 }
 
+/// creates a named mesh at a given pose
+pub fn named_mesh3_at(name: impl ToString, mesh: TriangleMesh3, scene_from_entity: Isometry3F64) -> Renderable3d {
+    let mesh = TriangleMesh3 {
+        name: name.to_string(),
+        triangles: mesh.triangles,
+        scene_from_entity,
+    };
+
+    Renderable3d::Mesh3(mesh)
+}
+
+/// creates a named mesh
+pub fn named_mesh3(name: impl ToString, mesh: TriangleMesh3) -> Renderable3d {
+    named_mesh3_at(name, mesh, Isometry3::identity())
+}
+
 /// make 3d points at a given pose
 pub fn make_point3_at(
     name: impl ToString,
@@ -254,6 +270,13 @@ pub struct Triangle3 {
     pub color1: Color,
     /// Triangle color vertex 2
     pub color2: Color,
+}
+
+impl Triangle3 {
+    /// Create a new triangle
+    pub fn new(p0: SVector<f32, 3>, p1: SVector<f32, 3>, p2: SVector<f32, 3>, color: Color) -> Self {
+        Triangle3 { p0, p1, p2, color0: color, color1: color, color2: color }
+    }
 }
 
 /// 3D textured triangle

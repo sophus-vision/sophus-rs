@@ -169,33 +169,29 @@ where
 
         while i < self.signature.terms.len() {
             let term_signature = &self.signature.terms[i];
-
             let outer_idx = term_signature.idx_ref();
-
-            let mut evaluated_term = eval_res(term_signature);
-            evaluated_term.idx.push(*term_signature.idx_ref());
-
-            i += 1;
+            let mut evaluated_term_sum: Option<Term<NUM, NUM_ARGS>> = None;
 
             // perform reduction over conditioned variables
-            while i < self.signature.terms.len() {
-                let inner_term_signature = &self.signature.terms[i];
+            while i < self.signature.terms.len()
+                && !less.free_vars_equal(outer_idx, self.signature.terms[i].idx_ref())
+            {
+                let evaluated_term = eval_res(&self.signature.terms[i]);
 
-                if !less.are_all_non_cond_vars_equal(outer_idx, inner_term_signature.idx_ref()) {
-                    // end condition for reduction over conditioned variables
-                    break;
+                match evaluated_term_sum.as_mut() {
+                    Some(evaluated_term_sum) => {
+                        evaluated_term_sum.hessian.mat += evaluated_term.hessian.mat;
+                        evaluated_term_sum.gradient.vec += evaluated_term.gradient.vec;
+                        evaluated_term_sum.cost += evaluated_term.cost;
+                    }
+                    None => {
+                        evaluated_term_sum = Some(evaluated_term);
+                    }
                 }
-
                 i += 1;
-
-                let inner_evaluated_term = eval_res(inner_term_signature);
-
-                evaluated_term.hessian.mat += inner_evaluated_term.hessian.mat;
-                evaluated_term.gradient.vec += inner_evaluated_term.gradient.vec;
-                evaluated_term.cost += inner_evaluated_term.cost;
             }
 
-            evaluated_terms.terms.push(evaluated_term);
+            evaluated_terms.terms.push(evaluated_term_sum.unwrap());
         }
 
         Box::new(evaluated_terms)
