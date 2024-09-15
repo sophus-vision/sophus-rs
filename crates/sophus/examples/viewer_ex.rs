@@ -11,13 +11,12 @@ use sophus_image::intensity_image::intensity_arc_image::IsIntensityArcImage;
 use sophus_image::mut_image::MutImageF32;
 use sophus_image::mut_image_view::IsMutImageView;
 use sophus_lie::Isometry3;
-use sophus_sensor::DynCamera;
 use sophus_viewer::renderables::color::Color;
 use sophus_viewer::renderables::renderable2d::View2dPacket;
 use sophus_viewer::renderables::renderable3d::View3dPacket;
-use sophus_viewer::renderer::types::ClippingPlanes;
+use sophus_viewer::renderer::camera::RenderCamera;
+use sophus_viewer::renderer::camera::RenderCameraProperties;
 use sophus_viewer::viewer::simple_viewer::SimpleViewer;
-use sophus_viewer::viewer::types::ViewerCamera;
 
 fn create_view2_packet() -> Packet {
     let img = make_example_image(ImageSize {
@@ -77,9 +76,8 @@ fn create_tiny_view2_packet() -> Packet {
 }
 
 fn create_view3_packet() -> Packet {
-    let initial_camera = ViewerCamera {
-        intrinsics: DynCamera::default_pinhole(ImageSize::new(639, 477)),
-        clipping_planes: ClippingPlanes::default(),
+    let initial_camera = RenderCamera {
+        properties: RenderCameraProperties::default_from(ImageSize::new(639, 477)),
         scene_from_camera: Isometry3::trans_z(-5.0),
     };
     let mut packet_3d = View3dPacket {

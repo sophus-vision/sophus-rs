@@ -6,10 +6,7 @@ pub mod builder;
 pub mod interactions;
 /// eframea app impl
 pub mod simple_viewer;
-/// Types used in the API.
-pub mod types;
-/// The view struct.
-pub mod views;
 /// Viewer base
 pub mod viewer_base;
-
+/// The view struct.
+pub mod views;

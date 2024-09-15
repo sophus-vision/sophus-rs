@@ -5,7 +5,7 @@ use sophus_lie::Isometry3F64;
 
 use crate::renderables::color::Color;
 use crate::renderables::renderable2d::HasToVec2F32;
-use crate::viewer::types::ViewerCamera;
+use crate::renderer::camera::RenderCamera;
 
 /// View3d renderable
 #[derive(Clone, Debug)]
@@ -70,7 +70,11 @@ pub fn named_point3(name: impl ToString, points: Vec<Point3>) -> Renderable3d {
 }
 
 /// creates a named mesh at a given pose
-pub fn named_mesh3_at(name: impl ToString, mesh: TriangleMesh3, scene_from_entity: Isometry3F64) -> Renderable3d {
+pub fn named_mesh3_at(
+    name: impl ToString,
+    mesh: TriangleMesh3,
+    scene_from_entity: Isometry3F64,
+) -> Renderable3d {
     let mesh = TriangleMesh3 {
         name: name.to_string(),
         triangles: mesh.triangles,
@@ -228,7 +232,7 @@ pub struct View3dPacket {
     /// Name of the view
     pub view_label: String,
     /// Initial camera, ignored if not the first packet of "view_name"
-    pub initial_camera: ViewerCamera,
+    pub initial_camera: RenderCamera,
 }
 
 /// 3D line
@@ -274,8 +278,20 @@ pub struct Triangle3 {
 
 impl Triangle3 {
     /// Create a new triangle
-    pub fn new(p0: SVector<f32, 3>, p1: SVector<f32, 3>, p2: SVector<f32, 3>, color: Color) -> Self {
-        Triangle3 { p0, p1, p2, color0: color, color1: color, color2: color }
+    pub fn new(
+        p0: SVector<f32, 3>,
+        p1: SVector<f32, 3>,
+        p2: SVector<f32, 3>,
+        color: Color,
+    ) -> Self {
+        Triangle3 {
+            p0,
+            p1,
+            p2,
+            color0: color,
+            color1: color,
+            color2: color,
+        }
     }
 }
 

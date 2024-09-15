@@ -2,10 +2,9 @@ use std::sync::Mutex;
 
 use sophus_lie::Isometry3F64;
 use sophus_sensor::distortion_table::DistortTable;
-use sophus_sensor::DynCamera;
 use wgpu::util::DeviceExt;
 
-use crate::renderer::types::ClippingPlanesF64;
+use crate::renderer::camera::RenderCameraProperties;
 use crate::renderer::types::Zoom2d;
 use crate::RenderContext;
 
@@ -83,8 +82,7 @@ pub struct SceneRenderBuffers {
 impl SceneRenderBuffers {
     pub(crate) fn new(
         wgpu_render_state: &RenderContext,
-        intrinsics: &DynCamera<f64, 1>,
-        clipping_planes: ClippingPlanesF64,
+        camera_properties: &RenderCameraProperties,
     ) -> Self {
         let device = &wgpu_render_state.wgpu_device;
 
@@ -142,14 +140,14 @@ impl SceneRenderBuffers {
         ];
 
         let frustum_uniforms = Frustum {
-            camera_image_width: intrinsics.image_size().width as f32,
-            camera_image_height: intrinsics.image_size().height as f32,
-            near: clipping_planes.near as f32,
-            far: clipping_planes.far as f32,
-            fx: intrinsics.pinhole_params()[0] as f32,
-            fy: intrinsics.pinhole_params()[1] as f32,
-            px: intrinsics.pinhole_params()[2] as f32,
-            py: intrinsics.pinhole_params()[3] as f32,
+            camera_image_width: camera_properties.intrinsics.image_size().width as f32,
+            camera_image_height: camera_properties.intrinsics.image_size().height as f32,
+            near: camera_properties.clipping_planes.near as f32,
+            far: camera_properties.clipping_planes.far as f32,
+            fx: camera_properties.intrinsics.pinhole_params()[0] as f32,
+            fy: camera_properties.intrinsics.pinhole_params()[1] as f32,
+            px: camera_properties.intrinsics.pinhole_params()[2] as f32,
+            py: camera_properties.intrinsics.pinhole_params()[3] as f32,
         };
 
         let frustum_uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -213,8 +211,8 @@ impl SceneRenderBuffers {
         });
 
         let texture_size = wgpu::Extent3d {
-            width: intrinsics.image_size().width as u32,
-            height: intrinsics.image_size().height as u32,
+            width: camera_properties.intrinsics.image_size().width as u32,
+            height: camera_properties.intrinsics.image_size().height as u32,
             depth_or_array_layers: 1,
         };
 

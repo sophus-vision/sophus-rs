@@ -14,7 +14,7 @@ use crate::renderables::renderable2d::Renderable2d;
 use crate::renderables::renderable2d::View2dPacket;
 use crate::renderables::renderable3d::Renderable3d;
 use crate::renderables::renderable3d::View3dPacket;
-use crate::viewer::types::ViewerCamera;
+use crate::renderer::camera::RenderCamera;
 
 /// Image view renderable
 #[derive(Clone, Debug)]
@@ -57,7 +57,7 @@ pub fn make_view2d_packet(
 /// Create a view3d packet
 pub fn make_view3d_packet(
     view_label: &str,
-    initial_camera: ViewerCamera,
+    initial_camera: RenderCamera,
     renderables3d: Vec<Renderable3d>,
 ) -> Packet {
     Packet::View3d(View3dPacket {

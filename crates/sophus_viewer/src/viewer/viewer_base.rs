@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use eframe::egui;
 use linked_hash_map::LinkedHashMap;
+use sophus_image::arc_image::ArcImageF32;
+use sophus_image::ImageSize;
 
 use crate::renderables::Packet;
 use crate::renderables::Packets;
@@ -9,7 +11,6 @@ use crate::viewer::aspect_ratio::get_adjusted_view_size;
 use crate::viewer::aspect_ratio::get_max_size;
 use crate::viewer::aspect_ratio::HasAspectRatio;
 use crate::viewer::interactions::ViewportScale;
-use crate::viewer::types::ResponseStruct;
 use crate::viewer::views::view2d::View2d;
 use crate::viewer::views::view3d::View3d;
 use crate::viewer::views::View;
@@ -23,6 +24,13 @@ pub struct ViewerBase {
     show_depth: bool,
     backface_culling: bool,
     responses: HashMap<String, ResponseStruct>,
+}
+
+pub(crate) struct ResponseStruct {
+    pub(crate) ui_response: egui::Response,
+    pub(crate) z_image: ArcImageF32,
+    pub(crate) scales: ViewportScale,
+    pub(crate) view_port_size: ImageSize,
 }
 
 impl ViewerBase {

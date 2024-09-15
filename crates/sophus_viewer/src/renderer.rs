@@ -1,3 +1,5 @@
+/// Render camera
+pub mod camera;
 /// The pixel renderer for 2D rendering.
 pub mod pixel_renderer;
 /// The scene renderer for 3D rendering.
@@ -16,6 +18,7 @@ use sophus_sensor::DynCamera;
 use crate::renderables::renderable2d::Renderable2d;
 use crate::renderables::renderable3d::make_textured_mesh3;
 use crate::renderables::renderable3d::Renderable3d;
+use crate::renderer::camera::RenderCameraProperties;
 use crate::renderer::pixel_renderer::pixel_line::Line2dEntity;
 use crate::renderer::pixel_renderer::pixel_point::Point2dEntity;
 use crate::renderer::pixel_renderer::PixelRenderer;
@@ -25,7 +28,6 @@ use crate::renderer::scene_renderer::point::Point3dEntity;
 use crate::renderer::scene_renderer::textured_mesh::TexturedMeshEntity;
 use crate::renderer::scene_renderer::SceneRenderer;
 use crate::renderer::textures::Textures;
-use crate::renderer::types::ClippingPlanesF64;
 use crate::renderer::types::RenderResult;
 use crate::renderer::types::TranslationAndScaling;
 use crate::viewer::interactions::InteractionEnum;
@@ -33,8 +35,7 @@ use crate::RenderContext;
 
 /// Offscreen renderer
 pub struct OffscreenRenderer {
-    intrinsics: DynCamera<f64, 1>,
-    pub(crate) clipping_planes: ClippingPlanesF64,
+    pub(crate) camera_properties: RenderCameraProperties,
     state: RenderContext,
     scene: SceneRenderer,
     pixel: PixelRenderer,
@@ -120,11 +121,7 @@ impl OffscreenRenderer {
     pub const BACKGROUND_IMAGE_PLANE: f64 = 900.0;
 
     /// create new offscreen renderer
-    pub fn new(
-        state: &RenderContext,
-        intrinsics: DynCamera<f64, 1>,
-        clipping_planes: ClippingPlanesF64,
-    ) -> Self {
+    pub fn new(state: &RenderContext, camera_properties: &RenderCameraProperties) -> Self {
         let depth_bias_state = wgpu::DepthBiasState {
             constant: 2,      // Adjust this value as needed
             slope_scale: 1.0, // Adjust this value as needed
@@ -137,18 +134,16 @@ impl OffscreenRenderer {
             stencil: wgpu::StencilState::default(),
             bias: depth_bias_state,
         });
-        let textures = Textures::new(state, &intrinsics.image_size());
+        let textures = Textures::new(state, &camera_properties.intrinsics.image_size());
         Self {
-            scene: SceneRenderer::new(
+            scene: SceneRenderer::new(state, camera_properties, depth_stencil.clone()),
+            pixel: PixelRenderer::new(
                 state,
-                intrinsics.clone(),
-                clipping_planes,
-                depth_stencil.clone(),
+                &camera_properties.intrinsics.image_size(),
+                depth_stencil,
             ),
-            pixel: PixelRenderer::new(state, &intrinsics.image_size(), depth_stencil),
             textures,
-            intrinsics: intrinsics.clone(),
-            clipping_planes,
+            camera_properties: camera_properties.clone(),
             state: state.clone(),
             maybe_background_image: None,
         }
@@ -156,7 +151,7 @@ impl OffscreenRenderer {
 
     /// get intrinsics
     pub fn intrinsics(&self) -> DynCamera<f64, 1> {
-        self.intrinsics.clone()
+        self.camera_properties.intrinsics.clone()
     }
 
     /// reset 2d frame
@@ -165,26 +160,30 @@ impl OffscreenRenderer {
         intrinsics: &DynCamera<f64, 1>,
         maybe_background_image: Option<&ArcImage4U8>,
     ) {
-        self.intrinsics = intrinsics.clone();
+        self.camera_properties.intrinsics = intrinsics.clone();
         if let Some(background_image) = maybe_background_image {
-            let w = self.intrinsics.image_size().width;
-            let h = self.intrinsics.image_size().height;
+            let w = self.camera_properties.intrinsics.image_size().width;
+            let h = self.camera_properties.intrinsics.image_size().height;
 
             let far = Self::BACKGROUND_IMAGE_PLANE;
 
             let p0 = self
+                .camera_properties
                 .intrinsics
                 .cam_unproj_with_z(&VecF64::<2>::new(-0.5, -0.5), far)
                 .cast();
             let p1 = self
+                .camera_properties
                 .intrinsics
                 .cam_unproj_with_z(&VecF64::<2>::new(w as f64 - 0.5, -0.5), far)
                 .cast();
             let p2 = self
+                .camera_properties
                 .intrinsics
                 .cam_unproj_with_z(&VecF64::<2>::new(-0.5, h as f64 - 0.5), far)
                 .cast();
             let p3 = self
+                .camera_properties
                 .intrinsics
                 .cam_unproj_with_z(&VecF64::<2>::new(w as f64 - 0.5, h as f64 - 0.5), far)
                 .cast();
@@ -265,13 +264,13 @@ impl OffscreenRenderer {
         }
 
         self.scene
-            .prepare(&self.state, state.zoom, &self.intrinsics);
+            .prepare(&self.state, state.zoom, &self.camera_properties.intrinsics);
 
         self.maybe_background_image = None;
         self.pixel.prepare(
             &self.state,
             &state.view_port_size,
-            &self.intrinsics,
+            &self.camera_properties.intrinsics,
             state.zoom,
         );
 
@@ -295,7 +294,7 @@ impl OffscreenRenderer {
             &self.state,
             command_encoder,
             &state.view_port_size,
-            &self.clipping_planes,
+            &self.camera_properties.clipping_planes,
         );
         let mut command_encoder = self
             .state

@@ -4,6 +4,9 @@ use sophus_image::image_view::IsImageView;
 use sophus_image::ImageSize;
 use sophus_sensor::DynCamera;
 
+use crate::renderer::camera::RenderCameraProperties;
+use crate::renderer::types::ClippingPlanes;
+
 /// Frame to hold content
 ///
 /// Invariants:
@@ -14,23 +17,26 @@ pub struct Frame {
     // Image, if available must have the same size as the intrinsics
     image: Option<ArcImage4U8>,
     /// Intrinsics
-    intrinsics: DynCamera<f64, 1>,
+    camera_properties: RenderCameraProperties,
 }
 
 impl Frame {
-    /// Try to create a new frame from an image and intrinsics
+    /// Try to create a new frame from an image and camera properties d
     ///
     /// Returns None if the image size is zero or the image size does not match the intrinsics.
-    pub fn try_from(image: &ArcImage4U8, intrinsics: &DynCamera<f64, 1>) -> Option<Frame> {
-        if intrinsics.image_size().area() == 0 {
+    pub fn try_from(
+        image: &ArcImage4U8,
+        camera_properties: &RenderCameraProperties,
+    ) -> Option<Frame> {
+        if camera_properties.intrinsics.image_size().area() == 0 {
             return None;
         }
-        if image.image_size() != intrinsics.image_size() {
+        if image.image_size() != camera_properties.intrinsics.image_size() {
             return None;
         }
         Some(Frame {
             image: Some(image.clone()),
-            intrinsics: intrinsics.clone(),
+            camera_properties: camera_properties.clone(),
         })
     }
 
@@ -40,19 +46,22 @@ impl Frame {
     pub fn from_image(image: &ArcImage4U8) -> Frame {
         assert!(image.image_size().area() > 0);
 
-        let intrinsics = DynCamera::new_pinhole(
-            &VecF64::<4>::new(
-                600.0,
-                600.0,
-                image.image_size().width as f64 * 0.5 - 0.5,
-                image.image_size().height as f64 * 0.5 - 0.5,
+        let camera_properties = RenderCameraProperties {
+            intrinsics: DynCamera::new_pinhole(
+                &VecF64::<4>::new(
+                    600.0,
+                    600.0,
+                    image.image_size().width as f64 * 0.5 - 0.5,
+                    image.image_size().height as f64 * 0.5 - 0.5,
+                ),
+                image.image_size(),
             ),
-            image.image_size(),
-        );
+            clipping_planes: ClippingPlanes::default(),
+        };
 
         Frame {
             image: Some(image.clone()),
-            intrinsics,
+            camera_properties,
         }
     }
 
@@ -63,7 +72,18 @@ impl Frame {
         assert!(intrinsics.image_size().area() > 0);
         Frame {
             image: None,
-            intrinsics: intrinsics.clone(),
+            camera_properties: RenderCameraProperties {
+                intrinsics: intrinsics.clone(),
+                clipping_planes: ClippingPlanes::default(),
+            },
+        }
+    }
+
+    /// Create a new frame from camera properties
+    pub fn from_camera_properties(camera_properties: &RenderCameraProperties) -> Frame {
+        Frame {
+            image: None,
+            camera_properties: camera_properties.clone(),
         }
     }
 
@@ -74,21 +94,24 @@ impl Frame {
         assert!(view_size.area() > 0);
         Frame {
             image: None,
-            intrinsics: DynCamera::new_pinhole(
-                &VecF64::<4>::new(
-                    600.0,
-                    600.0,
-                    view_size.width as f64 * 0.5 - 0.5,
-                    view_size.height as f64 * 0.5 - 0.5,
+            camera_properties: RenderCameraProperties {
+                intrinsics: DynCamera::new_pinhole(
+                    &VecF64::<4>::new(
+                        600.0,
+                        600.0,
+                        view_size.width as f64 * 0.5 - 0.5,
+                        view_size.height as f64 * 0.5 - 0.5,
+                    ),
+                    *view_size,
                 ),
-                *view_size,
-            ),
+                clipping_planes: ClippingPlanes::default(),
+            },
         }
     }
 
-    /// Intrinsics
-    pub fn intrinsics(&self) -> &DynCamera<f64, 1> {
-        &self.intrinsics
+    /// Camera properties
+    pub fn camera_properties(&self) -> &RenderCameraProperties {
+        &self.camera_properties
     }
 
     /// Image, if available

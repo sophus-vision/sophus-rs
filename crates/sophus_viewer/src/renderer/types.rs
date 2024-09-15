@@ -83,7 +83,10 @@ pub struct RenderResult {
 
 impl HasAspectRatio for OffscreenRenderer {
     fn aspect_ratio(&self) -> f32 {
-        self.intrinsics.image_size().aspect_ratio()
+        self.camera_properties
+            .intrinsics
+            .image_size()
+            .aspect_ratio()
     }
 }
 

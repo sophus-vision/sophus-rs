@@ -25,14 +25,10 @@ impl View3d {
             views.insert(
                 packet.view_label.clone(),
                 View::View3d(View3d {
-                    renderer: OffscreenRenderer::new(
-                        state,
-                        packet.initial_camera.intrinsics.clone(),
-                        packet.initial_camera.clipping_planes,
-                    ),
+                    renderer: OffscreenRenderer::new(state, &packet.initial_camera.properties),
                     interaction: InteractionEnum::Orbital(OrbitalInteraction::new(
                         packet.initial_camera.scene_from_camera,
-                        packet.initial_camera.clipping_planes,
+                        packet.initial_camera.properties.clipping_planes,
                     )),
                     enabled: true,
                 }),

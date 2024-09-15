@@ -21,6 +21,7 @@ use sophus_sensor::distortion_table::distort_table;
 use sophus_sensor::dyn_camera::DynCamera;
 use wgpu::DepthStencilState;
 
+use crate::renderer::camera::RenderCameraProperties;
 use crate::renderer::scene_renderer::buffers::Frustum;
 use crate::renderer::scene_renderer::buffers::SceneRenderBuffers;
 use crate::renderer::scene_renderer::mesh::MeshRenderer;
@@ -50,8 +51,7 @@ impl SceneRenderer {
     /// Create a new scene renderer
     pub fn new(
         wgpu_render_state: &RenderContext,
-        intrinsics: DynCamera<f64, 1>,
-        clipping_planes: ClippingPlanesF64,
+        camera_properties: &RenderCameraProperties,
         depth_stencil: Option<DepthStencilState>,
     ) -> Self {
         let device = &wgpu_render_state.wgpu_device;
@@ -163,7 +163,7 @@ impl SceneRenderer {
             ],
             push_constant_ranges: &[],
         });
-        let buffers = SceneRenderBuffers::new(wgpu_render_state, &intrinsics, clipping_planes);
+        let buffers = SceneRenderBuffers::new(wgpu_render_state, camera_properties);
 
         Self {
             buffers,
@@ -187,7 +187,7 @@ impl SceneRenderer {
                 &mesh_pipeline_layout,
                 depth_stencil,
             ),
-            clipping_planes,
+            clipping_planes: camera_properties.clipping_planes,
         }
     }
 

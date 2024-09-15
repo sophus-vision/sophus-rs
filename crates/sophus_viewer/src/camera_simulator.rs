@@ -3,8 +3,8 @@ use sophus_lie::Isometry3F64;
 use sophus_sensor::dyn_camera::DynCameraF64;
 
 use crate::renderables::renderable3d::Renderable3d;
+use crate::renderer::camera::RenderCameraProperties;
 use crate::renderer::textures::depth_image::DepthImage;
-use crate::renderer::types::ClippingPlanesF64;
 use crate::renderer::OffscreenRenderer;
 use crate::RenderContext;
 
@@ -23,13 +23,9 @@ pub struct SimulatedImage {
 
 impl CameraSimulator {
     /// new simulator from context and camera intrinsics
-    pub fn new(
-        render_state: &RenderContext,
-        intrinsics: DynCameraF64,
-        clipping_planes: ClippingPlanesF64,
-    ) -> Self {
+    pub fn new(render_state: &RenderContext, camera_properties: &RenderCameraProperties) -> Self {
         CameraSimulator {
-            renderer: OffscreenRenderer::new(render_state, intrinsics, clipping_planes),
+            renderer: OffscreenRenderer::new(render_state, camera_properties),
         }
     }
 
