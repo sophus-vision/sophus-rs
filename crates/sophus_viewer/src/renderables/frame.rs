@@ -1,4 +1,3 @@
-use sophus_core::linalg::VecF64;
 use sophus_image::arc_image::ArcImage4U8;
 use sophus_image::image_view::IsImageView;
 use sophus_image::ImageSize;
@@ -6,6 +5,7 @@ use sophus_sensor::DynCamera;
 
 use crate::renderer::camera::ClippingPlanes;
 use crate::renderer::camera::RenderCameraProperties;
+use crate::renderer::camera::RenderIntrinsics;
 
 /// Frame to hold content
 ///
@@ -46,18 +46,7 @@ impl Frame {
     pub fn from_image(image: &ArcImage4U8) -> Frame {
         assert!(image.image_size().area() > 0);
 
-        let camera_properties = RenderCameraProperties {
-            intrinsics: DynCamera::new_pinhole(
-                &VecF64::<4>::new(
-                    600.0,
-                    600.0,
-                    image.image_size().width as f64 * 0.5 - 0.5,
-                    image.image_size().height as f64 * 0.5 - 0.5,
-                ),
-                image.image_size(),
-            ),
-            clipping_planes: ClippingPlanes::default(),
-        };
+        let camera_properties = RenderCameraProperties::default_from(image.image_size());
 
         Frame {
             image: Some(image.clone()),
@@ -73,7 +62,7 @@ impl Frame {
         Frame {
             image: None,
             camera_properties: RenderCameraProperties {
-                intrinsics: intrinsics.clone(),
+                intrinsics: RenderIntrinsics::new(intrinsics),
                 clipping_planes: ClippingPlanes::default(),
             },
         }
@@ -94,18 +83,7 @@ impl Frame {
         assert!(view_size.area() > 0);
         Frame {
             image: None,
-            camera_properties: RenderCameraProperties {
-                intrinsics: DynCamera::new_pinhole(
-                    &VecF64::<4>::new(
-                        600.0,
-                        600.0,
-                        view_size.width as f64 * 0.5 - 0.5,
-                        view_size.height as f64 * 0.5 - 0.5,
-                    ),
-                    *view_size,
-                ),
-                clipping_planes: ClippingPlanes::default(),
-            },
+            camera_properties: RenderCameraProperties::default_from(view_size.clone()),
         }
     }
 

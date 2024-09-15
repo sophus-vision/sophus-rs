@@ -157,6 +157,11 @@ impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
     pub fn try_get_unified_extended(self) -> Option<UnifiedExtendedCamera<S, BATCH>> {
         self.camera_type.try_get_unified_extended()
     }
+
+    /// Returns the camera model enum
+    pub fn model_enum(&self) -> &CameraType {
+        &self.camera_type
+    }
 }
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> DynCamera<S, BATCH> {
@@ -169,7 +174,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> DynCamera<S, BATCH> {
 #[test]
 fn dyn_camera_tests() {
     use crate::distortions::affine::AffineDistortionImpl;
-    
+
     use crate::distortions::kannala_brandt::KannalaBrandtDistortionImpl;
     use crate::distortions::unified_extended::UnifiedExtendedDistortionImpl;
     use crate::traits::IsCameraDistortionImpl;

@@ -2,6 +2,7 @@ use linked_hash_map::LinkedHashMap;
 use sophus_sensor::DynCamera;
 
 use crate::renderables::renderable2d::View2dPacket;
+use crate::renderer::camera::RenderIntrinsics;
 use crate::renderer::OffscreenRenderer;
 use crate::viewer::aspect_ratio::HasAspectRatio;
 use crate::viewer::interactions::inplane_interaction::InplaneInteraction;
@@ -73,7 +74,7 @@ impl View2d {
         view.renderer.update_2d_renderables(packet.renderables2d);
     }
 
-    pub fn intrinsics(&self) -> DynCamera<f64, 1> {
+    pub fn intrinsics(&self) -> RenderIntrinsics {
         self.renderer.intrinsics()
     }
 }

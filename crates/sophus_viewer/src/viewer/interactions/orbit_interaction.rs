@@ -10,6 +10,7 @@ use sophus_lie::Isometry3F64;
 use sophus_sensor::DynCamera;
 
 use crate::renderer::camera::ClippingPlanesF64;
+use crate::renderer::camera::RenderIntrinsics;
 use crate::renderer::types::TranslationAndScaling;
 use crate::viewer::interactions::SceneFocus;
 use crate::viewer::interactions::ViewportScale;
@@ -76,7 +77,7 @@ impl OrbitalInteraction {
     /// Scroll left/right: rotate about scene focus
     pub fn process_scrolls(
         &mut self,
-        cam: &DynCamera<f64, 1>,
+        cam: &RenderIntrinsics,
         response: &egui::Response,
         scales: &ViewportScale,
         viewport_size: ImageSize,
@@ -170,7 +171,7 @@ impl OrbitalInteraction {
     /// secondary button: in-plane translate
     pub fn process_pointer(
         &mut self,
-        cam: &DynCamera<f64, 1>,
+        cam: &RenderIntrinsics,
         response: &egui::Response,
         scales: &ViewportScale,
         z_buffer: &ArcImageF32,
@@ -257,7 +258,7 @@ impl OrbitalInteraction {
     /// Process event
     pub fn process_event(
         &mut self,
-        cam: &DynCamera<f64, 1>,
+        cam: &RenderIntrinsics,
         response: &egui::Response,
         scales: &ViewportScale,
         view_port_size: ImageSize,

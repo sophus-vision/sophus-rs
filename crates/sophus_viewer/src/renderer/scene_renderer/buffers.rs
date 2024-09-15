@@ -139,16 +139,7 @@ impl SceneRenderBuffers {
             [0.0, 0.0, 0.0, 1.0], // 4.
         ];
 
-        let frustum_uniforms = Frustum {
-            camera_image_width: camera_properties.intrinsics.image_size().width as f32,
-            camera_image_height: camera_properties.intrinsics.image_size().height as f32,
-            near: camera_properties.clipping_planes.near as f32,
-            far: camera_properties.clipping_planes.far as f32,
-            fx: camera_properties.intrinsics.pinhole_params()[0] as f32,
-            fy: camera_properties.intrinsics.pinhole_params()[1] as f32,
-            px: camera_properties.intrinsics.pinhole_params()[2] as f32,
-            py: camera_properties.intrinsics.pinhole_params()[3] as f32,
-        };
+        let frustum_uniforms = camera_properties.to_frustum();
 
         let frustum_uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("frustum buffer"),

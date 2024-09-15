@@ -23,6 +23,7 @@ use wgpu::DepthStencilState;
 
 use crate::renderer::camera::ClippingPlanesF64;
 use crate::renderer::camera::RenderCameraProperties;
+use crate::renderer::camera::RenderIntrinsics;
 use crate::renderer::scene_renderer::buffers::Frustum;
 use crate::renderer::scene_renderer::buffers::SceneRenderBuffers;
 use crate::renderer::scene_renderer::mesh::MeshRenderer;
@@ -44,7 +45,6 @@ pub struct SceneRenderer {
     pub point_renderer: ScenePointRenderer,
     /// Line renderer
     pub line_renderer: line::SceneLineRenderer,
-    clipping_planes: ClippingPlanesF64,
 }
 
 impl SceneRenderer {
@@ -187,7 +187,6 @@ impl SceneRenderer {
                 &mesh_pipeline_layout,
                 depth_stencil,
             ),
-            clipping_planes: camera_properties.clipping_planes,
         }
     }
 
@@ -244,18 +243,9 @@ impl SceneRenderer {
         &self,
         state: &RenderContext,
         zoom_2d: TranslationAndScaling,
-        intrinsics: &DynCamera<f64, 1>,
+        camera_properties: &RenderCameraProperties,
     ) {
-        let frustum_uniforms = Frustum {
-            camera_image_width: intrinsics.image_size().width as f32,
-            camera_image_height: intrinsics.image_size().height as f32,
-            near: self.clipping_planes.near as f32,
-            far: self.clipping_planes.far as f32,
-            fx: intrinsics.pinhole_params()[0] as f32,
-            fy: intrinsics.pinhole_params()[1] as f32,
-            px: intrinsics.pinhole_params()[2] as f32,
-            py: intrinsics.pinhole_params()[3] as f32,
-        };
+        let frustum_uniforms = camera_properties.to_frustum();
 
         state.wgpu_queue.write_buffer(
             &self.buffers.frustum_uniform_buffer,
@@ -276,37 +266,37 @@ impl SceneRenderer {
             bytemuck::cast_slice(&[zoom_uniform]),
         );
 
-        // distortion table
-        let mut maybe_dist_lut = self.buffers.distortion_lut.lock().unwrap();
-        if maybe_dist_lut.is_none() {
-            let distort_lut = distort_table(intrinsics);
-            *maybe_dist_lut = Some(distort_lut.clone());
+        // // distortion table
+        // let mut maybe_dist_lut = self.buffers.distortion_lut.lock().unwrap();
+        // if maybe_dist_lut.is_none() {
+        //     let distort_lut = distort_table(intrinsics);
+        //     *maybe_dist_lut = Some(distort_lut.clone());
 
-            state.wgpu_queue.write_texture(
-                wgpu::ImageCopyTexture {
-                    texture: &self.buffers.dist_texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                bytemuck::cast_slice(distort_lut.table.tensor.scalar_view().as_slice().unwrap()),
-                wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: Some(8 * distort_lut.table.image_size().width as u32),
-                    rows_per_image: Some(distort_lut.table.image_size().height as u32),
-                },
-                self.buffers.dist_texture.size(),
-            );
-            state.wgpu_queue.write_buffer(
-                &self.buffers.camara_params_buffer,
-                0,
-                bytemuck::cast_slice(&[
-                    distort_lut.offset().x as f32,
-                    distort_lut.offset().y as f32,
-                    distort_lut.region.range().x as f32,
-                    distort_lut.region.range().y as f32,
-                ]),
-            );
-        }
+        //     state.wgpu_queue.write_texture(
+        //         wgpu::ImageCopyTexture {
+        //             texture: &self.buffers.dist_texture,
+        //             mip_level: 0,
+        //             origin: wgpu::Origin3d::ZERO,
+        //             aspect: wgpu::TextureAspect::All,
+        //         },
+        //         bytemuck::cast_slice(distort_lut.table.tensor.scalar_view().as_slice().unwrap()),
+        //         wgpu::ImageDataLayout {
+        //             offset: 0,
+        //             bytes_per_row: Some(8 * distort_lut.table.image_size().width as u32),
+        //             rows_per_image: Some(distort_lut.table.image_size().height as u32),
+        //         },
+        //         self.buffers.dist_texture.size(),
+        //     );
+        //     state.wgpu_queue.write_buffer(
+        //         &self.buffers.camara_params_buffer,
+        //         0,
+        //         bytemuck::cast_slice(&[
+        //             distort_lut.offset().x as f32,
+        //             distort_lut.offset().y as f32,
+        //             distort_lut.region.range().x as f32,
+        //             distort_lut.region.range().y as f32,
+        //         ]),
+        //     );
+        // }
     }
 }

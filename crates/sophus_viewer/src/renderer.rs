@@ -19,6 +19,7 @@ use crate::renderables::renderable2d::Renderable2d;
 use crate::renderables::renderable3d::make_textured_mesh3;
 use crate::renderables::renderable3d::Renderable3d;
 use crate::renderer::camera::RenderCameraProperties;
+use crate::renderer::camera::RenderIntrinsics;
 use crate::renderer::pixel_renderer::pixel_line::Line2dEntity;
 use crate::renderer::pixel_renderer::pixel_point::Point2dEntity;
 use crate::renderer::pixel_renderer::PixelRenderer;
@@ -150,14 +151,14 @@ impl OffscreenRenderer {
     }
 
     /// get intrinsics
-    pub fn intrinsics(&self) -> DynCamera<f64, 1> {
+    pub fn intrinsics(&self) -> RenderIntrinsics {
         self.camera_properties.intrinsics.clone()
     }
 
     /// reset 2d frame
     pub fn reset_2d_frame(
         &mut self,
-        intrinsics: &DynCamera<f64, 1>,
+        intrinsics: &RenderIntrinsics,
         maybe_background_image: Option<&ArcImage4U8>,
     ) {
         self.camera_properties.intrinsics = intrinsics.clone();
@@ -264,7 +265,7 @@ impl OffscreenRenderer {
         }
 
         self.scene
-            .prepare(&self.state, state.zoom, &self.camera_properties.intrinsics);
+            .prepare(&self.state, state.zoom, &self.camera_properties);
 
         self.maybe_background_image = None;
         self.pixel.prepare(

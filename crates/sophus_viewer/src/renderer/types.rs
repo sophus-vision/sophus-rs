@@ -1,5 +1,4 @@
 use eframe::egui;
-use num_traits;
 use sophus_core::linalg::VecF64;
 use sophus_image::arc_image::ArcImage4U8;
 

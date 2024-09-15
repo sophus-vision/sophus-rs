@@ -11,6 +11,7 @@ use std::num::NonZeroU64;
 use wgpu::util::DeviceExt;
 use wgpu::DepthStencilState;
 
+use crate::renderer::camera::RenderIntrinsics;
 use crate::renderer::pixel_renderer::pixel_line::PixelLineRenderer;
 use crate::renderer::pixel_renderer::pixel_point::PixelPointRenderer;
 use crate::renderer::textures::depth::DepthTextures;
@@ -188,7 +189,7 @@ impl PixelRenderer {
         &self,
         state: &RenderContext,
         viewport_size: &ImageSize,
-        intrinsics: &DynCamera<f64, 1>,
+        intrinsics: &RenderIntrinsics,
         zoom_2d: TranslationAndScaling,
     ) {
         let ortho_cam_uniforms = OrthoCam {

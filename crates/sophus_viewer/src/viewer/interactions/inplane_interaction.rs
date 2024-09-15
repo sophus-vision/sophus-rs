@@ -5,6 +5,7 @@ use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
 use sophus_sensor::DynCamera;
 
+use crate::renderer::camera::RenderIntrinsics;
 use crate::renderer::types::TranslationAndScaling;
 use crate::renderer::OffscreenRenderer;
 use crate::viewer::interactions::SceneFocus;
@@ -35,7 +36,7 @@ impl InplaneInteraction {
     /// Scroll up/down: zoom in/out
     pub fn process_scrolls(
         &mut self,
-        cam: &DynCamera<f64, 1>,
+        cam: &RenderIntrinsics,
         response: &egui::Response,
         scales: &ViewportScale,
         view_port_size: ImageSize,
@@ -112,7 +113,7 @@ impl InplaneInteraction {
     /// Process event
     pub fn process_event(
         &mut self,
-        cam: &DynCamera<f64, 1>,
+        cam: &RenderIntrinsics,
         response: &egui::Response,
         scales: &ViewportScale,
         view_port_size: ImageSize,

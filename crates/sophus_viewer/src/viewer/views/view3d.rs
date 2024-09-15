@@ -2,6 +2,7 @@ use linked_hash_map::LinkedHashMap;
 use sophus_sensor::DynCamera;
 
 use crate::renderables::renderable3d::View3dPacket;
+use crate::renderer::camera::RenderIntrinsics;
 use crate::renderer::OffscreenRenderer;
 use crate::viewer::aspect_ratio::HasAspectRatio;
 use crate::viewer::interactions::orbit_interaction::OrbitalInteraction;
@@ -52,7 +53,7 @@ impl View3d {
         view.renderer.update_3d_renderables(packet.renderables3d);
     }
 
-    pub fn intrinsics(&self) -> DynCamera<f64, 1> {
+    pub fn intrinsics(&self) -> RenderIntrinsics {
         self.renderer.intrinsics()
     }
 }

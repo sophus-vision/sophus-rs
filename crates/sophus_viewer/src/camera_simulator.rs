@@ -29,10 +29,10 @@ impl CameraSimulator {
         }
     }
 
-    /// camera intrinsics
-    pub fn intrinsics(&self) -> DynCameraF64 {
-        self.renderer.intrinsics()
-    }
+    // /// camera intrinsics
+    // pub fn intrinsics(&self) -> DynCameraF64 {
+    //     self.renderer.intrinsics()
+    // }
 
     /// update scene renderables
     pub fn update_3d_renderables(&mut self, renderables: Vec<Renderable3d>) {
