@@ -1,12 +1,10 @@
-use sophus_image::arc_image::ArcImage4U8;
-use sophus_lie::Isometry3F64;
-use sophus_sensor::dyn_camera::DynCameraF64;
-
 use crate::renderables::renderable3d::Renderable3d;
 use crate::renderer::camera::RenderCameraProperties;
 use crate::renderer::textures::depth_image::DepthImage;
 use crate::renderer::OffscreenRenderer;
 use crate::RenderContext;
+use sophus_image::arc_image::ArcImage4U8;
+use sophus_lie::Isometry3F64;
 
 /// camera simulator
 pub struct CameraSimulator {

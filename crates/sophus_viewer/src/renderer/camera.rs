@@ -4,7 +4,7 @@ use sophus_image::ImageSize;
 use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
 use sophus_sensor::camera_enum::perspective_camera::PinholeCameraF64;
-use sophus_sensor::camera_enum::perspective_camera::UnifiedExtendedCameraF64;
+use sophus_sensor::camera_enum::perspective_camera::UnifiedCameraF64;
 use sophus_sensor::camera_enum::PerspectiveCameraEnum;
 use sophus_sensor::dyn_camera::DynCameraF64;
 
@@ -74,7 +74,7 @@ pub enum RenderIntrinsics {
     /// Pinhole camera model
     Pinhole(PinholeCameraF64),
     /// Unified camera model
-    UnifiedExtended(UnifiedExtendedCameraF64),
+    UnifiedExtended(UnifiedCameraF64),
 }
 
 impl RenderIntrinsics {
@@ -154,10 +154,21 @@ impl RenderCameraProperties {
                 fy: pinhole.params()[1] as f32,
                 px: pinhole.params()[2] as f32,
                 py: pinhole.params()[3] as f32,
+                alpha: 0.0,
+                beta: 0.0,
             },
-            RenderIntrinsics::UnifiedExtended(unified) => {
-                todo!()
-            }
+            RenderIntrinsics::UnifiedExtended(unified) => Frustum {
+                camera_image_width: unified.image_size().width as f32,
+                camera_image_height: unified.image_size().height as f32,
+                near: self.clipping_planes.near as f32,
+                far: self.clipping_planes.far as f32,
+                fx: unified.params()[0] as f32,
+                fy: unified.params()[1] as f32,
+                px: unified.params()[2] as f32,
+                py: unified.params()[3] as f32,
+                alpha: unified.params()[4] as f32,
+                beta: unified.params()[5] as f32,
+            },
         }
     }
 }

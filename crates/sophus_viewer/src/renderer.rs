@@ -13,7 +13,6 @@ use sophus_core::linalg::VecF64;
 use sophus_image::arc_image::ArcImage4U8;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;
-use sophus_sensor::DynCamera;
 
 use crate::renderables::renderable2d::Renderable2d;
 use crate::renderables::renderable3d::make_textured_mesh3;

@@ -1,5 +1,4 @@
 use linked_hash_map::LinkedHashMap;
-use sophus_sensor::DynCamera;
 
 use crate::renderables::renderable2d::View2dPacket;
 use crate::renderer::camera::RenderIntrinsics;

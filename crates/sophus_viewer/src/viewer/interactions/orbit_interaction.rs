@@ -7,7 +7,6 @@ use sophus_image::ImageSize;
 use sophus_lie::traits::IsTranslationProductGroup;
 use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
-use sophus_sensor::DynCamera;
 
 use crate::renderer::camera::ClippingPlanesF64;
 use crate::renderer::camera::RenderIntrinsics;

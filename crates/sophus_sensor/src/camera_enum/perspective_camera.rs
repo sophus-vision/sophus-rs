@@ -1,7 +1,7 @@
 use crate::distortions::affine::AffineDistortionImpl;
 use crate::distortions::brown_conrady::BrownConradyDistortionImpl;
 use crate::distortions::kannala_brandt::KannalaBrandtDistortionImpl;
-use crate::distortions::unified_extended::UnifiedExtendedDistortionImpl;
+use crate::distortions::unified::UnifiedDistortionImpl;
 use crate::prelude::*;
 use crate::projections::perspective::PerspectiveProjectionImpl;
 use crate::Camera;
@@ -28,15 +28,9 @@ pub type BrownConradyCamera<S, const BATCH: usize> = Camera<
     BrownConradyDistortionImpl<S, BATCH>,
     PerspectiveProjectionImpl<S, BATCH>,
 >;
-/// Unified Extended camera
-pub type UnifiedExtendedCamera<S, const BATCH: usize> = Camera<
-    S,
-    2,
-    6,
-    BATCH,
-    UnifiedExtendedDistortionImpl<S, BATCH>,
-    PerspectiveProjectionImpl<S, BATCH>,
->;
+/// unified camera
+pub type UnifiedCamera<S, const BATCH: usize> =
+    Camera<S, 2, 6, BATCH, UnifiedDistortionImpl<S, BATCH>, PerspectiveProjectionImpl<S, BATCH>>;
 
 /// Pinhole camera with f64 scalar type
 pub type PinholeCameraF64 = PinholeCamera<f64, 1>;
@@ -44,8 +38,8 @@ pub type PinholeCameraF64 = PinholeCamera<f64, 1>;
 pub type KannalaBrandtCameraF64 = KannalaBrandtCamera<f64, 1>;
 /// Brown-Conrady camera with f64 scalar type
 pub type BrownConradyCameraF64 = BrownConradyCamera<f64, 1>;
-/// Unified Extended camera with f64 scalar type
-pub type UnifiedExtendedCameraF64 = UnifiedExtendedCamera<f64, 1>;
+/// Unified camera with f64 scalar type
+pub type UnifiedCameraF64 = UnifiedCamera<f64, 1>;
 
 /// Perspective camera enum
 #[derive(Debug, Clone)]
@@ -57,7 +51,7 @@ pub enum PerspectiveCameraEnum<S: IsScalar<BATCH>, const BATCH: usize> {
     /// Brown-Conrady camera
     BrownConrady(BrownConradyCamera<S, BATCH>),
     /// Unified Extended camera
-    UnifiedExtended(UnifiedExtendedCamera<S, BATCH>),
+    UnifiedExtended(UnifiedCamera<S, BATCH>),
 }
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
@@ -77,13 +71,8 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
         Self::BrownConrady(BrownConradyCamera::from_params_and_size(params, image_size))
     }
 
-    fn new_unified_extended(
-        params: &<S as IsScalar<BATCH>>::Vector<6>,
-        image_size: ImageSize,
-    ) -> Self {
-        Self::UnifiedExtended(UnifiedExtendedCamera::from_params_and_size(
-            params, image_size,
-        ))
+    fn new_unified(params: &<S as IsScalar<BATCH>>::Vector<6>, image_size: ImageSize) -> Self {
+        Self::UnifiedExtended(UnifiedCamera::from_params_and_size(params, image_size))
     }
 
     fn image_size(&self) -> ImageSize {
@@ -173,7 +162,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
         }
     }
 
-    fn try_get_unified_extended(self) -> Option<UnifiedExtendedCamera<S, BATCH>> {
+    fn try_get_unified_extended(self) -> Option<UnifiedCamera<S, BATCH>> {
         match self {
             PerspectiveCameraEnum::Pinhole(_) => None,
             PerspectiveCameraEnum::KannalaBrandt(_) => None,

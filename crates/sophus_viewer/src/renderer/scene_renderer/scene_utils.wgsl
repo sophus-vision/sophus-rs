@@ -8,6 +8,8 @@ struct Frustum {
     fy: f32,
     px: f32,
     py: f32,
+    alpha: f32,
+    beta: f32,
 };
 
 struct Zoom2d {
@@ -47,9 +49,19 @@ fn scene_point_to_z1_plane(scene_point: vec3<f32>,
     return vec3<f32>(point_in_proj.x, point_in_proj.y, z);
 }
 fn z1_plane_to_distorted(point_in_proj: vec3<f32>, frustum: Frustum) -> vec3<f32> {
-    // to debug distortion lut table - just using pinhole projection
-    let u = point_in_proj.x * frustum.fx + frustum.px;
-     let v = point_in_proj.y * frustum.fy + frustum.py;
+    var u = 0.0;
+    var v = 0.0;
+    if (frustum.alpha == 0.0) {
+        u = point_in_proj.x * frustum.fx + frustum.px;
+        v = point_in_proj.y * frustum.fy + frustum.py;
+    } else {
+        let r2 = point_in_proj.x * point_in_proj.x + point_in_proj.y * point_in_proj.y;
+        let rho2 = frustum.beta * r2 + 1.0;
+        let rho = sqrt(rho2);
+        let norm = frustum.alpha * rho + (1.0 - frustum.alpha);
+        u = point_in_proj.x / norm * frustum.fx + frustum.px;
+        v = point_in_proj.y / norm * frustum.fy + frustum.py;
+    }
     return vec3<f32>(u, v, point_in_proj.z);
 }
 

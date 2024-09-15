@@ -6,7 +6,6 @@ pub mod pixel_point;
 use bytemuck::Pod;
 use bytemuck::Zeroable;
 use sophus_image::ImageSize;
-use sophus_sensor::DynCamera;
 use std::num::NonZeroU64;
 use wgpu::util::DeviceExt;
 use wgpu::DepthStencilState;

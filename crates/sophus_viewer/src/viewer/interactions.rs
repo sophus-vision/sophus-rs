@@ -8,7 +8,6 @@ use sophus_core::linalg::VecF64;
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;
-use sophus_sensor::dyn_camera::DynCamera;
 
 use crate::renderer::camera::RenderIntrinsics;
 use crate::renderer::types::TranslationAndScaling;
@@ -59,7 +58,7 @@ pub enum InteractionEnum {
     InPlane(InplaneInteraction),
 }
 
-impl<'a> InteractionEnum {
+impl InteractionEnum {
     /// Get scene_from_camera isometry
     pub fn scene_from_camera(&self) -> Isometry3F64 {
         match self {

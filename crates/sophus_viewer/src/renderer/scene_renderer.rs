@@ -13,18 +13,10 @@ pub mod point;
 /// textured mesh renderer
 pub mod textured_mesh;
 
-use sophus_core::calculus::region::IsRegion;
-use sophus_core::tensor::tensor_view::IsTensorLike;
-use sophus_image::image_view::IsImageView;
 use sophus_lie::Isometry3F64;
-use sophus_sensor::distortion_table::distort_table;
-use sophus_sensor::dyn_camera::DynCamera;
 use wgpu::DepthStencilState;
 
-use crate::renderer::camera::ClippingPlanesF64;
 use crate::renderer::camera::RenderCameraProperties;
-use crate::renderer::camera::RenderIntrinsics;
-use crate::renderer::scene_renderer::buffers::Frustum;
 use crate::renderer::scene_renderer::buffers::SceneRenderBuffers;
 use crate::renderer::scene_renderer::mesh::MeshRenderer;
 use crate::renderer::scene_renderer::point::ScenePointRenderer;
@@ -82,17 +74,6 @@ impl SceneRenderer {
                         },
                         count: None,
                     },
-                    // // distortion table uniform
-                    // wgpu::BindGroupLayoutEntry {
-                    //     binding: 2,
-                    //     visibility: wgpu::ShaderStages::VERTEX,
-                    //     ty: wgpu::BindingType::Buffer {
-                    //         ty: wgpu::BufferBindingType::Uniform,
-                    //         has_dynamic_offset: false,
-                    //         min_binding_size: None,
-                    //     },
-                    //     count: None,
-                    // },
                     // view-transform uniform
                     wgpu::BindGroupLayoutEntry {
                         binding: 3,
@@ -106,21 +87,6 @@ impl SceneRenderer {
                     },
                 ],
             });
-
-        // let distortion_texture_bind_group_layout =
-        //     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        //         entries: &[wgpu::BindGroupLayoutEntry {
-        //             binding: 0,
-        //             visibility: wgpu::ShaderStages::VERTEX,
-        //             ty: wgpu::BindingType::Texture {
-        //                 multisampled: false,
-        //                 view_dimension: wgpu::TextureViewDimension::D2,
-        //                 sample_type: wgpu::TextureSampleType::Float { filterable: false },
-        //             },
-        //             count: None,
-        //         }],
-        //         label: Some("dist_texture_bind_group_layout"),
-        //     });
 
         let background_texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

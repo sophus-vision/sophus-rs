@@ -13,22 +13,15 @@ pub(crate) struct Frustum {
     pub(crate) camera_image_height: f32, // <= this is NOT the view-port height
     pub(crate) near: f32,
     pub(crate) far: f32,
-    // pinhole parameters for debugging only
+    // pinhole parameter
     pub(crate) fx: f32,
     pub(crate) fy: f32,
     pub(crate) px: f32,
     pub(crate) py: f32,
+    //
+    pub(crate) alpha: f32, // if alpha == 0, then we use the pinhole model
+    pub(crate) beta: f32,
 }
-
-// #[repr(C)]
-// // This is so we can store this in a buffer
-// #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-// struct DistortionLut {
-//     lut_offset_x: f32,
-//     lut_offset_y: f32,
-//     lut_range_x: f32,
-//     lut_range_y: f32,
-// }
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -69,11 +62,7 @@ pub struct SceneRenderBuffers {
     pub(crate) bind_group: wgpu::BindGroup,
     pub(crate) frustum_uniform_buffer: wgpu::Buffer,
     pub(crate) view_uniform: ViewUniform,
-    // pub(crate) camara_params_buffer: wgpu::Buffer,
     pub(crate) zoom_buffer: wgpu::Buffer,
-    // pub(crate) dist_texture: wgpu::Texture,
-    // pub(crate) dist_bind_group: wgpu::BindGroup,
-    // pub(crate) distortion_lut: Mutex<Option<DistortTable>>,
 }
 
 impl SceneRenderBuffers {
@@ -142,19 +131,6 @@ impl SceneRenderBuffers {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        // let distortion_uniforms = DistortionLut {
-        //     lut_offset_x: 0.0,
-        //     lut_offset_y: 0.0,
-        //     lut_range_x: 0.0,
-        //     lut_range_y: 0.0,
-        // };
-
-        // let distortion_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        //     label: Some("distortion uniform buffer"),
-        //     contents: bytemuck::cast_slice(&[distortion_uniforms]),
-        //     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        // });
-
         let view_uniforms = View {
             scene_from_camera: identity,
         };
@@ -177,10 +153,6 @@ impl SceneRenderBuffers {
                     binding: 1,
                     resource: zoom_buffer.as_entire_binding(),
                 },
-                // wgpu::BindGroupEntry {
-                //     binding: 2,
-                //     resource: distortion_buffer.as_entire_binding(),
-                // },
                 wgpu::BindGroupEntry {
                     binding: 3,
                     resource: view_buffer.as_entire_binding(),
@@ -194,7 +166,6 @@ impl SceneRenderBuffers {
             view_uniform: ViewUniform {
                 camera_from_entity_buffer: view_buffer,
             },
-            //  camara_params_buffer: distortion_buffer,
             zoom_buffer,
         }
     }

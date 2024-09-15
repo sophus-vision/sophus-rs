@@ -1,4 +1,4 @@
-use crate::camera_enum::perspective_camera::UnifiedExtendedCamera;
+use crate::camera_enum::perspective_camera::UnifiedCamera;
 use crate::camera_enum::GeneralCameraEnum;
 use crate::camera_enum::PerspectiveCameraEnum;
 use crate::prelude::*;
@@ -98,9 +98,9 @@ impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
         Self::from_model(CameraType::new_brown_conrady(params, image_size))
     }
 
-    /// Create a Unified Extended camera instance
-    pub fn new_unified_extended(params: &S::Vector<6>, image_size: ImageSize) -> Self {
-        Self::from_model(CameraType::new_unified_extended(params, image_size))
+    /// Create a unified camera instance
+    pub fn new_unified(params: &S::Vector<6>, image_size: ImageSize) -> Self {
+        Self::from_model(CameraType::new_unified(params, image_size))
     }
 
     /// Projects a 3D point in the camera frame to a pixel in the image
@@ -154,7 +154,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
     }
 
     /// Returns the Unified Extended camera
-    pub fn try_get_unified_extended(self) -> Option<UnifiedExtendedCamera<S, BATCH>> {
+    pub fn try_get_unified_extended(self) -> Option<UnifiedCamera<S, BATCH>> {
         self.camera_type.try_get_unified_extended()
     }
 
@@ -176,7 +176,7 @@ fn dyn_camera_tests() {
     use crate::distortions::affine::AffineDistortionImpl;
 
     use crate::distortions::kannala_brandt::KannalaBrandtDistortionImpl;
-    use crate::distortions::unified_extended::UnifiedExtendedDistortionImpl;
+    use crate::distortions::unified::UnifiedDistortionImpl;
     use crate::traits::IsCameraDistortionImpl;
     use approx::assert_relative_eq;
     use sophus_core::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
@@ -196,7 +196,7 @@ fn dyn_camera_tests() {
             },
         ));
 
-        cameras.push(DynCamera::new_unified_extended(
+        cameras.push(DynCamera::new_unified(
             &VecF64::<6>::from_vec(vec![998.0, 1000.0, 320.0, 280.0, 0.5, 1.2]),
             ImageSize {
                 width: 640,
@@ -324,9 +324,7 @@ fn dyn_camera_tests() {
 
                         let params = camera.params();
                         let numeric_dx_params = VectorValuedMapFromVector::static_sym_diff_quotient(
-                            |p: VecF64<6>| {
-                                UnifiedExtendedDistortionImpl::<f64, 1>::distort(&p, &pixel)
-                            },
+                            |p: VecF64<6>| UnifiedDistortionImpl::<f64, 1>::distort(&p, &pixel),
                             *params,
                             EPS_F64,
                         );

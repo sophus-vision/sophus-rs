@@ -1,4 +1,4 @@
-use crate::camera_enum::perspective_camera::UnifiedExtendedCamera;
+use crate::camera_enum::perspective_camera::UnifiedCamera;
 use crate::prelude::*;
 use crate::BrownConradyCamera;
 use crate::KannalaBrandtCamera;
@@ -65,7 +65,7 @@ pub trait IsCameraEnum<S: IsScalar<BATCH>, const BATCH: usize> {
     /// Creates a new Brown-Conrady camera
     fn new_brown_conrady(params: &S::Vector<12>, image_size: ImageSize) -> Self;
     /// Creates a new Unified Extended camera
-    fn new_unified_extended(params: &S::Vector<6>, image_size: ImageSize) -> Self;
+    fn new_unified(params: &S::Vector<6>, image_size: ImageSize) -> Self;
 
     /// Returns the image size
     fn image_size(&self) -> ImageSize;
@@ -91,7 +91,7 @@ pub trait IsCameraEnum<S: IsScalar<BATCH>, const BATCH: usize> {
     fn try_get_pinhole(self) -> Option<PinholeCamera<S, BATCH>>;
 
     /// Returns the unified extended camera
-    fn try_get_unified_extended(self) -> Option<UnifiedExtendedCamera<S, BATCH>>;
+    fn try_get_unified_extended(self) -> Option<UnifiedCamera<S, BATCH>>;
 }
 
 /// Dynamic camera trait
