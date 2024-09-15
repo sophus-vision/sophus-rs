@@ -168,6 +168,7 @@ impl CamCalibProblem {
             vec![
                 // robust kernel to deal with outliers
                 CostFn::new_robust(
+                    (),
                     reproj_obs.clone(),
                     ReprojectionCostFn {},
                     crate::robust_kernel::RobustKernel::Huber(HuberKernel::new(1.0)),
@@ -235,8 +236,8 @@ impl CamCalibProblem {
         let up_var_pool = optimize(
             var_pool,
             vec![
-                CostFn::new_box(priors.clone(), Isometry3PriorCostFn {}),
-                CostFn::new_box(reproj_obs.clone(), ReprojectionCostFn {}),
+                CostFn::new_box((), priors.clone(), Isometry3PriorCostFn {}),
+                CostFn::new_box((), reproj_obs.clone(), ReprojectionCostFn {}),
             ],
             OptParams {
                 num_iter: 5,

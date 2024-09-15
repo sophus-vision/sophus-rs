@@ -135,6 +135,7 @@ impl PoseCircleProblem {
         optimize(
             var_pool,
             vec![CostFn::new_box(
+                (),
                 self.obs_pose_a_from_pose_b_poses.clone(),
                 PoseGraphCostFn {},
             )],

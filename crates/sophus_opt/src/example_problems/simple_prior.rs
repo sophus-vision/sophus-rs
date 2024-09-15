@@ -49,11 +49,11 @@ impl SimpleIso2PriorProblem {
             entity_indices: [0],
         }];
 
-        let obs_pose_a_from_pose_b_poses =
-            CostSignature::<1, Isometry2F64, Isometry2PriorTermSignature>::new(
-                ["poses".into()],
-                cost_signature,
-            );
+        let obs_pose_a_from_pose_b_poses = CostSignature::<
+            1,
+            Isometry2F64,
+            Isometry2PriorTermSignature,
+        >::new(["poses".into()], cost_signature);
 
         let family: VarFamily<Isometry2F64> =
             VarFamily::new(VarKind::Free, vec![self.est_world_from_robot]);
@@ -69,6 +69,7 @@ impl SimpleIso2PriorProblem {
         let up_families = optimize(
             families,
             vec![CostFn::new_box(
+                (),
                 obs_pose_a_from_pose_b_poses.clone(),
                 Isometry2PriorCostFn {},
             )],
@@ -121,11 +122,11 @@ impl SimpleIso3PriorProblem {
             entity_indices: [0],
         }];
 
-        let obs_pose_a_from_pose_b_poses =
-            CostSignature::<1, (Isometry3F64, MatF64<6, 6>), Isometry3PriorTermSignature>::new(
-                ["poses".into()],
-                cost_signature,
-            );
+        let obs_pose_a_from_pose_b_poses = CostSignature::<
+            1,
+            (Isometry3F64, MatF64<6, 6>),
+            Isometry3PriorTermSignature,
+        >::new(["poses".into()], cost_signature);
 
         let family: VarFamily<Isometry3F64> =
             VarFamily::new(VarKind::Free, vec![self.est_world_from_robot]);
@@ -141,6 +142,7 @@ impl SimpleIso3PriorProblem {
         let up_families = optimize(
             families,
             vec![CostFn::new_box(
+                (),
                 obs_pose_a_from_pose_b_poses.clone(),
                 Isometry3PriorCostFn {},
             )],

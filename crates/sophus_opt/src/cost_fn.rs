@@ -59,6 +59,7 @@ impl<
 pub trait IsResidualFn<
     const NUM: usize,
     const NUM_ARGS: usize,
+    GlobalConstants: 'static + Send + Sync,
     Args: IsVarTuple<NUM_ARGS>,
     Constants,
 >: Copy + Send + Sync + 'static
@@ -66,6 +67,7 @@ pub trait IsResidualFn<
     /// evaluate the residual function which shall be defined by the user
     fn eval(
         &self,
+        global_constants: &GlobalConstants,
         idx: [usize; NUM_ARGS],
         args: Args,
         derivatives: [VarKind; NUM_ARGS],
@@ -97,13 +99,15 @@ pub trait IsCostFn {
 pub struct CostFn<
     const NUM: usize,
     const NUM_ARGS: usize,
+    GlobalConstants: 'static + Send + Sync,
     Constants,
     TermSignature: IsTermSignature<NUM_ARGS, Constants = Constants>,
     ResidualFn,
     VarTuple: IsVarTuple<NUM_ARGS> + 'static,
 > where
-    ResidualFn: IsResidualFn<NUM, NUM_ARGS, VarTuple, Constants>,
+    ResidualFn: IsResidualFn<NUM, NUM_ARGS, GlobalConstants, VarTuple, Constants>,
 {
+    global_constants: GlobalConstants,
     signature: CostSignature<NUM_ARGS, Constants, TermSignature>,
     residual_fn: ResidualFn,
     robust_kernel: Option<RobustKernel>,
@@ -113,20 +117,23 @@ pub struct CostFn<
 impl<
         const NUM: usize,
         const NUM_ARGS: usize,
+        GlobalConstants: 'static + Send + Sync,
         Constants: 'static,
         TermSignature: IsTermSignature<NUM_ARGS, Constants = Constants> + 'static,
         ResidualFn,
         VarTuple: IsVarTuple<NUM_ARGS> + 'static,
-    > CostFn<NUM, NUM_ARGS, Constants, TermSignature, ResidualFn, VarTuple>
+    > CostFn<NUM, NUM_ARGS, GlobalConstants, Constants, TermSignature, ResidualFn, VarTuple>
 where
-    ResidualFn: IsResidualFn<NUM, NUM_ARGS, VarTuple, Constants> + 'static,
+    ResidualFn: IsResidualFn<NUM, NUM_ARGS, GlobalConstants, VarTuple, Constants> + 'static,
 {
     /// create a new cost function from a signature and a residual function
     pub fn new_box(
+        global_constants: GlobalConstants,
         signature: CostSignature<NUM_ARGS, Constants, TermSignature>,
         residual_fn: ResidualFn,
     ) -> Box<dyn IsCostFn> {
         Box::new(Self {
+            global_constants,
             signature,
             residual_fn,
             robust_kernel: None,
@@ -136,11 +143,13 @@ where
 
     /// create a new robust cost function from a signature, a residual function and a robust kernel
     pub fn new_robust(
+        global_constants: GlobalConstants,
         signature: CostSignature<NUM_ARGS, Constants, TermSignature>,
         residual_fn: ResidualFn,
         robust_kernel: RobustKernel,
     ) -> Box<dyn IsCostFn> {
         Box::new(Self {
+            global_constants,
             signature,
             residual_fn,
             robust_kernel: Some(robust_kernel),
@@ -152,13 +161,15 @@ where
 impl<
         const NUM: usize,
         const NUM_ARGS: usize,
+        GlobalConstants: 'static + Send + Sync,
         Constants,
         TermSignature: IsTermSignature<NUM_ARGS, Constants = Constants>,
         ResidualFn,
         VarTuple: IsVarTuple<NUM_ARGS> + 'static,
-    > IsCostFn for CostFn<NUM, NUM_ARGS, Constants, TermSignature, ResidualFn, VarTuple>
+    > IsCostFn
+    for CostFn<NUM, NUM_ARGS, GlobalConstants, Constants, TermSignature, ResidualFn, VarTuple>
 where
-    ResidualFn: IsResidualFn<NUM, NUM_ARGS, VarTuple, Constants>,
+    ResidualFn: IsResidualFn<NUM, NUM_ARGS, GlobalConstants, VarTuple, Constants>,
 {
     fn eval(
         &self,
@@ -183,6 +194,7 @@ where
 
         let eval_res = |term_signature: &TermSignature| {
             self.residual_fn.eval(
+                &self.global_constants,
                 *term_signature.idx_ref(),
                 VarTuple::extract(&var_family_tuple, *term_signature.idx_ref()),
                 var_kind_array,
@@ -227,7 +239,7 @@ where
         match parallelization_strategy {
             ParallelizationStrategy::None => {
                 // This functional style code is slightly less efficient, than the nested while
-                // loop below. 
+                // loop below.
                 //
                 // evaluated_terms.terms = reduction_ranges
                 //     .iter() // sequential outer loop

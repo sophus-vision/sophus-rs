@@ -23,7 +23,7 @@ pub struct BlockVector<const NUM: usize, const NUM_ARGS: usize> {
 impl<const NUM: usize, const NUM_ARGS: usize> BlockVector<NUM, NUM_ARGS> {
     /// create a new block vector
     pub fn new(dims: &[usize; NUM_ARGS]) -> Self {
-        assert!(!dims.is_empty());
+        debug_assert!(!dims.is_empty());
 
         let num_blocks = dims.len();
 
@@ -52,8 +52,8 @@ impl<const NUM: usize, const NUM_ARGS: usize> BlockVector<NUM, NUM_ARGS> {
 
     /// set the ith block
     pub fn set_block<const R: usize>(&mut self, ith: usize, v: VecF64<R>) {
-        assert!(ith < self.num_blocks());
-        assert_eq!(R, self.ranges[ith].dim);
+        debug_assert!(ith < self.num_blocks());
+        debug_assert_eq!(R, self.ranges[ith].dim);
         self.mut_block::<R>(ith).copy_from(&v);
     }
 
@@ -112,7 +112,7 @@ pub struct BlockMatrix<const NUM: usize, const NUM_ARGS: usize> {
 impl<const NUM: usize, const NUM_ARGS: usize> BlockMatrix<NUM, NUM_ARGS> {
     /// create a new block matrix
     pub fn new(dims: &[usize]) -> Self {
-        assert!(!dims.is_empty());
+        debug_assert!(!dims.is_empty());
 
         let num_blocks = dims.len();
 
@@ -145,18 +145,18 @@ impl<const NUM: usize, const NUM_ARGS: usize> BlockMatrix<NUM, NUM_ARGS> {
         jth: usize,
         m: MatF64<R, C>,
     ) {
-        assert!(ith < self.num_blocks());
-        assert!(jth < self.num_blocks());
-        assert_eq!(R, self.ranges[ith].dim);
-        assert_eq!(C, self.ranges[jth].dim);
+        debug_assert!(ith < self.num_blocks());
+        debug_assert!(jth < self.num_blocks());
+        debug_assert_eq!(R, self.ranges[ith].dim);
+        debug_assert_eq!(C, self.ranges[jth].dim);
 
         if ith == jth {
-            assert_eq!(R, C);
+            debug_assert_eq!(R, C);
 
             let mut mut_block = self.mut_block::<R, C>(ith, jth);
             mut_block.copy_from(&m);
         } else {
-            assert!(ith < jth);
+            debug_assert!(ith < jth);
             {
                 self.mut_block::<R, C>(ith, jth).copy_from(&m);
             }

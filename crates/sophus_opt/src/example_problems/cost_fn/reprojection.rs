@@ -50,11 +50,12 @@ impl IsTermSignature<3> for ReprojTermSignature {
     const DOF_TUPLE: [i64; 3] = [4, 6, 3];
 }
 
-impl IsResidualFn<13, 3, (PinholeCamera<f64, 1>, Isometry3F64, VecF64<3>), VecF64<2>>
+impl IsResidualFn<13, 3, (), (PinholeCamera<f64, 1>, Isometry3F64, VecF64<3>), VecF64<2>>
     for ReprojectionCostFn
 {
     fn eval(
         &self,
+        _global_constants: &(),
         idx: [usize; 3],
         (intrinsics, world_from_camera_pose, point_in_world): (
             PinholeCamera<f64, 1>,

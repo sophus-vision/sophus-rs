@@ -5,6 +5,8 @@ use sophus_lie::Isometry3F64;
 
 /// Clipping planes
 pub mod clipping_planes;
+/// Fit camera
+pub mod fit_camera;
 /// Frustum uniform
 pub mod frustum;
 /// Camera intrinsics

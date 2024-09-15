@@ -1,15 +1,13 @@
 /// buffers for rendering a scene
 pub mod buffers;
-
+/// distortion renderer
+pub mod distortion;
 /// line renderer
 pub mod line;
-
 /// mesh renderer
 pub mod mesh;
-
 /// point renderer
 pub mod point;
-
 /// textured mesh renderer
 pub mod textured_mesh;
 

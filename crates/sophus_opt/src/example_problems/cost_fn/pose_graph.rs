@@ -24,9 +24,10 @@ pub fn res_fn<S: IsSingleScalar>(
 #[derive(Copy, Clone, Debug)]
 pub struct PoseGraphCostFn {}
 
-impl IsResidualFn<12, 2, (Isometry2F64, Isometry2F64), Isometry2F64> for PoseGraphCostFn {
+impl IsResidualFn<12, 2, (), (Isometry2F64, Isometry2F64), Isometry2F64> for PoseGraphCostFn {
     fn eval(
         &self,
+        _global_constants: &(),
         idx: [usize; 2],
         world_from_pose_x: (Isometry2F64, Isometry2F64),
         var_kinds: [VarKind; 2],
