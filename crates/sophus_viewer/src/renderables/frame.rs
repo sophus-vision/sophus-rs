@@ -4,8 +4,8 @@ use sophus_image::image_view::IsImageView;
 use sophus_image::ImageSize;
 use sophus_sensor::DynCamera;
 
+use crate::renderer::camera::ClippingPlanes;
 use crate::renderer::camera::RenderCameraProperties;
-use crate::renderer::types::ClippingPlanes;
 
 /// Frame to hold content
 ///
