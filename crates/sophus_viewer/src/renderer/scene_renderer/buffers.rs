@@ -1,7 +1,4 @@
-use std::sync::Mutex;
-
 use sophus_lie::Isometry3F64;
-use sophus_sensor::distortion_table::DistortTable;
 use wgpu::util::DeviceExt;
 
 use crate::renderer::camera::RenderCameraProperties;
@@ -110,16 +107,6 @@ impl SceneRenderBuffers {
                     count: None,
                 },
                 wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
                     binding: 3,
                     visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
@@ -200,49 +187,6 @@ impl SceneRenderBuffers {
                 },
             ],
         });
-
-        let texture_size = wgpu::Extent3d {
-            width: camera_properties.intrinsics.image_size().width as u32,
-            height: camera_properties.intrinsics.image_size().height as u32,
-            depth_or_array_layers: 1,
-        };
-
-        // let dist_texture = device.create_texture(&wgpu::TextureDescriptor {
-        //     size: texture_size,
-        //     mip_level_count: 1,
-        //     sample_count: 1,
-        //     dimension: wgpu::TextureDimension::D2,
-        //     format: wgpu::TextureFormat::Rg32Float,
-        //     usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-        //     label: Some("dist_texture"),
-        //     view_formats: &[],
-        // });
-
-        // let dist_texture_view = dist_texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-        // let dist_texture_bind_group_layout =
-        //     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        //         entries: &[wgpu::BindGroupLayoutEntry {
-        //             binding: 0,
-        //             visibility: wgpu::ShaderStages::VERTEX,
-        //             ty: wgpu::BindingType::Texture {
-        //                 multisampled: false,
-        //                 view_dimension: wgpu::TextureViewDimension::D2,
-        //                 sample_type: wgpu::TextureSampleType::Float { filterable: false },
-        //             },
-        //             count: None,
-        //         }],
-        //         label: Some("dist_texture_bind_group_layout"),
-        //     });
-
-        // let dist_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-        //     layout: &dist_texture_bind_group_layout,
-        //     entries: &[wgpu::BindGroupEntry {
-        //         binding: 0,
-        //         resource: wgpu::BindingResource::TextureView(&dist_texture_view),
-        //     }],
-        //     label: Some("diffuse_bind_group"),
-        // });
 
         Self {
             bind_group,

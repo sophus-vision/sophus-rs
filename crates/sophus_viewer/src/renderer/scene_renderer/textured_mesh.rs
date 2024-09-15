@@ -230,7 +230,7 @@ impl TexturedMeshRenderer {
                 scene_from_camera,
                 &mesh.scene_from_entity,
             );
-            render_pass.set_bind_group(2, &mesh.texture_bind_group, &[]);
+            render_pass.set_bind_group(1, &mesh.texture_bind_group, &[]);
             render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             render_pass.draw(0..mesh.vertex_data.len() as u32, 0..1);
         }

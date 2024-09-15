@@ -83,7 +83,7 @@ impl Frame {
         assert!(view_size.area() > 0);
         Frame {
             image: None,
-            camera_properties: RenderCameraProperties::default_from(view_size.clone()),
+            camera_properties: RenderCameraProperties::default_from(*view_size),
         }
     }
 
