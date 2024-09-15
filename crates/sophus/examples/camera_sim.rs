@@ -8,7 +8,7 @@ use sophus_viewer::renderables::color::Color;
 use sophus_viewer::renderables::renderable3d::make_line3;
 use sophus_viewer::renderables::renderable3d::make_mesh3_at;
 use sophus_viewer::renderables::renderable3d::make_point3;
-use sophus_viewer::renderer::camera::RenderCameraProperties;
+use sophus_viewer::renderer::camera::properties::RenderCameraProperties;
 use sophus_viewer::RenderContext;
 
 pub async fn run_offscreen() {

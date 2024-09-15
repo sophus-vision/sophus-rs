@@ -1,7 +1,7 @@
 use sophus_lie::Isometry3F64;
 use wgpu::util::DeviceExt;
 
-use crate::renderer::camera::RenderCameraProperties;
+use crate::renderer::camera::properties::RenderCameraProperties;
 use crate::renderer::types::Zoom2d;
 use crate::RenderContext;
 

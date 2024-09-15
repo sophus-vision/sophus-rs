@@ -1,4 +1,4 @@
-use crate::renderer::camera::ClippingPlanesF64;
+use crate::renderer::camera::clipping_planes::ClippingPlanesF64;
 use crate::renderer::textures::depth_image::DepthImage;
 use crate::renderer::textures::main_render_z_buffer::MainRenderZBuffer;
 use crate::renderer::textures::visual_depth::VisualDepthTexture;

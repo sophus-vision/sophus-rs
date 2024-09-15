@@ -9,7 +9,7 @@ use sophus_image::arc_image::ArcImageF32;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;
 
-use crate::renderer::camera::RenderIntrinsics;
+use crate::renderer::camera::intrinsics::RenderIntrinsics;
 use crate::renderer::types::TranslationAndScaling;
 use crate::viewer::aspect_ratio::ViewportSize;
 use crate::viewer::interactions::inplane_interaction::InplaneInteraction;

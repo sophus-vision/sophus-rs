@@ -16,7 +16,7 @@ pub mod textured_mesh;
 use sophus_lie::Isometry3F64;
 use wgpu::DepthStencilState;
 
-use crate::renderer::camera::RenderCameraProperties;
+use crate::renderer::camera::properties::RenderCameraProperties;
 use crate::renderer::scene_renderer::buffers::SceneRenderBuffers;
 use crate::renderer::scene_renderer::mesh::MeshRenderer;
 use crate::renderer::scene_renderer::point::ScenePointRenderer;

@@ -8,8 +8,8 @@ use sophus_lie::traits::IsTranslationProductGroup;
 use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
 
-use crate::renderer::camera::ClippingPlanesF64;
-use crate::renderer::camera::RenderIntrinsics;
+use crate::renderer::camera::clipping_planes::ClippingPlanesF64;
+use crate::renderer::camera::intrinsics::RenderIntrinsics;
 use crate::renderer::types::TranslationAndScaling;
 use crate::viewer::interactions::SceneFocus;
 use crate::viewer::interactions::ViewportScale;

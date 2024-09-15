@@ -24,23 +24,21 @@
 
 /// calculus - differentiation, splines, and more
 pub mod calculus;
-
+/// floating point
+pub mod floating_point;
 /// geometry
 pub mod geometry;
-
 /// linear algebra types
 pub mod linalg;
-
 /// manifolds
 pub mod manifold;
-pub use crate::manifold::*;
-
 /// params
 pub mod params;
-pub use crate::params::*;
-
 /// points
 pub mod points;
+
+pub use crate::manifold::*;
+pub use crate::params::*;
 pub use crate::points::*;
 
 /// tensors

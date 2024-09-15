@@ -13,14 +13,13 @@ use sophus_image::intensity_image::intensity_arc_image::IsIntensityArcImage;
 use sophus_image::mut_image::MutImageF32;
 use sophus_image::mut_image_view::IsMutImageView;
 use sophus_lie::Isometry3;
-use sophus_sensor::camera_enum::perspective_camera::UnifiedCameraF64;
 use sophus_sensor::dyn_camera::DynCameraF64;
 use sophus_viewer::renderables::color::Color;
 use sophus_viewer::renderables::renderable2d::View2dPacket;
 use sophus_viewer::renderables::renderable3d::View3dPacket;
-use sophus_viewer::renderer::camera::ClippingPlanes;
+use sophus_viewer::renderer::camera::clipping_planes::ClippingPlanes;
+use sophus_viewer::renderer::camera::properties::RenderCameraProperties;
 use sophus_viewer::renderer::camera::RenderCamera;
-use sophus_viewer::renderer::camera::RenderCameraProperties;
 use sophus_viewer::viewer::simple_viewer::SimpleViewer;
 
 fn create_view2_packet() -> Packet {

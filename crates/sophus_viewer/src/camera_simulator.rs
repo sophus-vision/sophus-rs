@@ -1,5 +1,5 @@
 use crate::renderables::renderable3d::Renderable3d;
-use crate::renderer::camera::RenderCameraProperties;
+use crate::renderer::camera::properties::RenderCameraProperties;
 use crate::renderer::textures::depth_image::DepthImage;
 use crate::renderer::OffscreenRenderer;
 use crate::RenderContext;

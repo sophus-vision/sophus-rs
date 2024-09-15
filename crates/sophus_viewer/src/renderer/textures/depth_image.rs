@@ -9,7 +9,7 @@ use sophus_image::mut_image::MutImageF32;
 use sophus_image::prelude::IsImageView;
 use sophus_image::prelude::IsMutImageView;
 
-use crate::renderer::camera::ClippingPlanesF32;
+use crate::renderer::camera::clipping_planes::ClippingPlanesF32;
 
 /// depth image
 pub struct DepthImage {

@@ -4,7 +4,7 @@ use sophus_image::ImageSize;
 use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
 
-use crate::renderer::camera::RenderIntrinsics;
+ use crate::renderer::camera::intrinsics::RenderIntrinsics;
 use crate::renderer::types::TranslationAndScaling;
 use crate::renderer::OffscreenRenderer;
 use crate::viewer::interactions::SceneFocus;

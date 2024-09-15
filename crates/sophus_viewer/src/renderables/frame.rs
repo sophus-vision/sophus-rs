@@ -3,9 +3,9 @@ use sophus_image::image_view::IsImageView;
 use sophus_image::ImageSize;
 use sophus_sensor::DynCamera;
 
-use crate::renderer::camera::ClippingPlanes;
-use crate::renderer::camera::RenderCameraProperties;
-use crate::renderer::camera::RenderIntrinsics;
+use crate::renderer::camera::clipping_planes::ClippingPlanes;
+use crate::renderer::camera::intrinsics::RenderIntrinsics;
+use crate::renderer::camera::properties::RenderCameraProperties;
 
 /// Frame to hold content
 ///
