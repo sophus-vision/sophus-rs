@@ -14,6 +14,7 @@ use crate::renderer::camera::intrinsics::RenderIntrinsics;
 use crate::renderer::pixel_renderer::pixel_line::PixelLineRenderer;
 use crate::renderer::pixel_renderer::pixel_point::PixelPointRenderer;
 use crate::renderer::textures::depth::DepthTextures;
+use crate::renderer::textures::depth_image::ndc_z_to_color;
 use crate::renderer::types::TranslationAndScaling;
 use crate::renderer::types::Zoom2d;
 use crate::viewer::interactions::InteractionEnum;
@@ -161,13 +162,15 @@ impl PixelRenderer {
                 if interaction.is_active() {
                     let mut vertex_data = vec![];
 
+                    let depth_color = ndc_z_to_color(scene_focus.ndc_z).cast::<f32>() / 255.0;
+
                     for _i in 0..6 {
                         vertex_data.push(PointVertex2 {
                             _pos: [
                                 scene_focus.uv_in_virtual_camera[0] as f32,
                                 scene_focus.uv_in_virtual_camera[1] as f32,
                             ],
-                            _color: [0.5, 0.5, 0.5, 1.0],
+                            _color: [depth_color[0], depth_color[1], depth_color[2], 1.0],
                             _point_size: 5.0,
                         });
                     }

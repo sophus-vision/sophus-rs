@@ -18,8 +18,10 @@ use crate::viewer::interactions::orbit_interaction::OrbitalInteraction;
 /// Scene focus
 #[derive(Clone, Copy)]
 pub struct SceneFocus {
-    /// Depth
+    /// Metric epth
     pub depth: f64,
+    /// NDC z
+    pub ndc_z: f32,
     /// UV position
     pub uv_in_virtual_camera: VecF64<2>,
 }

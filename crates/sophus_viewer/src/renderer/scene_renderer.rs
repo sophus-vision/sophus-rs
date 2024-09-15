@@ -231,38 +231,5 @@ impl SceneRenderer {
             0,
             bytemuck::cast_slice(&[zoom_uniform]),
         );
-
-        // // distortion table
-        // let mut maybe_dist_lut = self.buffers.distortion_lut.lock().unwrap();
-        // if maybe_dist_lut.is_none() {
-        //     let distort_lut = distort_table(intrinsics);
-        //     *maybe_dist_lut = Some(distort_lut.clone());
-
-        //     state.wgpu_queue.write_texture(
-        //         wgpu::ImageCopyTexture {
-        //             texture: &self.buffers.dist_texture,
-        //             mip_level: 0,
-        //             origin: wgpu::Origin3d::ZERO,
-        //             aspect: wgpu::TextureAspect::All,
-        //         },
-        //         bytemuck::cast_slice(distort_lut.table.tensor.scalar_view().as_slice().unwrap()),
-        //         wgpu::ImageDataLayout {
-        //             offset: 0,
-        //             bytes_per_row: Some(8 * distort_lut.table.image_size().width as u32),
-        //             rows_per_image: Some(distort_lut.table.image_size().height as u32),
-        //         },
-        //         self.buffers.dist_texture.size(),
-        //     );
-        //     state.wgpu_queue.write_buffer(
-        //         &self.buffers.camara_params_buffer,
-        //         0,
-        //         bytemuck::cast_slice(&[
-        //             distort_lut.offset().x as f32,
-        //             distort_lut.offset().y as f32,
-        //             distort_lut.region.range().x as f32,
-        //             distort_lut.region.range().y as f32,
-        //         ]),
-        //     );
-        // }
     }
 }
