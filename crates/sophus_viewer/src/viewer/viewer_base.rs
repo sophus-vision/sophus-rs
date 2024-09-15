@@ -98,8 +98,6 @@ impl ViewerBase {
 
     /// Update the central panel.
     pub fn update_central_panel(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
-        egui_extras::install_image_loaders(ctx);
-
         ui.scope(|ui0| {
             if self.views.is_empty() {
                 return;
