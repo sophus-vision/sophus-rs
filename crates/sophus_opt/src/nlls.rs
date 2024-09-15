@@ -3,6 +3,7 @@ use crate::cost_fn::IsCostFn;
 use crate::solvers::solve;
 use crate::variables::VarPool;
 use log::debug;
+use log::info;
 use std::fmt::Debug;
 
 /// Optimization parameters
@@ -51,19 +52,13 @@ pub fn optimize(
     use std::time::Instant;
     let now = Instant::now();
 
-    for _i in 0..params.num_iter {
-        debug!("nu: {:?}", nu);
-
+    for i in 0..params.num_iter {
         let mut evaluated_costs: Vec<Box<dyn IsCost>> = Vec::new();
         for cost_fn in cost_fns.iter_mut() {
-            let now = Instant::now();
             evaluated_costs.push(cost_fn.eval(&variables, true, params.parallelize));
-            println!("eval took: {:.2?}", now.elapsed());
         }
 
-        let now = Instant::now();
         let updated_families = solve(&variables, evaluated_costs, nu);
-        println!("solve took: {:.2?}", now.elapsed());
 
         let mut new_costs: Vec<Box<dyn IsCost>> = Vec::new();
         for cost_fn in cost_fns.iter_mut() {
@@ -81,9 +76,14 @@ pub fn optimize(
         } else {
             nu *= 2.0;
         }
+
+        debug!(
+            "i: {:?}, nu: {:?}, mse {:?}, (new_mse {:?})",
+            i, nu, mse, new_mse
+        );
     }
-    println!("e^2: {:?} -> {:?}", initial_mse, mse);
-    println!("{} iters took: {:.2?}", params.num_iter, now.elapsed());
+    info!("e^2: {:?} -> {:?}", initial_mse, mse);
+    info!("{} iters took: {:.2?}", params.num_iter, now.elapsed());
 
     variables
 }

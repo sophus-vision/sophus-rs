@@ -155,7 +155,7 @@ impl CamCalibProblem {
         );
 
         let point_family: VarFamily<VecF64<3>> =
-            VarFamily::new(VarKind::Marginalized, self.points_in_world.clone());
+            VarFamily::new(VarKind::Free, self.points_in_world.clone());
 
         let var_pool = VarPoolBuilder::new()
             .add_family("cams", cam_family)
@@ -271,8 +271,8 @@ mod tests {
         use crate::example_problems::cam_calib::CamCalibProblem;
         use crate::variables::VarKind;
 
-       // CamCalibProblem::new(true).optimize_with_two_poses_fixed(VarKind::Free);
+        // CamCalibProblem::new(true).optimize_with_two_poses_fixed(VarKind::Free);
         CamCalibProblem::new(false).optimize_with_two_poses_fixed(VarKind::Conditioned);
-       // CamCalibProblem::new(false).optimize_with_priors();
+        // CamCalibProblem::new(false).optimize_with_priors();
     }
 }
