@@ -82,17 +82,17 @@ impl SceneRenderer {
                         },
                         count: None,
                     },
-                    // distortion table uniform
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::VERTEX,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
+                    // // distortion table uniform
+                    // wgpu::BindGroupLayoutEntry {
+                    //     binding: 2,
+                    //     visibility: wgpu::ShaderStages::VERTEX,
+                    //     ty: wgpu::BindingType::Buffer {
+                    //         ty: wgpu::BufferBindingType::Uniform,
+                    //         has_dynamic_offset: false,
+                    //         min_binding_size: None,
+                    //     },
+                    //     count: None,
+                    // },
                     // view-transform uniform
                     wgpu::BindGroupLayoutEntry {
                         binding: 3,
@@ -107,20 +107,20 @@ impl SceneRenderer {
                 ],
             });
 
-        let distortion_texture_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Texture {
-                        multisampled: false,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                    },
-                    count: None,
-                }],
-                label: Some("dist_texture_bind_group_layout"),
-            });
+        // let distortion_texture_bind_group_layout =
+        //     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        //         entries: &[wgpu::BindGroupLayoutEntry {
+        //             binding: 0,
+        //             visibility: wgpu::ShaderStages::VERTEX,
+        //             ty: wgpu::BindingType::Texture {
+        //                 multisampled: false,
+        //                 view_dimension: wgpu::TextureViewDimension::D2,
+        //                 sample_type: wgpu::TextureSampleType::Float { filterable: false },
+        //             },
+        //             count: None,
+        //         }],
+        //         label: Some("dist_texture_bind_group_layout"),
+        //     });
 
         let background_texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -149,7 +149,7 @@ impl SceneRenderer {
             label: Some("scene pipeline"),
             bind_group_layouts: &[
                 &uniform_bind_group_layout,
-                &distortion_texture_bind_group_layout,
+                //    &distortion_texture_bind_group_layout,
                 &background_texture_bind_group_layout,
             ],
             push_constant_ranges: &[],
@@ -159,7 +159,7 @@ impl SceneRenderer {
             label: Some("scene pipeline"),
             bind_group_layouts: &[
                 &uniform_bind_group_layout,
-                &distortion_texture_bind_group_layout,
+                //  &distortion_texture_bind_group_layout,
             ],
             push_constant_ranges: &[],
         });

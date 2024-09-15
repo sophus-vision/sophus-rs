@@ -169,7 +169,6 @@ impl MeshRenderer {
         };
         render_pass.set_pipeline(pipeline);
         render_pass.set_bind_group(0, &buffers.bind_group, &[]);
-        render_pass.set_bind_group(1, &buffers.dist_bind_group, &[]);
 
         for mesh in self.mesh_table.values() {
             buffers.view_uniform.update_given_camera_and_entity(

@@ -3,9 +3,6 @@ struct VertexOut {
     @builtin(position) position: vec4<f32>,
 };
 
-@group(1) @binding(0)
-var distortion_texture: texture_2d<f32>;
-
 @group(2) @binding(0)
 var mesh_texture: texture_2d<f32>;
 
@@ -20,7 +17,7 @@ fn vs_main(
     @location(1) texCoords: vec2<f32>
 ) -> VertexOut {
     var out: VertexOut;
-    var uv_z = scene_point_to_distorted(position, view_uniform, frustum_uniforms, lut_uniform);
+    var uv_z = scene_point_to_distorted(position, view_uniform, frustum_uniforms);
     out.position = pixel_and_z_to_clip(uv_z.xy, uv_z.z, frustum_uniforms, zoom);
     out.texCoords = texCoords;  // Pass texture coordinates to the fragment shader
     return out;

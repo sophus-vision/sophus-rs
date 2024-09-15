@@ -23,15 +23,15 @@ pub(crate) struct Frustum {
     pub(crate) py: f32,
 }
 
-#[repr(C)]
-// This is so we can store this in a buffer
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct DistortionLut {
-    lut_offset_x: f32,
-    lut_offset_y: f32,
-    lut_range_x: f32,
-    lut_range_y: f32,
-}
+// #[repr(C)]
+// // This is so we can store this in a buffer
+// #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+// struct DistortionLut {
+//     lut_offset_x: f32,
+//     lut_offset_y: f32,
+//     lut_range_x: f32,
+//     lut_range_y: f32,
+// }
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -72,11 +72,11 @@ pub struct SceneRenderBuffers {
     pub(crate) bind_group: wgpu::BindGroup,
     pub(crate) frustum_uniform_buffer: wgpu::Buffer,
     pub(crate) view_uniform: ViewUniform,
-    pub(crate) camara_params_buffer: wgpu::Buffer,
+    // pub(crate) camara_params_buffer: wgpu::Buffer,
     pub(crate) zoom_buffer: wgpu::Buffer,
-    pub(crate) dist_texture: wgpu::Texture,
-    pub(crate) dist_bind_group: wgpu::BindGroup,
-    pub(crate) distortion_lut: Mutex<Option<DistortTable>>,
+    // pub(crate) dist_texture: wgpu::Texture,
+    // pub(crate) dist_bind_group: wgpu::BindGroup,
+    // pub(crate) distortion_lut: Mutex<Option<DistortTable>>,
 }
 
 impl SceneRenderBuffers {
@@ -155,18 +155,18 @@ impl SceneRenderBuffers {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let distortion_uniforms = DistortionLut {
-            lut_offset_x: 0.0,
-            lut_offset_y: 0.0,
-            lut_range_x: 0.0,
-            lut_range_y: 0.0,
-        };
+        // let distortion_uniforms = DistortionLut {
+        //     lut_offset_x: 0.0,
+        //     lut_offset_y: 0.0,
+        //     lut_range_x: 0.0,
+        //     lut_range_y: 0.0,
+        // };
 
-        let distortion_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("distortion uniform buffer"),
-            contents: bytemuck::cast_slice(&[distortion_uniforms]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        // let distortion_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        //     label: Some("distortion uniform buffer"),
+        //     contents: bytemuck::cast_slice(&[distortion_uniforms]),
+        //     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        // });
 
         let view_uniforms = View {
             scene_from_camera: identity,
@@ -190,10 +190,10 @@ impl SceneRenderBuffers {
                     binding: 1,
                     resource: zoom_buffer.as_entire_binding(),
                 },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: distortion_buffer.as_entire_binding(),
-                },
+                // wgpu::BindGroupEntry {
+                //     binding: 2,
+                //     resource: distortion_buffer.as_entire_binding(),
+                // },
                 wgpu::BindGroupEntry {
                     binding: 3,
                     resource: view_buffer.as_entire_binding(),
@@ -207,42 +207,42 @@ impl SceneRenderBuffers {
             depth_or_array_layers: 1,
         };
 
-        let dist_texture = device.create_texture(&wgpu::TextureDescriptor {
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rg32Float,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            label: Some("dist_texture"),
-            view_formats: &[],
-        });
+        // let dist_texture = device.create_texture(&wgpu::TextureDescriptor {
+        //     size: texture_size,
+        //     mip_level_count: 1,
+        //     sample_count: 1,
+        //     dimension: wgpu::TextureDimension::D2,
+        //     format: wgpu::TextureFormat::Rg32Float,
+        //     usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        //     label: Some("dist_texture"),
+        //     view_formats: &[],
+        // });
 
-        let dist_texture_view = dist_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        // let dist_texture_view = dist_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let dist_texture_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Texture {
-                        multisampled: false,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                    },
-                    count: None,
-                }],
-                label: Some("dist_texture_bind_group_layout"),
-            });
+        // let dist_texture_bind_group_layout =
+        //     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        //         entries: &[wgpu::BindGroupLayoutEntry {
+        //             binding: 0,
+        //             visibility: wgpu::ShaderStages::VERTEX,
+        //             ty: wgpu::BindingType::Texture {
+        //                 multisampled: false,
+        //                 view_dimension: wgpu::TextureViewDimension::D2,
+        //                 sample_type: wgpu::TextureSampleType::Float { filterable: false },
+        //             },
+        //             count: None,
+        //         }],
+        //         label: Some("dist_texture_bind_group_layout"),
+        //     });
 
-        let dist_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &dist_texture_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::TextureView(&dist_texture_view),
-            }],
-            label: Some("diffuse_bind_group"),
-        });
+        // let dist_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        //     layout: &dist_texture_bind_group_layout,
+        //     entries: &[wgpu::BindGroupEntry {
+        //         binding: 0,
+        //         resource: wgpu::BindingResource::TextureView(&dist_texture_view),
+        //     }],
+        //     label: Some("diffuse_bind_group"),
+        // });
 
         Self {
             bind_group,
@@ -250,10 +250,7 @@ impl SceneRenderBuffers {
             view_uniform: ViewUniform {
                 camera_from_entity_buffer: view_buffer,
             },
-            camara_params_buffer: distortion_buffer,
-            dist_texture,
-            dist_bind_group,
-            distortion_lut: Mutex::new(None),
+            //  camara_params_buffer: distortion_buffer,
             zoom_buffer,
         }
     }
