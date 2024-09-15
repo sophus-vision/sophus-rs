@@ -9,7 +9,7 @@ use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
 use sophus_sensor::DynCamera;
 
-use crate::renderer::types::ClippingPlanesF64;
+use crate::renderer::camera::ClippingPlanesF64;
 use crate::renderer::types::TranslationAndScaling;
 use crate::viewer::interactions::SceneFocus;
 use crate::viewer::interactions::ViewportScale;

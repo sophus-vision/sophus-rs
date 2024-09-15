@@ -21,13 +21,13 @@ use sophus_sensor::distortion_table::distort_table;
 use sophus_sensor::dyn_camera::DynCamera;
 use wgpu::DepthStencilState;
 
+use crate::renderer::camera::ClippingPlanesF64;
 use crate::renderer::camera::RenderCameraProperties;
 use crate::renderer::scene_renderer::buffers::Frustum;
 use crate::renderer::scene_renderer::buffers::SceneRenderBuffers;
 use crate::renderer::scene_renderer::mesh::MeshRenderer;
 use crate::renderer::scene_renderer::point::ScenePointRenderer;
 use crate::renderer::textures::depth::DepthTextures;
-use crate::renderer::types::ClippingPlanesF64;
 use crate::renderer::types::TranslationAndScaling;
 use crate::renderer::types::Zoom2d;
 use crate::RenderContext;
