@@ -37,13 +37,8 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
         Self::Perspective(PerspectiveCameraEnum::new_brown_conrady(params, image_size))
     }
 
-    fn new_unified(
-        params: &<S as IsScalar<BATCH>>::Vector<6>,
-        image_size: ImageSize,
-    ) -> Self {
-        Self::Perspective(PerspectiveCameraEnum::new_unified(
-            params, image_size,
-        ))
+    fn new_unified(params: &<S as IsScalar<BATCH>>::Vector<6>, image_size: ImageSize) -> Self {
+        Self::Perspective(PerspectiveCameraEnum::new_unified(params, image_size))
     }
 
     fn cam_proj(&self, point_in_camera: &S::Vector<3>) -> S::Vector<2> {

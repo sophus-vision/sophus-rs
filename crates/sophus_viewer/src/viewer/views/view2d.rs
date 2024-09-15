@@ -1,7 +1,7 @@
 use linked_hash_map::LinkedHashMap;
 
 use crate::renderables::renderable2d::View2dPacket;
- use crate::renderer::camera::intrinsics::RenderIntrinsics;
+use crate::renderer::camera::intrinsics::RenderIntrinsics;
 use crate::renderer::OffscreenRenderer;
 use crate::viewer::aspect_ratio::HasAspectRatio;
 use crate::viewer::interactions::inplane_interaction::InplaneInteraction;

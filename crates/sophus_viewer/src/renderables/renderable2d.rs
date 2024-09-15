@@ -17,7 +17,7 @@ pub enum Renderable2d {
 pub fn named_line2(name: impl ToString, segments: Vec<LineSegment2>) -> Renderable2d {
     Renderable2d::Line(LineSegments2 {
         name: name.to_string(),
-        segments
+        segments,
     })
 }
 

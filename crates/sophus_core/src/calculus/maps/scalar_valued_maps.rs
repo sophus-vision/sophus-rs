@@ -130,8 +130,8 @@ impl<D: IsDualScalar<BATCH>, const BATCH: usize> ScalarValuedMapFromMatrix<D, BA
     }
 }
 
-    #[test]
-    fn scalar_valued_map_tests() {
+#[test]
+fn scalar_valued_map_tests() {
     use crate::calculus::dual::dual_scalar::DualScalar;
     #[cfg(feature = "simd")]
     use crate::calculus::dual::DualBatchScalar;
