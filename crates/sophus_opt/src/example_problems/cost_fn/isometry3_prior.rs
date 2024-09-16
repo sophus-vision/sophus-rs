@@ -47,9 +47,11 @@ fn res_fn<Scalar: IsScalar<1> + IsSingleScalar>(
     Isometry3::<Scalar, 1>::group_mul(&isometry, &isometry_prior_mean.inverse()).log()
 }
 
-impl IsResidualFn<6, 1, Isometry3F64, (Isometry3F64, MatF64<6, 6>)> for Isometry3PriorCostFn {
+impl IsResidualFn<6, 1, (), Isometry3F64, (Isometry3F64, MatF64<6, 6>)> for Isometry3PriorCostFn {
     fn eval(
         &self,
+        _global_constants: &(),
+        idx: [usize; 1],
         args: Isometry3F64,
         var_kinds: [VarKind; 1],
         robust_kernel: Option<robust_kernel::RobustKernel>,
@@ -69,6 +71,12 @@ impl IsResidualFn<6, 1, Isometry3F64, (Isometry3F64, MatF64<6, 6>)> for Isometry
         let zeros: VecF64<6> = VecF64::<6>::zeros();
 
         (|| VectorValuedMapFromVector::<DualScalar, 1>::static_fw_autodiff(dx_res_fn, zeros),)
-            .make_term(var_kinds, residual, robust_kernel, Some(isometry_prior.1))
+            .make_term(
+                idx,
+                var_kinds,
+                residual,
+                robust_kernel,
+                Some(isometry_prior.1),
+            )
     }
 }

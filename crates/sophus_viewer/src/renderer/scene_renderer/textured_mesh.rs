@@ -161,7 +161,6 @@ impl TexturedMeshEntity {
 /// Scene textured mesh renderer
 pub struct TexturedMeshRenderer {
     pub(crate) pipeline: wgpu::RenderPipeline,
-    pub(crate) depth_pipeline: wgpu::RenderPipeline,
     pub(crate) mesh_table: BTreeMap<String, TexturedMeshEntity>,
 }
 
@@ -210,34 +209,8 @@ impl TexturedMeshRenderer {
             multiview: None,
         });
 
-        let depth_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("depth textured mesh scene pipeline"),
-            layout: Some(pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<TexturedMeshVertex3>() as wgpu::BufferAddress,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2],
-                }],
-                compilation_options: Default::default(),
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: "depth_fs_main",
-                targets: &[Some(wgpu::TextureFormat::R32Float.into())],
-                compilation_options: Default::default(),
-            }),
-            primitive: wgpu::PrimitiveState::default(),
-            depth_stencil: depth_stencil.clone(),
-            multisample: wgpu::MultisampleState::default(),
-            multiview: None,
-        });
-
         Self {
             pipeline,
-            depth_pipeline,
             mesh_table: BTreeMap::new(),
         }
     }
@@ -250,7 +223,6 @@ impl TexturedMeshRenderer {
     ) {
         render_pass.set_pipeline(&self.pipeline);
         render_pass.set_bind_group(0, &buffers.bind_group, &[]);
-        render_pass.set_bind_group(1, &buffers.dist_bind_group, &[]);
 
         for mesh in self.mesh_table.values() {
             buffers.view_uniform.update_given_camera_and_entity(
@@ -258,32 +230,9 @@ impl TexturedMeshRenderer {
                 scene_from_camera,
                 &mesh.scene_from_entity,
             );
-            render_pass.set_bind_group(2, &mesh.texture_bind_group, &[]);
+            render_pass.set_bind_group(1, &mesh.texture_bind_group, &[]);
             render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             render_pass.draw(0..mesh.vertex_data.len() as u32, 0..1);
-        }
-    }
-
-    pub(crate) fn depth_paint<'rp>(
-        &'rp self,
-        wgpu_render_state: &RenderContext,
-        scene_from_camera: &Isometry3F64,
-        buffers: &'rp SceneRenderBuffers,
-        depth_render_pass: &mut wgpu::RenderPass<'rp>,
-    ) {
-        depth_render_pass.set_pipeline(&self.depth_pipeline);
-        depth_render_pass.set_bind_group(0, &buffers.bind_group, &[]);
-        depth_render_pass.set_bind_group(1, &buffers.dist_bind_group, &[]);
-
-        for mesh in self.mesh_table.values() {
-            buffers.view_uniform.update_given_camera_and_entity(
-                &wgpu_render_state.wgpu_queue,
-                scene_from_camera,
-                &mesh.scene_from_entity,
-            );
-            depth_render_pass.set_bind_group(2, &mesh.texture_bind_group, &[]);
-            depth_render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-            depth_render_pass.draw(0..mesh.vertex_data.len() as u32, 0..1);
         }
     }
 }

@@ -20,7 +20,7 @@ squares optimization.
 This library is in an early development stage - hence API is highly unstable. It is likely that
 existing features will be removed or changed in the future.
 
-However, the intend is to stride for correctness, facilitated using a comprehensive test suite.
+However, the intend is to stride for correctness, facilitated by a comprehensive test suite.
 
 ## Building
 
@@ -28,7 +28,7 @@ sophus-rs builds on stable.
 
 ```toml
 [dependencies]
-sophus = "0.8.0"
+sophus = "0.9.0"
 ```
 
 To allow for batch types, such as BatchScalarF64, the 'simd' feature is required. This feature
@@ -38,5 +38,5 @@ are no plans to rely on any other nightly features.
 
 ```toml
 [dependencies]
-sophus = { version = "0.8.0", features = ["simd"] }
+sophus = { version = "0.9.0", features = ["simd"] }
 ```

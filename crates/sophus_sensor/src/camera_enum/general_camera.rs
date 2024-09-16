@@ -1,5 +1,5 @@
 use crate::camera_enum::perspective_camera::PerspectiveCameraEnum;
-use crate::camera_enum::perspective_camera::UnifiedExtendedCamera;
+use crate::camera_enum::perspective_camera::UnifiedCamera;
 use crate::prelude::*;
 use crate::projections::orthographic::OrthographicCamera;
 use sophus_image::ImageSize;
@@ -37,13 +37,8 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
         Self::Perspective(PerspectiveCameraEnum::new_brown_conrady(params, image_size))
     }
 
-    fn new_unified_extended(
-        params: &<S as IsScalar<BATCH>>::Vector<6>,
-        image_size: ImageSize,
-    ) -> Self {
-        Self::Perspective(PerspectiveCameraEnum::new_unified_extended(
-            params, image_size,
-        ))
+    fn new_unified(params: &<S as IsScalar<BATCH>>::Vector<6>, image_size: ImageSize) -> Self {
+        Self::Perspective(PerspectiveCameraEnum::new_unified(params, image_size))
     }
 
     fn cam_proj(&self, point_in_camera: &S::Vector<3>) -> S::Vector<2> {
@@ -109,7 +104,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraEnum<S, BATCH>
         }
     }
 
-    fn try_get_unified_extended(self) -> Option<UnifiedExtendedCamera<S, BATCH>> {
+    fn try_get_unified_extended(self) -> Option<UnifiedCamera<S, BATCH>> {
         match self {
             GeneralCameraEnum::Perspective(camera) => camera.try_get_unified_extended(),
             GeneralCameraEnum::Orthographic(_) => None,

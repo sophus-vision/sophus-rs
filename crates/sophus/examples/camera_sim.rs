@@ -3,13 +3,12 @@ use sophus_image::io::png::save_as_png;
 use sophus_image::io::tiff::save_as_tiff;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3;
-use sophus_sensor::DynCamera;
 use sophus_viewer::camera_simulator::CameraSimulator;
 use sophus_viewer::renderables::color::Color;
 use sophus_viewer::renderables::renderable3d::make_line3;
 use sophus_viewer::renderables::renderable3d::make_mesh3_at;
 use sophus_viewer::renderables::renderable3d::make_point3;
-use sophus_viewer::renderer::types::ClippingPlanesF64;
+use sophus_viewer::renderer::camera::properties::RenderCameraProperties;
 use sophus_viewer::RenderContext;
 
 pub async fn run_offscreen() {
@@ -17,8 +16,7 @@ pub async fn run_offscreen() {
 
     let mut sim = CameraSimulator::new(
         &render_state,
-        DynCamera::default_pinhole(ImageSize::new(639, 477)),
-        ClippingPlanesF64::default(),
+        &RenderCameraProperties::default_from(ImageSize::new(639, 477)),
     );
 
     let mut renderables3d = vec![];

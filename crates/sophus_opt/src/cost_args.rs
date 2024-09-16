@@ -1,76 +1,5 @@
 use crate::variables::VarKind;
 
-const fn le_than<const N: usize>(
-    c: &[char],
-    lhs: [usize; N],
-    rhs: [usize; N],
-) -> std::cmp::Ordering {
-    let mut permutation: [usize; N] = [0; N];
-
-    let mut v_count = 0;
-    let mut h = 0;
-    loop {
-        if h >= N {
-            break;
-        }
-        if c[h] == 'm' {
-            permutation[h] = v_count;
-            v_count += 1;
-        }
-        h += 1;
-    }
-
-    let mut i = 0;
-    loop {
-        if i >= N {
-            break;
-        }
-        if c[i] == 'f' {
-            permutation[i] = v_count;
-            v_count += 1;
-        }
-        i += 1;
-    }
-    let mut j = 0;
-    loop {
-        if j >= N {
-            break;
-        }
-        if c[j] == 'c' {
-            permutation[j] = v_count;
-            v_count += 1;
-        }
-        j += 1;
-    }
-
-    let mut permuted_lhs: [usize; N] = [0; N];
-    let mut permuted_rhs: [usize; N] = [0; N];
-
-    let mut k = 0;
-    loop {
-        if k >= N {
-            break;
-        }
-        permuted_lhs[permutation[k]] = lhs[k];
-        permuted_rhs[permutation[k]] = rhs[k];
-        k += 1;
-    }
-
-    let mut l = 0;
-    loop {
-        if l >= N {
-            break;
-        }
-        if permuted_lhs[l] < permuted_rhs[l] {
-            return std::cmp::Ordering::Less;
-        } else if permuted_lhs[l] > permuted_rhs[l] {
-            return std::cmp::Ordering::Greater;
-        }
-        l += 1;
-    }
-    std::cmp::Ordering::Equal
-}
-
 /// Convert VarKind array to char array for comparison
 pub fn c_from_var_kind<const N: usize>(var_kind_array: &[VarKind; N]) -> [char; N] {
     let mut c_array: [char; N] = ['0'; N];
@@ -91,24 +20,98 @@ pub fn c_from_var_kind<const N: usize>(var_kind_array: &[VarKind; N]) -> [char; 
 /// f: free variable
 /// c: conditioned variable
 /// m: marginalized variable
-pub struct CompareIdx<C>
+pub struct CompareIdx<C, const N: usize>
 where
     C: AsRef<[char]>,
 {
     pub(crate) c: C,
+    pub(crate) permutation: [usize; N],
 }
 
-impl<C> CompareIdx<C>
+impl<C, const N: usize> CompareIdx<C, N>
 where
     C: AsRef<[char]>,
 {
+    /// Create a new CompareIdx
+    pub fn new(c: C) -> Self {
+        let mut permutation: [usize; N] = [0; N];
+        let c_ref = c.as_ref();
+
+        let mut v_count = 0;
+        let mut h = 0;
+
+        // First the variables to be marginalized
+        loop {
+            if h >= N {
+                break;
+            }
+            if c_ref[h] == 'm' {
+                permutation[h] = v_count;
+                v_count += 1;
+            }
+            h += 1;
+        }
+
+        // Then the other free variables
+        let mut i = 0;
+        loop {
+            if i >= N {
+                break;
+            }
+            if c_ref[i] == 'f' {
+                permutation[i] = v_count;
+                v_count += 1;
+            }
+            i += 1;
+        }
+
+        // Then the conditioned variables
+        let mut j = 0;
+        loop {
+            if j >= N {
+                break;
+            }
+            if c_ref[j] == 'c' {
+                permutation[j] = v_count;
+                v_count += 1;
+            }
+            j += 1;
+        }
+
+        Self { c, permutation }
+    }
+
     /// Compare two cost argument id tuples
-    pub fn le_than<const N: usize>(&self, lhs: [usize; N], rhs: [usize; N]) -> std::cmp::Ordering {
-        le_than(self.c.as_ref(), lhs, rhs)
+    pub fn le_than(&self, lhs: [usize; N], rhs: [usize; N]) -> std::cmp::Ordering {
+        let mut permuted_lhs: [usize; N] = [0; N];
+        let mut permuted_rhs: [usize; N] = [0; N];
+
+        let mut k = 0;
+        loop {
+            if k >= N {
+                break;
+            }
+            permuted_lhs[self.permutation[k]] = lhs[k];
+            permuted_rhs[self.permutation[k]] = rhs[k];
+            k += 1;
+        }
+
+        let mut l = 0;
+        loop {
+            if l >= N {
+                break;
+            }
+            match permuted_lhs[l].cmp(&permuted_rhs[l]) {
+                std::cmp::Ordering::Less => return std::cmp::Ordering::Less,
+                std::cmp::Ordering::Greater => return std::cmp::Ordering::Greater,
+                std::cmp::Ordering::Equal => l += 1,
+            }
+        }
+        std::cmp::Ordering::Equal
     }
 
     /// Return true if all non-conditioned variables are equal
-    pub fn are_all_non_cond_vars_equal(&self, lhs: &[usize], rhs: &[usize]) -> bool {
+    pub fn free_vars_equal(&self, lhs: &[usize], rhs: &[usize]) -> bool {
         let mut i = 0;
         loop {
             if i >= lhs.len() {
@@ -121,30 +124,22 @@ where
         }
         true
     }
-
-    /// Return true if all marginalized variables are equal
-    pub fn are_all_marg_vars_equal(&self, lhs: &[usize], rhs: &[usize]) -> bool {
-        let mut i = 0;
-        loop {
-            if i >= lhs.len() {
-                break;
-            }
-            if self.c.as_ref()[i] == 'm' && lhs[i] != rhs[i] {
-                return false;
-            }
-            i += 1;
-        }
-        true
-    }
 }
 
 mod test {
+    use crate::cost_args::CompareIdx;
+
+    #[allow(dead_code)]
+    fn le_than<const N: usize>(
+        c: &[char; N],
+        lhs: [usize; N],
+        rhs: [usize; N],
+    ) -> std::cmp::Ordering {
+        CompareIdx::new(c).le_than(lhs, rhs)
+    }
 
     #[test]
     fn test() {
-        use super::le_than;
-        use crate::cost_args::CompareIdx;
-
         // Length 2
         const VV: [char; 2] = ['f', 'f'];
         const VC: [char; 2] = ['f', 'c'];
@@ -402,7 +397,7 @@ mod test {
             [3, 2, 1],
         ];
 
-        let less = CompareIdx { c };
+        let less = CompareIdx::new(c);
         l.sort_by(|a, b| less.le_than(*a, *b));
     }
 }

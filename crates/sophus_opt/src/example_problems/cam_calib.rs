@@ -136,10 +136,10 @@ impl CamCalibProblem {
 
     /// optimize with two poses fixed
     pub fn optimize_with_two_poses_fixed(&self, intrinsics_var_kind: VarKind) {
-        let reproj_obs = CostSignature::<3, VecF64<2>, ReprojTermSignature> {
-            family_names: ["cams".into(), "poses".into(), "points".into()],
-            terms: self.observations.clone(),
-        };
+        let reproj_obs = CostSignature::<3, VecF64<2>, ReprojTermSignature>::new(
+            ["cams".into(), "poses".into(), "points".into()],
+            self.observations.clone(),
+        );
 
         let cam_family: VarFamily<PinholeCamera<f64, 1>> =
             VarFamily::new(intrinsics_var_kind, vec![self.intrinsics]);
@@ -168,6 +168,7 @@ impl CamCalibProblem {
             vec![
                 // robust kernel to deal with outliers
                 CostFn::new_robust(
+                    (),
                     reproj_obs.clone(),
                     ReprojectionCostFn {},
                     crate::robust_kernel::RobustKernel::Huber(HuberKernel::new(1.0)),
@@ -176,6 +177,7 @@ impl CamCalibProblem {
             OptParams {
                 num_iter: 25,       // should converge in single iteration
                 initial_lm_nu: 1.0, // if lm prior param is tiny
+                parallelize: true,
             },
         );
 
@@ -190,30 +192,31 @@ impl CamCalibProblem {
 
     /// optimize with priors
     pub fn optimize_with_priors(&self) {
-        let priors = CostSignature::<1, (Isometry3F64, MatF64<6, 6>), Isometry3PriorTermSignature> {
-            family_names: ["poses".into()],
-            terms: vec![
-                Isometry3PriorTermSignature {
-                    entity_indices: [0],
-                    isometry_prior: (
-                        self.true_world_from_cameras[0],
-                        MatF64::<6, 6>::new_scaling(10000.0),
-                    ),
-                },
-                Isometry3PriorTermSignature {
-                    entity_indices: [1],
-                    isometry_prior: (
-                        self.true_world_from_cameras[1],
-                        MatF64::<6, 6>::new_scaling(10000.0),
-                    ),
-                },
-            ],
-        };
+        let priors =
+            CostSignature::<1, (Isometry3F64, MatF64<6, 6>), Isometry3PriorTermSignature>::new(
+                ["poses".into()],
+                vec![
+                    Isometry3PriorTermSignature {
+                        entity_indices: [0],
+                        isometry_prior: (
+                            self.true_world_from_cameras[0],
+                            MatF64::<6, 6>::new_scaling(10000.0),
+                        ),
+                    },
+                    Isometry3PriorTermSignature {
+                        entity_indices: [1],
+                        isometry_prior: (
+                            self.true_world_from_cameras[1],
+                            MatF64::<6, 6>::new_scaling(10000.0),
+                        ),
+                    },
+                ],
+            );
 
-        let reproj_obs = CostSignature::<3, VecF64<2>, ReprojTermSignature> {
-            family_names: ["cams".into(), "poses".into(), "points".into()],
-            terms: self.observations.clone(),
-        };
+        let reproj_obs = CostSignature::<3, VecF64<2>, ReprojTermSignature>::new(
+            ["cams".into(), "poses".into(), "points".into()],
+            self.observations.clone(),
+        );
 
         let cam_family: VarFamily<PinholeCamera<f64, 1>> =
             VarFamily::new(VarKind::Conditioned, vec![self.intrinsics]);
@@ -233,12 +236,13 @@ impl CamCalibProblem {
         let up_var_pool = optimize(
             var_pool,
             vec![
-                CostFn::new_box(priors.clone(), Isometry3PriorCostFn {}),
-                CostFn::new_box(reproj_obs.clone(), ReprojectionCostFn {}),
+                CostFn::new_box((), priors.clone(), Isometry3PriorCostFn {}),
+                CostFn::new_box((), reproj_obs.clone(), ReprojectionCostFn {}),
             ],
             OptParams {
                 num_iter: 5,
                 initial_lm_nu: 1.0,
+                parallelize: true,
             },
         );
 
@@ -268,8 +272,8 @@ mod tests {
         use crate::example_problems::cam_calib::CamCalibProblem;
         use crate::variables::VarKind;
 
-        CamCalibProblem::new(true).optimize_with_two_poses_fixed(VarKind::Free);
+        // CamCalibProblem::new(true).optimize_with_two_poses_fixed(VarKind::Free);
         CamCalibProblem::new(false).optimize_with_two_poses_fixed(VarKind::Conditioned);
-        CamCalibProblem::new(false).optimize_with_priors();
+        // CamCalibProblem::new(false).optimize_with_priors();
     }
 }

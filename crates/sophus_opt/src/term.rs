@@ -1,5 +1,5 @@
+use crate::block::BlockMatrix;
 use crate::block::BlockVector;
-use crate::block::NewBlockMatrix;
 use crate::prelude::*;
 use crate::robust_kernel;
 use crate::variables::VarKind;
@@ -8,24 +8,35 @@ use sophus_core::linalg::VecF64;
 
 /// Evaluated cost term
 #[derive(Debug, Clone)]
-pub struct Term<const NUM: usize, const NUM_ARGS: usize> {
+pub struct Term<const DIM: usize, const NUM_ARGS: usize> {
     /// Hessian
-    pub hessian: NewBlockMatrix<NUM>,
+    pub hessian: BlockMatrix<DIM, NUM_ARGS>,
     /// Gradient
-    pub gradient: BlockVector<NUM>,
+    pub gradient: BlockVector<DIM, NUM_ARGS>,
     /// cost: 0.5 * residual^T * precision_mat * residual
     pub cost: f64,
     /// indices of the variable families
-    pub idx: Vec<[usize; NUM_ARGS]>,
+    pub idx: [usize; NUM_ARGS],
+    /// number of sub-terms
+    pub num_sub_terms: usize,
 }
 
-trait RowLoop<const NUM: usize, const R: usize> {
+impl<const DIM: usize, const NUM_ARGS: usize> Term<DIM, NUM_ARGS> {
+    pub(crate) fn reduce(&mut self, other: Term<DIM, NUM_ARGS>) {
+        self.hessian.mat += other.hessian.mat;
+        self.gradient.vec += other.gradient.vec;
+        self.cost += other.cost;
+        self.num_sub_terms += other.num_sub_terms;
+    }
+}
+
+trait RowLoop<const DIM: usize, const NUM_ARGS: usize, const R: usize> {
     fn set_off_diagonal(
         self,
         idx: usize,
         i: usize,
         j: usize,
-        hessian: &mut NewBlockMatrix<NUM>,
+        hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
         precision_mat: Option<MatF64<R, R>>,
     );
 
@@ -34,19 +45,19 @@ trait RowLoop<const NUM: usize, const R: usize> {
         idx: usize,
         i: usize,
         lambda_res: &VecF64<R>,
-        gradient: &mut BlockVector<NUM>,
-        hessian: &mut NewBlockMatrix<NUM>,
+        gradient: &mut BlockVector<DIM, NUM_ARGS>,
+        hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
         precision_mat: Option<MatF64<R, R>>,
     );
 }
 
-impl<const NUM: usize, const R: usize> RowLoop<NUM, R> for () {
+impl<const DIM: usize, const NUM_ARGS: usize, const R: usize> RowLoop<DIM, NUM_ARGS, R> for () {
     fn set_off_diagonal(
         self,
         _idx: usize,
         _i: usize,
         _j: usize,
-        _hessian: &mut NewBlockMatrix<NUM>,
+        _hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
         _precision_mat: Option<MatF64<R, R>>,
     ) {
     }
@@ -56,26 +67,27 @@ impl<const NUM: usize, const R: usize> RowLoop<NUM, R> for () {
         _idx: usize,
         _i: usize,
         _lambda_res: &VecF64<R>,
-        _gradient: &mut BlockVector<NUM>,
-        _hessian: &mut NewBlockMatrix<NUM>,
+        _gradient: &mut BlockVector<DIM, NUM_ARGS>,
+        _hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
         _precision_mat: Option<MatF64<R, R>>,
     ) {
     }
 }
 
 impl<
-        const NUM: usize,
+        const DIM: usize,
+        const NUM_ARGS: usize,
         const R: usize,
         const DX: usize,
-        Tail: RowLoop<NUM, R> + ColLoop<NUM, R, DX>,
-    > RowLoop<NUM, R> for (Option<MatF64<R, DX>>, Tail)
+        Tail: RowLoop<DIM, NUM_ARGS, R> + ColLoop<DIM, NUM_ARGS, R, DX>,
+    > RowLoop<DIM, NUM_ARGS, R> for (Option<MatF64<R, DX>>, Tail)
 {
     fn set_off_diagonal(
         self,
         idx: usize,
         i: usize,
         j: usize,
-        hessian: &mut NewBlockMatrix<NUM>,
+        hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
         precision_mat: Option<MatF64<R, R>>,
     ) {
         if idx == i {
@@ -93,8 +105,8 @@ impl<
         idx: usize,
         i: usize,
         lambda_res: &VecF64<R>,
-        gradient: &mut BlockVector<NUM>,
-        hessian: &mut NewBlockMatrix<NUM>,
+        gradient: &mut BlockVector<DIM, NUM_ARGS>,
+        hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
         precision_mat: Option<MatF64<R, R>>,
     ) {
         if idx == i {
@@ -117,25 +129,27 @@ impl<
     }
 }
 
-trait ColLoop<const NUM: usize, const R: usize, const DJ: usize> {
+trait ColLoop<const DIM: usize, const NUM_ARGS: usize, const R: usize, const DJ: usize> {
     fn set_off_diagonal_from_lhs(
         self,
         idx: usize,
         i: usize,
         j: usize,
-        hessian: &mut NewBlockMatrix<NUM>,
+        hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
         lhs: MatF64<R, DJ>,
         precision_mat: Option<MatF64<R, R>>,
     );
 }
 
-impl<const NUM: usize, const R: usize, const DJ: usize> ColLoop<NUM, R, DJ> for () {
+impl<const DIM: usize, const NUM_ARGS: usize, const R: usize, const DJ: usize>
+    ColLoop<DIM, NUM_ARGS, R, DJ> for ()
+{
     fn set_off_diagonal_from_lhs(
         self,
         _idx: usize,
         _i: usize,
         _j: usize,
-        _hessian: &mut NewBlockMatrix<NUM>,
+        _hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
         _lhs: MatF64<R, DJ>,
         _precision_mat: Option<MatF64<R, R>>,
     ) {
@@ -143,19 +157,20 @@ impl<const NUM: usize, const R: usize, const DJ: usize> ColLoop<NUM, R, DJ> for 
 }
 
 impl<
-        const NUM: usize,
+        const DIM: usize,
+        const NUM_ARGS: usize,
         const R: usize,
         const DI: usize,
         const DJ: usize,
-        Tail: ColLoop<NUM, R, DJ>,
-    > ColLoop<NUM, R, DJ> for (Option<MatF64<R, DI>>, Tail)
+        Tail: ColLoop<DIM, NUM_ARGS, R, DJ>,
+    > ColLoop<DIM, NUM_ARGS, R, DJ> for (Option<MatF64<R, DI>>, Tail)
 {
     fn set_off_diagonal_from_lhs(
         self,
         idx: usize,
         i: usize,
         j: usize,
-        hessian: &mut NewBlockMatrix<NUM>,
+        hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
         lhs: MatF64<R, DJ>,
         precision_mat: Option<MatF64<R, R>>,
     ) {
@@ -190,13 +205,14 @@ pub trait MakeTerm<const R: usize, const N: usize> {
     /// - `precision_mat`: Precision matrix - i.e. inverse of the covariance matrix - to compute the
     ///                    least-squares cost: `0.5 * residual^T * precision_mat * residual`.
     ///                    If `None`, the identity matrix is used: `0.5 * residual^T * residual`.
-    fn make_term<const NUM: usize, const NUM_ARGS: usize>(
+    fn make_term<const DIM: usize>(
         self,
+        idx: [usize; N],
         var_kinds: [VarKind; N],
         residual: VecF64<R>,
         robust_kernel: Option<robust_kernel::RobustKernel>,
         precision_mat: Option<MatF64<R, R>>,
-    ) -> Term<NUM, NUM_ARGS>;
+    ) -> Term<DIM, N>;
 }
 
 // TODO: Improve MakeTerm implementations:
@@ -208,13 +224,14 @@ impl<F0, const D0: usize, const R: usize> MakeTerm<R, 1> for (F0,)
 where
     F0: FnOnce() -> MatF64<R, D0>,
 {
-    fn make_term<const NUM: usize, const NUM_ARGS: usize>(
+    fn make_term<const DIM: usize>(
         self,
+        idx: [usize; 1],
         var_kinds: [VarKind; 1],
         residual: VecF64<R>,
         robust_kernel: Option<robust_kernel::RobustKernel>,
         precision_mat: Option<MatF64<R, R>>,
-    ) -> Term<NUM, NUM_ARGS> {
+    ) -> Term<DIM, 1> {
         const SIZE: usize = 1;
 
         let residual = match robust_kernel {
@@ -232,8 +249,8 @@ where
         );
 
         let dims = vec![D0];
-        let mut hessian = NewBlockMatrix::new(&dims);
-        let mut gradient = BlockVector::new(&dims);
+        let mut hessian = BlockMatrix::new(&dims);
+        let mut gradient = BlockVector::new(&[D0]);
 
         let lambda_res = match precision_mat {
             Some(precision_mat) => precision_mat * residual,
@@ -258,7 +275,8 @@ where
             hessian,
             gradient,
             cost: (residual.transpose() * lambda_res)[0],
-            idx: Vec::new(),
+            idx,
+            num_sub_terms: 1,
         }
     }
 }
@@ -268,13 +286,14 @@ where
     F0: FnOnce() -> MatF64<R, D0>,
     F1: FnOnce() -> MatF64<R, D1>,
 {
-    fn make_term<const NUM: usize, const NUM_ARGS: usize>(
+    fn make_term<const DIM: usize>(
         self,
+        idx: [usize; 2],
         var_kinds: [VarKind; 2],
         residual: VecF64<R>,
         robust_kernel: Option<robust_kernel::RobustKernel>,
         precision_mat: Option<MatF64<R, R>>,
-    ) -> Term<NUM, NUM_ARGS> {
+    ) -> Term<DIM, 2> {
         const SIZE: usize = 2;
 
         let residual = match robust_kernel {
@@ -298,8 +317,8 @@ where
             ),
         );
 
-        let dims = vec![D0, D1];
-        let mut hessian = NewBlockMatrix::new(&dims);
+        let dims = [D0, D1];
+        let mut hessian = BlockMatrix::new(&dims);
         let mut gradient = BlockVector::new(&dims);
 
         let lambda_res = match precision_mat {
@@ -325,7 +344,8 @@ where
             hessian,
             gradient,
             cost: (residual.transpose() * lambda_res)[0],
-            idx: Vec::new(),
+            idx,
+            num_sub_terms: 1,
         }
     }
 }
@@ -337,13 +357,14 @@ where
     F1: FnOnce() -> MatF64<R, D1>,
     F2: FnOnce() -> MatF64<R, D2>,
 {
-    fn make_term<const NUM: usize, const NUM_ARGS: usize>(
+    fn make_term<const DIM: usize>(
         self,
+        idx: [usize; 3],
         var_kinds: [VarKind; 3],
         residual: VecF64<R>,
         robust_kernel: Option<robust_kernel::RobustKernel>,
         precision_mat: Option<MatF64<R, R>>,
-    ) -> Term<NUM, NUM_ARGS> {
+    ) -> Term<DIM, 3> {
         const SIZE: usize = 3;
 
         let residual = match robust_kernel {
@@ -374,8 +395,8 @@ where
             ),
         );
 
-        let dims = vec![D0, D1, D2];
-        let mut hessian = NewBlockMatrix::new(&dims);
+        let dims = [D0, D1, D2];
+        let mut hessian = BlockMatrix::new(&dims);
         let mut gradient = BlockVector::new(&dims);
 
         let lambda_res = match precision_mat {
@@ -401,7 +422,8 @@ where
             hessian,
             gradient,
             cost: (residual.transpose() * lambda_res)[0],
-            idx: Vec::new(),
+            idx,
+            num_sub_terms: 1,
         }
     }
 }
@@ -423,13 +445,14 @@ where
     F2: FnOnce() -> MatF64<R, D2>,
     F3: FnOnce() -> MatF64<R, D3>,
 {
-    fn make_term<const NUM: usize, const NUM_ARGS: usize>(
+    fn make_term<const DIM: usize>(
         self,
+        idx: [usize; 4],
         var_kinds: [VarKind; 4],
         residual: VecF64<R>,
         robust_kernel: Option<robust_kernel::RobustKernel>,
         precision_mat: Option<MatF64<R, R>>,
-    ) -> Term<NUM, NUM_ARGS> {
+    ) -> Term<DIM, 4> {
         const SIZE: usize = 4;
 
         let residual = match robust_kernel {
@@ -467,8 +490,8 @@ where
             ),
         );
 
-        let dims = vec![D0, D1, D2, D3];
-        let mut hessian = NewBlockMatrix::new(&dims);
+        let dims = [D0, D1, D2, D3];
+        let mut hessian = BlockMatrix::new(&dims);
         let mut gradient = BlockVector::new(&dims);
 
         let lambda_res = match precision_mat {
@@ -494,7 +517,8 @@ where
             hessian,
             gradient,
             cost: (residual.transpose() * lambda_res)[0],
-            idx: Vec::new(),
+            idx,
+            num_sub_terms: 1,
         }
     }
 }

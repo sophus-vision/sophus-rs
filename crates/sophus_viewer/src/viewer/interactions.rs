@@ -8,8 +8,8 @@ use sophus_core::linalg::VecF64;
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;
-use sophus_sensor::dyn_camera::DynCamera;
 
+use crate::renderer::camera::intrinsics::RenderIntrinsics;
 use crate::renderer::types::TranslationAndScaling;
 use crate::viewer::aspect_ratio::ViewportSize;
 use crate::viewer::interactions::inplane_interaction::InplaneInteraction;
@@ -18,8 +18,10 @@ use crate::viewer::interactions::orbit_interaction::OrbitalInteraction;
 /// Scene focus
 #[derive(Clone, Copy)]
 pub struct SceneFocus {
-    /// Depth
+    /// Metric epth
     pub depth: f64,
+    /// NDC z
+    pub ndc_z: f32,
     /// UV position
     pub uv_in_virtual_camera: VecF64<2>,
 }
@@ -96,7 +98,7 @@ impl InteractionEnum {
     /// process event
     pub fn process_event(
         &mut self,
-        cam: &DynCamera<f64, 1>,
+        cam: &RenderIntrinsics,
         response: &egui::Response,
         scales: &ViewportScale,
         view_port_size: ImageSize,

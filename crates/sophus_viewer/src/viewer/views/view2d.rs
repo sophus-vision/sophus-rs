@@ -1,8 +1,7 @@
 use linked_hash_map::LinkedHashMap;
-use sophus_sensor::DynCamera;
 
 use crate::renderables::renderable2d::View2dPacket;
-use crate::renderer::types::ClippingPlanes;
+use crate::renderer::camera::intrinsics::RenderIntrinsics;
 use crate::renderer::OffscreenRenderer;
 use crate::viewer::aspect_ratio::HasAspectRatio;
 use crate::viewer::interactions::inplane_interaction::InplaneInteraction;
@@ -29,11 +28,7 @@ impl View2d {
             views.insert(
                 packet.view_label.clone(),
                 View::View2d(View2d {
-                    renderer: OffscreenRenderer::new(
-                        state,
-                        frame.intrinsics().clone(),
-                        ClippingPlanes::default(),
-                    ),
+                    renderer: OffscreenRenderer::new(state, frame.camera_properties()),
                     interaction: InteractionEnum::InPlane(InplaneInteraction::new()),
                     enabled: true,
                 }),
@@ -58,19 +53,15 @@ impl View2d {
         };
 
         if let Some(frame) = packet.frame {
-            let new_intrinsics = frame.intrinsics();
+            let new_camera_properties = frame.camera_properties().clone();
 
             // We got a new frame, hence we need to clear all renderables and then add the
             // intrinsics and background image if present. The easiest and most error-proof way to
             // do this is to create a new SceneRenderer and PixelRenderer and replace the old ones.
-            view.renderer = OffscreenRenderer::new(
-                state,
-                new_intrinsics.clone(),
-                view.renderer.clipping_planes,
-            );
+            view.renderer = OffscreenRenderer::new(state, &new_camera_properties);
 
             view.renderer
-                .reset_2d_frame(new_intrinsics, frame.maybe_image());
+                .reset_2d_frame(&new_camera_properties.intrinsics, frame.maybe_image());
         }
 
         let view = views.get_mut(&packet.view_label).unwrap();
@@ -82,7 +73,7 @@ impl View2d {
         view.renderer.update_2d_renderables(packet.renderables2d);
     }
 
-    pub fn intrinsics(&self) -> DynCamera<f64, 1> {
+    pub fn intrinsics(&self) -> RenderIntrinsics {
         self.renderer.intrinsics()
     }
 }
