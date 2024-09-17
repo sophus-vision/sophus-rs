@@ -37,10 +37,10 @@ impl PoseCircleProblem {
         let mut true_world_from_robot_poses = vec![];
         let mut est_world_from_robot_poses = vec![];
         let mut obs_pose_a_from_pose_b_poses =
-            CostSignature::<2, Isometry2F64, PoseGraphCostTermSignature> {
-                family_names: ["poses".into(), "poses".into()],
-                terms: vec![],
-            };
+            CostSignature::<2, Isometry2F64, PoseGraphCostTermSignature>::new(
+                ["poses".into(), "poses".into()],
+                vec![],
+            );
 
         let radius = 10.0;
 
@@ -135,12 +135,14 @@ impl PoseCircleProblem {
         optimize(
             var_pool,
             vec![CostFn::new_box(
+                (),
                 self.obs_pose_a_from_pose_b_poses.clone(),
                 PoseGraphCostFn {},
             )],
             OptParams {
                 num_iter: 5,
                 initial_lm_nu: 1.0,
+                parallelize: true,
             },
         )
     }

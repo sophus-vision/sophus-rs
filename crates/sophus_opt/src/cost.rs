@@ -84,8 +84,7 @@ impl<const NUM: usize, const NUM_ARGS: usize> IsCost for Cost<NUM, NUM_ARGS> {
         }
 
         for evaluated_term in self.terms.iter() {
-            assert_eq!(evaluated_term.idx.len(), 1);
-            let idx = evaluated_term.idx[0];
+            let idx = evaluated_term.idx;
             assert_eq!(idx.len(), num_args);
 
             for arg_id_alpha in 0..num_args {

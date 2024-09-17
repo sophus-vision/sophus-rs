@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use crate::traits::IsCameraDistortionImpl;
-use log::warn;
 use sophus_core::params::ParamsImpl;
 use sophus_core::prelude::IsMatrix;
 use sophus_core::prelude::IsScalar;
@@ -9,12 +8,12 @@ use std::marker::PhantomData;
 
 /// Unified Extended distortion implementation
 #[derive(Debug, Clone, Copy)]
-pub struct UnifiedExtendedDistortionImpl<S: IsScalar<BATCH>, const BATCH: usize> {
+pub struct UnifiedDistortionImpl<S: IsScalar<BATCH>, const BATCH: usize> {
     phantom: PhantomData<S>,
 }
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 6, BATCH>
-    for UnifiedExtendedDistortionImpl<S, BATCH>
+    for UnifiedDistortionImpl<S, BATCH>
 {
     fn are_params_valid(_params: &S::Vector<6>) -> S::Mask {
         S::Mask::all_true()
@@ -36,7 +35,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 6, BATCH>
 
 /// unified extended for z==1
 impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 2, 6, BATCH>
-    for UnifiedExtendedDistortionImpl<S, BATCH>
+    for UnifiedDistortionImpl<S, BATCH>
 {
     fn distort(
         params: &<S as IsScalar<BATCH>>::Vector<6>,
@@ -62,26 +61,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 2, 6, BAT
         let mx = x / norm.clone();
         let my = y / norm.clone();
 
-        let proj = <S as IsScalar<BATCH>>::Vector::<2>::from_array([fx * mx + cx, fy * my + cy]);
-
-        let less_than_half = alpha.less_equal(&S::from_f64(0.5));
-
-        let less_than_w = alpha.clone() / (S::from_f64(1.0) - alpha.clone());
-        let greater_than_w = (S::from_f64(1.0) - alpha.clone()) / alpha.clone();
-
-        let w = less_than_w.select(&less_than_half, greater_than_w);
-
-        let is_valid = (-w.clone() * rho.clone())
-            .less_equal(&S::from_f64(1.0))
-            .any();
-
-        if !is_valid {
-            warn!(
-                "unified extended distortion is not valid ({:?} > 1)",
-                w * rho
-            );
-        }
-        proj
+        S::Vector::<2>::from_array([fx * mx + cx, fy * my + cy])
     }
 
     fn undistort(
@@ -107,8 +87,6 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 2, 6, BAT
         let tmp2 = alpha.clone() * tmp_sqrt.clone() + gamma.clone();
 
         let k = tmp1.clone() / tmp2.clone();
-
-        
 
         S::Vector::<2>::from_array([mx / k.clone(), my / k.clone()])
     }

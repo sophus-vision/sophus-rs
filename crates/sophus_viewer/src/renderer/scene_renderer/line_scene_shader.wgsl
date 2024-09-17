@@ -3,9 +3,6 @@ struct VertexOut {
     @builtin(position) position: vec4<f32>,
 };
 
-@group(1) @binding(0)
-var distortion_texture: texture_2d<f32>;
-
 
 @vertex
 fn vs_main(
@@ -17,8 +14,8 @@ fn vs_main(
 {
     var out: VertexOut;
 
-    var uv_z0 = scene_point_to_distorted(p0, view_uniform, frustum_uniforms, lut_uniform);
-    var uv_z1 = scene_point_to_distorted(p1, view_uniform, frustum_uniforms, lut_uniform);
+    var uv_z0 = scene_point_to_distorted(p0, view_uniform, frustum_uniforms);
+    var uv_z1 = scene_point_to_distorted(p1, view_uniform, frustum_uniforms);
     var uv0 = uv_z0.xy;
     var uv1 = uv_z1.xy;
     var d = normalize(uv0 - uv1);
@@ -67,9 +64,4 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     var u = i32(in.position.x);
     var v = i32(in.position.y);
     return in.color;
-}
-
-@fragment
-fn depth_fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    return vec4<f32>(in.position.z, 0.0, 0.0, 1.0);
 }

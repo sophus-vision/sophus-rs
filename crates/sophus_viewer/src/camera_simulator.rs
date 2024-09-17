@@ -1,13 +1,10 @@
-use sophus_image::arc_image::ArcImage4U8;
-use sophus_lie::Isometry3F64;
-use sophus_sensor::dyn_camera::DynCameraF64;
-
 use crate::renderables::renderable3d::Renderable3d;
-use crate::renderer::types::ClippingPlanesF64;
-use crate::renderer::types::DepthImage;
-use crate::renderer::types::TranslationAndScaling;
+use crate::renderer::camera::properties::RenderCameraProperties;
+use crate::renderer::textures::depth_image::DepthImage;
 use crate::renderer::OffscreenRenderer;
 use crate::RenderContext;
+use sophus_image::arc_image::ArcImage4U8;
+use sophus_lie::Isometry3F64;
 
 /// camera simulator
 pub struct CameraSimulator {
@@ -24,19 +21,10 @@ pub struct SimulatedImage {
 
 impl CameraSimulator {
     /// new simulator from context and camera intrinsics
-    pub fn new(
-        render_state: &RenderContext,
-        intrinsics: DynCameraF64,
-        clipping_planes: ClippingPlanesF64,
-    ) -> Self {
+    pub fn new(render_state: &RenderContext, camera_properties: &RenderCameraProperties) -> Self {
         CameraSimulator {
-            renderer: OffscreenRenderer::new(render_state, intrinsics, clipping_planes),
+            renderer: OffscreenRenderer::new(render_state, camera_properties),
         }
-    }
-
-    /// camera intrinsics
-    pub fn intrinsics(&self) -> DynCameraF64 {
-        self.renderer.intrinsics()
     }
 
     /// update scene renderables
@@ -48,18 +36,11 @@ impl CameraSimulator {
     pub fn render(&mut self, scene_from_camera: Isometry3F64) -> SimulatedImage {
         let view_port_size = self.renderer.intrinsics().image_size();
 
-        let compute_depth_texture = false;
-        let backface_culling = false;
-        let download_rgba = true;
-
-        let result = self.renderer.render(
-            &view_port_size,
-            TranslationAndScaling::identity(),
-            scene_from_camera,
-            compute_depth_texture,
-            backface_culling,
-            download_rgba,
-        );
+        let result = self
+            .renderer
+            .render_params(&view_port_size, &scene_from_camera)
+            .download_rgba(true)
+            .render();
 
         SimulatedImage {
             rgba_image: result.rgba_image.unwrap(),

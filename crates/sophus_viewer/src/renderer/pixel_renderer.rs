@@ -6,14 +6,15 @@ pub mod pixel_point;
 use bytemuck::Pod;
 use bytemuck::Zeroable;
 use sophus_image::ImageSize;
-use sophus_sensor::DynCamera;
 use std::num::NonZeroU64;
 use wgpu::util::DeviceExt;
 use wgpu::DepthStencilState;
 
+use crate::renderer::camera::intrinsics::RenderIntrinsics;
 use crate::renderer::pixel_renderer::pixel_line::PixelLineRenderer;
 use crate::renderer::pixel_renderer::pixel_point::PixelPointRenderer;
-use crate::renderer::textures::ZBufferTexture;
+use crate::renderer::textures::depth::DepthTextures;
+use crate::renderer::textures::depth_image::ndc_z_to_color;
 use crate::renderer::types::TranslationAndScaling;
 use crate::renderer::types::Zoom2d;
 use crate::viewer::interactions::InteractionEnum;
@@ -161,13 +162,15 @@ impl PixelRenderer {
                 if interaction.is_active() {
                     let mut vertex_data = vec![];
 
+                    let depth_color = ndc_z_to_color(scene_focus.ndc_z).cast::<f32>() / 255.0;
+
                     for _i in 0..6 {
                         vertex_data.push(PointVertex2 {
                             _pos: [
                                 scene_focus.uv_in_virtual_camera[0] as f32,
                                 scene_focus.uv_in_virtual_camera[1] as f32,
                             ],
-                            _color: [0.5, 0.5, 0.5, 1.0],
+                            _color: [depth_color[0], depth_color[1], depth_color[2], 1.0],
                             _point_size: 5.0,
                         });
                     }
@@ -188,7 +191,7 @@ impl PixelRenderer {
         &self,
         state: &RenderContext,
         viewport_size: &ImageSize,
-        intrinsics: &DynCamera<f64, 1>,
+        intrinsics: &RenderIntrinsics,
         zoom_2d: TranslationAndScaling,
     ) {
         let ortho_cam_uniforms = OrthoCam {
@@ -220,7 +223,7 @@ impl PixelRenderer {
         &'rp self,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         texture_view: &'rp wgpu::TextureView,
-        depth: &ZBufferTexture,
+        depth: &DepthTextures,
     ) {
         let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
@@ -233,7 +236,7 @@ impl PixelRenderer {
                 },
             })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &depth.depth_texture_view,
+                view: &depth.main_render_ndc_z_texture.ndc_z_texture_view,
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(1.0),
                     store: wgpu::StoreOp::Store,

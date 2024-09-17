@@ -3,7 +3,7 @@ use sophus_core::linalg::MatF64;
 use sophus_core::linalg::VecF64;
 
 /// Range of a block
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Copy, Default)]
 pub struct BlockRange {
     /// Index of the first element of the block
     pub index: i64,
@@ -13,30 +13,30 @@ pub struct BlockRange {
 
 /// Block vector
 #[derive(Debug, Clone)]
-pub struct BlockVector<const NUM: usize> {
+pub struct BlockVector<const NUM: usize, const NUM_ARGS: usize> {
     /// vector storage
     pub vec: nalgebra::SVector<f64, NUM>,
     /// ranges, one for each block
-    pub ranges: Vec<BlockRange>,
+    pub ranges: [BlockRange; NUM_ARGS],
 }
 
-impl<const NUM: usize> BlockVector<NUM> {
+impl<const NUM: usize, const NUM_ARGS: usize> BlockVector<NUM, NUM_ARGS> {
     /// create a new block vector
-    pub fn new(dims: &[usize]) -> Self {
-        assert!(!dims.is_empty());
+    pub fn new(dims: &[usize; NUM_ARGS]) -> Self {
+        debug_assert!(!dims.is_empty());
 
         let num_blocks = dims.len();
 
-        let mut ranges = Vec::with_capacity(num_blocks);
+        let mut ranges = [BlockRange::default(); NUM_ARGS];
 
         let mut num_rows: usize = 0;
 
         for i in 0..num_blocks {
             let dim = dims[i];
-            ranges.push(BlockRange {
+            ranges[i] = BlockRange {
                 index: num_rows as i64,
                 dim,
-            });
+            };
             num_rows += dim;
         }
         Self {
@@ -52,8 +52,8 @@ impl<const NUM: usize> BlockVector<NUM> {
 
     /// set the ith block
     pub fn set_block<const R: usize>(&mut self, ith: usize, v: VecF64<R>) {
-        assert!(ith < self.num_blocks());
-        assert_eq!(R, self.ranges[ith].dim);
+        debug_assert!(ith < self.num_blocks());
+        debug_assert_eq!(R, self.ranges[ith].dim);
         self.mut_block::<R>(ith).copy_from(&v);
     }
 
@@ -102,30 +102,29 @@ impl<const NUM: usize> BlockVector<NUM> {
 
 /// Block matrix
 #[derive(Clone, Debug)]
-pub struct NewBlockMatrix<const NUM: usize> {
+pub struct BlockMatrix<const NUM: usize, const NUM_ARGS: usize> {
     /// matrix storage
     pub mat: nalgebra::SMatrix<f64, NUM, NUM>,
     /// ranges, one for each block
-    pub ranges: Vec<BlockRange>,
+    pub ranges: [BlockRange; NUM_ARGS],
 }
 
-impl<const NUM: usize> NewBlockMatrix<NUM> {
+impl<const NUM: usize, const NUM_ARGS: usize> BlockMatrix<NUM, NUM_ARGS> {
     /// create a new block matrix
     pub fn new(dims: &[usize]) -> Self {
-        assert!(!dims.is_empty());
+        debug_assert!(!dims.is_empty());
 
         let num_blocks = dims.len();
 
-        let mut ranges = Vec::with_capacity(num_blocks);
-
+        let mut ranges = [BlockRange::default(); NUM_ARGS];
         let mut num_rows: usize = 0;
 
         for i in 0..num_blocks {
             let dim = dims[i];
-            ranges.push(BlockRange {
+            ranges[i] = BlockRange {
                 index: num_rows as i64,
                 dim,
-            });
+            };
             num_rows += dim;
         }
         Self {
@@ -146,18 +145,18 @@ impl<const NUM: usize> NewBlockMatrix<NUM> {
         jth: usize,
         m: MatF64<R, C>,
     ) {
-        assert!(ith < self.num_blocks());
-        assert!(jth < self.num_blocks());
-        assert_eq!(R, self.ranges[ith].dim);
-        assert_eq!(C, self.ranges[jth].dim);
+        debug_assert!(ith < self.num_blocks());
+        debug_assert!(jth < self.num_blocks());
+        debug_assert_eq!(R, self.ranges[ith].dim);
+        debug_assert_eq!(C, self.ranges[jth].dim);
 
         if ith == jth {
-            assert_eq!(R, C);
+            debug_assert_eq!(R, C);
 
             let mut mut_block = self.mut_block::<R, C>(ith, jth);
             mut_block.copy_from(&m);
         } else {
-            assert!(ith < jth);
+            debug_assert!(ith < jth);
             {
                 self.mut_block::<R, C>(ith, jth).copy_from(&m);
             }

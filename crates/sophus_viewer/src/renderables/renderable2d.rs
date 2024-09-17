@@ -13,6 +13,22 @@ pub enum Renderable2d {
     Point(PointCloud2),
 }
 
+/// named line segments
+pub fn named_line2(name: impl ToString, segments: Vec<LineSegment2>) -> Renderable2d {
+    Renderable2d::Line(LineSegments2 {
+        name: name.to_string(),
+        segments,
+    })
+}
+
+/// named point cloud
+pub fn named_point2(name: impl ToString, points: Vec<Point2>) -> Renderable2d {
+    Renderable2d::Point(PointCloud2 {
+        name: name.to_string(),
+        points,
+    })
+}
+
 /// make lines 2d
 pub fn make_line2(
     name: impl ToString,

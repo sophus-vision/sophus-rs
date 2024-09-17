@@ -1,26 +1,24 @@
-/// offscreen texture for rendering
-pub mod textures;
-
+/// Render camera
+pub mod camera;
 /// The pixel renderer for 2D rendering.
 pub mod pixel_renderer;
-
 /// The scene renderer for 3D rendering.
 pub mod scene_renderer;
-
+/// offscreen texture for rendering
+pub mod textures;
 /// Types used in the renderer API
 pub mod types;
 
 use sophus_core::linalg::VecF64;
-use sophus_core::IsTensorLike;
 use sophus_image::arc_image::ArcImage4U8;
-use sophus_image::prelude::IsImageView;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;
-use sophus_sensor::DynCamera;
 
 use crate::renderables::renderable2d::Renderable2d;
 use crate::renderables::renderable3d::make_textured_mesh3;
 use crate::renderables::renderable3d::Renderable3d;
+use crate::renderer::camera::intrinsics::RenderIntrinsics;
+use crate::renderer::camera::properties::RenderCameraProperties;
 use crate::renderer::pixel_renderer::pixel_line::Line2dEntity;
 use crate::renderer::pixel_renderer::pixel_point::Point2dEntity;
 use crate::renderer::pixel_renderer::PixelRenderer;
@@ -29,9 +27,7 @@ use crate::renderer::scene_renderer::mesh::Mesh3dEntity;
 use crate::renderer::scene_renderer::point::Point3dEntity;
 use crate::renderer::scene_renderer::textured_mesh::TexturedMeshEntity;
 use crate::renderer::scene_renderer::SceneRenderer;
-use crate::renderer::textures::OffscreenTextures;
-use crate::renderer::types::ClippingPlanesF64;
-use crate::renderer::types::DepthImage;
+use crate::renderer::textures::Textures;
 use crate::renderer::types::RenderResult;
 use crate::renderer::types::TranslationAndScaling;
 use crate::viewer::interactions::InteractionEnum;
@@ -39,13 +35,85 @@ use crate::RenderContext;
 
 /// Offscreen renderer
 pub struct OffscreenRenderer {
-    intrinsics: DynCamera<f64, 1>,
-    pub(crate) clipping_planes: ClippingPlanesF64,
+    pub(crate) camera_properties: RenderCameraProperties,
     state: RenderContext,
     scene: SceneRenderer,
     pixel: PixelRenderer,
-    textures: OffscreenTextures,
+    textures: Textures,
     maybe_background_image: Option<ArcImage4U8>,
+}
+
+struct RenderParams<'a> {
+    view_port_size: ImageSize,
+    zoom: TranslationAndScaling,
+    scene_from_camera: Isometry3F64,
+    maybe_interaction_enum: Option<&'a InteractionEnum>,
+    compute_depth_texture: bool,
+    backface_culling: bool,
+    download_rgba: bool,
+}
+
+/// Render builder
+pub struct RenderBuilder<'a> {
+    params: RenderParams<'a>,
+    offscreen_renderer: &'a mut OffscreenRenderer,
+}
+
+impl<'a> RenderBuilder<'a> {
+    /// new
+    pub fn new(
+        view_port_size: ImageSize,
+        scene_from_camera: Isometry3F64,
+        offscreen_renderer: &'a mut OffscreenRenderer,
+    ) -> Self {
+        Self {
+            params: RenderParams {
+                view_port_size,
+                zoom: TranslationAndScaling::identity(),
+                scene_from_camera,
+                maybe_interaction_enum: None,
+                compute_depth_texture: false,
+                backface_culling: false,
+                download_rgba: false,
+            },
+            offscreen_renderer,
+        }
+    }
+
+    /// set zoom
+    pub fn zoom(mut self, zoom: TranslationAndScaling) -> Self {
+        self.params.zoom = zoom;
+        self
+    }
+
+    /// set interaction
+    pub fn interaction(mut self, interaction_enum: &'a InteractionEnum) -> Self {
+        self.params.maybe_interaction_enum = Some(interaction_enum);
+        self
+    }
+
+    /// set compute depth texture
+    pub fn compute_depth_texture(mut self, compute_depth_texture: bool) -> Self {
+        self.params.compute_depth_texture = compute_depth_texture;
+        self
+    }
+
+    /// set backface culling
+    pub fn backface_culling(mut self, backface_culling: bool) -> Self {
+        self.params.backface_culling = backface_culling;
+        self
+    }
+
+    /// set download rgba
+    pub fn download_rgba(mut self, download_rgba: bool) -> Self {
+        self.params.download_rgba = download_rgba;
+        self
+    }
+
+    /// render
+    pub fn render(self) -> RenderResult {
+        self.offscreen_renderer.render_impl(&self.params)
+    }
 }
 
 impl OffscreenRenderer {
@@ -53,11 +121,7 @@ impl OffscreenRenderer {
     pub const BACKGROUND_IMAGE_PLANE: f64 = 900.0;
 
     /// create new offscreen renderer
-    pub fn new(
-        state: &RenderContext,
-        intrinsics: DynCamera<f64, 1>,
-        clipping_planes: ClippingPlanesF64,
-    ) -> Self {
+    pub fn new(state: &RenderContext, camera_properties: &RenderCameraProperties) -> Self {
         let depth_bias_state = wgpu::DepthBiasState {
             constant: 2,      // Adjust this value as needed
             slope_scale: 1.0, // Adjust this value as needed
@@ -70,53 +134,56 @@ impl OffscreenRenderer {
             stencil: wgpu::StencilState::default(),
             bias: depth_bias_state,
         });
+        let textures = Textures::new(state, &camera_properties.intrinsics.image_size());
         Self {
-            scene: SceneRenderer::new(
+            scene: SceneRenderer::new(state, camera_properties, depth_stencil.clone()),
+            pixel: PixelRenderer::new(
                 state,
-                intrinsics.clone(),
-                clipping_planes,
-                depth_stencil.clone(),
+                &camera_properties.intrinsics.image_size(),
+                depth_stencil,
             ),
-            pixel: PixelRenderer::new(state, &intrinsics.image_size(), depth_stencil),
-            textures: OffscreenTextures::new(state, &intrinsics.image_size()),
-            intrinsics: intrinsics.clone(),
-            clipping_planes,
+            textures,
+            camera_properties: camera_properties.clone(),
             state: state.clone(),
             maybe_background_image: None,
         }
     }
 
     /// get intrinsics
-    pub fn intrinsics(&self) -> DynCamera<f64, 1> {
-        self.intrinsics.clone()
+    pub fn intrinsics(&self) -> RenderIntrinsics {
+        self.camera_properties.intrinsics.clone()
     }
 
     /// reset 2d frame
     pub fn reset_2d_frame(
         &mut self,
-        intrinsics: &DynCamera<f64, 1>,
+        intrinsics: &RenderIntrinsics,
         maybe_background_image: Option<&ArcImage4U8>,
     ) {
-        self.intrinsics = intrinsics.clone();
+        self.camera_properties.intrinsics = intrinsics.clone();
         if let Some(background_image) = maybe_background_image {
-            let w = self.intrinsics.image_size().width;
-            let h = self.intrinsics.image_size().height;
+            let w = self.camera_properties.intrinsics.image_size().width;
+            let h = self.camera_properties.intrinsics.image_size().height;
 
             let far = Self::BACKGROUND_IMAGE_PLANE;
 
             let p0 = self
+                .camera_properties
                 .intrinsics
                 .cam_unproj_with_z(&VecF64::<2>::new(-0.5, -0.5), far)
                 .cast();
             let p1 = self
+                .camera_properties
                 .intrinsics
                 .cam_unproj_with_z(&VecF64::<2>::new(w as f64 - 0.5, -0.5), far)
                 .cast();
             let p2 = self
+                .camera_properties
                 .intrinsics
                 .cam_unproj_with_z(&VecF64::<2>::new(-0.5, h as f64 - 0.5), far)
                 .cast();
             let p3 = self
+                .camera_properties
                 .intrinsics
                 .cam_unproj_with_z(&VecF64::<2>::new(w as f64 - 0.5, h as f64 - 0.5), far)
                 .cast();
@@ -182,76 +249,73 @@ impl OffscreenRenderer {
         }
     }
 
-    fn render_impl(
+    /// render
+    pub fn render_params(
         &mut self,
         view_port_size: &ImageSize,
-        zoom: TranslationAndScaling,
-        scene_from_camera: Isometry3F64,
-        maybe_interaction_enum: Option<&InteractionEnum>,
-        compute_depth_texture: bool,
-        backface_culling: bool,
-        download_rgba: bool,
-    ) -> RenderResult {
-        if self.textures.view_port_size != *view_port_size {
-            self.textures = OffscreenTextures::new(&self.state, view_port_size);
+        world_from_camera: &Isometry3F64,
+    ) -> RenderBuilder {
+        RenderBuilder::new(*view_port_size, *world_from_camera, self)
+    }
+
+    fn render_impl(&mut self, state: &RenderParams) -> RenderResult {
+        if self.textures.view_port_size != state.view_port_size {
+            self.textures = Textures::new(&self.state, &state.view_port_size);
         }
 
-        self.scene.prepare(&self.state, zoom, &self.intrinsics);
+        self.scene
+            .prepare(&self.state, state.zoom, &self.camera_properties);
 
         self.maybe_background_image = None;
-        self.pixel
-            .prepare(&self.state, view_port_size, &self.intrinsics, zoom);
+        self.pixel.prepare(
+            &self.state,
+            &state.view_port_size,
+            &self.camera_properties.intrinsics,
+            state.zoom,
+        );
 
         let mut command_encoder = self
             .state
             .wgpu_device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
+        // pixel currently invalidates the z-buffer
+
         self.scene.paint(
             &self.state,
-            &scene_from_camera,
+            &state.scene_from_camera,
             &mut command_encoder,
             &self.textures.rgba.rgba_texture_view,
-            &self.textures.z_buffer,
-            backface_culling,
+            &self.textures.depth,
+            state.backface_culling,
         );
 
-        if let Some(interaction_enum) = maybe_interaction_enum {
-            self.pixel
-                .show_interaction_marker(&self.state, interaction_enum);
-        }
+        let depth_image = self.textures.depth.download_depth_image(
+            &self.state,
+            command_encoder,
+            &state.view_port_size,
+            &self.camera_properties.clipping_planes,
+        );
+        let mut command_encoder = self
+            .state
+            .wgpu_device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
         self.pixel.paint(
             &mut command_encoder,
             &self.textures.rgba.rgba_texture_view,
-            &self.textures.z_buffer,
+            &self.textures.depth,
         );
 
         self.state.wgpu_queue.submit(Some(command_encoder.finish()));
 
-        let mut command_encoder = self
-            .state
-            .wgpu_device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-        self.scene.depth_paint(
-            &self.state,
-            &scene_from_camera,
-            &mut command_encoder,
-            &self.textures.depth.depth_texture_view_f32,
-            &self.textures.z_buffer,
-            backface_culling,
-        );
+        if let Some(interaction_enum) = state.maybe_interaction_enum {
+            self.pixel
+                .show_interaction_marker(&self.state, interaction_enum);
+        }
 
-        let depth_image = DepthImage {
-            ndc_z_image: self.textures.depth.download_image(
-                &self.state,
-                command_encoder,
-                view_port_size,
-            ),
-            clipping_planes: self.clipping_planes.cast(),
-        };
         let mut image_4u8 = None;
-        if download_rgba {
+        if state.download_rgba {
             let command_encoder = self
                 .state
                 .wgpu_device
@@ -259,77 +323,20 @@ impl OffscreenRenderer {
             image_4u8 = Some(self.textures.rgba.download_rgba_image(
                 &self.state,
                 command_encoder,
-                view_port_size,
+                &state.view_port_size,
             ));
         }
-        if compute_depth_texture {
-            let image_rgba = depth_image.color_mapped();
-
-            self.state.wgpu_queue.write_texture(
-                wgpu::ImageCopyTexture {
-                    texture: &self.textures.depth.visual_texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                bytemuck::cast_slice(image_rgba.tensor.scalar_view().as_slice().unwrap()),
-                wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: Some(4 * image_rgba.image_size().width as u32),
-                    rows_per_image: Some(image_rgba.image_size().height as u32),
-                },
-                self.textures.depth.visual_texture.size(),
-            );
+        if state.compute_depth_texture {
+            self.textures
+                .depth
+                .compute_visual_depth_texture(&self.state, &depth_image);
         }
 
         RenderResult {
             rgba_image: image_4u8,
             rgba_egui_tex_id: self.textures.rgba.egui_tex_id,
             depth_image,
-            depth_egui_tex_id: self.textures.depth.egui_tex_id,
+            depth_egui_tex_id: self.textures.depth.visual_depth_texture.egui_tex_id,
         }
-    }
-
-    /// render with interaction marker
-    pub fn render_with_interaction_marker(
-        &mut self,
-        view_port_size: &ImageSize,
-        zoom: TranslationAndScaling,
-        scene_from_camera: Isometry3F64,
-        interaction_enum: &InteractionEnum,
-        compute_depth_texture: bool,
-        backface_culling: bool,
-        download_rgba: bool,
-    ) -> RenderResult {
-        self.render_impl(
-            view_port_size,
-            zoom,
-            scene_from_camera,
-            Some(interaction_enum),
-            compute_depth_texture,
-            backface_culling,
-            download_rgba,
-        )
-    }
-
-    /// render
-    pub fn render(
-        &mut self,
-        view_port_size: &ImageSize,
-        zoom: TranslationAndScaling,
-        scene_from_camera: Isometry3F64,
-        compute_depth_texture: bool,
-        backface_culling: bool,
-        download_rgba: bool,
-    ) -> RenderResult {
-        self.render_impl(
-            view_port_size,
-            zoom,
-            scene_from_camera,
-            None,
-            compute_depth_texture,
-            backface_culling,
-            download_rgba,
-        )
     }
 }

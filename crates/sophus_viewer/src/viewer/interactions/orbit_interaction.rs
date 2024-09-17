@@ -7,9 +7,9 @@ use sophus_image::ImageSize;
 use sophus_lie::traits::IsTranslationProductGroup;
 use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
-use sophus_sensor::DynCamera;
 
-use crate::renderer::types::ClippingPlanesF64;
+use crate::renderer::camera::clipping_planes::ClippingPlanesF64;
+use crate::renderer::camera::intrinsics::RenderIntrinsics;
 use crate::renderer::types::TranslationAndScaling;
 use crate::viewer::interactions::SceneFocus;
 use crate::viewer::interactions::ViewportScale;
@@ -76,7 +76,7 @@ impl OrbitalInteraction {
     /// Scroll left/right: rotate about scene focus
     pub fn process_scrolls(
         &mut self,
-        cam: &DynCamera<f64, 1>,
+        cam: &RenderIntrinsics,
         response: &egui::Response,
         scales: &ViewportScale,
         viewport_size: ImageSize,
@@ -110,14 +110,14 @@ impl OrbitalInteraction {
 
         if scroll_started {
             let uv_in_virtual_camera = scales.apply(uv_viewport);
-            let mut z = self.clipping_planes.metric_z_from_ndc_z(
-                z_buffer.pixel(uv_viewport.x as usize, uv_viewport.y as usize) as f64,
-            );
+            let ndc_z = z_buffer.pixel(uv_viewport.x as usize, uv_viewport.y as usize) as f64;
+            let mut z = self.clipping_planes.metric_z_from_ndc_z(ndc_z);
             if z >= self.clipping_planes.far {
                 z = self.median_scene_depth(z_buffer);
             }
             self.maybe_scene_focus = Some(SceneFocus {
                 depth: z,
+                ndc_z: ndc_z as f32,
                 uv_in_virtual_camera,
             });
             self.maybe_scroll_state = Some(OrbitalScrollState {});
@@ -170,7 +170,7 @@ impl OrbitalInteraction {
     /// secondary button: in-plane translate
     pub fn process_pointer(
         &mut self,
-        cam: &DynCamera<f64, 1>,
+        cam: &RenderIntrinsics,
         response: &egui::Response,
         scales: &ViewportScale,
         z_buffer: &ArcImageF32,
@@ -190,15 +190,15 @@ impl OrbitalInteraction {
 
             let uv_in_virtual_camera = scales.apply(uv_viewport);
 
-            let mut z = self.clipping_planes.metric_z_from_ndc_z(
-                z_buffer.pixel(uv_viewport.x as usize, uv_viewport.y as usize) as f64,
-            );
+            let ndc_z = z_buffer.pixel(uv_viewport.x as usize, uv_viewport.y as usize) as f64;
+            let mut z = self.clipping_planes.metric_z_from_ndc_z(ndc_z);
 
             if z >= self.clipping_planes.far {
                 z = self.median_scene_depth(z_buffer);
             }
             self.maybe_scene_focus = Some(SceneFocus {
                 depth: z,
+                ndc_z: ndc_z as f32,
                 uv_in_virtual_camera,
             });
             self.maybe_pointer_state = Some(OrbitalPointerState {
@@ -257,7 +257,7 @@ impl OrbitalInteraction {
     /// Process event
     pub fn process_event(
         &mut self,
-        cam: &DynCamera<f64, 1>,
+        cam: &RenderIntrinsics,
         response: &egui::Response,
         scales: &ViewportScale,
         view_port_size: ImageSize,

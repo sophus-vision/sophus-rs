@@ -1,26 +1,26 @@
-use sophus::examples::viewer_example::make_example_image;
-use sophus::image::ImageSize;
-use sophus::viewer::renderables::*;
-use sophus_image::intensity_image::intensity_arc_image::IsIntensityArcImage;
-use sophus_image::mut_image::MutImageF32;
-use sophus_image::mut_image_view::IsMutImageView;
-use sophus_lie::Isometry3;
-use sophus_sensor::DynCamera;
-use sophus_viewer::renderables::color::Color;
-use sophus_viewer::renderables::renderable2d::View2dPacket;
-use sophus_viewer::renderables::renderable3d::View3dPacket;
-use sophus_viewer::renderer::types::ClippingPlanes;
-use sophus_viewer::viewer::plugin::NullPlugin;
-use sophus_viewer::viewer::types::ViewerCamera;
-use sophus_viewer::viewer::SimpleViewer;
-use sophus_viewer::viewer::SimpleViewerBuilder;
-
 use crate::frame::Frame;
 use crate::renderable2d::make_line2;
 use crate::renderable2d::make_point2;
 use crate::renderable3d::make_line3;
 use crate::renderable3d::make_mesh3_at;
 use crate::renderable3d::make_point3;
+use sophus::examples::viewer_example::make_example_image;
+use sophus::image::ImageSize;
+use sophus::prelude::IsVector;
+use sophus::viewer::renderables::*;
+use sophus_core::linalg::VecF64;
+use sophus_image::intensity_image::intensity_arc_image::IsIntensityArcImage;
+use sophus_image::mut_image::MutImageF32;
+use sophus_image::mut_image_view::IsMutImageView;
+use sophus_lie::Isometry3;
+use sophus_sensor::dyn_camera::DynCameraF64;
+use sophus_viewer::renderables::color::Color;
+use sophus_viewer::renderables::renderable2d::View2dPacket;
+use sophus_viewer::renderables::renderable3d::View3dPacket;
+use sophus_viewer::renderer::camera::clipping_planes::ClippingPlanes;
+use sophus_viewer::renderer::camera::properties::RenderCameraProperties;
+use sophus_viewer::renderer::camera::RenderCamera;
+use sophus_viewer::viewer::simple_viewer::SimpleViewer;
 
 fn create_view2_packet() -> Packet {
     let img = make_example_image(ImageSize {
@@ -80,9 +80,14 @@ fn create_tiny_view2_packet() -> Packet {
 }
 
 fn create_view3_packet() -> Packet {
-    let initial_camera = ViewerCamera {
-        intrinsics: DynCamera::default_pinhole(ImageSize::new(639, 477)),
-        clipping_planes: ClippingPlanes::default(),
+    let initial_camera = RenderCamera {
+        properties: RenderCameraProperties::new(
+            DynCameraF64::new_unified(
+                &VecF64::from_array([500.0, 500.0, 300.0, 200.0, 0.629, 1.02]),
+                ImageSize::new(639, 479),
+            ),
+            ClippingPlanes::default(),
+        ),
         scene_from_camera: Isometry3::trans_z(-5.0),
     };
     let mut packet_3d = View3dPacket {
@@ -100,9 +105,16 @@ fn create_view3_packet() -> Packet {
     packet_3d.renderables3d.push(make_line3(
         "lines3",
         &[
-            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
-            [[0.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-            [[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
+            [[0.0, 0.1, 0.0], [0.1, 0.2, 0.0]],
+            [[0.1, 0.2, 0.0], [0.2, 0.3, 0.0]],
+            [[0.2, 0.3, 0.0], [0.3, 0.4, 0.0]],
+            [[0.3, 0.4, 0.0], [0.4, 0.5, 0.0]],
+            [[0.4, 0.5, 0.0], [0.5, 0.6, 0.0]],
+            [[0.5, 0.6, 0.0], [0.6, 0.7, 0.0]],
+            [[0.6, 0.7, 0.0], [0.7, 0.8, 0.0]],
+            [[0.7, 0.8, 0.0], [0.8, 0.9, 0.0]],
+            [[0.8, 0.9, 0.0], [0.9, 1.0, 0.0]],
+            [[0.9, 1.0, 0.0], [1.0, 1.1, 0.0]],
         ],
         &Color::green(),
         5.0,
@@ -120,7 +132,6 @@ fn create_view3_packet() -> Packet {
 
 pub async fn run_viewer_example() {
     let (message_tx, message_rx) = std::sync::mpsc::channel();
-    let (cancel_tx, _cancel_rx) = std::sync::mpsc::channel();
 
     tokio::spawn(async move {
         let mut packets = Packets { packets: vec![] };
@@ -130,11 +141,6 @@ pub async fn run_viewer_example() {
         message_tx.send(packets).unwrap();
     });
 
-    let builder = SimpleViewerBuilder {
-        message_recv: message_rx,
-        cancel_request_sender: cancel_tx,
-        plugin: NullPlugin {},
-    };
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default().with_inner_size([640.0, 480.0]),
         renderer: eframe::Renderer::Wgpu,
@@ -142,12 +148,12 @@ pub async fn run_viewer_example() {
         ..Default::default()
     };
     eframe::run_native(
-        "Egui actor",
+        "Viewer Example",
         options,
         Box::new(|cc| {
             Ok(SimpleViewer::new(
-                builder,
                 sophus_viewer::RenderContext::from_egui_cc(cc),
+                message_rx,
             ))
         }),
     )

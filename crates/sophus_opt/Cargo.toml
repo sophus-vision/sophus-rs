@@ -25,6 +25,7 @@ log.workspace = true
 nalgebra.workspace = true
 ndarray.workspace = true
 rand.workspace = true
+rayon = "1.10"
 
 [features]
 simd = [
