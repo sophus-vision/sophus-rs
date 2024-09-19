@@ -15,12 +15,13 @@ var mesh_texture_sampler: sampler;
 @vertex
 fn vs_main(
     @location(0) position: vec3<f32>,
-    @location(1) texCoords: vec2<f32>
+    @location(1) tex_coords: vec2<f32>
 ) -> VertexOut {
+    let projection = project_point(position, view_uniform, frustum_uniforms, zoom);
+
     var out: VertexOut;
-    var uv_z = scene_point_to_distorted(position, view_uniform, frustum_uniforms);
-    out.position = pixel_and_z_to_clip(uv_z.xy, uv_z.z, frustum_uniforms, zoom);
-    out.texCoords = texCoords;  // Pass texture coordinates to the fragment shader
+    out.position = pixel_and_z_to_clip(projection.uv_undistorted, projection.z, frustum_uniforms, zoom);
+    out.texCoords = tex_coords;
     return out;
 }
 

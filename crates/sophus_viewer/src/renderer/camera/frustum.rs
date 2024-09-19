@@ -1,7 +1,7 @@
 #[repr(C)]
 // This is so we can store this in a buffer
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub(crate) struct Frustum {
+pub(crate) struct CameraPropertiesUniform {
     pub(crate) camera_image_width: f32, // <= this is NOT the view-port width
     pub(crate) camera_image_height: f32, // <= this is NOT the view-port height
     pub(crate) near: f32,

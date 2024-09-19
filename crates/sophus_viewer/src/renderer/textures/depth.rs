@@ -88,7 +88,7 @@ impl DepthTextures {
         // Copy depth texture to staging buffer
         command_encoder.copy_texture_to_buffer(
             wgpu::ImageCopyTexture {
-                texture: &self.main_render_ndc_z_texture.ndc_z_texture,
+                texture: &self.main_render_ndc_z_texture.z_distorted_texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,

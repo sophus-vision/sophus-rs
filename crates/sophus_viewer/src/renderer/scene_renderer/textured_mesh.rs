@@ -10,7 +10,7 @@ use sophus_lie::Isometry3F64;
 use wgpu::DepthStencilState;
 
 use crate::renderables::renderable3d::TexturedTriangleMesh3;
-use crate::renderer::scene_renderer::buffers::SceneRenderBuffers;
+use crate::renderer::uniform_buffers::VertexShaderUniformBuffers;
 use crate::RenderContext;
 
 #[repr(C)]
@@ -177,8 +177,8 @@ impl TexturedMeshRenderer {
             source: wgpu::ShaderSource::Wgsl(
                 format!(
                     "{} {}",
-                    include_str!("./scene_utils.wgsl"),
-                    include_str!("./textured_mesh_scene_shader.wgsl")
+                    include_str!("./shaders/scene_utils.wgsl"),
+                    include_str!("./shaders/textured_mesh.wgsl")
                 )
                 .into(),
             ),
@@ -200,7 +200,7 @@ impl TexturedMeshRenderer {
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: "fs_main",
-                targets: &[Some(wgpu::TextureFormat::Rgba8UnormSrgb.into())],
+                targets: &[Some(wgpu::TextureFormat::Rgba32Float.into())],
                 compilation_options: Default::default(),
             }),
             primitive: wgpu::PrimitiveState::default(),
@@ -218,18 +218,20 @@ impl TexturedMeshRenderer {
         &'rp self,
         wgpu_render_state: &RenderContext,
         scene_from_camera: &Isometry3F64,
-        buffers: &'rp SceneRenderBuffers,
+        buffers: &'rp VertexShaderUniformBuffers,
         render_pass: &mut wgpu::RenderPass<'rp>,
     ) {
         render_pass.set_pipeline(&self.pipeline);
         render_pass.set_bind_group(0, &buffers.bind_group, &[]);
 
         for mesh in self.mesh_table.values() {
-            buffers.view_uniform.update_given_camera_and_entity(
-                &wgpu_render_state.wgpu_queue,
-                scene_from_camera,
-                &mesh.scene_from_entity,
-            );
+            buffers
+                .camera_from_entity_pose_buffer
+                .update_given_camera_and_entity(
+                    &wgpu_render_state.wgpu_queue,
+                    scene_from_camera,
+                    &mesh.scene_from_entity,
+                );
             render_pass.set_bind_group(1, &mesh.texture_bind_group, &[]);
             render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             render_pass.draw(0..mesh.vertex_data.len() as u32, 0..1);

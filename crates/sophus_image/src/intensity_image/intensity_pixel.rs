@@ -51,7 +51,7 @@ impl<Scalar: IsIntensityScalar> IntensityPixel<Scalar> for SVec<Scalar, 2> {
     type OtherPixel<OtherScalar: IsIntensityScalar> = SVec<OtherScalar, 2>;
 
     fn convert_to<OtherScalar: IsIntensityScalar>(&self) -> Self::OtherPixel<OtherScalar> {
-        SVec::<OtherScalar, 2>::new(self[0].cast_to(), self[1].cast_to())
+        SVec::<OtherScalar, 2>::new(self[0].convert_to(), self[1].convert_to())
     }
 
     fn to_grayscale(&self) -> Scalar {

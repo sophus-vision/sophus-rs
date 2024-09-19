@@ -311,7 +311,7 @@ macro_rules! mut_tensor_is_view {
                 .and(&view2.elem_view())
                 .for_each(
                     |out, v, v2|{
-                      *out = op(v,v2);
+                      *out = op(v, v2);
                     });
                 out
             }
@@ -419,6 +419,9 @@ macro_rules! mut_tensor_is_view {
             }
 
 
+
+
+
         }
     };
 }
@@ -435,6 +438,71 @@ mut_tensor_is_view!(4, 2, 2);
 mut_tensor_is_view!(5, 0, 5);
 mut_tensor_is_view!(5, 1, 4);
 mut_tensor_is_view!(5, 2, 3);
+
+macro_rules! mut_tensor_is_view_drank_1 {
+    ($scalar_rank:literal, $srank:literal) => {
+        impl<
+                'a,
+                Scalar: IsCoreScalar + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
+                const ROWS: usize,
+                const COLS: usize,
+            > MutTensor<$scalar_rank, 1, $srank, Scalar, STensor, ROWS, COLS>
+        {
+            /// create a new mutable tensor from fn
+            pub fn from_fn<F: FnMut([usize; 1]) -> STensor>(shape: [usize; 1], mut op: F) -> Self {
+                Self {
+                    mut_array: ndarray::Array::<STensor, Dim<[Ix; 1]>>::from_shape_fn(
+                        shape,
+                        |idx| op([idx]),
+                    ),
+                    phantom: PhantomData::default(),
+                }
+            }
+        }
+    };
+}
+
+mut_tensor_is_view_drank_1!(1, 0);
+mut_tensor_is_view_drank_1!(2, 1);
+mut_tensor_is_view_drank_1!(3, 2);
+
+macro_rules! mut_tensor_is_view_drank_2_plus {
+    ($scalar_rank:literal, $srank:literal, $drank:literal) => {
+        impl<
+                'a,
+                Scalar: IsCoreScalar + 'static,
+                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
+                const ROWS: usize,
+                const COLS: usize,
+            > MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS>
+        {
+            /// create a new mutable tensor from fn
+            pub fn from_fn<F: FnMut([usize; $drank]) -> STensor>(
+                shape: [usize; $drank],
+                mut op: F,
+            ) -> Self {
+                Self {
+                    mut_array: ndarray::Array::<STensor, Dim<[Ix; $drank]>>::from_shape_fn(
+                        shape,
+                        |idx| op(idx.try_into().unwrap()),
+                    ),
+                    phantom: PhantomData::default(),
+                }
+            }
+        }
+    };
+}
+
+mut_tensor_is_view_drank_2_plus!(2, 0, 2);
+mut_tensor_is_view_drank_2_plus!(3, 0, 3);
+mut_tensor_is_view_drank_2_plus!(3, 1, 2);
+mut_tensor_is_view_drank_2_plus!(4, 0, 4);
+mut_tensor_is_view_drank_2_plus!(4, 1, 3);
+mut_tensor_is_view_drank_2_plus!(4, 2, 2);
+mut_tensor_is_view_drank_2_plus!(5, 0, 5);
+mut_tensor_is_view_drank_2_plus!(5, 1, 4);
+mut_tensor_is_view_drank_2_plus!(5, 2, 3);
 
 #[test]
 fn mut_tensor_tests() {

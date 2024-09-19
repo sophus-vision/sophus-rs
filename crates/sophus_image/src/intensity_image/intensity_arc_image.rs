@@ -14,7 +14,7 @@ use sophus_core::linalg::SVec;
 /// Hence it s a trait for grayscale (1-channel), grayscale+alpha (2-channel), RGB (3-channel), and
 /// RGBA images (4-channel).
 ///
-/// This trait provides methods for converting between different image type. As of now, three
+/// This trait provides methods for converting between di   erent image type. As of now, three
 /// scalar type are supported: `u8`, `u16`, and `f32`:
 ///
 ///  - u8 images are in the range [0, 255], i.e. 100% intensity corresponds to 255.
@@ -93,6 +93,7 @@ impl<Scalar: IsIntensityScalar + 'static> IsIntensityArcImage<Scalar, Scalar> fo
     }
 
     fn convert_to<OtherScalar: IsIntensityScalar>(self) -> ArcImage<OtherScalar> {
+        println!("convert to");
         if TypeId::of::<Scalar>() == TypeId::of::<OtherScalar>() {
             // If the scalar type is the same, just return the image.
 
@@ -159,7 +160,7 @@ impl<Scalar: IsIntensityScalar + 'static> IsIntensityArcImage<Scalar, SVec<Scala
         ArcImageR::<OtherScalar, 2>::from_map(
             &self.image_view(),
             |rgba: &SVec<Scalar, 2>| -> SVec<OtherScalar, 2> {
-                SVec::<OtherScalar, 2>::new(rgba[0].cast_to(), rgba[1].cast_to())
+                SVec::<OtherScalar, 2>::new(rgba[0].convert_to(), rgba[1].convert_to())
             },
         )
     }
@@ -215,7 +216,11 @@ impl<Scalar: IsIntensityScalar + 'static> IsIntensityArcImage<Scalar, SVec<Scala
         ArcImageR::<OtherScalar, 3>::from_map(
             &self.image_view(),
             |rgb: &SVec<Scalar, 3>| -> SVec<OtherScalar, 3> {
-                SVec::<OtherScalar, 3>::new(rgb[0].cast_to(), rgb[1].cast_to(), rgb[2].cast_to())
+                SVec::<OtherScalar, 3>::new(
+                    rgb[0].convert_to(),
+                    rgb[1].convert_to(),
+                    rgb[2].convert_to(),
+                )
             },
         )
     }
@@ -260,6 +265,8 @@ impl<Scalar: IsIntensityScalar + 'static> IsIntensityArcImage<Scalar, SVec<Scala
     }
 
     fn convert_to<OtherScalar: IsIntensityScalar>(self) -> ArcImageR<OtherScalar, 4> {
+        println!("convert to");
+
         if TypeId::of::<Scalar>() == TypeId::of::<OtherScalar>() {
             // If the scalar type is the same, just return the image.
 
@@ -272,10 +279,10 @@ impl<Scalar: IsIntensityScalar + 'static> IsIntensityArcImage<Scalar, SVec<Scala
             &self.image_view(),
             |rgba: &SVec<Scalar, 4>| -> SVec<OtherScalar, 4> {
                 SVec::<OtherScalar, 4>::new(
-                    rgba[0].cast_to(),
-                    rgba[1].cast_to(),
-                    rgba[2].cast_to(),
-                    rgba[3].cast_to(),
+                    rgba[0].convert_to(),
+                    rgba[1].convert_to(),
+                    rgba[2].convert_to(),
+                    rgba[3].convert_to(),
                 )
             },
         )

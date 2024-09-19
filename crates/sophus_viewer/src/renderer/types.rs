@@ -32,16 +32,16 @@ impl HasAspectRatio for OffscreenRenderer {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub(crate) struct Zoom2d {
+pub(crate) struct Zoom2dPod {
     pub(crate) translation_x: f32,
     pub(crate) translation_y: f32,
     pub(crate) scaling_x: f32,
     pub(crate) scaling_y: f32,
 }
 
-impl Default for Zoom2d {
+impl Default for Zoom2dPod {
     fn default() -> Self {
-        Zoom2d {
+        Zoom2dPod {
             translation_x: 0.0,
             translation_y: 0.0,
             scaling_x: 1.0,

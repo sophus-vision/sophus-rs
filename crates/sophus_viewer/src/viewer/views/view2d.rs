@@ -71,6 +71,7 @@ impl View2d {
         };
 
         view.renderer.update_2d_renderables(packet.renderables2d);
+        view.renderer.update_3d_renderables(packet.renderables3d);
     }
 
     pub fn intrinsics(&self) -> RenderIntrinsics {

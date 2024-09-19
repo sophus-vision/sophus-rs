@@ -7,7 +7,7 @@ use sophus_lie::Isometry3F64;
 use wgpu::DepthStencilState;
 
 use crate::renderables::renderable3d::TriangleMesh3;
-use crate::renderer::scene_renderer::buffers::SceneRenderBuffers;
+use crate::renderer::uniform_buffers::VertexShaderUniformBuffers;
 use crate::RenderContext;
 
 #[repr(C)]
@@ -96,7 +96,7 @@ impl MeshRenderer {
             fragment: Some(wgpu::FragmentState {
                 module: shader,
                 entry_point: "fs_main",
-                targets: &[Some(wgpu::TextureFormat::Rgba8UnormSrgb.into())],
+                targets: &[Some(wgpu::TextureFormat::Rgba32Float.into())],
                 compilation_options: Default::default(),
             }),
             primitive: wgpu::PrimitiveState {
@@ -114,7 +114,6 @@ impl MeshRenderer {
     /// Create a new scene mesh renderer
     pub fn new(
         wgpu_render_state: &RenderContext,
-        pipeline_layout: &wgpu::PipelineLayout,
         depth_stencil: Option<DepthStencilState>,
     ) -> Self {
         let device = &wgpu_render_state.wgpu_device;
@@ -124,17 +123,76 @@ impl MeshRenderer {
             source: wgpu::ShaderSource::Wgsl(
                 format!(
                     "{} {}",
-                    include_str!("./scene_utils.wgsl"),
-                    include_str!("./mesh_scene_shader.wgsl")
+                    include_str!("./shaders/scene_utils.wgsl"),
+                    include_str!("./shaders/mesh.wgsl")
                 )
                 .into(),
             ),
         });
 
+        let uniform_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("scene render layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+
+        // let texture_bind_group_layout =
+        //     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        //         label: Some("scene render texture layout"),
+        //         entries: &[wgpu::BindGroupLayoutEntry {
+        //             binding: 0,
+        //             visibility: wgpu::ShaderStages::FRAGMENT,
+        //             ty: wgpu::BindingType::StorageTexture {
+        //                 access: wgpu::StorageTextureAccess::WriteOnly,
+        //                 format: wgpu::TextureFormat::R32Float,
+        //                 view_dimension: wgpu::TextureViewDimension::D2,
+        //             },
+        //             count: None,
+        //         }],
+        //     });
+
+        // Create a new pipeline layout that includes both bind group layouts
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Mesh Renderer Pipeline Layout"),
+            bind_group_layouts: &[&uniform_bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
         let pipeline_with_culling = Self::create_render_pipeline(
             device,
             &shader,
-            pipeline_layout,
+            &pipeline_layout,
             depth_stencil.clone(),
             Some(wgpu::Face::Back),
         );
@@ -142,7 +200,7 @@ impl MeshRenderer {
         let pipeline_without_culling = Self::create_render_pipeline(
             device,
             &shader,
-            pipeline_layout,
+            &pipeline_layout,
             depth_stencil.clone(),
             None,
         );
@@ -158,7 +216,7 @@ impl MeshRenderer {
         &'rp self,
         wgpu_render_state: &RenderContext,
         scene_from_camera: &Isometry3F64,
-        buffers: &'rp SceneRenderBuffers,
+        buffers: &'rp VertexShaderUniformBuffers,
         render_pass: &mut wgpu::RenderPass<'rp>,
         backface_culling: bool,
     ) {
@@ -169,13 +227,16 @@ impl MeshRenderer {
         };
         render_pass.set_pipeline(pipeline);
         render_pass.set_bind_group(0, &buffers.bind_group, &[]);
+        //  render_pass.set_bind_group(1, &buffers.texture_bind_group, &[]);
 
         for mesh in self.mesh_table.values() {
-            buffers.view_uniform.update_given_camera_and_entity(
-                &wgpu_render_state.wgpu_queue,
-                scene_from_camera,
-                &mesh.scene_from_entity,
-            );
+            buffers
+                .camera_from_entity_pose_buffer
+                .update_given_camera_and_entity(
+                    &wgpu_render_state.wgpu_queue,
+                    scene_from_camera,
+                    &mesh.scene_from_entity,
+                );
             render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             render_pass.draw(0..mesh.vertex_data.len() as u32, 0..1);
         }

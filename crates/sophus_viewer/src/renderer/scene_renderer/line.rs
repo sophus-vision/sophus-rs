@@ -7,7 +7,7 @@ use sophus_lie::Isometry3F64;
 use wgpu::DepthStencilState;
 
 use crate::renderables::renderable3d::LineSegments3;
-use crate::renderer::scene_renderer::buffers::SceneRenderBuffers;
+use crate::renderer::uniform_buffers::VertexShaderUniformBuffers;
 use crate::RenderContext;
 
 #[repr(C)]
@@ -90,8 +90,8 @@ impl SceneLineRenderer {
             source: wgpu::ShaderSource::Wgsl(
                 format!(
                     "{} {}",
-                    include_str!("./scene_utils.wgsl"),
-                    include_str!("./line_scene_shader.wgsl")
+                    include_str!("./shaders/scene_utils.wgsl"),
+                    include_str!("./shaders/line.wgsl")
                 )
                 .into(),
             ),
@@ -114,7 +114,7 @@ impl SceneLineRenderer {
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: "fs_main",
-                targets: &[Some(wgpu::TextureFormat::Rgba8UnormSrgb.into())],
+                targets: &[Some(wgpu::TextureFormat::Rgba32Float.into())],
                 compilation_options: Default::default(),
             }),
             primitive: wgpu::PrimitiveState::default(),
@@ -134,18 +134,20 @@ impl SceneLineRenderer {
         &'rp self,
         wgpu_render_state: &RenderContext,
         scene_from_camera: &Isometry3F64,
-        buffers: &'rp SceneRenderBuffers,
+        buffers: &'rp VertexShaderUniformBuffers,
         render_pass: &mut wgpu::RenderPass<'rp>,
     ) {
         render_pass.set_pipeline(&self.pipeline);
         render_pass.set_bind_group(0, &buffers.bind_group, &[]);
 
         for line in self.line_table.values() {
-            buffers.view_uniform.update_given_camera_and_entity(
-                &wgpu_render_state.wgpu_queue,
-                scene_from_camera,
-                &line.scene_from_entity,
-            );
+            buffers
+                .camera_from_entity_pose_buffer
+                .update_given_camera_and_entity(
+                    &wgpu_render_state.wgpu_queue,
+                    scene_from_camera,
+                    &line.scene_from_entity,
+                );
             render_pass.set_vertex_buffer(0, line.vertex_buffer.slice(..));
             render_pass.draw(0..line.vertex_data.len() as u32, 0..1);
         }

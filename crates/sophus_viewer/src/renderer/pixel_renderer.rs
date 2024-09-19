@@ -1,5 +1,7 @@
 /// Line renderer
 pub mod pixel_line;
+/// pipelines
+pub mod pixel_pipelines;
 /// Pixel point renderer
 pub mod pixel_point;
 
@@ -8,15 +10,13 @@ use bytemuck::Zeroable;
 use sophus_image::ImageSize;
 use std::num::NonZeroU64;
 use wgpu::util::DeviceExt;
-use wgpu::DepthStencilState;
 
 use crate::renderer::camera::intrinsics::RenderIntrinsics;
 use crate::renderer::pixel_renderer::pixel_line::PixelLineRenderer;
 use crate::renderer::pixel_renderer::pixel_point::PixelPointRenderer;
-use crate::renderer::textures::depth::DepthTextures;
 use crate::renderer::textures::depth_image::ndc_z_to_color;
 use crate::renderer::types::TranslationAndScaling;
-use crate::renderer::types::Zoom2d;
+use crate::renderer::types::Zoom2dPod;
 use crate::viewer::interactions::InteractionEnum;
 use crate::RenderContext;
 
@@ -60,11 +60,7 @@ pub struct PointVertex2 {
 
 impl PixelRenderer {
     /// Create a new pixel renderer
-    pub fn new(
-        wgpu_render_state: &RenderContext,
-        image_size: &ImageSize,
-        depth_stencil: Option<DepthStencilState>,
-    ) -> Self {
+    pub fn new(wgpu_render_state: &RenderContext, image_size: &ImageSize) -> Self {
         let device = &wgpu_render_state.wgpu_device;
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -112,7 +108,7 @@ impl PixelRenderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let t_and_s_uniform = Zoom2d::default();
+        let t_and_s_uniform = Zoom2dPod::default();
 
         let t_and_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("zoom buffer"),
@@ -138,16 +134,8 @@ impl PixelRenderer {
         Self {
             ortho_cam_buffer,
             uniform_bind_group,
-            line_renderer: PixelLineRenderer::new(
-                wgpu_render_state,
-                &pipeline_layout,
-                depth_stencil.clone(),
-            ),
-            point_renderer: PixelPointRenderer::new(
-                wgpu_render_state,
-                &pipeline_layout,
-                depth_stencil,
-            ),
+            line_renderer: PixelLineRenderer::new(wgpu_render_state, &pipeline_layout),
+            point_renderer: PixelPointRenderer::new(wgpu_render_state, &pipeline_layout),
             zoom_buffer: t_and_buffer,
         }
     }
@@ -207,7 +195,7 @@ impl PixelRenderer {
             bytemuck::cast_slice(&[ortho_cam_uniforms]),
         );
 
-        let zoom_uniform = Zoom2d {
+        let zoom_uniform = Zoom2dPod {
             translation_x: zoom_2d.translation[0] as f32,
             translation_y: zoom_2d.translation[1] as f32,
             scaling_x: zoom_2d.scaling[0] as f32,
@@ -223,7 +211,6 @@ impl PixelRenderer {
         &'rp self,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         texture_view: &'rp wgpu::TextureView,
-        depth: &DepthTextures,
     ) {
         let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
@@ -235,14 +222,7 @@ impl PixelRenderer {
                     store: wgpu::StoreOp::Store,
                 },
             })],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &depth.main_render_ndc_z_texture.ndc_z_texture_view,
-                depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.0),
-                    store: wgpu::StoreOp::Store,
-                }),
-                stencil_ops: None,
-            }),
+            depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
         });

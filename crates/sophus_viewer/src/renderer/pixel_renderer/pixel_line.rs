@@ -65,11 +65,7 @@ pub struct PixelLineRenderer {
 
 impl PixelLineRenderer {
     /// Create a new pixel line renderer
-    pub fn new(
-        wgpu_render_state: &RenderContext,
-        pipeline_layout: &wgpu::PipelineLayout,
-        depth_stencil: Option<DepthStencilState>,
-    ) -> Self {
+    pub fn new(wgpu_render_state: &RenderContext, pipeline_layout: &wgpu::PipelineLayout) -> Self {
         let device = &wgpu_render_state.wgpu_device;
 
         let line_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -101,7 +97,7 @@ impl PixelLineRenderer {
             fragment: Some(wgpu::FragmentState {
                 module: &line_shader,
                 entry_point: "fs_main",
-                targets: &[Some(wgpu::TextureFormat::Rgba8UnormSrgb.into())],
+                targets: &[Some(wgpu::TextureFormat::Rgba8Unorm.into())],
                 compilation_options: Default::default(),
             }),
             primitive: wgpu::PrimitiveState {
@@ -109,7 +105,7 @@ impl PixelLineRenderer {
                 front_face: wgpu::FrontFace::Ccw,
                 ..Default::default()
             },
-            depth_stencil,
+            depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
             multiview: None,
         });

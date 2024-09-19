@@ -276,6 +276,18 @@ macro_rules! arc_tensor_is_tensor_view {
                     >::from_map(view, op),
                 )
             }
+
+            /// create a new tensor from a fn
+            pub fn from_fn<F: FnMut([usize; $drank]) -> STensor>(
+                shape: [usize; $drank],
+                op: F,
+            ) -> Self {
+                Self::from_mut_tensor(
+                    MutTensor::<
+                        $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS
+                    >::from_fn(shape, op),
+                )
+            }
         }
     };
 }
