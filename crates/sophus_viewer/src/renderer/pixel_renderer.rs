@@ -3,152 +3,39 @@ pub mod pixel_line;
 /// Pixel point renderer
 pub mod pixel_point;
 
-use bytemuck::Pod;
-use bytemuck::Zeroable;
-use sophus_image::ImageSize;
-use std::num::NonZeroU64;
-use wgpu::util::DeviceExt;
-use wgpu::DepthStencilState;
-
-use crate::renderer::camera::intrinsics::RenderIntrinsics;
+use crate::renderer::pipeline_builder::PipelineBuilder;
+use crate::renderer::pipeline_builder::PointVertex2;
+use crate::renderer::pipeline_builder::TargetTexture;
 use crate::renderer::pixel_renderer::pixel_line::PixelLineRenderer;
 use crate::renderer::pixel_renderer::pixel_point::PixelPointRenderer;
-use crate::renderer::textures::depth::DepthTextures;
 use crate::renderer::textures::depth_image::ndc_z_to_color;
-use crate::renderer::types::TranslationAndScaling;
-use crate::renderer::types::Zoom2d;
+use crate::renderer::uniform_buffers::VertexShaderUniformBuffers;
 use crate::viewer::interactions::InteractionEnum;
 use crate::RenderContext;
+use std::sync::Arc;
 
 /// Renderer for pixel data
 pub struct PixelRenderer {
-    pub(crate) uniform_bind_group: wgpu::BindGroup,
-    pub(crate) ortho_cam_buffer: wgpu::Buffer,
-    pub(crate) zoom_buffer: wgpu::Buffer,
     pub(crate) line_renderer: PixelLineRenderer,
     pub(crate) point_renderer: PixelPointRenderer,
-}
-
-#[repr(C)]
-// This is so we can store this in a buffer
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct OrthoCam {
-    virtual_camera_width: f32,
-    virtual_camera_height: f32,
-    viewport_scale: f32, // virtual_camera_width / viewport_width
-    dummy: f32,
-}
-
-/// 2D line vertex
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-pub struct LineVertex2 {
-    pub(crate) _pos: [f32; 2],
-    pub(crate) _color: [f32; 4],
-    pub(crate) _normal: [f32; 2],
-    pub(crate) _line_width: f32,
-}
-
-/// 2D point vertex
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-pub struct PointVertex2 {
-    pub(crate) _pos: [f32; 2],
-    pub(crate) _point_size: f32,
-    pub(crate) _color: [f32; 4],
+    pub(crate) pixel_pipeline_builder: PipelineBuilder,
 }
 
 impl PixelRenderer {
     /// Create a new pixel renderer
-    pub fn new(
-        wgpu_render_state: &RenderContext,
-        image_size: &ImageSize,
-        depth_stencil: Option<DepthStencilState>,
-    ) -> Self {
-        let device = &wgpu_render_state.wgpu_device;
-
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("pixel render layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: NonZeroU64::new(16),
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: NonZeroU64::new(16),
-                    },
-                    count: None,
-                },
-            ],
-        });
-
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("pixel pipeline"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
-
-        let camera_uniform = OrthoCam {
-            virtual_camera_width: image_size.width as f32,
-            virtual_camera_height: image_size.height as f32,
-            viewport_scale: 1.0,
-            dummy: 0.0,
-        };
-
-        let ortho_cam_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("pixel uniform buffer"),
-            contents: bytemuck::cast_slice(&[camera_uniform]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
-        let t_and_s_uniform = Zoom2d::default();
-
-        let t_and_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("zoom buffer"),
-            contents: bytemuck::cast_slice(&[t_and_s_uniform]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
-        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("pixel uniform bind group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: ortho_cam_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: t_and_buffer.as_entire_binding(),
-                },
-            ],
-        });
+    pub fn new(render_context: &RenderContext, uniforms: Arc<VertexShaderUniformBuffers>) -> Self {
+        let pixel_pipeline_builder = PipelineBuilder::new_pixel(
+            render_context,
+            Arc::new(TargetTexture {
+                rgba_output_format: wgpu::TextureFormat::Rgba8Unorm,
+            }),
+            uniforms.clone(),
+        );
 
         Self {
-            ortho_cam_buffer,
-            uniform_bind_group,
-            line_renderer: PixelLineRenderer::new(
-                wgpu_render_state,
-                &pipeline_layout,
-                depth_stencil.clone(),
-            ),
-            point_renderer: PixelPointRenderer::new(
-                wgpu_render_state,
-                &pipeline_layout,
-                depth_stencil,
-            ),
-            zoom_buffer: t_and_buffer,
+            line_renderer: PixelLineRenderer::new(render_context, &pixel_pipeline_builder),
+            point_renderer: PixelPointRenderer::new(render_context, &pixel_pipeline_builder),
+            pixel_pipeline_builder,
         }
     }
 
@@ -187,43 +74,10 @@ impl PixelRenderer {
         }
     }
 
-    pub(crate) fn prepare(
-        &self,
-        state: &RenderContext,
-        viewport_size: &ImageSize,
-        intrinsics: &RenderIntrinsics,
-        zoom_2d: TranslationAndScaling,
-    ) {
-        let ortho_cam_uniforms = OrthoCam {
-            virtual_camera_width: intrinsics.image_size().width as f32,
-            virtual_camera_height: intrinsics.image_size().height as f32,
-            viewport_scale: intrinsics.image_size().width as f32 / viewport_size.width as f32,
-            dummy: 0.0,
-        };
-
-        state.wgpu_queue.write_buffer(
-            &self.ortho_cam_buffer,
-            0,
-            bytemuck::cast_slice(&[ortho_cam_uniforms]),
-        );
-
-        let zoom_uniform = Zoom2d {
-            translation_x: zoom_2d.translation[0] as f32,
-            translation_y: zoom_2d.translation[1] as f32,
-            scaling_x: zoom_2d.scaling[0] as f32,
-            scaling_y: zoom_2d.scaling[1] as f32,
-        };
-
-        state
-            .wgpu_queue
-            .write_buffer(&self.zoom_buffer, 0, bytemuck::cast_slice(&[zoom_uniform]));
-    }
-
     pub(crate) fn paint<'rp>(
         &'rp self,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         texture_view: &'rp wgpu::TextureView,
-        depth: &DepthTextures,
     ) {
         let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
@@ -235,20 +89,17 @@ impl PixelRenderer {
                     store: wgpu::StoreOp::Store,
                 },
             })],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &depth.main_render_ndc_z_texture.ndc_z_texture_view,
-                depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.0),
-                    store: wgpu::StoreOp::Store,
-                }),
-                stencil_ops: None,
-            }),
+            depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
         });
-        self.line_renderer
-            .paint(&mut render_pass, &self.uniform_bind_group);
-        self.point_renderer
-            .paint(&mut render_pass, &self.uniform_bind_group);
+        render_pass.set_bind_group(
+            0,
+            &self.pixel_pipeline_builder.uniforms.render_bind_group,
+            &[],
+        );
+
+        self.line_renderer.paint(&mut render_pass);
+        self.point_renderer.paint(&mut render_pass);
     }
 }

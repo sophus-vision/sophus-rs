@@ -4,7 +4,7 @@ use crate::renderable2d::make_point2;
 use crate::renderable3d::make_line3;
 use crate::renderable3d::make_mesh3_at;
 use crate::renderable3d::make_point3;
-use sophus::examples::viewer_example::make_example_image;
+use sophus::examples::viewer_example::make_distorted_frame;
 use sophus::image::ImageSize;
 use sophus::prelude::IsVector;
 use sophus::viewer::renderables::*;
@@ -22,17 +22,12 @@ use sophus_viewer::renderer::camera::properties::RenderCameraProperties;
 use sophus_viewer::renderer::camera::RenderCamera;
 use sophus_viewer::viewer::simple_viewer::SimpleViewer;
 
-fn create_view2_packet() -> Packet {
-    let img = make_example_image(ImageSize {
-        width: 300,
-        height: 100,
-    });
-
+fn create_disrtorted_view2_packet() -> Packet {
     let mut packet_2d = View2dPacket {
-        view_label: "view_2d".to_owned(),
+        view_label: "distorted".to_owned(),
         renderables3d: vec![],
         renderables2d: vec![],
-        frame: Some(Frame::from_image(&img)),
+        frame: Some(make_distorted_frame()),
     };
 
     packet_2d.renderables2d.push(make_point2(
@@ -44,7 +39,19 @@ fn create_view2_packet() -> Packet {
     packet_2d.renderables2d.push(make_line2(
         "lines2",
         &[[[0.0, 0.0], [20.0, 20.0]]],
-        &Color::red(),
+        &Color::blue(),
+        5.0,
+    ));
+
+    packet_2d.renderables3d.push(make_line3(
+        "lines3",
+        &[
+            [[-0.5, -0.3, 1.0], [-0.5, 0.3, 1.0]],
+            [[-0.5, 0.3, 1.0], [0.5, 0.3, 1.0]],
+            [[0.5, 0.3, 1.0], [0.5, -0.3, 1.0]],
+            [[0.5, -0.3, 1.0], [-0.5, -0.3, 1.0]],
+        ],
+        &Color::green(),
         5.0,
     ));
 
@@ -79,19 +86,32 @@ fn create_tiny_view2_packet() -> Packet {
     Packet::View2d(packet_2d)
 }
 
-fn create_view3_packet() -> Packet {
+fn create_view3_packet(pinhole: bool) -> Packet {
+    let unified_cam = DynCameraF64::new_unified(
+        &VecF64::from_array([500.0, 500.0, 320.0, 240.0, 0.629, 1.02]),
+        ImageSize::new(639, 479),
+    );
+    let pinhole_cam = DynCameraF64::new_pinhole(
+        &VecF64::from_array([500.0, 500.0, 320.0, 240.0]),
+        ImageSize::new(639, 479),
+    );
+
     let initial_camera = RenderCamera {
         properties: RenderCameraProperties::new(
-            DynCameraF64::new_unified(
-                &VecF64::from_array([500.0, 500.0, 300.0, 200.0, 0.629, 1.02]),
-                ImageSize::new(639, 479),
-            ),
+            match pinhole {
+                true => pinhole_cam,
+                false => unified_cam,
+            },
             ClippingPlanes::default(),
         ),
         scene_from_camera: Isometry3::trans_z(-5.0),
     };
+
     let mut packet_3d = View3dPacket {
-        view_label: "view_3d".to_owned(),
+        view_label: match pinhole {
+            false => "distorted_view_3d".to_owned(),
+            true => "view_3d".to_owned(),
+        },
         renderables3d: vec![],
         initial_camera: initial_camera.clone(),
     };
@@ -135,14 +155,15 @@ pub async fn run_viewer_example() {
 
     tokio::spawn(async move {
         let mut packets = Packets { packets: vec![] };
-        packets.packets.push(create_view3_packet());
-        packets.packets.push(create_view2_packet());
+        packets.packets.push(create_view3_packet(true));
+        packets.packets.push(create_view3_packet(false));
+        packets.packets.push(create_disrtorted_view2_packet());
         packets.packets.push(create_tiny_view2_packet());
         message_tx.send(packets).unwrap();
     });
 
     let options = eframe::NativeOptions {
-        viewport: eframe::egui::ViewportBuilder::default().with_inner_size([640.0, 480.0]),
+        viewport: eframe::egui::ViewportBuilder::default().with_inner_size([850.0, 480.0]),
         renderer: eframe::Renderer::Wgpu,
 
         ..Default::default()

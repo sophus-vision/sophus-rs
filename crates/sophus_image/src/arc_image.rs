@@ -191,6 +191,22 @@ macro_rules! arc_image {
                 }
             }
 
+            /// create a new image from fn
+            pub fn from_fn<F: FnMut([usize; 2]) -> STensor>(
+                image_size: ImageSize,
+                op: F) -> Self {
+                Self {
+                    tensor: ArcTensor::<
+                        $scalar_rank,
+                        2,
+                        $srank,
+                        Scalar,
+                        STensor,
+                        ROWS,
+                        COLS,
+                    >::from_fn(image_size.into(), op),
+                }
+            }
         }
 
         /// creates an image from a binary operator applied to two image views
@@ -248,6 +264,7 @@ macro_rules! arc_image {
                 self.image_view().image_size()
             }
         }
+
     };
 }
 

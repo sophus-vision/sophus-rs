@@ -1,5 +1,6 @@
 use sophus_core::linalg::VecF64;
 use sophus_image::ImageSize;
+use sophus_lie::prelude::IsVector;
 use sophus_sensor::camera_enum::perspective_camera::PinholeCameraF64;
 use sophus_sensor::camera_enum::perspective_camera::UnifiedCameraF64;
 use sophus_sensor::camera_enum::PerspectiveCameraEnum;
@@ -15,6 +16,18 @@ pub enum RenderIntrinsics {
 }
 
 impl RenderIntrinsics {
+    /// Create a new RenderIntrinsics from a DynCameraF64
+    pub fn new(camera: &DynCameraF64) -> RenderIntrinsics {
+        match camera.model_enum() {
+            PerspectiveCameraEnum::Pinhole(pinhole) => RenderIntrinsics::Pinhole(*pinhole),
+            PerspectiveCameraEnum::KannalaBrandt(_camera) => todo!(),
+            PerspectiveCameraEnum::BrownConrady(_camera) => todo!(),
+            PerspectiveCameraEnum::UnifiedExtended(camera) => {
+                RenderIntrinsics::UnifiedExtended(*camera)
+            }
+        }
+    }
+
     /// Get the image size
     pub fn image_size(&self) -> ImageSize {
         match self {
@@ -31,15 +44,19 @@ impl RenderIntrinsics {
         }
     }
 
-    /// Create a new RenderIntrinsics from a DynCameraF64
-    pub fn new(camera: &DynCameraF64) -> RenderIntrinsics {
-        match camera.model_enum() {
-            PerspectiveCameraEnum::Pinhole(pinhole) => RenderIntrinsics::Pinhole(*pinhole),
-            PerspectiveCameraEnum::KannalaBrandt(_camera) => todo!(),
-            PerspectiveCameraEnum::BrownConrady(_camera) => todo!(),
-            PerspectiveCameraEnum::UnifiedExtended(camera) => {
-                RenderIntrinsics::UnifiedExtended(*camera)
-            }
+    /// Return pinhole model
+    pub fn pinhole_model(&self) -> PinholeCameraF64 {
+        match self {
+            RenderIntrinsics::Pinhole(camera) => *camera,
+            RenderIntrinsics::UnifiedExtended(camera) => PinholeCameraF64::new(
+                &VecF64::<4>::from_array([
+                    0.5 * camera.params()[0],
+                    0.5 * camera.params()[1],
+                    camera.params()[2],
+                    camera.params()[3],
+                ]),
+                camera.image_size(),
+            ),
         }
     }
 }

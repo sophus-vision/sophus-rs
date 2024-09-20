@@ -139,6 +139,7 @@ impl ViewerBase {
                                 render_result.depth_egui_tex_id
                             } else {
                                 render_result.rgba_egui_tex_id
+                                // render_result.rgba_egui_tex_id
                             };
 
                             let ui_response = ui.add(

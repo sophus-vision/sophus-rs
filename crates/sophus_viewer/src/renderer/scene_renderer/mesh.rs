@@ -1,21 +1,11 @@
-use std::collections::BTreeMap;
-
-use bytemuck::Pod;
-use bytemuck::Zeroable;
+use crate::renderables::renderable3d::TriangleMesh3;
+use crate::renderer::pipeline_builder::MeshVertex3;
+use crate::renderer::pipeline_builder::PipelineBuilder;
+use crate::renderer::uniform_buffers::VertexShaderUniformBuffers;
+use crate::RenderContext;
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use sophus_lie::Isometry3F64;
-use wgpu::DepthStencilState;
-
-use crate::renderables::renderable3d::TriangleMesh3;
-use crate::renderer::scene_renderer::buffers::SceneRenderBuffers;
-use crate::RenderContext;
-
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-pub(crate) struct MeshVertex3 {
-    pub(crate) _pos: [f32; 3],
-    pub(crate) _color: [f32; 4],
-}
+use std::collections::BTreeMap;
 
 pub(crate) struct Mesh3dEntity {
     pub(crate) vertex_data: Vec<MeshVertex3>,
@@ -25,7 +15,7 @@ pub(crate) struct Mesh3dEntity {
 
 impl Mesh3dEntity {
     /// Create a new 3D mesh entity
-    pub fn new(wgpu_render_state: &RenderContext, mesh: &TriangleMesh3) -> Self {
+    pub fn new(render_context: &RenderContext, mesh: &TriangleMesh3) -> Self {
         let vertex_data: Vec<MeshVertex3> = mesh
             .triangles
             .iter()
@@ -48,7 +38,7 @@ impl Mesh3dEntity {
             .collect();
 
         let vertex_buffer =
-            wgpu_render_state
+            render_context
                 .wgpu_device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some(&format!("3D mesh vertex buffer: {}", mesh.name)),
@@ -72,93 +62,42 @@ pub struct MeshRenderer {
 }
 
 impl MeshRenderer {
-    // Define a function to create a render pipeline with specified cull mode
-    fn create_render_pipeline(
-        device: &wgpu::Device,
-        shader: &wgpu::ShaderModule,
-        pipeline_layout: &wgpu::PipelineLayout,
-        depth_stencil: Option<wgpu::DepthStencilState>,
-        cull_mode: Option<wgpu::Face>,
-    ) -> wgpu::RenderPipeline {
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("mesh scene pipeline"),
-            layout: Some(pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: shader,
-                entry_point: "vs_main",
-                buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<MeshVertex3>() as wgpu::BufferAddress,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4],
-                }],
-                compilation_options: Default::default(),
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: shader,
-                entry_point: "fs_main",
-                targets: &[Some(wgpu::TextureFormat::Rgba8UnormSrgb.into())],
-                compilation_options: Default::default(),
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode,
-                ..Default::default()
-            },
-            depth_stencil: depth_stencil.clone(),
-            multisample: wgpu::MultisampleState::default(),
-            multiview: None,
-        })
-    }
-
     /// Create a new scene mesh renderer
-    pub fn new(
-        wgpu_render_state: &RenderContext,
-        pipeline_layout: &wgpu::PipelineLayout,
-        depth_stencil: Option<DepthStencilState>,
-    ) -> Self {
-        let device = &wgpu_render_state.wgpu_device;
+    pub fn new(render_context: &RenderContext, scene_pipelines: &PipelineBuilder) -> Self {
+        let device = &render_context.wgpu_device;
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("scene mesh shader"),
             source: wgpu::ShaderSource::Wgsl(
                 format!(
                     "{} {}",
-                    include_str!("./scene_utils.wgsl"),
-                    include_str!("./mesh_scene_shader.wgsl")
+                    include_str!("./../shaders/utils.wgsl"),
+                    include_str!("./../shaders/scene_mesh.wgsl")
                 )
                 .into(),
             ),
         });
 
-        let pipeline_with_culling = Self::create_render_pipeline(
-            device,
-            &shader,
-            pipeline_layout,
-            depth_stencil.clone(),
-            Some(wgpu::Face::Back),
-        );
-
-        let pipeline_without_culling = Self::create_render_pipeline(
-            device,
-            &shader,
-            pipeline_layout,
-            depth_stencil.clone(),
-            None,
-        );
-
         Self {
-            pipeline_with_culling,
-            pipeline_without_culling,
+            pipeline_with_culling: scene_pipelines.create::<MeshVertex3>(
+                "mesh with culling".to_owned(),
+                &shader,
+                Some(wgpu::Face::Back),
+            ),
+            pipeline_without_culling: scene_pipelines.create::<MeshVertex3>(
+                "mesh".to_owned(),
+                &shader,
+                Some(wgpu::Face::Back),
+            ),
             mesh_table: BTreeMap::new(),
         }
     }
 
     pub(crate) fn paint<'rp>(
         &'rp self,
-        wgpu_render_state: &RenderContext,
+        render_context: &RenderContext,
         scene_from_camera: &Isometry3F64,
-        buffers: &'rp SceneRenderBuffers,
+        uniforms: &'rp VertexShaderUniformBuffers,
         render_pass: &mut wgpu::RenderPass<'rp>,
         backface_culling: bool,
     ) {
@@ -168,14 +107,15 @@ impl MeshRenderer {
             &self.pipeline_without_culling
         };
         render_pass.set_pipeline(pipeline);
-        render_pass.set_bind_group(0, &buffers.bind_group, &[]);
 
         for mesh in self.mesh_table.values() {
-            buffers.view_uniform.update_given_camera_and_entity(
-                &wgpu_render_state.wgpu_queue,
-                scene_from_camera,
-                &mesh.scene_from_entity,
-            );
+            uniforms
+                .camera_from_entity_pose_buffer
+                .update_given_camera_and_entity(
+                    &render_context.wgpu_queue,
+                    scene_from_camera,
+                    &mesh.scene_from_entity,
+                );
             render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             render_pass.draw(0..mesh.vertex_data.len() as u32, 0..1);
         }

@@ -1,3 +1,9 @@
+@group(0) @binding(1)
+var<uniform> zoom_2d: Zoom2d;
+
+@group(0) @binding(2)
+var<uniform> ortho_camera: PinholeModel;
+
 struct VertexOut {
     @location(0) color: vec4<f32>,
     @builtin(position) position: vec4<f32>,
@@ -30,7 +36,7 @@ fn vs_main(
         v += point_radius;
     }
 
-    out.position = pixel_and_z_to_clip(vec2<f32>(u, v), zoom_2d, ortho_camera);
+    out.position = ortho_pixel_and_z_to_clip(vec2<f32>(u, v), zoom_2d, ortho_camera);
     out.color = color;
 
     return out;

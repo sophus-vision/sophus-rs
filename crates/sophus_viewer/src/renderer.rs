@@ -1,5 +1,7 @@
 /// Render camera
 pub mod camera;
+/// render uniforms
+pub mod pipeline_builder;
 /// The pixel renderer for 2D rendering.
 pub mod pixel_renderer;
 /// The scene renderer for 3D rendering.
@@ -8,39 +10,44 @@ pub mod scene_renderer;
 pub mod textures;
 /// Types used in the renderer API
 pub mod types;
-
-use sophus_core::linalg::VecF64;
-use sophus_image::arc_image::ArcImage4U8;
-use sophus_image::ImageSize;
-use sophus_lie::Isometry3F64;
+/// pipeline builder
+pub mod uniform_buffers;
 
 use crate::renderables::renderable2d::Renderable2d;
-use crate::renderables::renderable3d::make_textured_mesh3;
 use crate::renderables::renderable3d::Renderable3d;
 use crate::renderer::camera::intrinsics::RenderIntrinsics;
 use crate::renderer::camera::properties::RenderCameraProperties;
 use crate::renderer::pixel_renderer::pixel_line::Line2dEntity;
 use crate::renderer::pixel_renderer::pixel_point::Point2dEntity;
 use crate::renderer::pixel_renderer::PixelRenderer;
+use crate::renderer::scene_renderer::distortion::DistortionRenderer;
 use crate::renderer::scene_renderer::line::Line3dEntity;
 use crate::renderer::scene_renderer::mesh::Mesh3dEntity;
 use crate::renderer::scene_renderer::point::Point3dEntity;
-use crate::renderer::scene_renderer::textured_mesh::TexturedMeshEntity;
 use crate::renderer::scene_renderer::SceneRenderer;
 use crate::renderer::textures::Textures;
 use crate::renderer::types::RenderResult;
 use crate::renderer::types::TranslationAndScaling;
+use crate::renderer::uniform_buffers::VertexShaderUniformBuffers;
 use crate::viewer::interactions::InteractionEnum;
 use crate::RenderContext;
+use sophus_core::IsTensorLike;
+use sophus_image::arc_image::ArcImage4U8;
+use sophus_image::image_view::IsImageView;
+use sophus_image::ImageSize;
+use sophus_lie::Isometry3F64;
+use std::sync::Arc;
 
 /// Offscreen renderer
 pub struct OffscreenRenderer {
     pub(crate) camera_properties: RenderCameraProperties,
-    state: RenderContext,
+    render_context: RenderContext,
     scene: SceneRenderer,
+    distortion: DistortionRenderer,
     pixel: PixelRenderer,
     textures: Textures,
-    maybe_background_image: Option<ArcImage4U8>,
+    maybe_background_image: Option<wgpu::Texture>,
+    uniforms: Arc<VertexShaderUniformBuffers>,
 }
 
 struct RenderParams<'a> {
@@ -121,7 +128,7 @@ impl OffscreenRenderer {
     pub const BACKGROUND_IMAGE_PLANE: f64 = 900.0;
 
     /// create new offscreen renderer
-    pub fn new(state: &RenderContext, camera_properties: &RenderCameraProperties) -> Self {
+    pub fn new(render_context: &RenderContext, camera_properties: &RenderCameraProperties) -> Self {
         let depth_bias_state = wgpu::DepthBiasState {
             constant: 2,      // Adjust this value as needed
             slope_scale: 1.0, // Adjust this value as needed
@@ -134,18 +141,22 @@ impl OffscreenRenderer {
             stencil: wgpu::StencilState::default(),
             bias: depth_bias_state,
         });
-        let textures = Textures::new(state, &camera_properties.intrinsics.image_size());
+        let textures = Textures::new(render_context, &camera_properties.intrinsics.image_size());
+
+        let uniforms = Arc::new(VertexShaderUniformBuffers::new(
+            render_context,
+            camera_properties,
+        ));
+
         Self {
-            scene: SceneRenderer::new(state, camera_properties, depth_stencil.clone()),
-            pixel: PixelRenderer::new(
-                state,
-                &camera_properties.intrinsics.image_size(),
-                depth_stencil,
-            ),
+            scene: SceneRenderer::new(render_context, depth_stencil.clone(), uniforms.clone()),
+            distortion: DistortionRenderer::new(render_context, uniforms.clone()),
+            pixel: PixelRenderer::new(render_context, uniforms.clone()),
             textures,
             camera_properties: camera_properties.clone(),
-            state: state.clone(),
+            render_context: render_context.clone(),
             maybe_background_image: None,
+            uniforms,
         }
     }
 
@@ -161,45 +172,44 @@ impl OffscreenRenderer {
         maybe_background_image: Option<&ArcImage4U8>,
     ) {
         self.camera_properties.intrinsics = intrinsics.clone();
-        if let Some(background_image) = maybe_background_image {
-            let w = self.camera_properties.intrinsics.image_size().width;
-            let h = self.camera_properties.intrinsics.image_size().height;
+        if let Some(image) = maybe_background_image {
+            let device = &self.render_context.wgpu_device;
 
-            let far = Self::BACKGROUND_IMAGE_PLANE;
+            let texture_size = wgpu::Extent3d {
+                width: image.image_size().width as u32,
+                height: image.image_size().height as u32,
+                depth_or_array_layers: 1,
+            };
+            let texture = device.create_texture(&wgpu::TextureDescriptor {
+                size: texture_size,
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                label: Some("dist_texture"),
+                view_formats: &[],
+            });
 
-            let p0 = self
-                .camera_properties
-                .intrinsics
-                .cam_unproj_with_z(&VecF64::<2>::new(-0.5, -0.5), far)
-                .cast();
-            let p1 = self
-                .camera_properties
-                .intrinsics
-                .cam_unproj_with_z(&VecF64::<2>::new(w as f64 - 0.5, -0.5), far)
-                .cast();
-            let p2 = self
-                .camera_properties
-                .intrinsics
-                .cam_unproj_with_z(&VecF64::<2>::new(-0.5, h as f64 - 0.5), far)
-                .cast();
-            let p3 = self
-                .camera_properties
-                .intrinsics
-                .cam_unproj_with_z(&VecF64::<2>::new(w as f64 - 0.5, h as f64 - 0.5), far)
-                .cast();
-
-            let name = "background_image";
-            let tex_mesh = make_textured_mesh3(
-                name,
-                &[
-                    [(p0, [0.0, 0.0]), (p1, [1.0, 0.0]), (p2, [0.0, 1.0])],
-                    [(p1, [1.0, 0.0]), (p2, [0.0, 1.0]), (p3, [1.0, 1.0])],
-                ],
+            self.render_context.wgpu_queue.write_texture(
+                wgpu::ImageCopyTexture {
+                    texture: &texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                bytemuck::cast_slice(image.tensor.scalar_view().as_slice().unwrap()),
+                wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(4 * image.image_size().width as u32),
+                    rows_per_image: Some(image.image_size().height as u32),
+                },
+                texture.size(),
             );
-            self.scene.textured_mesh_renderer.mesh_table.insert(
-                name.to_owned(),
-                TexturedMeshEntity::new(&self.state, &tex_mesh, background_image.clone()),
-            );
+
+            self.maybe_background_image = Some(texture);
+        } else {
+            self.maybe_background_image = None;
         }
     }
 
@@ -208,15 +218,15 @@ impl OffscreenRenderer {
         for m in renderables {
             match m {
                 Renderable2d::Line(lines) => {
-                    self.pixel
-                        .line_renderer
-                        .lines_table
-                        .insert(lines.name.clone(), Line2dEntity::new(&self.state, &lines));
+                    self.pixel.line_renderer.lines_table.insert(
+                        lines.name.clone(),
+                        Line2dEntity::new(&self.render_context, &lines),
+                    );
                 }
                 Renderable2d::Point(points) => {
                     self.pixel.point_renderer.points_table.insert(
                         points.name.clone(),
-                        Point2dEntity::new(&self.state, &points),
+                        Point2dEntity::new(&self.render_context, &points),
                     );
                 }
             }
@@ -228,22 +238,22 @@ impl OffscreenRenderer {
         for m in renderables {
             match m {
                 Renderable3d::Line(lines3) => {
-                    self.scene
-                        .line_renderer
-                        .line_table
-                        .insert(lines3.name.clone(), Line3dEntity::new(&self.state, &lines3));
+                    self.scene.line_renderer.line_table.insert(
+                        lines3.name.clone(),
+                        Line3dEntity::new(&self.render_context, &lines3),
+                    );
                 }
                 Renderable3d::Point(points3) => {
                     self.scene.point_renderer.point_table.insert(
                         points3.name.clone(),
-                        Point3dEntity::new(&self.state, &points3),
+                        Point3dEntity::new(&self.render_context, &points3),
                     );
                 }
                 Renderable3d::Mesh3(mesh) => {
-                    self.scene
-                        .mesh_renderer
-                        .mesh_table
-                        .insert(mesh.name.clone(), Mesh3dEntity::new(&self.state, &mesh));
+                    self.scene.mesh_renderer.mesh_table.insert(
+                        mesh.name.clone(),
+                        Mesh3dEntity::new(&self.render_context, &mesh),
+                    );
                 }
             }
         }
@@ -258,83 +268,94 @@ impl OffscreenRenderer {
         RenderBuilder::new(*view_port_size, *world_from_camera, self)
     }
 
-    fn render_impl(&mut self, state: &RenderParams) -> RenderResult {
-        if self.textures.view_port_size != state.view_port_size {
-            self.textures = Textures::new(&self.state, &state.view_port_size);
+    fn render_impl(&mut self, params: &RenderParams) -> RenderResult {
+        if self.textures.view_port_size != params.view_port_size {
+            self.textures = Textures::new(&self.render_context, &params.view_port_size);
         }
 
-        self.scene
-            .prepare(&self.state, state.zoom, &self.camera_properties);
-
-        self.maybe_background_image = None;
-        self.pixel.prepare(
-            &self.state,
-            &state.view_port_size,
-            &self.camera_properties.intrinsics,
-            state.zoom,
+        self.uniforms.update(
+            &self.render_context,
+            params.zoom,
+            &self.camera_properties,
+            params.view_port_size,
         );
 
         let mut command_encoder = self
-            .state
+            .render_context
             .wgpu_device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
-        // pixel currently invalidates the z-buffer
-
         self.scene.paint(
-            &self.state,
-            &state.scene_from_camera,
+            &self.render_context,
+            &params.scene_from_camera,
             &mut command_encoder,
-            &self.textures.rgba.rgba_texture_view,
+            &self.textures.rgbd.rgba_texture_view,
             &self.textures.depth,
-            state.backface_culling,
+            params.backface_culling,
         );
 
-        let depth_image = self.textures.depth.download_depth_image(
-            &self.state,
+        self.render_context
+            .wgpu_queue
+            .submit(Some(command_encoder.finish()));
+
+        let command_encoder = self
+            .render_context
+            .wgpu_device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        self.distortion.run(
+            &self.render_context,
             command_encoder,
-            &state.view_port_size,
-            &self.camera_properties.clipping_planes,
+            &self.textures.rgbd,
+            &self.textures.depth,
+            &self.maybe_background_image,
+            &params.view_port_size,
         );
+
         let mut command_encoder = self
-            .state
+            .render_context
             .wgpu_device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
         self.pixel.paint(
             &mut command_encoder,
-            &self.textures.rgba.rgba_texture_view,
-            &self.textures.depth,
+            &self.textures.rgbd.rgba_texture_view_distorted,
         );
 
-        self.state.wgpu_queue.submit(Some(command_encoder.finish()));
+        let depth_image = self.textures.depth.download_depth_image(
+            &self.render_context,
+            command_encoder,
+            &params.view_port_size,
+            &self.camera_properties.clipping_planes,
+        );
 
-        if let Some(interaction_enum) = state.maybe_interaction_enum {
+        if let Some(interaction_enum) = params.maybe_interaction_enum {
             self.pixel
-                .show_interaction_marker(&self.state, interaction_enum);
+                .show_interaction_marker(&self.render_context, interaction_enum);
         }
 
-        let mut image_4u8 = None;
-        if state.download_rgba {
+        let mut rgba_image = None;
+
+        if params.download_rgba {
             let command_encoder = self
-                .state
+                .render_context
                 .wgpu_device
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-            image_4u8 = Some(self.textures.rgba.download_rgba_image(
-                &self.state,
+            rgba_image = Some(self.textures.rgbd.download(
+                &self.render_context,
                 command_encoder,
-                &state.view_port_size,
+                &params.view_port_size,
             ));
         }
-        if state.compute_depth_texture {
+
+        if params.compute_depth_texture {
             self.textures
                 .depth
-                .compute_visual_depth_texture(&self.state, &depth_image);
+                .compute_visual_depth_texture(&self.render_context, &depth_image);
         }
 
         RenderResult {
-            rgba_image: image_4u8,
-            rgba_egui_tex_id: self.textures.rgba.egui_tex_id,
+            rgba_image,
+            rgba_egui_tex_id: self.textures.rgbd.egui_tex_id,
             depth_image,
             depth_egui_tex_id: self.textures.depth.visual_depth_texture.egui_tex_id,
         }
