@@ -1,36 +1,28 @@
-use std::collections::BTreeMap;
-
-use bytemuck::Pod;
-use bytemuck::Zeroable;
+use crate::renderables::renderable3d::TexturedTriangleMesh3;
+use crate::renderer::pipeline_builder::PipelineBuilder;
+use crate::renderer::pipeline_builder::TexturedMeshVertex3;
+use crate::renderer::uniform_buffers::VertexShaderUniformBuffers;
+use crate::RenderContext;
 use eframe::egui_wgpu::wgpu::util::DeviceExt;
 use sophus_core::IsTensorLike;
 use sophus_image::arc_image::ArcImage4U8;
 use sophus_image::image_view::IsImageView;
 use sophus_lie::Isometry3F64;
-use wgpu::DepthStencilState;
+use std::collections::BTreeMap;
 
-use crate::renderables::renderable3d::TexturedTriangleMesh3;
-use crate::renderer::scene_renderer::buffers::SceneRenderBuffers;
-use crate::RenderContext;
-
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-pub(crate) struct TexturedMeshVertex3 {
-    pub(crate) _pos: [f32; 3],
-    pub(crate) _tex: [f32; 2],
-}
-
-pub(crate) struct TexturedMeshEntity {
-    pub(crate) vertex_data: Vec<TexturedMeshVertex3>,
-    pub(crate) vertex_buffer: wgpu::Buffer,
+/// mesh entity
+pub struct TexturedMeshEntity {
+    pub(crate) _vertex_data: Vec<TexturedMeshVertex3>,
+    pub(crate) _vertex_buffer: wgpu::Buffer,
     pub(crate) _texture: wgpu::Texture,
-    pub(crate) texture_bind_group: wgpu::BindGroup,
-    pub(crate) scene_from_entity: Isometry3F64,
+    pub(crate) _texture_bind_group: wgpu::BindGroup,
+    pub(crate) _scene_from_entity: Isometry3F64,
 }
 
 impl TexturedMeshEntity {
-    pub(crate) fn new(
-        wgpu_render_state: &RenderContext,
+    /// new
+    pub fn new(
+        render_context: &RenderContext,
         mesh: &TexturedTriangleMesh3,
         image: ArcImage4U8,
     ) -> Self {
@@ -56,7 +48,7 @@ impl TexturedMeshEntity {
             .collect();
 
         let vertex_buffer =
-            wgpu_render_state
+            render_context
                 .wgpu_device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some(&format!("3D mesh vertex buffer: {}", mesh.name)),
@@ -64,7 +56,7 @@ impl TexturedMeshEntity {
                     usage: wgpu::BufferUsages::VERTEX,
                 });
 
-        let device = &wgpu_render_state.wgpu_device;
+        let device = &render_context.wgpu_device;
 
         let background_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -132,7 +124,7 @@ impl TexturedMeshEntity {
             label: Some("background_bind_group"),
         });
 
-        wgpu_render_state.wgpu_queue.write_texture(
+        render_context.wgpu_queue.write_texture(
             wgpu::ImageCopyTexture {
                 texture: &texture,
                 mip_level: 0,
@@ -149,90 +141,71 @@ impl TexturedMeshEntity {
         );
 
         Self {
-            vertex_data,
-            vertex_buffer,
+            _vertex_data: vertex_data,
+            _vertex_buffer: vertex_buffer,
             _texture: texture,
-            texture_bind_group,
-            scene_from_entity: mesh.scene_from_entity,
+            _texture_bind_group: texture_bind_group,
+            _scene_from_entity: mesh.scene_from_entity,
         }
     }
 }
 
 /// Scene textured mesh renderer
 pub struct TexturedMeshRenderer {
-    pub(crate) pipeline: wgpu::RenderPipeline,
-    pub(crate) mesh_table: BTreeMap<String, TexturedMeshEntity>,
+    /// pipeline
+    pub pipeline: wgpu::RenderPipeline,
+    /// table
+    pub mesh_table: BTreeMap<String, TexturedMeshEntity>,
 }
 
 impl TexturedMeshRenderer {
-    pub(crate) fn new(
-        wgpu_render_state: &RenderContext,
-        pipeline_layout: &wgpu::PipelineLayout,
-        depth_stencil: Option<DepthStencilState>,
-    ) -> Self {
-        let device = &wgpu_render_state.wgpu_device;
+    /// new
+    pub fn new(render_context: &RenderContext, scene_pipelines: &PipelineBuilder) -> Self {
+        let device = &render_context.wgpu_device;
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("texture scene mesh shader"),
             source: wgpu::ShaderSource::Wgsl(
                 format!(
                     "{} {}",
-                    include_str!("./scene_utils.wgsl"),
-                    include_str!("./textured_mesh_scene_shader.wgsl")
+                    include_str!("./../shaders/utils.wgsl"),
+                    include_str!("./../shaders/scene_textured_mesh.wgsl")
                 )
                 .into(),
             ),
         });
 
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("textured mesh scene pipeline"),
-            layout: Some(pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<TexturedMeshVertex3>() as wgpu::BufferAddress,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2],
-                }],
-                compilation_options: Default::default(),
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
-                targets: &[Some(wgpu::TextureFormat::Rgba8UnormSrgb.into())],
-                compilation_options: Default::default(),
-            }),
-            primitive: wgpu::PrimitiveState::default(),
-            depth_stencil: depth_stencil.clone(),
-            multisample: wgpu::MultisampleState::default(),
-            multiview: None,
-        });
-
         Self {
-            pipeline,
+            pipeline: scene_pipelines.create::<TexturedMeshVertex3>(
+                "textured-mesh".to_owned(),
+                &shader,
+                Some(wgpu::Face::Back),
+            ),
             mesh_table: BTreeMap::new(),
         }
     }
-    pub(crate) fn paint<'rp>(
+
+    /// paint
+    pub fn paint<'rp>(
         &'rp self,
-        wgpu_render_state: &RenderContext,
+        render_context: &RenderContext,
         scene_from_camera: &Isometry3F64,
-        buffers: &'rp SceneRenderBuffers,
+        uniforms: &'rp VertexShaderUniformBuffers,
         render_pass: &mut wgpu::RenderPass<'rp>,
     ) {
         render_pass.set_pipeline(&self.pipeline);
-        render_pass.set_bind_group(0, &buffers.bind_group, &[]);
 
         for mesh in self.mesh_table.values() {
-            buffers.view_uniform.update_given_camera_and_entity(
-                &wgpu_render_state.wgpu_queue,
-                scene_from_camera,
-                &mesh.scene_from_entity,
-            );
-            render_pass.set_bind_group(1, &mesh.texture_bind_group, &[]);
-            render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-            render_pass.draw(0..mesh.vertex_data.len() as u32, 0..1);
+            uniforms
+                .camera_from_entity_pose_buffer
+                .update_given_camera_and_entity(
+                    &render_context.wgpu_queue,
+                    scene_from_camera,
+                    &mesh._scene_from_entity,
+                );
+            render_pass.set_bind_group(1, &mesh._texture_bind_group, &[]);
+            render_pass.set_vertex_buffer(0, mesh._vertex_buffer.slice(..));
+            render_pass.draw(0..mesh._vertex_data.len() as u32, 0..1);
         }
     }
 }

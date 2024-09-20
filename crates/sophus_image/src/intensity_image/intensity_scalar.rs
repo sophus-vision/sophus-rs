@@ -7,6 +7,8 @@ pub trait IsIntensityScalar: IsCoreScalar + Sized + Copy {
     ///
     /// It should be 1.0 for floating point numbers and the maximum value for unsigned integers.
     const MAX: Self;
+    /// Maximum value for the scalar type as a f32.
+    const MAX_F32: f32;
 
     /// Creates a scalar from a u8 value.
     fn from_u8(value: u8) -> Self;
@@ -72,18 +74,19 @@ pub trait IsIntensityScalar: IsCoreScalar + Sized + Copy {
 }
 
 impl IsIntensityScalar for u8 {
-    const MAX: Self = 255;
+    const MAX: Self = u8::MAX;
+    const MAX_F32: f32 = u8::MAX as f32;
 
     fn from_u8(value: u8) -> Self {
         value
     }
 
     fn from_u16(value: u16) -> Self {
-        (value / 255) as u8
+        (value >> 8) as u8
     }
 
     fn from_f32(value: f32) -> Self {
-        (value * Self::MAX as f32) as u8
+        (value * Self::MAX_F32) as u8
     }
 
     fn convert_to_u8(&self) -> u8 {
@@ -91,11 +94,11 @@ impl IsIntensityScalar for u8 {
     }
 
     fn convert_to_u16(&self) -> u16 {
-        (*self as u16) * 255
+        (*self as u16) << 8
     }
 
     fn convert_to_f32(&self) -> f32 {
-        *self as f32 / Self::MAX as f32
+        *self as f32 / Self::MAX_F32
     }
 
     fn cast_to_u8(&self) -> u8 {
@@ -112,10 +115,11 @@ impl IsIntensityScalar for u8 {
 }
 
 impl IsIntensityScalar for u16 {
-    const MAX: Self = 65535;
+    const MAX: Self = u16::MAX;
+    const MAX_F32: f32 = u16::MAX as f32;
 
     fn from_u8(value: u8) -> Self {
-        (value as u16) * 255
+        (value as u16) << 8
     }
 
     fn from_u16(value: u16) -> Self {
@@ -123,11 +127,11 @@ impl IsIntensityScalar for u16 {
     }
 
     fn from_f32(value: f32) -> Self {
-        (value * Self::MAX as f32) as u16
+        (value * Self::MAX_F32) as u16
     }
 
     fn convert_to_u8(&self) -> u8 {
-        (*self / 255) as u8
+        (*self >> 8) as u8
     }
 
     fn convert_to_u16(&self) -> u16 {
@@ -135,7 +139,7 @@ impl IsIntensityScalar for u16 {
     }
 
     fn convert_to_f32(&self) -> f32 {
-        *self as f32 / Self::MAX as f32
+        *self as f32 / Self::MAX_F32
     }
 
     fn cast_to_u8(&self) -> u8 {
@@ -153,13 +157,14 @@ impl IsIntensityScalar for u16 {
 
 impl IsIntensityScalar for f32 {
     const MAX: Self = 1.0;
+    const MAX_F32: f32 = 1.0;
 
     fn from_u8(value: u8) -> Self {
-        value as f32 / u8::MAX as f32
+        value as f32 / u8::MAX_F32
     }
 
     fn from_u16(value: u16) -> Self {
-        value as f32 / u16::MAX as f32
+        value as f32 / u16::MAX_F32
     }
 
     fn from_f32(value: f32) -> Self {
@@ -167,11 +172,11 @@ impl IsIntensityScalar for f32 {
     }
 
     fn convert_to_u8(&self) -> u8 {
-        (*self * u8::MAX as f32) as u8
+        (*self * u8::MAX_F32) as u8
     }
 
     fn convert_to_u16(&self) -> u16 {
-        (*self * u16::MAX as f32) as u16
+        (*self * u16::MAX_F32) as u16
     }
 
     fn convert_to_f32(&self) -> f32 {

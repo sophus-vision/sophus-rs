@@ -14,10 +14,10 @@ use crate::renderer::camera::properties::RenderCameraProperties;
 ///   - The image size must be non-zero.
 #[derive(Clone, Debug)]
 pub struct Frame {
-    // Image, if available must have the same size as the intrinsics
-    image: Option<ArcImage4U8>,
+    /// Image, if available must have the same size as the intrinsics
+    pub image: Option<ArcImage4U8>,
     /// Intrinsics
-    camera_properties: RenderCameraProperties,
+    pub camera_properties: RenderCameraProperties,
 }
 
 impl Frame {

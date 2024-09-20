@@ -3,8 +3,8 @@ use sophus_sensor::dyn_camera::DynCameraF64;
 
 use crate::renderer::camera::clipping_planes::ClippingPlanes;
 use crate::renderer::camera::clipping_planes::ClippingPlanesF64;
-use crate::renderer::camera::frustum::Frustum;
 use crate::renderer::camera::intrinsics::RenderIntrinsics;
+use crate::renderer::uniform_buffers::CameraPropertiesUniform;
 
 /// Camera properties
 #[derive(Clone, Debug)]
@@ -42,9 +42,17 @@ impl RenderCameraProperties {
         }
     }
 
-    pub(crate) fn to_frustum(&self) -> Frustum {
+    /// intrinsics
+    pub fn from_intrinsics(intrinsics: &DynCameraF64) -> Self {
+        RenderCameraProperties {
+            intrinsics: RenderIntrinsics::new(intrinsics),
+            clipping_planes: ClippingPlanes::default(),
+        }
+    }
+
+    pub(crate) fn to_uniform(&self) -> CameraPropertiesUniform {
         match self.intrinsics {
-            RenderIntrinsics::Pinhole(pinhole) => Frustum {
+            RenderIntrinsics::Pinhole(pinhole) => CameraPropertiesUniform {
                 camera_image_width: pinhole.image_size().width as f32,
                 camera_image_height: pinhole.image_size().height as f32,
                 near: self.clipping_planes.near as f32,
@@ -56,7 +64,7 @@ impl RenderCameraProperties {
                 alpha: 0.0,
                 beta: 0.0,
             },
-            RenderIntrinsics::UnifiedExtended(unified) => Frustum {
+            RenderIntrinsics::UnifiedExtended(unified) => CameraPropertiesUniform {
                 camera_image_width: unified.image_size().width as f32,
                 camera_image_height: unified.image_size().height as f32,
                 near: self.clipping_planes.near as f32,

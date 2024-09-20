@@ -81,12 +81,14 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 2, 6, BAT
         let r2 = mx.clone() * mx.clone() + my.clone() * my.clone();
         let gamma = S::from_f64(1.0) - alpha.clone();
 
-        let tmp1 = S::from_f64(1.0) - alpha.clone() * alpha.clone() * beta.clone() * r2.clone();
-        let tmp_sqrt =
-            (S::from_f64(1.0) - (alpha.clone() - gamma.clone()) * beta.clone() * r2.clone()).sqrt();
-        let tmp2 = alpha.clone() * tmp_sqrt.clone() + gamma.clone();
+        let nominator =
+            S::from_f64(1.0) - alpha.clone() * alpha.clone() * beta.clone() * r2.clone();
+        let denominator = alpha.clone()
+            * (S::from_f64(1.0) - (alpha.clone() - gamma.clone()) * beta.clone() * r2.clone())
+                .sqrt()
+            + gamma.clone();
 
-        let k = tmp1.clone() / tmp2.clone();
+        let k = nominator.clone() / denominator.clone();
 
         S::Vector::<2>::from_array([mx / k.clone(), my / k.clone()])
     }

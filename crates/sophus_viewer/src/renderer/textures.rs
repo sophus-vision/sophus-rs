@@ -1,5 +1,5 @@
 use crate::renderer::textures::depth::DepthTextures;
-use crate::renderer::textures::rgba::RgbaTexture;
+use crate::renderer::textures::rgba::RgbdTexture;
 use crate::RenderContext;
 use sophus_image::ImageSize;
 
@@ -17,7 +17,7 @@ pub mod visual_depth;
 #[derive(Debug)]
 pub(crate) struct Textures {
     pub(crate) view_port_size: ImageSize,
-    pub(crate) rgba: RgbaTexture,
+    pub(crate) rgbd: RgbdTexture,
     pub depth: DepthTextures,
 }
 
@@ -25,7 +25,7 @@ impl Textures {
     pub(crate) fn new(render_state: &RenderContext, view_port_size: &ImageSize) -> Self {
         Self {
             view_port_size: *view_port_size,
-            rgba: RgbaTexture::new(render_state, view_port_size),
+            rgbd: RgbdTexture::new(render_state, view_port_size),
             depth: DepthTextures::new(render_state, view_port_size),
         }
     }
