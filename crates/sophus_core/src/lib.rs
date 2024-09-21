@@ -41,6 +41,9 @@ pub use crate::manifold::*;
 pub use crate::params::*;
 pub use crate::points::*;
 
+pub use nalgebra;
+pub use ndarray;
+
 /// tensors
 pub mod tensor;
 pub use crate::tensor::arc_tensor::*;

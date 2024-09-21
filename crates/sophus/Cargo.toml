@@ -17,20 +17,9 @@ sophus_lie.workspace = true
 sophus_opt.workspace = true
 sophus_pyo3.workspace = true
 sophus_sensor.workspace = true
-sophus_viewer.workspace = true
 
-approx.workspace = true
-assertables.workspace = true
-bytemuck.workspace = true
-eframe.workspace = true
-egui-wgpu.workspace = true
-egui_extras.workspace = true
-env_logger.workspace = true
 nalgebra.workspace = true
 ndarray.workspace = true
-wgpu.workspace = true
-
-tokio = {version = "1", features = ["full"]}
 
 [features]
 simd = [
@@ -39,5 +28,4 @@ simd = [
   "sophus_lie/simd",
   "sophus_opt/simd",
   "sophus_sensor/simd",
-  "sophus_viewer/simd",
 ]
