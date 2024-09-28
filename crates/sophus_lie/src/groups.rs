@@ -10,3 +10,5 @@ pub mod rotation3;
 pub mod translation_product_product;
 /// 2d uniform scaling
 pub mod uniform_scaling2;
+/// utils
+pub mod utils;
