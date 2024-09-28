@@ -511,6 +511,36 @@ impl IsScalar<1> for DualScalar {
     fn eps() -> Self {
         Self::from_real_scalar(EPS_F64)
     }
+    
+    fn exp(self) -> Self {
+        Self {
+            real_part: self.real_part.exp(),
+            dij_part: match self.dij_part.clone() {
+                Some(dij_val) => {
+                    let dval = self.real_part.exp();
+                    let dyn_mat =
+                        <MutTensorDD<f64>>::from_map(&dij_val.view(), |dij: &f64| *dij * dval);
+                    Some(dyn_mat)
+                }
+                None => None,
+            },
+        }
+    }
+    
+    fn log(self) -> Self {
+        Self {
+            real_part: self.real_part.ln(),
+            dij_part: match self.dij_part.clone() {
+                Some(dij_val) => {
+                    let dval = 1.0 / self.real_part;
+                    let dyn_mat =
+                        <MutTensorDD<f64>>::from_map(&dij_val.view(), |dij: &f64| *dij * dval);
+                    Some(dyn_mat)
+                }
+                None => None,
+            },
+        }
+    }
 }
 
 impl AddAssign<DualScalar> for DualScalar {

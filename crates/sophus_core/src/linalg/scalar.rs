@@ -139,6 +139,9 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
     /// cosine
     fn cos(self) -> Self;
 
+    /// exp
+    fn exp(self) -> Self;
+
     /// eps
     fn eps() -> Self;
 
@@ -173,6 +176,9 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
 
     /// Less or equal comparison
     fn less_equal(&self, rhs: &Self) -> Self::Mask;
+
+    /// log
+    fn log(self) -> Self;
 
     /// ones
     fn ones() -> Self {
@@ -384,6 +390,14 @@ impl IsScalar<1> for f64 {
         } else {
             other
         }
+    }
+    
+    fn exp(self) -> Self {
+        f64::exp(self)
+    }
+    
+    fn log(self) -> Self {
+        f64::ln(self)
     }
 }
 

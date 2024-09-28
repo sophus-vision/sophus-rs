@@ -8,3 +8,5 @@ pub mod rotation2;
 pub mod rotation3;
 /// semi-direct product
 pub mod translation_product_product;
+/// 2d uniform scaling
+pub mod uniform_scaling2;
