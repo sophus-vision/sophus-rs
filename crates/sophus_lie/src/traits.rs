@@ -3,6 +3,35 @@ use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
 use std::fmt::Debug;
 
+
+/// Disambiguate the parameters.
+pub trait HasDisambiguate<
+    S: IsScalar<BATCH_SIZE>,
+    const PARAMS: usize,
+    const BATCH_SIZE: usize,
+>: Clone + Debug
+{
+
+
+    /// Disambiguate the parameters.
+    ///
+    /// Note that that in most cases the default implementation is what you want, and a
+    /// group parameterization SHAll be chosen that does not require disambiguation.
+    ///
+    /// For instance, do not represent 2d rotations as a single angle, since theta and theta + 2pi, 
+    /// and theta + 4pi, etc. are the same rotations, and which would require disambiguation. 
+    /// Use the following 2d unit vector (cos(theta), sin(theta)) - aka unit complex number -
+    /// instead.
+    /// 
+    /// Example where disambiguation is needed: A rotation in 3d represented by a unit quaternion.
+    /// The quaternion (r, (x, y, z)) and (r, (-x, -y, -z)) represent the same rotation. In this case,
+    /// the disambiguation function would return a disambiguated representation, e.g. a unit 
+    /// quaternion with the positive r component.
+    fn disambiguate(params: S::Vector<PARAMS>) -> S::Vector<PARAMS> {
+        params
+    }
+}
+
 /// Lie Group implementation trait
 ///
 /// Here, the actual manifold is represented by as a N-dimensional parameter tuple.
@@ -19,7 +48,7 @@ pub trait IsLieGroupImpl<
     const POINT: usize,
     const AMBIENT: usize,
     const BATCH_SIZE: usize,
->: ParamsImpl<S, PARAMS, BATCH_SIZE> + TangentImpl<S, DOF, BATCH_SIZE> + Clone + Debug
+>: ParamsImpl<S, PARAMS, BATCH_SIZE> + TangentImpl<S, DOF, BATCH_SIZE> + HasDisambiguate<S, PARAMS, BATCH_SIZE> + Clone + Debug
 {
     /// Generic scalar, real scalar, and dual scalar
     type GenG<S2: IsScalar<BATCH_SIZE>>: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>;

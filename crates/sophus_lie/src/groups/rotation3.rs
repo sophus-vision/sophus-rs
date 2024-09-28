@@ -4,9 +4,11 @@ use crate::lie_group::LieGroup;
 use crate::prelude::*;
 use crate::traits::EmptySliceError;
 use crate::traits::HasAverage;
+use crate::traits::HasDisambiguate;
 use crate::traits::IsLieGroupImpl;
 use crate::traits::IsRealLieFactorGroupImpl;
 use crate::traits::IsRealLieGroupImpl;
+use core::f64;
 use log::warn;
 use sophus_core::linalg::vector::cross;
 use sophus_core::linalg::MatF64;
@@ -21,8 +23,23 @@ pub struct Rotation3Impl<S: IsScalar<BATCH>, const BATCH: usize> {
     phantom: PhantomData<S>,
 }
 
+impl<S: IsScalar<BATCH>, const BATCH: usize> HasDisambiguate<S, 4, BATCH>
+    for Rotation3Impl<S, BATCH>
+{
+    fn disambiguate(params: S::Vector<4>) -> S::Vector<4> {
+// make sure real component is always positive
+        let is_positive = S::from_f64(0.0).less_equal(&params.get_elem(0));
+
+        
+        params.clone().select(&is_positive, -params)
+    }
+}
+
 impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 4, BATCH> for Rotation3Impl<S, BATCH> {
     fn params_examples() -> Vec<S::Vector<4>> {
+        const NEAR_PI: f64 = f64::consts::PI - 1e-6;
+        const NEAR_MINUS_PI: f64 = f64::consts::PI - 1e-6;
+
         vec![
             Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.0, 0.0, 0.0]))
                 .params()
@@ -30,17 +47,118 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 4, BATCH> for Rotatio
             Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.1, 0.5, -0.1]))
                 .params()
                 .clone(),
-            // Fix: dx_log_a_exp_x_b_at_0 Jacobian is failing for this example
-            //
-            // Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.1, 2.0, -0.1]))
-            //     .params()
-            //     .clone(),
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.1, 2.0, -0.1]))
+                .params()
+                .clone(),
             Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.0, 0.2, 1.0]))
                 .params()
                 .clone(),
             Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([-0.2, 0.0, 0.8]))
                 .params()
                 .clone(),
+            // Test cases around +π and -π
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([NEAR_PI, 0.0, 0.0]))
+                .params()
+                .clone(), // +π rotation about the x-axis
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([NEAR_MINUS_PI, 0.0, 0.0]))
+                .params()
+                .clone(), // -π rotation about the x-axis
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.0, NEAR_PI, 0.0]))
+                .params()
+                .clone(), // +π rotation about the y-axis
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.0, NEAR_MINUS_PI, 0.0]))
+                .params()
+                .clone(), // -π rotation about the y-axis
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.0, 0.0, NEAR_PI]))
+                .params()
+                .clone(), // +π rotation about the z-axis
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.0, 0.0, NEAR_MINUS_PI]))
+                .params()
+                .clone(), // -π rotation about the z-axis
+            // Close to +π and -π, but not exactly, to test boundary behavior
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([3.0, 0.0, 0.0]))
+                .params()
+                .clone(),
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([-3.0, 0.0, 0.0]))
+                .params()
+                .clone(),
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.0, 3.0, 0.0]))
+                .params()
+                .clone(),
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.0, -3.0, 0.0]))
+                .params()
+                .clone(),
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.0, 0.0, 3.0]))
+                .params()
+                .clone(),
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.0, 0.0, -3.0]))
+                .params()
+                .clone(),
+            // Halfway to π rotations, to cover intermediate rotations
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([
+                f64::consts::FRAC_PI_2,
+                0.0,
+                0.0,
+            ]))
+            .params()
+            .clone(), // +π/2 about x-axis
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([
+                0.0,
+                f64::consts::FRAC_PI_2,
+                0.0,
+            ]))
+            .params()
+            .clone(), // +π/2 about y-axis
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([
+                0.0,
+                0.0,
+                f64::consts::FRAC_PI_2,
+            ]))
+            .params()
+            .clone(), // +π/2 about z-axis
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([
+                -f64::consts::FRAC_PI_2,
+                0.0,
+                0.0,
+            ]))
+            .params()
+            .clone(), // -π/2 about x-axis
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([
+                0.0,
+                -f64::consts::FRAC_PI_2,
+                0.0,
+            ]))
+            .params()
+            .clone(), // -π/2 about y-axis
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([
+                0.0,
+                0.0,
+                -f64::consts::FRAC_PI_2,
+            ]))
+            .params()
+            .clone(), // -π/2 about z-axis
+            // Complex combination rotations around the boundary
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([
+                NEAR_PI / 2.0,
+                NEAR_PI / 2.0,
+                0.0,
+            ]))
+            .params()
+            .clone(),
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([
+                NEAR_MINUS_PI / 2.0,
+                0.0,
+                NEAR_PI / 2.0,
+            ]))
+            .params()
+            .clone(),
+            Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([
+                0.0,
+                NEAR_PI / 2.0,
+                NEAR_PI / 2.0,
+            ]))
+            .params()
+            .clone(),
         ]
     }
 
@@ -261,7 +379,17 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
         ])
     }
 
-    fn da_a_mul_b(_a: &S::Vector<4>, b: &S::Vector<4>) -> S::Matrix<4, 4> {
+    fn da_a_mul_b(a: &S::Vector<4>, b: &S::Vector<4>) -> S::Matrix<4, 4> {
+        let lhs_re = a.get_elem(0);
+        let rhs_re = b.get_elem(0);
+
+        let lhs_ivec = a.get_fixed_subvec::<3>(1);
+        let rhs_ivec = b.get_fixed_subvec::<3>(1);
+
+        let re = lhs_re * rhs_re - lhs_ivec.clone().dot(rhs_ivec.clone());
+
+        let is_positive = S::from_f64(0.0).less_equal(&re);
+
         let b_real = b.get_elem(0);
         let b_imag0 = b.get_elem(1);
         let b_imag1 = b.get_elem(2);
@@ -273,9 +401,25 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
             [b_imag1, -b_imag2, b_real, b_imag0],
             [b_imag2, b_imag1, -b_imag0, b_real],
         ])
+        .select(
+            &is_positive,
+            S::Matrix::<4, 4>::from_array2([
+                [-b_real, b_imag0, b_imag1, b_imag2],
+                [-b_imag0, -b_real, -b_imag2, b_imag1],
+                [-b_imag1, b_imag2, -b_real, -b_imag0],
+                [-b_imag2, -b_imag1, b_imag0, -b_real],
+            ]),
+        )
     }
 
-    fn db_a_mul_b(a: &S::Vector<4>, _b: &S::Vector<4>) -> S::Matrix<4, 4> {
+    fn db_a_mul_b(a: &S::Vector<4>, b: &S::Vector<4>) -> S::Matrix<4, 4> {
+        let lhs_re = a.get_elem(0);
+        let rhs_re = b.get_elem(0);
+        let lhs_ivec = a.get_fixed_subvec::<3>(1);
+        let rhs_ivec = b.get_fixed_subvec::<3>(1);
+        let re = lhs_re * rhs_re - lhs_ivec.clone().dot(rhs_ivec.clone());
+        let is_positive = S::from_f64(0.0).less_equal(&re);
+
         let a_real = a.get_elem(0);
         let a_imag0 = a.get_elem(1);
         let a_imag1 = a.get_elem(2);
@@ -287,6 +431,15 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
             [a_imag1, a_imag2, a_real, -a_imag0],
             [a_imag2, -a_imag1, a_imag0, a_real],
         ])
+        .select(
+            &is_positive,
+            S::Matrix::<4, 4>::from_array2([
+                [-a_real, a_imag0, a_imag1, a_imag2],
+                [-a_imag0, -a_real, a_imag2, -a_imag1],
+                [-a_imag1, -a_imag2, -a_real, a_imag0],
+                [-a_imag2, a_imag1, -a_imag0, -a_real],
+            ]),
+        )
     }
 
     fn dx_exp_x_times_point_at_0(point: S::Vector<3>) -> S::Matrix<3, 3> {
@@ -364,7 +517,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
         let theta = Self::log(params).norm();
         (theta - S::from_f64(std::f64::consts::PI))
             .abs()
-            .less_equal(&S::from_f64(EPS_F64))
+            .less_equal(&S::from_f64(EPS_F64.sqrt()))
     }
 }
 

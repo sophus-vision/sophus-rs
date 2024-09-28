@@ -2,6 +2,7 @@ use crate::lie_group::LieGroup;
 use crate::prelude::*;
 use crate::traits::EmptySliceError;
 use crate::traits::HasAverage;
+use crate::traits::HasDisambiguate;
 use crate::traits::IsLieFactorGroupImpl;
 use crate::traits::IsLieGroupImpl;
 use crate::traits::IsRealLieFactorGroupImpl;
@@ -18,6 +19,11 @@ pub struct Rotation2Impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> {
 }
 
 impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> Rotation2Impl<S, BATCH_SIZE> {}
+
+impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> HasDisambiguate<S, 2, BATCH_SIZE>
+    for Rotation2Impl<S, BATCH_SIZE>
+{
+}
 
 impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> ParamsImpl<S, 2, BATCH_SIZE>
     for Rotation2Impl<S, BATCH_SIZE>

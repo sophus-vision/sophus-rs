@@ -61,13 +61,13 @@ impl<
             params.real_vector()
         );
         Self {
-            params: params.clone(),
+            params: G::disambiguate(params.clone()),
             phantom: std::marker::PhantomData,
         }
     }
 
     fn set_params(&mut self, params: &S::Vector<PARAMS>) {
-        self.params = params.clone();
+        self.params = G::disambiguate(params.clone());
     }
 
     fn params(&self) -> &S::Vector<PARAMS> {
