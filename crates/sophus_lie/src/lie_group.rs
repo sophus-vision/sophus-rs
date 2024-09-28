@@ -1,7 +1,6 @@
 use super::traits::IsLieGroupImpl;
 use crate::prelude::*;
 use approx::assert_relative_eq;
-use assertables::assert_le_as_result;
 use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
 use std::fmt::Debug;

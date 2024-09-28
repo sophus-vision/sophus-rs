@@ -7,21 +7,22 @@ use crate::LieGroup;
 use sophus_core::linalg::EPS_F64;
 use sophus_core::prelude::IsSingleScalar;
 use sophus_core::prelude::IsVector;
-
-/// not converged
-pub struct IterativeAverageNotConvergedError<Group> {
-    /// max iteration count
-    pub max_iteration_count: u32,
-    /// estimate after max number of iterations
-    pub parent_from_body_estimate: Group,
-}
+use thiserror::Error;
 
 /// error of iterative_average
+#[derive(Error, Debug)]
 pub enum IterativeAverageError<Group> {
     /// slice is empty
+    #[error("empty slice")]
     EmptySlice,
     /// not converged
-    NotConverged(IterativeAverageNotConvergedError<Group>),
+    #[error("no convergence after {max_iteration_count:?} iterations")]
+    NotConverged {
+        /// max iteration count
+        max_iteration_count: u32,
+        /// estimate after max number of iterations
+        parent_from_body_estimate: Group,
+    },
 }
 
 /// iterative Lie group average
@@ -71,12 +72,10 @@ pub fn iterative_average<
         parent_from_body_average = refined_parent_from_body_average;
     }
 
-    Err(IterativeAverageError::NotConverged(
-        IterativeAverageNotConvergedError {
-            max_iteration_count,
-            parent_from_body_estimate: parent_from_body_average,
-        },
-    ))
+    Err(IterativeAverageError::NotConverged {
+        max_iteration_count,
+        parent_from_body_estimate: parent_from_body_average,
+    })
 }
 
 /// Tests for Lie group average

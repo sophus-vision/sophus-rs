@@ -46,7 +46,8 @@ impl RenderContext {
             .await
             .unwrap();
 
-        let renderer = egui_wgpu::Renderer::new(&device, wgpu::TextureFormat::Rgba8Unorm, None, 1);
+        let renderer =
+            egui_wgpu::Renderer::new(&device, wgpu::TextureFormat::Rgba8Unorm, None, 1, false);
 
         RenderContext {
             egui_wgpu_renderer: Arc::new(RwLock::new(renderer)),

@@ -18,6 +18,7 @@ log.workspace = true
 nalgebra.workspace = true
 ndarray.workspace = true
 num-traits.workspace = true
+thiserror.workspace = true
 typenum.workspace = true
 
 sleef = {version = "0.3", optional = true}

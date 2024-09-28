@@ -185,6 +185,7 @@ impl DistortionRenderer {
                     module: &shader,
                     entry_point: "distort_with_background",
                     compilation_options: Default::default(),
+                    cache: None,
                 }),
                 texture_bind_group,
             )
@@ -220,6 +221,7 @@ impl DistortionRenderer {
                     module: &shader,
                     entry_point: "distort",
                     compilation_options: Default::default(),
+                    cache: None,
                 }),
                 texture_bind_group_layout,
             )

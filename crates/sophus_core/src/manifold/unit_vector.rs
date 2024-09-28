@@ -7,6 +7,7 @@ use std::marker::PhantomData;
 use std::ops::Neg;
 
 use assertables::assert_le;
+use thiserror::Error;
 
 use crate::linalg::vector::IsVector;
 
@@ -14,7 +15,6 @@ use crate::prelude::IsScalar;
 use crate::traits::ManifoldImpl;
 use crate::traits::TangentImpl;
 use crate::ParamsImpl;
-use assertables::assert_le_as_result;
 
 #[derive(Clone, Debug, Copy)]
 struct UnitVectorImpl<
@@ -204,8 +204,15 @@ pub type UnitVector2<S, const B: usize> = UnitVector<S, 1, 2, B>;
 pub type UnitVector3<S, const B: usize> = UnitVector<S, 2, 3, B>;
 
 /// Vector is near zero.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Error)]
+
 pub struct NearZeroUnitVector;
+
+impl std::fmt::Display for NearZeroUnitVector {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Vector is near zero")
+    }
+}
 
 impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SIZE: usize>
     UnitVector<S, DOF, DIM, BATCH_SIZE>

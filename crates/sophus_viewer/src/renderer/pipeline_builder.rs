@@ -226,6 +226,7 @@ impl PipelineBuilder {
             depth_stencil: self.depth_stencil.clone(),
             multisample: wgpu::MultisampleState::default(),
             multiview: None,
+            cache: None,
         })
     }
 }
