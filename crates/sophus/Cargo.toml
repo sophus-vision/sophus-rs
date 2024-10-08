@@ -22,6 +22,9 @@ nalgebra.workspace = true
 ndarray.workspace = true
 
 [features]
+pyo3 = [
+  "sophus_pyo3/pyo3",
+]
 simd = [
   "sophus_core/simd",
   "sophus_image/simd",
