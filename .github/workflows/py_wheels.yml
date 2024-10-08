@@ -98,7 +98,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           command: sdist
-          args: --out dist --all-features
+          args: --out dist
           working-directory: crates/sophus_pyo3
       - name: Upload sdist
         uses: actions/upload-artifact@v4
