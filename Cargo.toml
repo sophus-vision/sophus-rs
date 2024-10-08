@@ -54,7 +54,7 @@ num-traits = "0.2"
 numpy = "0.21"
 png = "0.17"
 rand = "0.8"
-thiserror = "1.0.64"
+thiserror = "1.0"
 tiff = "0.9.0"
 typenum = {version = "1.17", features = ["const-generics"]}
 winit = {version = "0.30", features = ["android-native-activity"]}
