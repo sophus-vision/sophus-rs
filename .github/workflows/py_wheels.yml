@@ -33,7 +33,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist
+          args: --release --out dist --all-features
           working-directory: crates/sophus_pyo3
           sccache: 'true'
           manylinux: auto
@@ -58,7 +58,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist
+          args: --release --out dist --all-features
           working-directory: crates/sophus_pyo3
           sccache: 'true'
       - name: Upload wheels
@@ -81,7 +81,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist
+          args: --release --out dist --all-features
           working-directory: crates/sophus_pyo3
           sccache: 'true'
       - name: Upload wheels
