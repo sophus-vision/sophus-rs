@@ -39,9 +39,6 @@ async-trait = "0.1"
 bytemuck = {version = "1.14", features = ["derive"]}
 concat-arrays = "0.1"
 dyn-clone = "1.0"
-eframe = {version = "0.28.1", features = ["wgpu"]}
-egui-wgpu = "0.28.1"
-egui_extras = "0.28.1"
 env_logger = "0.11"
 faer = "0.19"
 image = {version = "0.25", features = [
@@ -52,14 +49,14 @@ image = {version = "0.25", features = [
 linked-hash-map = "0.5"
 log = "0.4"
 nalgebra = {version = "0.33", features = ["rand", "bytemuck"]}
-ndarray = {version = "0.15", features = ["approx-0_5"]}
+ndarray = {version = "0.16", features = ["approx"]}
 num-traits = "0.2"
 numpy = "0.21"
 png = "0.17"
 rand = "0.8"
-tiff = "0.9"
+thiserror = "1.0.64"
+tiff = "0.9.0"
 typenum = {version = "1.17", features = ["const-generics"]}
-wgpu = "0.20.1"
 winit = {version = "0.30", features = ["android-native-activity"]}
 
 [profile.release]

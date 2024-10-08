@@ -68,7 +68,7 @@ impl<D: IsDualScalar<BATCH, DualScalar = D>, const BATCH: usize>
                 .dij_val()
                 .unwrap()
                 .mut_array
-                .into_shape([INROWS])
+                .into_shape_with_order([INROWS])
                 .unwrap(),
             phantom: PhantomData,
         }
