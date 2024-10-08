@@ -1,20 +1,18 @@
 use crate::linalg::matrix::IsMatrix;
+use crate::linalg::vector::IsVector;
 use crate::prelude::IsBoolMask;
+use crate::prelude::IsScalar;
 use crate::prelude::IsSingleScalar;
 use crate::traits::IsManifold;
-use crate::HasParams;
-use std::marker::PhantomData;
-use std::ops::Neg;
-
-use assertables::assert_le;
-
-use crate::linalg::vector::IsVector;
-
-use crate::prelude::IsScalar;
 use crate::traits::ManifoldImpl;
 use crate::traits::TangentImpl;
+use crate::HasParams;
 use crate::ParamsImpl;
+use assertables::assert_le;
 use assertables::assert_le_as_result;
+use std::marker::PhantomData;
+use std::ops::Neg;
+use thiserror::Error;
 
 #[derive(Clone, Debug, Copy)]
 struct UnitVectorImpl<
@@ -204,8 +202,15 @@ pub type UnitVector2<S, const B: usize> = UnitVector<S, 1, 2, B>;
 pub type UnitVector3<S, const B: usize> = UnitVector<S, 2, 3, B>;
 
 /// Vector is near zero.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Error)]
+
 pub struct NearZeroUnitVector;
+
+impl std::fmt::Display for NearZeroUnitVector {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Vector is near zero")
+    }
+}
 
 impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SIZE: usize>
     UnitVector<S, DOF, DIM, BATCH_SIZE>

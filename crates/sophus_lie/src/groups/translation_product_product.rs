@@ -1,5 +1,6 @@
 use crate::lie_group::LieGroup;
 use crate::prelude::*;
+use crate::traits::HasDisambiguate;
 use crate::traits::IsLieFactorGroupImpl;
 use crate::traits::IsLieGroupImpl;
 use crate::traits::IsRealLieFactorGroupImpl;
@@ -89,6 +90,27 @@ impl<
         const SPARAMS: usize,
         const BATCH: usize,
         F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH>,
+    > HasDisambiguate<S, PARAMS, BATCH>
+    for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, F>
+{
+    fn disambiguate(params: S::Vector<PARAMS>) -> S::Vector<PARAMS> {
+        Self::params_from(
+            &Self::translation(&params),
+            &F::disambiguate(Self::factor_params(&params)),
+        )
+    }
+}
+
+impl<
+        S: IsScalar<BATCH>,
+        const DOF: usize,
+        const PARAMS: usize,
+        const POINT: usize,
+        const AMBIENT: usize,
+        const SDOF: usize,
+        const SPARAMS: usize,
+        const BATCH: usize,
+        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH>,
     > ParamsImpl<S, PARAMS, BATCH>
     for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, F>
 {
@@ -98,10 +120,19 @@ impl<
 
     fn params_examples() -> Vec<S::Vector<PARAMS>> {
         let mut examples = vec![];
-        for factor_params in F::params_examples() {
-            for translation in Self::translation_examples() {
-                examples.push(Self::params_from(&translation, &factor_params));
-            }
+
+        let factor_examples = F::params_examples();
+        let translation_examples = Self::translation_examples();
+
+        // Determine the maximum length of factor and translation examples
+        let max_len = std::cmp::max(factor_examples.len(), translation_examples.len());
+
+        for i in 0..max_len {
+            // Wrap around indices if one vector is shorter than the other
+            let factor_params = &factor_examples[i % factor_examples.len()];
+            let translation = &translation_examples[i % translation_examples.len()];
+
+            examples.push(Self::params_from(translation, factor_params));
         }
         examples
     }
@@ -129,10 +160,18 @@ impl<
 {
     fn tangent_examples() -> Vec<S::Vector<DOF>> {
         let mut examples = vec![];
-        for group_tangent in F::tangent_examples() {
-            for translation_tangent in Self::translation_examples() {
-                examples.push(Self::tangent_from(&translation_tangent, &group_tangent));
-            }
+
+        let factor_examples = F::tangent_examples();
+        let translation_examples = Self::translation_examples();
+
+        // Determine the maximum length of factor and translation examples
+        let max_len = std::cmp::max(factor_examples.len(), translation_examples.len());
+
+        for i in 0..max_len {
+            // Wrap around indices if one vector is shorter than the other
+            let factor_params = &factor_examples[i % factor_examples.len()];
+            let translation = &translation_examples[i % translation_examples.len()];
+            examples.push(Self::tangent_from(translation, factor_params));
         }
         examples
     }

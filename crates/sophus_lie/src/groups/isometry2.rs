@@ -81,12 +81,15 @@ impl<S: IsSingleScalar + PartialOrd> HasAverage<S, 3, 4, 2, 3> for Isometry2<S, 
             Ok(parent_from_body_average) => Ok(parent_from_body_average),
             Err(err) => match err {
                 IterativeAverageError::EmptySlice => Err(EmptySliceError),
-                IterativeAverageError::NotConverged(not_conv) => {
+                IterativeAverageError::NotConverged {
+                    max_iteration_count,
+                    parent_from_body_estimate,
+                } => {
                     warn!(
                         "iterative_average did not converge (iters={}), returning best guess.",
-                        not_conv.max_iteration_count
+                        max_iteration_count
                     );
-                    Ok(not_conv.parent_from_body_estimate)
+                    Ok(parent_from_body_estimate)
                 }
             },
         }
