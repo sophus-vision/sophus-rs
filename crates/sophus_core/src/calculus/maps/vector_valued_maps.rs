@@ -98,11 +98,7 @@ impl<D: IsDualScalar<BATCH, DualScalar = D>, const BATCH: usize>
         }
 
         MutTensorDR {
-            mut_array: d
-                .unwrap()
-                .mut_array
-                .into_shape_with_order([INROWS])
-                .unwrap(),
+            mut_array: d.unwrap().mut_array.into_shape([INROWS]).unwrap(),
             phantom: PhantomData,
         }
     }

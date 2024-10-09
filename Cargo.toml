@@ -49,7 +49,7 @@ image = {version = "0.25", features = [
 linked-hash-map = "0.5"
 log = "0.4"
 nalgebra = {version = "0.33", features = ["rand", "bytemuck"]}
-ndarray = {version = "0.16", features = ["approx"]}
+ndarray = {version = "0.15", features = ["approx-0_5"]}
 num-traits = "0.2"
 numpy = "0.21"
 png = "0.17"
