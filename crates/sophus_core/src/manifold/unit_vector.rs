@@ -9,7 +9,6 @@ use crate::traits::TangentImpl;
 use crate::HasParams;
 use crate::ParamsImpl;
 use assertables::assert_le;
-use assertables::assert_le_as_result;
 use std::marker::PhantomData;
 use std::ops::Neg;
 use thiserror::Error;

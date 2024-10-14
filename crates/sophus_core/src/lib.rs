@@ -36,6 +36,8 @@ pub mod manifold;
 pub mod params;
 /// points
 pub mod points;
+/// time series
+pub mod time_series;
 
 pub use crate::manifold::*;
 pub use crate::params::*;

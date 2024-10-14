@@ -3,28 +3,28 @@ use nalgebra::SVector;
 use crate::IsPoint;
 
 /// Floating-point interval
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Interval {
     /// min and max of the interval
     pub min_max: Option<(f64, f64)>,
 }
 
 /// Integer interval
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct IInterval {
     /// min and max of the interval
     pub min_max: Option<(i64, i64)>,
 }
 
 /// Region - n-dimensional interval
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Region<const D: usize> {
     /// min and max of the region
     pub min_max: Option<(SVector<f64, D>, SVector<f64, D>)>,
 }
 
 /// Integer Region - n-dimensional interval
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct IRegion<const D: usize> {
     /// min and max of the region
     pub min_max: Option<(SVector<i64, D>, SVector<i64, D>)>,
