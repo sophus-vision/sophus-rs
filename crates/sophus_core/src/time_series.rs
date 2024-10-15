@@ -36,6 +36,7 @@ pub trait HasInterpolate: HasTimeStamp {
 /// - Access item by index.
 /// - Pruning older data by time duration.
 /// - Finding the nearest item to a given time stamp.
+#[derive(Clone)] 
 pub struct TimeSeries<T: HasTimeStamp> {
     sorted_data: VecDeque<T>,
 }
