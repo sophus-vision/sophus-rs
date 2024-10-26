@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::tensor::MutTensor;
 use crate::tensor::TensorView;
 use concat_arrays::concat_arrays;
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 /// Mutable tensor view
 ///
@@ -52,7 +52,7 @@ pub trait IsMutTensorLike<
     ) -> ndarray::ArrayViewMut<'a, Scalar, ndarray::Dim<[ndarray::Ix; TOTAL_RANK]>>;
 
     /// mutable reference to the static tensor at index idx
-    fn get_mut(&'a mut self, idx: [usize; DRANK]) -> &mut STensor;
+    fn get_mut(&'a mut self, idx: [usize; DRANK]) -> &'a mut STensor;
 }
 
 macro_rules! mut_view_is_view {
@@ -102,8 +102,8 @@ macro_rules! mut_view_is_view {
 
                 let ptr = elem_view_mut.as_ptr() as *mut Scalar;
                 use ndarray::ShapeBuilder;
-                assert_eq!(std::mem::size_of::<STensor>(),
-                    std::mem::size_of::<Scalar>() * ROWS * COLS
+                assert_eq!(core::mem::size_of::<STensor>(),
+                   core::mem::size_of::<Scalar>() * ROWS * COLS
                 );
 
                 let scalar_view_mut =
@@ -116,7 +116,7 @@ macro_rules! mut_view_is_view {
             }
 
             /// get mutable reference to scalar at index idx
-            pub fn mut_scalar(&'a mut self, idx: [usize; $scalar_rank]) -> &mut Scalar{
+            pub fn mut_scalar(&'a mut self, idx: [usize; $scalar_rank]) -> &'a mut Scalar{
                 &mut self.scalar_view_mut[idx]
             }
 
@@ -249,7 +249,7 @@ macro_rules! mut_view_is_view {
                 self.scalar_view_mut.view_mut()
             }
 
-            fn get_mut(&'a mut self, idx: [usize; $drank]) -> &mut STensor{
+            fn get_mut(&'a mut self, idx: [usize; $drank]) -> &'a mut STensor{
                 &mut self.elem_view_mut[idx]
             }
 

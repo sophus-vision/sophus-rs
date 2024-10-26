@@ -32,3 +32,4 @@ simd = [
   "sophus_opt/simd",
   "sophus_sensor/simd",
 ]
+std = []

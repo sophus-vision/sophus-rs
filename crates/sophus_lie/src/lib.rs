@@ -1,6 +1,7 @@
 #![cfg_attr(feature = "simd", feature(portable_simd))]
 #![deny(missing_docs)]
 #![allow(clippy::needless_range_loop)]
+#![no_std]
 //! Lie groups crate - part of the sophus-rs project
 
 /// Lie groups

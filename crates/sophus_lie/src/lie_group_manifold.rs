@@ -1,8 +1,10 @@
 use crate::lie_group::LieGroup;
 use crate::prelude::*;
 use crate::traits::IsLieGroupImpl;
+use core::fmt::Debug;
 use sophus_core::params::ParamsImpl;
-use std::fmt::Debug;
+
+extern crate alloc;
 
 /// Left group manifold
 ///
@@ -36,11 +38,11 @@ impl<
         G::are_params_valid(params)
     }
 
-    fn params_examples() -> Vec<<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>> {
+    fn params_examples() -> alloc::vec::Vec<<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>> {
         G::params_examples()
     }
 
-    fn invalid_params_examples() -> Vec<<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>> {
+    fn invalid_params_examples() -> alloc::vec::Vec<<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>> {
         G::invalid_params_examples()
     }
 }

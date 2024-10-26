@@ -1,7 +1,9 @@
 use crate::prelude::*;
 use crate::traits::IsCameraDistortionImpl;
+use core::marker::PhantomData;
 use sophus_core::params::ParamsImpl;
-use std::marker::PhantomData;
+
+extern crate alloc;
 
 /// Affine "distortion" implementation
 ///
@@ -18,12 +20,12 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 4, BATCH>
         S::Mask::all_true()
     }
 
-    fn params_examples() -> Vec<S::Vector<4>> {
-        vec![S::Vector::<4>::from_f64_array([1.0, 1.0, 0.0, 0.0])]
+    fn params_examples() -> alloc::vec::Vec<S::Vector<4>> {
+        alloc::vec![S::Vector::<4>::from_f64_array([1.0, 1.0, 0.0, 0.0])]
     }
 
-    fn invalid_params_examples() -> Vec<S::Vector<4>> {
-        vec![
+    fn invalid_params_examples() -> alloc::vec::Vec<S::Vector<4>> {
+        alloc::vec![
             S::Vector::<4>::from_f64_array([0.0, 1.0, 0.0, 0.0]),
             S::Vector::<4>::from_f64_array([1.0, 0.0, 0.0, 0.0]),
         ]

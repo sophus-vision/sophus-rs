@@ -1,10 +1,12 @@
 use crate::prelude::*;
 use crate::traits::IsCameraDistortionImpl;
+use core::marker::PhantomData;
 use sophus_core::params::ParamsImpl;
 use sophus_core::prelude::IsMatrix;
 use sophus_core::prelude::IsScalar;
 use sophus_core::prelude::IsVector;
-use std::marker::PhantomData;
+
+extern crate alloc;
 
 /// Unified Extended distortion implementation
 #[derive(Debug, Clone, Copy)]
@@ -19,14 +21,14 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 6, BATCH>
         S::Mask::all_true()
     }
 
-    fn params_examples() -> Vec<S::Vector<6>> {
-        vec![S::Vector::<6>::from_f64_array([
+    fn params_examples() -> alloc::vec::Vec<S::Vector<6>> {
+        alloc::vec![S::Vector::<6>::from_f64_array([
             1.0, 1.0, 0.0, 0.0, 0.0, 0.0,
         ])]
     }
 
-    fn invalid_params_examples() -> Vec<S::Vector<6>> {
-        vec![
+    fn invalid_params_examples() -> alloc::vec::Vec<S::Vector<6>> {
+        alloc::vec![
             S::Vector::<6>::from_f64_array([0.0, 1.0, 0.0, 0.0, 0.0, 0.0]),
             S::Vector::<6>::from_f64_array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
         ]

@@ -12,16 +12,16 @@ version.workspace = true
 
 [dependencies]
 approx.workspace = true
-assertables.workspace = true
 concat-arrays.workspace = true
 log.workspace = true
 nalgebra.workspace = true
 ndarray.workspace = true
 num-traits.workspace = true
-thiserror.workspace = true
+snafu.workspace = true
 typenum.workspace = true
 
 sleef = {version = "0.3", optional = true}
 
 [features]
 simd = ["sleef"]
+std = []

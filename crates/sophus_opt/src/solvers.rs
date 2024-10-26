@@ -4,6 +4,8 @@ use crate::ldlt::SymmetricTripletMatrix;
 use crate::variables::VarKind;
 use crate::variables::VarPool;
 
+extern crate alloc;
+
 /// Normal equation
 pub struct SparseNormalEquation {
     sparse_hessian: SymmetricTripletMatrix,
@@ -13,7 +15,7 @@ pub struct SparseNormalEquation {
 impl SparseNormalEquation {
     fn from_families_and_cost(
         variables: &VarPool,
-        costs: Vec<Box<dyn IsCost>>,
+        costs: alloc::vec::Vec<alloc::boxed::Box<dyn IsCost>>,
         nu: f64,
     ) -> SparseNormalEquation {
         assert!(variables.num_of_kind(VarKind::Marginalized) == 0);
@@ -24,7 +26,7 @@ impl SparseNormalEquation {
         // to implement VarKind::Marginalized > 1.
         //  -  Example, the the arrow-head sparsity uses a recursive application of the Schur-Complement.
         let num_var_params = variables.num_free_params();
-        let mut upper_hessian_triplet = Vec::new();
+        let mut upper_hessian_triplet = alloc::vec::Vec::new();
         let mut neg_grad = nalgebra::DVector::<f64>::zeros(num_var_params);
 
         for cost in costs.iter() {
@@ -48,7 +50,11 @@ impl SparseNormalEquation {
 }
 
 /// Solve the normal equation
-pub fn solve(variables: &VarPool, costs: Vec<Box<dyn IsCost>>, nu: f64) -> VarPool {
+pub fn solve(
+    variables: &VarPool,
+    costs: alloc::vec::Vec<alloc::boxed::Box<dyn IsCost>>,
+    nu: f64,
+) -> VarPool {
     assert!(variables.num_of_kind(VarKind::Marginalized) <= 1);
     assert!(variables.num_of_kind(VarKind::Free) >= 1);
 

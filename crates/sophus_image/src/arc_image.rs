@@ -241,7 +241,7 @@ macro_rules! arc_image {
             fn image_view(
                 &'b self,
             ) -> super::image_view::GenImageView<
-                '_,
+                'b,
                 $scalar_rank,
                 $srank,
                 Scalar,

@@ -11,10 +11,11 @@ use crate::mut_image::MutImage4U8;
 use crate::mut_image::MutImageF32;
 use crate::mut_image::MutImageU16;
 use crate::mut_image::MutImageU8;
-
 use crate::prelude::DynIntensityMutImage;
 use crate::ImageSize;
+use std::format;
 use std::fs::File;
+use std::string::ToString;
 use tiff::decoder::Decoder;
 use tiff::decoder::DecodingResult;
 use tiff::encoder::colortype::ColorType;

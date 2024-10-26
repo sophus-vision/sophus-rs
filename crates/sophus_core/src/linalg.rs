@@ -23,22 +23,22 @@ pub mod batch_vector;
 pub mod vector;
 
 #[cfg(feature = "simd")]
-use std::ops::Add;
+use core::ops::Add;
 
 #[cfg(feature = "simd")]
-use std::simd::cmp::SimdPartialEq;
+use core::simd::cmp::SimdPartialEq;
 #[cfg(feature = "simd")]
-use std::simd::num::SimdFloat;
+use core::simd::num::SimdFloat;
 #[cfg(feature = "simd")]
-use std::simd::LaneCount;
+use core::simd::LaneCount;
 #[cfg(feature = "simd")]
-use std::simd::Mask;
+use core::simd::Mask;
 #[cfg(feature = "simd")]
-use std::simd::Simd;
+use core::simd::Simd;
 #[cfg(feature = "simd")]
-use std::simd::SimdElement;
+use core::simd::SimdElement;
 #[cfg(feature = "simd")]
-use std::simd::SupportedLaneCount;
+use core::simd::SupportedLaneCount;
 
 /// Static vector
 pub type SVec<ScalarLike, const ROWS: usize> = nalgebra::SVector<ScalarLike, ROWS>;

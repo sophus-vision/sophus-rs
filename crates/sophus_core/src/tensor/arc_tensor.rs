@@ -5,9 +5,8 @@ use crate::tensor::mut_tensor::InnerScalarToVec;
 use crate::tensor::mut_tensor::InnerVecToMat;
 use crate::tensor::MutTensor;
 use crate::tensor::TensorView;
+use core::marker::PhantomData;
 use ndarray::Dimension;
-
-use std::marker::PhantomData;
 
 /// Arc tensor - a tensor with shared ownership
 ///
@@ -422,7 +421,11 @@ fn arc_tensor_tests() {
             img2.view().elem_view().as_slice().unwrap().as_ptr()
         );
     }
+}
 
+#[test]
+#[cfg(feature = "std")]
+fn arc_tensor_std_tests() {
     // multi_threading
     use crate::tensor::arc_tensor::ArcTensorDDRC;
     use crate::tensor::mut_tensor::MutTensorDDRC;

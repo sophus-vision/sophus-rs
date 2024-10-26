@@ -9,13 +9,15 @@ use crate::traits::IsLieGroupImpl;
 use crate::traits::IsRealLieFactorGroupImpl;
 use crate::traits::IsRealLieGroupImpl;
 use core::f64;
+use core::marker::PhantomData;
 use log::warn;
 use sophus_core::linalg::vector::cross;
 use sophus_core::linalg::MatF64;
 use sophus_core::linalg::EPS_F64;
 use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
-use std::marker::PhantomData;
+
+extern crate alloc;
 
 /// 3d rotation implementation - SO(3)
 #[derive(Debug, Copy, Clone, Default)]
@@ -35,11 +37,11 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> HasDisambiguate<S, 4, BATCH>
 }
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 4, BATCH> for Rotation3Impl<S, BATCH> {
-    fn params_examples() -> Vec<S::Vector<4>> {
+    fn params_examples() -> alloc::vec::Vec<S::Vector<4>> {
         const NEAR_PI: f64 = f64::consts::PI - 1e-6;
         const NEAR_MINUS_PI: f64 = f64::consts::PI - 1e-6;
 
-        vec![
+        alloc::vec![
             Rotation3::<S, BATCH>::exp(&S::Vector::<3>::from_f64_array([0.0, 0.0, 0.0]))
                 .params()
                 .clone(),
@@ -161,8 +163,8 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 4, BATCH> for Rotatio
         ]
     }
 
-    fn invalid_params_examples() -> Vec<S::Vector<4>> {
-        vec![
+    fn invalid_params_examples() -> alloc::vec::Vec<S::Vector<4>> {
+        alloc::vec![
             S::Vector::<4>::from_f64_array([0.0, 0.0, 0.0, 0.0]),
             S::Vector::<4>::from_f64_array([0.5, 0.5, 0.5, 0.0]),
             S::Vector::<4>::from_f64_array([0.5, -0.5, 0.5, 1.0]),
@@ -178,8 +180,8 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 4, BATCH> for Rotatio
 }
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> TangentImpl<S, 3, BATCH> for Rotation3Impl<S, BATCH> {
-    fn tangent_examples() -> Vec<S::Vector<3>> {
-        vec![
+    fn tangent_examples() -> alloc::vec::Vec<S::Vector<3>> {
+        alloc::vec![
             S::Vector::<3>::from_f64_array([0.0, 0.0, 0.0]),
             S::Vector::<3>::from_f64_array([1.0, 0.0, 0.0]),
             S::Vector::<3>::from_f64_array([0.0, 1.0, 0.0]),
@@ -514,7 +516,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
 
     fn has_shortest_path_ambiguity(params: &S::Vector<4>) -> S::Mask {
         let theta = Self::log(params).norm();
-        (theta - S::from_f64(std::f64::consts::PI))
+        (theta - S::from_f64(core::f64::consts::PI))
             .abs()
             .less_equal(&S::from_f64(EPS_F64.sqrt()))
     }

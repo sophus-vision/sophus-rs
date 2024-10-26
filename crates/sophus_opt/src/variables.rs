@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use core::fmt::Debug;
 use dyn_clone::DynClone;
 use sophus_core::linalg::VecF64;
 use sophus_lie::Isometry2;
@@ -7,12 +8,10 @@ use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
 use sophus_sensor::camera_enum::perspective_camera::UnifiedCameraF64;
 use sophus_sensor::BrownConradyCamera;
-use sophus_sensor::PinholeCamera;
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::fmt::Debug;
-
 use sophus_sensor::KannalaBrandtCamera;
+use sophus_sensor::PinholeCamera;
+
+extern crate alloc;
 
 /// Variable kind
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -81,25 +80,31 @@ pub trait IsVarTuple<const NUM_ARGS: usize>: Send + Sync + 'static {
     /// reference to the variable family tuple
     fn ref_var_family_tuple(
         families: &VarPool,
-        names: [String; NUM_ARGS],
+        names: [alloc::string::String; NUM_ARGS],
     ) -> Self::VarFamilyTupleRef<'_>;
 
     /// extract the variables from the family tuple
     fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; NUM_ARGS]) -> Self;
 
     /// return the variable kind for each variable (one for each argument of the cost function)
-    fn var_kind_array(families: &VarPool, names: [String; NUM_ARGS]) -> [VarKind; NUM_ARGS];
+    fn var_kind_array(
+        families: &VarPool,
+        names: [alloc::string::String; NUM_ARGS],
+    ) -> [VarKind; NUM_ARGS];
 }
 
 impl<M0: IsVariable + 'static + Send + Sync> IsVarTuple<1> for M0 {
     const DOF_T: [usize; 1] = [M0::DOF];
     type VarFamilyTupleRef<'a> = &'a VarFamily<M0>;
 
-    fn var_kind_array(families: &VarPool, names: [String; 1]) -> [VarKind; 1] {
+    fn var_kind_array(families: &VarPool, names: [alloc::string::String; 1]) -> [VarKind; 1] {
         [families.families.get(&names[0]).unwrap().get_var_kind()]
     }
 
-    fn ref_var_family_tuple(families: &VarPool, names: [String; 1]) -> Self::VarFamilyTupleRef<'_> {
+    fn ref_var_family_tuple(
+        families: &VarPool,
+        names: [alloc::string::String; 1],
+    ) -> Self::VarFamilyTupleRef<'_> {
         families.get::<VarFamily<M0>>(names[0].clone())
     }
 
@@ -114,14 +119,17 @@ impl<M0: IsVariable + 'static + Send + Sync, M1: IsVariable + 'static + Send + S
     const DOF_T: [usize; 2] = [M0::DOF, M1::DOF];
     type VarFamilyTupleRef<'a> = (&'a VarFamily<M0>, &'a VarFamily<M1>);
 
-    fn var_kind_array(families: &VarPool, names: [String; 2]) -> [VarKind; 2] {
+    fn var_kind_array(families: &VarPool, names: [alloc::string::String; 2]) -> [VarKind; 2] {
         [
             families.families.get(&names[0]).unwrap().get_var_kind(),
             families.families.get(&names[1]).unwrap().get_var_kind(),
         ]
     }
 
-    fn ref_var_family_tuple(families: &VarPool, names: [String; 2]) -> Self::VarFamilyTupleRef<'_> {
+    fn ref_var_family_tuple(
+        families: &VarPool,
+        names: [alloc::string::String; 2],
+    ) -> Self::VarFamilyTupleRef<'_> {
         (
             families.get::<VarFamily<M0>>(names[0].clone()),
             families.get::<VarFamily<M1>>(names[1].clone()),
@@ -145,7 +153,7 @@ impl<
     const DOF_T: [usize; 3] = [M0::DOF, M1::DOF, M2::DOF];
     type VarFamilyTupleRef<'a> = (&'a VarFamily<M0>, &'a VarFamily<M1>, &'a VarFamily<M2>);
 
-    fn var_kind_array(families: &VarPool, names: [String; 3]) -> [VarKind; 3] {
+    fn var_kind_array(families: &VarPool, names: [alloc::string::String; 3]) -> [VarKind; 3] {
         [
             families.families.get(&names[0]).unwrap().get_var_kind(),
             families.families.get(&names[1]).unwrap().get_var_kind(),
@@ -153,7 +161,10 @@ impl<
         ]
     }
 
-    fn ref_var_family_tuple(families: &VarPool, names: [String; 3]) -> Self::VarFamilyTupleRef<'_> {
+    fn ref_var_family_tuple(
+        families: &VarPool,
+        names: [alloc::string::String; 3],
+    ) -> Self::VarFamilyTupleRef<'_> {
         (
             families.get::<VarFamily<M0>>(names[0].clone()),
             families.get::<VarFamily<M1>>(names[1].clone()),
@@ -217,15 +228,15 @@ impl IsVariable for Isometry3F64 {
 pub struct VarFamily<Var: IsVariable> {
     kind: VarKind,
     /// members of the family
-    pub members: Vec<Var>,
-    constant_members: HashMap<usize, ()>,
-    start_indices: Vec<i64>,
+    pub members: alloc::vec::Vec<Var>,
+    constant_members: alloc::collections::BTreeMap<usize, ()>,
+    start_indices: alloc::vec::Vec<i64>,
 }
 
 impl<Var: IsVariable> VarFamily<Var> {
     /// create a new variable family a variable kind (free, conditioned, ...) and a list of members
-    pub fn new(kind: VarKind, members: Vec<Var>) -> Self {
-        Self::new_with_const_ids(kind, members, HashMap::new())
+    pub fn new(kind: VarKind, members: alloc::vec::Vec<Var>) -> Self {
+        Self::new_with_const_ids(kind, members, alloc::collections::BTreeMap::new())
     }
 
     /// Create a new variable family a variable kind (free, conditioned, ...), a list of members and a list of constant members
@@ -233,14 +244,14 @@ impl<Var: IsVariable> VarFamily<Var> {
     /// The constant members are not updated during optimization (no matter the variable kind)
     pub fn new_with_const_ids(
         kind: VarKind,
-        members: Vec<Var>,
-        constant_members: HashMap<usize, ()>,
+        members: alloc::vec::Vec<Var>,
+        constant_members: alloc::collections::BTreeMap<usize, ()>,
     ) -> Self {
         VarFamily {
             kind,
             members,
             constant_members,
-            start_indices: vec![],
+            start_indices: alloc::vec![],
         }
     }
 
@@ -267,7 +278,7 @@ pub trait IsVarFamily: as_any::AsAny + Debug + DynClone {
     fn num_marg_scalars(&self) -> usize;
 
     /// start indices in linear system of equations
-    fn get_start_indices(&self) -> &Vec<i64>;
+    fn get_start_indices(&self) -> &alloc::vec::Vec<i64>;
 
     /// number of members in the family
     fn len(&self) -> usize;
@@ -330,7 +341,7 @@ impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
 
         match self.get_var_kind() {
             VarKind::Free => {
-                let mut indices = vec![];
+                let mut indices = alloc::vec![];
                 let mut idx: usize = *inout_offset;
                 for i in 0..self.members.len() {
                     if self.constant_members.contains_key(&i) {
@@ -346,7 +357,7 @@ impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
                 self.start_indices = indices;
             }
             VarKind::Conditioned => {
-                let mut indices = vec![];
+                let mut indices = alloc::vec![];
 
                 for _i in 0..self.members.len() {
                     indices.push(-1);
@@ -355,7 +366,7 @@ impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
                 self.start_indices = indices;
             }
             VarKind::Marginalized => {
-                let mut indices = vec![];
+                let mut indices = alloc::vec![];
 
                 for _i in 0..self.members.len() {
                     indices.push(-2);
@@ -378,7 +389,7 @@ impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
         self.c()
     }
 
-    fn get_start_indices(&self) -> &Vec<i64> {
+    fn get_start_indices(&self) -> &alloc::vec::Vec<i64> {
         &self.start_indices
     }
 
@@ -392,7 +403,8 @@ dyn_clone::clone_trait_object!(IsVarFamily);
 /// Builder for the variable pool
 #[derive(Debug, Clone)]
 pub struct VarPoolBuilder {
-    families: std::collections::BTreeMap<String, Box<dyn IsVarFamily>>,
+    families:
+        alloc::collections::BTreeMap<alloc::string::String, alloc::boxed::Box<dyn IsVarFamily>>,
 }
 
 impl Default for VarPoolBuilder {
@@ -405,17 +417,18 @@ impl VarPoolBuilder {
     /// create a new variable pool builder
     pub fn new() -> Self {
         Self {
-            families: BTreeMap::new(),
+            families: alloc::collections::btree_map::BTreeMap::new(),
         }
     }
 
     /// add a family of variables to the pool
-    pub fn add_family<S: Into<String>, Var: IsVariable + 'static>(
+    pub fn add_family<S: Into<alloc::string::String>, Var: IsVariable + 'static>(
         mut self,
         name: S,
         family: VarFamily<Var>,
     ) -> Self {
-        self.families.insert(name.into(), Box::new(family));
+        self.families
+            .insert(name.into(), alloc::boxed::Box::new(family));
         self
     }
 
@@ -428,7 +441,8 @@ impl VarPoolBuilder {
 /// A pool of variable families
 #[derive(Debug, Clone)]
 pub struct VarPool {
-    pub(crate) families: std::collections::BTreeMap<String, Box<dyn IsVarFamily>>,
+    pub(crate) families:
+        alloc::collections::BTreeMap<alloc::string::String, alloc::boxed::Box<dyn IsVarFamily>>,
 }
 
 impl VarPool {
@@ -479,14 +493,17 @@ impl VarPool {
     /// retrieve a variable family by name
     ///
     /// Panics if the family does not exist, or the specified type is not correct
-    pub fn get<T: IsVarFamily>(&self, name: String) -> &T {
+    pub fn get<T: IsVarFamily>(&self, name: alloc::string::String) -> &T {
         as_any::Downcast::downcast_ref::<T>(self.families.get(&name).unwrap().as_ref()).unwrap()
     }
 
     /// retrieve family members by family name
     ///
     /// Panics if the family does not exist, or the specified type is not correct
-    pub fn get_members<T: IsVariable + 'static>(&self, name: String) -> Vec<T> {
+    pub fn get_members<T: IsVariable + 'static>(
+        &self,
+        name: alloc::string::String,
+    ) -> alloc::vec::Vec<T> {
         as_any::Downcast::downcast_ref::<VarFamily<T>>(self.families.get(&name).unwrap().as_ref())
             .unwrap()
             .members

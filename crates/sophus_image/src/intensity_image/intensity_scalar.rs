@@ -1,5 +1,5 @@
+use core::any::TypeId;
 use sophus_core::prelude::*;
-use std::any::TypeId;
 
 /// either u8, u16, or f32
 pub trait IsIntensityScalar: IsCoreScalar + Sized + Copy {

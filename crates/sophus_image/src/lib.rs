@@ -1,6 +1,10 @@
 #![cfg_attr(feature = "simd", feature(portable_simd))]
 #![deny(missing_docs)]
+#![no_std]
 //! image crate - part of the sophus-rs project
+
+#[cfg(feature = "std")]
+extern crate std;
 
 /// image with shared ownership
 pub mod arc_image;

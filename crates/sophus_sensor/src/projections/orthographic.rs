@@ -1,9 +1,9 @@
 use crate::camera::Camera;
 use crate::distortions::affine::AffineDistortionImpl;
 use crate::traits::IsProjection;
+use core::marker::PhantomData;
 use sophus_core::linalg::scalar::IsScalar;
 use sophus_core::linalg::vector::IsVector;
-use std::marker::PhantomData;
 
 /// Orthographic projection implementation
 #[derive(Debug, Clone)]

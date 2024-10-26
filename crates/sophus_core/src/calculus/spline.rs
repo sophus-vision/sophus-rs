@@ -1,23 +1,24 @@
 /// Cubic B-Spline details
 pub mod spline_segment;
 
-use log::debug;
-
 use crate::calculus::spline::spline_segment::CubicBSplineSegment;
 use crate::calculus::spline::spline_segment::SegmentCase;
 use crate::prelude::*;
+use log::debug;
+
+extern crate alloc;
 
 /// Cubic B-Spline implementation
 pub struct CubicBSplineImpl<S: IsSingleScalar, const DIMS: usize> {
     /// Control points
-    pub control_points: Vec<S::SingleVector<DIMS>>,
+    pub control_points: alloc::vec::Vec<S::SingleVector<DIMS>>,
     /// delta between control points
     pub delta_t: S,
 }
 
 impl<S: IsSingleScalar, const DIMS: usize> CubicBSplineImpl<S, DIMS> {
     /// indices involved
-    pub fn idx_involved(&self, segment_idx: usize) -> Vec<usize> {
+    pub fn idx_involved(&self, segment_idx: usize) -> alloc::vec::Vec<usize> {
         let num = self.num_segments();
         assert!(segment_idx < num);
 
@@ -25,7 +26,7 @@ impl<S: IsSingleScalar, const DIMS: usize> CubicBSplineImpl<S, DIMS> {
         let idx_0 = segment_idx;
         let idx_1 = segment_idx + 1;
         let idx_2 = (segment_idx + 2).min(self.control_points.len() - 1);
-        vec![idx_prev, idx_0, idx_1, idx_2]
+        alloc::vec![idx_prev, idx_0, idx_1, idx_2]
     }
 
     /// Interpolate
@@ -139,7 +140,10 @@ pub struct CubicBSplineParams<S: IsSingleScalar + 'static> {
 
 impl<S: IsSingleScalar + 'static, const DIMS: usize> CubicBSpline<S, DIMS> {
     /// create a new cubic B-Spline
-    pub fn new(control_points: Vec<S::SingleVector<DIMS>>, params: CubicBSplineParams<S>) -> Self {
+    pub fn new(
+        control_points: alloc::vec::Vec<S::SingleVector<DIMS>>,
+        params: CubicBSplineParams<S>,
+    ) -> Self {
         Self {
             spline_impl: CubicBSplineImpl {
                 control_points,
@@ -164,7 +168,7 @@ impl<S: IsSingleScalar + 'static, const DIMS: usize> CubicBSpline<S, DIMS> {
     }
 
     /// indices involved
-    pub fn idx_involved(&self, t: S) -> Vec<usize> {
+    pub fn idx_involved(&self, t: S) -> alloc::vec::Vec<usize> {
         let index_and_u = self.index_and_u(t);
         self.spline_impl.idx_involved(index_and_u.segment_idx)
     }

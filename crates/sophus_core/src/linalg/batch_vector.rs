@@ -3,9 +3,9 @@ use crate::linalg::BatchMatF64;
 use crate::linalg::BatchScalarF64;
 use crate::linalg::BatchVecF64;
 use crate::prelude::*;
-use std::simd::LaneCount;
-use std::simd::Mask;
-use std::simd::SupportedLaneCount;
+use core::simd::LaneCount;
+use core::simd::Mask;
+use core::simd::SupportedLaneCount;
 
 impl<const ROWS: usize, const BATCH: usize> IsVector<BatchScalarF64<BATCH>, ROWS, BATCH>
     for BatchVecF64<ROWS, BATCH>

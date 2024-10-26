@@ -6,9 +6,10 @@ use crate::term::Term;
 use crate::variables::IsVarTuple;
 use crate::variables::VarKind;
 use crate::variables::VarPool;
-use std::marker::PhantomData;
-use std::ops::Range;
-use std::time::Instant;
+use core::marker::PhantomData;
+use core::ops::Range;
+
+extern crate alloc;
 
 /// Signature of a term of a cost function
 pub trait IsTermSignature<const N: usize>: Send + Sync + 'static {
@@ -33,10 +34,10 @@ pub struct CostSignature<
     TermSignature: IsTermSignature<NUM_ARGS, Constants = Constants>,
 > {
     /// one variable family name for each argument
-    pub family_names: [String; NUM_ARGS],
+    pub family_names: [alloc::string::String; NUM_ARGS],
     /// terms of the unevaluated cost function
-    pub terms: Vec<TermSignature>,
-    pub(crate) reduction_ranges: Option<Vec<Range<usize>>>,
+    pub terms: alloc::vec::Vec<TermSignature>,
+    pub(crate) reduction_ranges: Option<alloc::vec::Vec<Range<usize>>>,
 }
 
 impl<
@@ -46,7 +47,10 @@ impl<
     > CostSignature<NUM_ARGS, Constants, TermSignature>
 {
     /// Create a new cost signature
-    pub fn new(family_names: [String; NUM_ARGS], terms: Vec<TermSignature>) -> Self {
+    pub fn new(
+        family_names: [alloc::string::String; NUM_ARGS],
+        terms: alloc::vec::Vec<TermSignature>,
+    ) -> Self {
         CostSignature {
             family_names,
             terms,
@@ -84,7 +88,7 @@ pub trait IsCostFn {
         var_pool: &VarPool,
         calc_derivatives: bool,
         parallelize: bool,
-    ) -> Box<dyn IsCost>;
+    ) -> alloc::boxed::Box<dyn IsCost>;
 
     /// sort the terms of the cost function (to ensure more efficient evaluation and reduction over
     /// conditioned variables)
@@ -131,8 +135,8 @@ where
         global_constants: GlobalConstants,
         signature: CostSignature<NUM_ARGS, Constants, TermSignature>,
         residual_fn: ResidualFn,
-    ) -> Box<dyn IsCostFn> {
-        Box::new(Self {
+    ) -> alloc::boxed::Box<dyn IsCostFn> {
+        alloc::boxed::Box::new(Self {
             global_constants,
             signature,
             residual_fn,
@@ -147,8 +151,8 @@ where
         signature: CostSignature<NUM_ARGS, Constants, TermSignature>,
         residual_fn: ResidualFn,
         robust_kernel: RobustKernel,
-    ) -> Box<dyn IsCostFn> {
-        Box::new(Self {
+    ) -> alloc::boxed::Box<dyn IsCostFn> {
+        alloc::boxed::Box::new(Self {
             global_constants,
             signature,
             residual_fn,
@@ -176,7 +180,7 @@ where
         var_pool: &VarPool,
         calc_derivatives: bool,
         parallelize: bool,
-    ) -> Box<dyn IsCost> {
+    ) -> alloc::boxed::Box<dyn IsCost> {
         let mut var_kind_array =
             VarTuple::var_kind_array(var_pool, self.signature.family_names.clone());
 
@@ -345,12 +349,10 @@ where
             }
         }
 
-        Box::new(evaluated_terms)
+        alloc::boxed::Box::new(evaluated_terms)
     }
 
     fn sort(&mut self, variables: &VarPool) {
-        let now = Instant::now();
-
         let var_kind_array =
             &VarTuple::var_kind_array(variables, self.signature.family_names.clone());
         use crate::cost_args::CompareIdx;
@@ -365,24 +367,16 @@ where
             .terms
             .sort_by(|a, b| less.le_than(*a.idx_ref(), *b.idx_ref()));
 
-        println!("sorting took: {:.2?}", now.elapsed());
-
-        let now = Instant::now();
-
         for t in 0..self.signature.terms.len() - 1 {
             assert!(
                 less.le_than(
                     *self.signature.terms[t].idx_ref(),
                     *self.signature.terms[t + 1].idx_ref()
-                ) != std::cmp::Ordering::Greater
+                ) != core::cmp::Ordering::Greater
             );
         }
 
-        println!("sorting val took: {:.2?}", now.elapsed());
-
-        let now = Instant::now();
-
-        let mut reduction_ranges: Vec<Range<usize>> = vec![];
+        let mut reduction_ranges: alloc::vec::Vec<Range<usize>> = alloc::vec![];
         let mut i = 0;
         while i < self.signature.terms.len() {
             let outer_term_signature = &self.signature.terms[i];
@@ -399,8 +393,6 @@ where
         }
 
         self.signature.reduction_ranges = Some(reduction_ranges);
-
-        println!("reduction_ranges took: {:.2?}", now.elapsed());
     }
 
     fn robust_kernel(&self) -> Option<RobustKernel> {

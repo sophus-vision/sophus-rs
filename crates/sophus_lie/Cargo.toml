@@ -13,11 +13,10 @@ version.workspace = true
 [dependencies]
 
 approx.workspace = true
-assertables.workspace = true
 log.workspace = true
 nalgebra.workspace = true
 num-traits.workspace = true
-thiserror.workspace = true
+snafu.workspace = true
 
 sophus_core = {workspace = true}
 

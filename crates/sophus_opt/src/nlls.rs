@@ -2,9 +2,11 @@ use crate::cost::IsCost;
 use crate::cost_fn::IsCostFn;
 use crate::solvers::solve;
 use crate::variables::VarPool;
+use core::fmt::Debug;
 use log::debug;
 use log::info;
-use std::fmt::Debug;
+
+extern crate alloc;
 
 /// Optimization parameters
 #[derive(Copy, Clone, Debug)]
@@ -30,10 +32,10 @@ impl Default for OptParams {
 /// Non-linear least squares optimization
 pub fn optimize(
     mut variables: VarPool,
-    mut cost_fns: Vec<Box<dyn IsCostFn>>,
+    mut cost_fns: alloc::vec::Vec<alloc::boxed::Box<dyn IsCostFn>>,
     params: OptParams,
 ) -> VarPool {
-    let mut init_costs: Vec<Box<dyn IsCost>> = Vec::new();
+    let mut init_costs: alloc::vec::Vec<alloc::boxed::Box<dyn IsCost>> = alloc::vec::Vec::new();
 
     for cost_fn in cost_fns.iter_mut() {
         // sort to achieve more efficient evaluation and reduction
@@ -49,18 +51,16 @@ pub fn optimize(
     }
     let initial_mse = mse;
 
-    use std::time::Instant;
-    let now = Instant::now();
-
     for i in 0..params.num_iter {
-        let mut evaluated_costs: Vec<Box<dyn IsCost>> = Vec::new();
+        let mut evaluated_costs: alloc::vec::Vec<alloc::boxed::Box<dyn IsCost>> =
+            alloc::vec::Vec::new();
         for cost_fn in cost_fns.iter_mut() {
             evaluated_costs.push(cost_fn.eval(&variables, true, params.parallelize));
         }
 
         let updated_families = solve(&variables, evaluated_costs, nu);
 
-        let mut new_costs: Vec<Box<dyn IsCost>> = Vec::new();
+        let mut new_costs: alloc::vec::Vec<alloc::boxed::Box<dyn IsCost>> = alloc::vec::Vec::new();
         for cost_fn in cost_fns.iter_mut() {
             new_costs.push(cost_fn.eval(&updated_families, true, params.parallelize));
         }
@@ -83,7 +83,6 @@ pub fn optimize(
         );
     }
     info!("e^2: {:?} -> {:?}", initial_mse, mse);
-    info!("{} iters took: {:.2?}", params.num_iter, now.elapsed());
 
     variables
 }

@@ -4,12 +4,12 @@ use crate::linalg::VecF64;
 use crate::prelude::*;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
-use std::fmt::Debug;
-use std::ops::Add;
-use std::ops::Index;
-use std::ops::IndexMut;
-use std::ops::Neg;
-use std::ops::Sub;
+use core::fmt::Debug;
+use core::ops::Add;
+use core::ops::Index;
+use core::ops::IndexMut;
+use core::ops::Neg;
+use core::ops::Sub;
 
 /// Vector - either a real (f64) or a dual number vector
 pub trait IsVector<S: IsScalar<BATCH_SIZE>, const ROWS: usize, const BATCH_SIZE: usize>:

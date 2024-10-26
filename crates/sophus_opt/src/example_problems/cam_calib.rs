@@ -18,7 +18,8 @@ use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
 use sophus_lie::Rotation3;
 use sophus_sensor::PinholeCamera;
-use std::collections::HashMap;
+
+extern crate alloc;
 
 /// Camera calibration problem
 #[derive(Clone)]
@@ -26,24 +27,24 @@ pub struct CamCalibProblem {
     /// intrinsics
     pub intrinsics: PinholeCamera<f64, 1>,
     /// world from camera isometries
-    pub world_from_cameras: Vec<Isometry3F64>,
+    pub world_from_cameras: alloc::vec::Vec<Isometry3F64>,
     /// points in world
-    pub points_in_world: Vec<VecF64<3>>,
+    pub points_in_world: alloc::vec::Vec<VecF64<3>>,
     /// observations
-    pub observations: Vec<ReprojTermSignature>,
+    pub observations: alloc::vec::Vec<ReprojTermSignature>,
 
     /// true intrinsics
     pub true_intrinsics: PinholeCamera<f64, 1>,
     /// true world from camera isometries
-    pub true_world_from_cameras: Vec<Isometry3F64>,
+    pub true_world_from_cameras: alloc::vec::Vec<Isometry3F64>,
     /// true points in world
-    pub true_points_in_world: Vec<VecF64<3>>,
+    pub true_points_in_world: alloc::vec::Vec<VecF64<3>>,
 }
 
 impl CamCalibProblem {
     /// create new camera calibration problem
     pub fn new(spurious_matches: bool) -> Self {
-        let true_world_from_cameras = vec![
+        let true_world_from_cameras = alloc::vec![
             Isometry3::identity(),
             Isometry3::from_translation_and_factor(
                 &VecF64::<3>::new(0.0, 1.0, 0.0),
@@ -67,8 +68,8 @@ impl CamCalibProblem {
             image_size,
         );
 
-        let mut observations = vec![];
-        let mut true_points_in_world = vec![];
+        let mut observations = alloc::vec![];
+        let mut true_points_in_world = alloc::vec![];
 
         for i in 0..40 {
             let u = rng.gen::<f64>() * (image_size.width as f64 - 1.0);
@@ -119,7 +120,7 @@ impl CamCalibProblem {
         }
 
         Self {
-            world_from_cameras: vec![
+            world_from_cameras: alloc::vec![
                 Isometry3::<f64, 1>::identity(),
                 true_world_from_cameras[1],
                 true_world_from_cameras[1],
@@ -142,9 +143,9 @@ impl CamCalibProblem {
         );
 
         let cam_family: VarFamily<PinholeCamera<f64, 1>> =
-            VarFamily::new(intrinsics_var_kind, vec![self.intrinsics]);
+            VarFamily::new(intrinsics_var_kind, alloc::vec![self.intrinsics]);
 
-        let mut id = HashMap::new();
+        let mut id = alloc::collections::BTreeMap::new();
         id.insert(0, ());
         id.insert(1, ());
 
@@ -165,7 +166,7 @@ impl CamCalibProblem {
 
         let up_var_pool = optimize(
             var_pool,
-            vec![
+            alloc::vec![
                 // robust kernel to deal with outliers
                 CostFn::new_robust(
                     (),
@@ -195,7 +196,7 @@ impl CamCalibProblem {
         let priors =
             CostSignature::<1, (Isometry3F64, MatF64<6, 6>), Isometry3PriorTermSignature>::new(
                 ["poses".into()],
-                vec![
+                alloc::vec![
                     Isometry3PriorTermSignature {
                         entity_indices: [0],
                         isometry_prior: (
@@ -219,7 +220,7 @@ impl CamCalibProblem {
         );
 
         let cam_family: VarFamily<PinholeCamera<f64, 1>> =
-            VarFamily::new(VarKind::Conditioned, vec![self.intrinsics]);
+            VarFamily::new(VarKind::Conditioned, alloc::vec![self.intrinsics]);
 
         let pose_family: VarFamily<Isometry3F64> =
             VarFamily::new(VarKind::Free, self.world_from_cameras.clone());
@@ -235,7 +236,7 @@ impl CamCalibProblem {
 
         let up_var_pool = optimize(
             var_pool,
-            vec![
+            alloc::vec![
                 CostFn::new_box((), priors.clone(), Isometry3PriorCostFn {}),
                 CostFn::new_box((), reproj_obs.clone(), ReprojectionCostFn {}),
             ],
@@ -247,15 +248,6 @@ impl CamCalibProblem {
         );
 
         let refined_world_from_robot = up_var_pool.get_members::<Isometry3F64>("poses".into());
-
-        println!(
-            "refined_world_from_robot[0].translation(): {:?}",
-            refined_world_from_robot[0].translation()
-        );
-        println!(
-            "refined_world_from_robot[1].translation(): {:?}",
-            refined_world_from_robot[1].translation()
-        );
 
         approx::assert_abs_diff_eq!(
             refined_world_from_robot[2].translation(),
@@ -272,8 +264,8 @@ mod tests {
         use crate::example_problems::cam_calib::CamCalibProblem;
         use crate::variables::VarKind;
 
-        // CamCalibProblem::new(true).optimize_with_two_poses_fixed(VarKind::Free);
+        CamCalibProblem::new(true).optimize_with_two_poses_fixed(VarKind::Free);
         CamCalibProblem::new(false).optimize_with_two_poses_fixed(VarKind::Conditioned);
-        // CamCalibProblem::new(false).optimize_with_priors();
+        CamCalibProblem::new(false).optimize_with_priors();
     }
 }

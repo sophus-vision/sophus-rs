@@ -2,7 +2,7 @@ use crate::linalg::scalar::NumberCategory;
 use crate::linalg::SMat;
 use crate::linalg::SVec;
 use crate::prelude::*;
-use std::fmt::Debug;
+use core::fmt::Debug;
 pub use typenum::generic_const_mappings::Const;
 
 /// Trait for static tensors
@@ -137,7 +137,7 @@ impl STensorFormat {
             num_rows: ROWS,
             num_cols: COLS,
             batch_size: BATCH_SIZE,
-            num_bytes_per_scalar: std::mem::size_of::<Scalar>(),
+            num_bytes_per_scalar: core::mem::size_of::<Scalar>(),
         }
     }
 

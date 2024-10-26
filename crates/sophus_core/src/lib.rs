@@ -1,5 +1,6 @@
 #![cfg_attr(feature = "simd", feature(portable_simd))]
 #![deny(missing_docs)]
+#![no_std]
 #![allow(clippy::needless_range_loop)]
 //! Core math functionality including
 //!  - linear algebra types
@@ -21,6 +22,9 @@
 //!      * closed interval: [calculus::region::Interval]
 //!      * closed region: [calculus::region::Interval]
 //!  - manifolds: [manifold::traits]
+
+#[cfg(feature = "std")]
+extern crate std;
 
 /// calculus - differentiation, splines, and more
 pub mod calculus;

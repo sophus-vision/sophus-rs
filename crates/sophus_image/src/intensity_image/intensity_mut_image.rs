@@ -26,7 +26,7 @@ use sophus_core::linalg::SVec;
 pub trait IsIntensityMutImage<
     Scalar: IsIntensityScalar + 'static,
     Pixel: IntensityPixel<Scalar> + 'static,
->: std::marker::Sized
+>: core::marker::Sized
 {
     /// Pixel type
     type Pixel<OtherScalar: IsIntensityScalar>: IntensityPixel<OtherScalar>;

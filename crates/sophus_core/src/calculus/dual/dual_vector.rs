@@ -7,10 +7,10 @@ use crate::tensor::mut_tensor::MutTensorDD;
 use crate::tensor::mut_tensor::MutTensorDDR;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
-use std::fmt::Debug;
-use std::ops::Add;
-use std::ops::Neg;
-use std::ops::Sub;
+use core::fmt::Debug;
+use core::ops::Add;
+use core::ops::Neg;
+use core::ops::Sub;
 
 /// Dual vector
 #[derive(Clone)]
@@ -228,7 +228,7 @@ impl<const ROWS: usize> Add for DualVector<ROWS> {
 }
 
 impl<const ROWS: usize> Debug for DualVector<ROWS> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if self.dij_part.is_some() {
             f.debug_struct("DualScalarLike")
                 .field("val", &self.real_part)

@@ -9,13 +9,13 @@ use crate::tensor::mut_tensor::MutTensorDD;
 use crate::tensor::mut_tensor::MutTensorDDR;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
-use std::fmt::Debug;
-use std::ops::Add;
-use std::ops::Neg;
-use std::ops::Sub;
-use std::simd::LaneCount;
-use std::simd::Mask;
-use std::simd::SupportedLaneCount;
+use core::fmt::Debug;
+use core::ops::Add;
+use core::ops::Neg;
+use core::ops::Sub;
+use core::simd::LaneCount;
+use core::simd::Mask;
+use core::simd::SupportedLaneCount;
 
 /// Dual vector (batch version)
 #[derive(Clone, Debug)]

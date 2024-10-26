@@ -8,15 +8,16 @@ use crate::prelude::*;
 use approx::assert_abs_diff_eq;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
+use core::fmt::Debug;
+use core::ops::Add;
+use core::ops::AddAssign;
+use core::ops::Div;
+use core::ops::Mul;
+use core::ops::Neg;
+use core::ops::Sub;
+use core::ops::SubAssign;
 use nalgebra::SimdValue;
-use std::fmt::Debug;
-use std::ops::Add;
-use std::ops::AddAssign;
-use std::ops::Div;
-use std::ops::Mul;
-use std::ops::Neg;
-use std::ops::Sub;
-use std::ops::SubAssign;
+extern crate alloc;
 
 /// Number category
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -31,7 +32,7 @@ pub enum NumberCategory {
 
 /// Trait for scalar and batch scalar linalg
 pub trait IsCoreScalar:
-    Clone + Debug + nalgebra::Scalar + num_traits::Zero + std::ops::AddAssign
+    Clone + Debug + nalgebra::Scalar + num_traits::Zero + core::ops::AddAssign
 {
     /// Get the number category
     fn number_category() -> NumberCategory;
@@ -66,7 +67,7 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
     PartialEq
     + Debug
     + Clone
-    + std::ops::Div<Output = Self>
+    + core::ops::Div<Output = Self>
     + Add<Output = Self>
     + Mul<Output = Self>
     + Sub<Output = Self>
@@ -183,7 +184,7 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
     fn real_part(&self) -> Self::RealScalar;
 
     /// return examples of scalar values
-    fn scalar_examples() -> Vec<Self>;
+    fn scalar_examples() -> alloc::vec::Vec<Self>;
 
     /// Return the self if the mask is true, otherwise the other value
     ///
@@ -286,8 +287,8 @@ impl IsScalar<1> for f64 {
         self >= rhs
     }
 
-    fn scalar_examples() -> Vec<f64> {
-        vec![1.0, 2.0, 3.0]
+    fn scalar_examples() -> alloc::vec::Vec<f64> {
+        alloc::vec![1.0, 2.0, 3.0]
     }
 
     fn abs(self) -> f64 {
@@ -383,6 +384,28 @@ impl IsScalar<1> for f64 {
             self
         } else {
             other
+        }
+    }
+
+    fn ones() -> Self {
+        Self::from_f64(1.0)
+    }
+
+    fn zeros() -> Self {
+        Self::from_f64(0.0)
+    }
+
+    fn test_suite() {
+        let examples = Self::scalar_examples();
+        for a in &examples {
+            let sin_a = (*a).sin();
+            let cos_a = (*a).cos();
+            let val = sin_a * sin_a + cos_a * cos_a;
+            let one = Self::ones();
+
+            for i in 0..1 {
+                assert_abs_diff_eq!(val.extract_single(i), one.extract_single(i));
+            }
         }
     }
 }

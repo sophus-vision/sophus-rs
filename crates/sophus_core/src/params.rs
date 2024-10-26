@@ -1,15 +1,19 @@
 use crate::linalg::VecF64;
 use crate::points::example_points;
 use crate::prelude::*;
+use alloc::vec;
+use alloc::vec::Vec;
+
+extern crate alloc;
 
 /// Parameter implementation.
 pub trait ParamsImpl<S: IsScalar<BATCH_SIZE>, const PARAMS: usize, const BATCH_SIZE: usize> {
     /// Is the parameter vector valid?
     fn are_params_valid(params: &S::Vector<PARAMS>) -> S::Mask;
     /// Examples of valid parameter vectors.
-    fn params_examples() -> Vec<S::Vector<PARAMS>>;
+    fn params_examples() -> alloc::vec::Vec<S::Vector<PARAMS>>;
     /// Examples of invalid parameter vectors.
-    fn invalid_params_examples() -> Vec<S::Vector<PARAMS>>;
+    fn invalid_params_examples() -> alloc::vec::Vec<S::Vector<PARAMS>>;
 }
 
 /// A trait for linalg that have parameters.

@@ -15,13 +15,15 @@ use sophus_core::calculus::maps::MatrixValuedMapFromVector;
 use sophus_core::calculus::maps::VectorValuedMapFromMatrix;
 use sophus_core::calculus::maps::VectorValuedMapFromVector;
 
+extern crate alloc;
+
 #[cfg(feature = "simd")]
 use sophus_core::calculus::dual::dual_batch_scalar::DualBatchScalar;
 #[cfg(feature = "simd")]
 use sophus_core::linalg::BatchScalarF64;
 
-use std::fmt::Display;
-use std::fmt::Formatter;
+use core::fmt::Display;
+use core::fmt::Formatter;
 
 impl<
         S: IsRealScalar<BATCH_SIZE, RealScalar = S>,
@@ -97,7 +99,7 @@ impl<
         G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
     > Display for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:?}", self.compact())
     }
 }
@@ -139,7 +141,7 @@ macro_rules! def_real_group_test_template {
                 const DOF: usize = <$group>::DOF;
                 use sophus_core::manifold::traits::TangentImpl;
 
-                let tangent_examples: Vec<<$scalar as IsScalar<$batch>>::Vector<DOF>>
+                let tangent_examples: alloc::vec::Vec<<$scalar as IsScalar<$batch>>::Vector<DOF>>
                     = <$group>::tangent_examples();
 
                 for a in &tangent_examples {
@@ -385,8 +387,6 @@ macro_rules! def_real_group_test_template {
                                     ).log()
                             };
 
-                        println!("a:{:?} - b:  {:?}", a.params(), b.params());
-
                         let analytic_diff = Self::dx_log_a_exp_x_b_at_0(&a, &b);
                         let o = <$scalar as IsScalar<$batch>>::Vector::zeros();
                         let auto_diff = VectorValuedMapFromVector::<$dual_scalar, $batch>
@@ -518,7 +518,7 @@ macro_rules! def_real_group_test_template {
 
 
             fn interpolation_test() {
-                let group_examples: Vec<_> = Self::element_examples();
+                let group_examples: alloc::vec::Vec<_> = Self::element_examples();
 
                 for foo_from_bar in &group_examples {
                     for foo_from_daz in &group_examples {

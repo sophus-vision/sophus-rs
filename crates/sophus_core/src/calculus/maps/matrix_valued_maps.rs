@@ -2,8 +2,8 @@ use crate::linalg::SMat;
 use crate::prelude::*;
 use crate::tensor::mut_tensor::MutTensorDDRC;
 use crate::tensor::mut_tensor::MutTensorDRC;
+use core::marker::PhantomData;
 use nalgebra::SMatrix;
-use std::marker::PhantomData;
 
 /// Matrix-valued map on a vector space.
 ///
@@ -12,7 +12,7 @@ use std::marker::PhantomData;
 ///  f: ℝᵐ -> ℝʳ x ℝᶜ
 ///
 pub struct MatrixValuedMapFromVector<S: IsScalar<BATCH>, const BATCH: usize> {
-    phantom: std::marker::PhantomData<S>,
+    phantom: core::marker::PhantomData<S>,
 }
 
 impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize>
@@ -82,7 +82,7 @@ impl<D: IsDualScalar<BATCH, DualScalar = D>, const BATCH: usize>
 ///  f: ℝᵐ x ℝⁿ -> ℝʳ x ℝᶜ
 ///
 pub struct MatrixValuedMapFromMatrix<S: IsScalar<BATCH>, const BATCH: usize> {
-    phantom: std::marker::PhantomData<S>,
+    phantom: core::marker::PhantomData<S>,
 }
 
 impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize>

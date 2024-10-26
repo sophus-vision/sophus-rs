@@ -7,10 +7,12 @@ use crate::traits::IsLieFactorGroupImpl;
 use crate::traits::IsLieGroupImpl;
 use crate::traits::IsRealLieFactorGroupImpl;
 use crate::traits::IsRealLieGroupImpl;
+use core::marker::PhantomData;
 use sophus_core::linalg::EPS_F64;
 use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
-use std::marker::PhantomData;
+
+extern crate alloc;
 
 /// 2D rotation group implementation struct - SO(2)
 #[derive(Debug, Copy, Clone, Default)]
@@ -28,10 +30,10 @@ impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> HasDisambiguate<S, 2, BAT
 impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> ParamsImpl<S, 2, BATCH_SIZE>
     for Rotation2Impl<S, BATCH_SIZE>
 {
-    fn params_examples() -> Vec<S::Vector<2>> {
-        let mut params = vec![];
+    fn params_examples() -> alloc::vec::Vec<S::Vector<2>> {
+        let mut params = alloc::vec![];
         for i in 0..10 {
-            let angle = S::from_f64(i as f64 * std::f64::consts::PI / 5.0);
+            let angle = S::from_f64(i as f64 * core::f64::consts::PI / 5.0);
             params.push(
                 Rotation2::<S, BATCH_SIZE>::exp(&S::Vector::<1>::from_array([angle]))
                     .params()
@@ -41,8 +43,8 @@ impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> ParamsImpl<S, 2, BATCH_SI
         params
     }
 
-    fn invalid_params_examples() -> Vec<S::Vector<2>> {
-        vec![
+    fn invalid_params_examples() -> alloc::vec::Vec<S::Vector<2>> {
+        alloc::vec![
             S::Vector::<2>::from_array([S::from_f64(0.0), S::from_f64(0.0)]),
             S::Vector::<2>::from_array([S::from_f64(0.5), S::from_f64(0.5)]),
             S::Vector::<2>::from_array([S::from_f64(0.5), S::from_f64(-0.5)]),
@@ -60,8 +62,8 @@ impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> ParamsImpl<S, 2, BATCH_SI
 impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> TangentImpl<S, 1, BATCH_SIZE>
     for Rotation2Impl<S, BATCH_SIZE>
 {
-    fn tangent_examples() -> Vec<S::Vector<1>> {
-        vec![
+    fn tangent_examples() -> alloc::vec::Vec<S::Vector<1>> {
+        alloc::vec![
             S::Vector::<1>::from_array([S::from_f64(0.0)]),
             S::Vector::<1>::from_array([S::from_f64(1.0)]),
             S::Vector::<1>::from_array([S::from_f64(-1.0)]),
@@ -187,7 +189,7 @@ impl<S: IsRealScalar<BATCH_SIZE>, const BATCH_SIZE: usize>
     }
 
     fn has_shortest_path_ambiguity(params: &S::Vector<2>) -> S::Mask {
-        (Self::log(params).get_elem(0).abs() - S::from_f64(std::f64::consts::PI))
+        (Self::log(params).get_elem(0).abs() - S::from_f64(core::f64::consts::PI))
             .abs()
             .less_equal(&S::from_f64(EPS_F64))
     }

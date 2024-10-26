@@ -7,6 +7,8 @@ use crate::KannalaBrandtCamera;
 use crate::PinholeCamera;
 use sophus_image::ImageSize;
 
+extern crate alloc;
+
 /// Dynamic camera facade
 #[derive(Debug, Clone)]
 pub struct DynCameraFacade<
@@ -15,7 +17,7 @@ pub struct DynCameraFacade<
     CameraType: IsCameraEnum<S, BATCH>,
 > {
     camera_type: CameraType,
-    phantom: std::marker::PhantomData<S>,
+    phantom: core::marker::PhantomData<S>,
 }
 
 /// Dynamic generalized camera (perspective or orthographic)
@@ -47,7 +49,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
                 ]),
                 image_size,
             ),
-            phantom: std::marker::PhantomData,
+            phantom: core::marker::PhantomData,
         }
     }
 
@@ -71,7 +73,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
                 ]),
                 image_size,
             ),
-            phantom: std::marker::PhantomData,
+            phantom: core::marker::PhantomData,
         }
     }
 
@@ -79,7 +81,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
     pub fn from_model(camera_type: CameraType) -> Self {
         Self {
             camera_type,
-            phantom: std::marker::PhantomData,
+            phantom: core::marker::PhantomData,
         }
     }
 
@@ -187,7 +189,7 @@ fn dyn_camera_tests() {
     type DynCameraF64 = DynCamera<f64, 1>;
 
     {
-        let mut cameras: Vec<DynCameraF64> = vec![];
+        let mut cameras: alloc::vec::Vec<DynCameraF64> = alloc::vec![];
         cameras.push(DynCameraF64::new_pinhole(
             &VecF64::<4>::new(600.0, 599.0, 1.0, 0.5),
             ImageSize {
@@ -197,7 +199,7 @@ fn dyn_camera_tests() {
         ));
 
         cameras.push(DynCamera::new_unified(
-            &VecF64::<6>::from_vec(vec![998.0, 1000.0, 320.0, 280.0, 0.5, 1.2]),
+            &VecF64::<6>::from_vec(alloc::vec![998.0, 1000.0, 320.0, 280.0, 0.5, 1.2]),
             ImageSize {
                 width: 640,
                 height: 480,
@@ -205,7 +207,9 @@ fn dyn_camera_tests() {
         ));
 
         cameras.push(DynCamera::new_kannala_brandt(
-            &VecF64::<8>::from_vec(vec![999.0, 1000.0, 320.0, 280.0, 0.1, 0.01, 0.001, 0.0001]),
+            &VecF64::<8>::from_vec(alloc::vec![
+                999.0, 1000.0, 320.0, 280.0, 0.1, 0.01, 0.001, 0.0001
+            ]),
             ImageSize {
                 width: 640,
                 height: 480,
@@ -213,7 +217,7 @@ fn dyn_camera_tests() {
         ));
 
         cameras.push(DynCamera::new_brown_conrady(
-            &VecF64::<12>::from_vec(vec![
+            &VecF64::<12>::from_vec(alloc::vec![
                 288.0,
                 284.0,
                 0.5 * (424.0 - 1.0),
@@ -234,7 +238,7 @@ fn dyn_camera_tests() {
         ));
 
         for camera in cameras {
-            let pixels_in_image = vec![
+            let pixels_in_image = alloc::vec![
                 VecF64::<2>::new(2.0, 1.0),
                 VecF64::<2>::new(2.9, 1.9),
                 VecF64::<2>::new(2.5, 1.5),
@@ -275,8 +279,6 @@ fn dyn_camera_tests() {
                     pixel,
                     EPS_F64,
                 );
-                println!("dx: {:?}", dx);
-                println!("numeric_dx: {:?}", numeric_dx);
 
                 assert_relative_eq!(dx, numeric_dx, epsilon = 1e-4);
 
@@ -303,7 +305,6 @@ fn dyn_camera_tests() {
                             params,
                             EPS_F64,
                         );
-                        println!("dx_params: {:?}", dx_params);
                         assert_relative_eq!(dx_params, numeric_dx_params, epsilon = 1e-4);
                     }
                     PerspectiveCameraEnum::BrownConrady(_camera) => {

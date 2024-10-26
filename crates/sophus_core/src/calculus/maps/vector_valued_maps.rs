@@ -2,7 +2,7 @@ use crate::linalg::SVec;
 use crate::prelude::*;
 use crate::tensor::mut_tensor::MutTensorDDR;
 use crate::tensor::mut_tensor::MutTensorDR;
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 /// Vector-valued map on a vector space.
 ///
@@ -13,7 +13,7 @@ use std::marker::PhantomData;
 /// These functions are also called vector fields (on vector space).
 ///
 pub struct VectorValuedMapFromVector<S: IsScalar<BATCH>, const BATCH: usize> {
-    phantom: std::marker::PhantomData<S>,
+    phantom: core::marker::PhantomData<S>,
 }
 
 impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize>
@@ -134,7 +134,7 @@ impl<D: IsDualScalar<BATCH, DualScalar = D>, const BATCH: usize>
 /// This type of function is also called a vector field (on product spaces).
 ///
 pub struct VectorValuedMapFromMatrix<S: IsScalar<BATCH>, const BATCH: usize> {
-    phantom: std::marker::PhantomData<S>,
+    phantom: core::marker::PhantomData<S>,
 }
 
 impl<S: IsRealScalar<BATCH>, const BATCH: usize> VectorValuedMapFromMatrix<S, BATCH> {
