@@ -22,3 +22,4 @@ sophus_core = {workspace = true}
 
 [features]
 simd = ["sophus_core/simd"]
+std = ["sophus_core/std"]

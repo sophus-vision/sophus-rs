@@ -33,3 +33,9 @@ simd = [
   "sophus_sensor/simd",
   "sophus_image/simd",
 ]
+std = [
+  "sophus_core/std",
+  "sophus_lie/std",
+  "sophus_sensor/std",
+  "sophus_image/std",
+]

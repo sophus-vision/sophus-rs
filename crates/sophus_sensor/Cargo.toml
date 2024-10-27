@@ -22,3 +22,7 @@ num-traits.workspace = true
 
 [features]
 simd = ["sophus_core/simd", "sophus_image/simd"]
+std = [
+  "sophus_core/std",
+  "sophus_image/std",
+]

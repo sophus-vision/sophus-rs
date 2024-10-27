@@ -24,4 +24,4 @@ png = {version ="0.17", optional = true}
 
 [features]
 simd = ["sophus_core/simd"]
-std = ["png", "tiff"]
+std = ["png", "tiff", "sophus_core/std"]

@@ -26,3 +26,7 @@ features = ["abi3-py38"]
 [features]
 default = []
 pyo3 = ["dep:pyo3"]
+std = [
+  "sophus_core/std",
+  "sophus_lie/std",
+]
