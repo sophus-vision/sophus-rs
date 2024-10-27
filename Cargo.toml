@@ -3,7 +3,6 @@ members = [
   "crates/sophus",
   "crates/sophus_core",
   "crates/sophus_lie",
-  "crates/sophus_pyo3",
   "crates/sophus_image",
   "crates/sophus_sensor",
   "crates/sophus_opt",
@@ -29,7 +28,6 @@ sophus_core = {path = "crates/sophus_core", version = "0.10.0"}
 sophus_image = {path = "crates/sophus_image", version = "0.10.0"}
 sophus_lie = {path = "crates/sophus_lie", version = "0.10.0"}
 sophus_opt = {path = "crates/sophus_opt", version = "0.10.0"}
-sophus_pyo3 = {path = "crates/sophus_pyo3", version = "0.10.0"}
 sophus_sensor = {path = "crates/sophus_sensor", version = "0.10.0"}
 
 approx = "0.5"
