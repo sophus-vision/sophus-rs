@@ -3,7 +3,7 @@ use crate::linalg::SVec;
 use crate::prelude::*;
 use crate::tensor::MutTensor;
 use concat_arrays::concat_arrays;
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 /// Tensor view
 ///
@@ -193,8 +193,8 @@ macro_rules! tensor_view_is_view {
                 use ndarray::ShapeBuilder;
 
                 assert_eq!(
-                    std::mem::size_of::<STensor>(),
-                    std::mem::size_of::<Scalar>() * ROWS * COLS
+                    core::mem::size_of::<STensor>(),
+                    core::mem::size_of::<Scalar>() * ROWS * COLS
                 );
                 let scalar_view =
                     unsafe { ndarray::ArrayView::from_shape_ptr(shape.strides(strides), ptr) };

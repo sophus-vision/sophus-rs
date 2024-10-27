@@ -1,28 +1,26 @@
 use super::dual_matrix::DualMatrix;
 use super::dual_vector::DualVector;
-
 use crate::linalg::scalar::NumberCategory;
-
 use crate::linalg::MatF64;
 use crate::linalg::VecF64;
 use crate::linalg::EPS_F64;
 use crate::prelude::*;
 use crate::tensor::mut_tensor::InnerScalarToVec;
 use crate::tensor::mut_tensor::MutTensorDD;
-
 use approx::AbsDiffEq;
 use approx::RelativeEq;
+use core::fmt::Debug;
+use core::ops::Add;
+use core::ops::AddAssign;
+use core::ops::Div;
+use core::ops::Mul;
+use core::ops::Neg;
+use core::ops::Sub;
+use core::ops::SubAssign;
 use num_traits::One;
 use num_traits::Zero;
 
-use std::fmt::Debug;
-use std::ops::Add;
-use std::ops::AddAssign;
-use std::ops::Div;
-use std::ops::Mul;
-use std::ops::Neg;
-use std::ops::Sub;
-use std::ops::SubAssign;
+extern crate alloc;
 
 /// Trait for dual numbers
 pub trait IsDual {}
@@ -234,7 +232,7 @@ impl PartialEq for DualScalar {
 }
 
 impl PartialOrd for DualScalar {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         self.real_part.partial_cmp(&other.real_part)
     }
 }
@@ -246,7 +244,7 @@ impl From<f64> for DualScalar {
 }
 
 impl Debug for DualScalar {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if self.dij_part.is_some() {
             f.debug_struct("DualScalar")
                 .field("val", &self.real_part)
@@ -467,7 +465,7 @@ impl IsScalar<1> for DualScalar {
         }
     }
 
-    fn scalar_examples() -> Vec<Self> {
+    fn scalar_examples() -> alloc::vec::Vec<Self> {
         [1.0, 2.0, 3.0].iter().map(|&v| Self::from_f64(v)).collect()
     }
 

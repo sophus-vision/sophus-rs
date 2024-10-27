@@ -1,9 +1,11 @@
 use super::traits::IsLieGroupImpl;
 use crate::prelude::*;
 use approx::assert_relative_eq;
+use core::fmt::Debug;
 use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
-use std::fmt::Debug;
+
+extern crate alloc;
 
 /// Lie group
 #[derive(Debug, Copy, Clone, Default)]
@@ -17,7 +19,7 @@ pub struct LieGroup<
     G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
 > {
     pub(crate) params: S::Vector<PARAMS>,
-    phantom: std::marker::PhantomData<G>,
+    phantom: core::marker::PhantomData<G>,
 }
 
 impl<
@@ -35,11 +37,11 @@ impl<
         G::are_params_valid(params)
     }
 
-    fn params_examples() -> Vec<S::Vector<PARAMS>> {
+    fn params_examples() -> alloc::vec::Vec<S::Vector<PARAMS>> {
         G::params_examples()
     }
 
-    fn invalid_params_examples() -> Vec<S::Vector<PARAMS>> {
+    fn invalid_params_examples() -> alloc::vec::Vec<S::Vector<PARAMS>> {
         G::invalid_params_examples()
     }
 }
@@ -62,7 +64,7 @@ impl<
         );
         Self {
             params: G::disambiguate(params.clone()),
-            phantom: std::marker::PhantomData,
+            phantom: core::marker::PhantomData,
         }
     }
 
@@ -85,7 +87,7 @@ impl<
         G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
     > TangentImpl<S, DOF, BATCH_SIZE> for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
 {
-    fn tangent_examples() -> Vec<<S as IsScalar<BATCH_SIZE>>::Vector<DOF>> {
+    fn tangent_examples() -> alloc::vec::Vec<<S as IsScalar<BATCH_SIZE>>::Vector<DOF>> {
         G::tangent_examples()
     }
 }
@@ -206,8 +208,8 @@ impl<
     }
 
     /// group element examples
-    pub fn element_examples() -> Vec<Self> {
-        let mut elements = vec![];
+    pub fn element_examples() -> alloc::vec::Vec<Self> {
+        let mut elements = alloc::vec![];
         for params in Self::params_examples() {
             elements.push(Self::from_params(&params));
         }
@@ -239,13 +241,13 @@ impl<
                 num += S::Mask::all_true().count();
             }
             let percentage = num_preserves as f64 / num as f64;
-            assertables::assert_le!(percentage, 0.75);
+            assert!(percentage <= 0.75, "{} <= 0.75", percentage);
         }
     }
 
     fn adjoint_tests() {
-        let group_examples: Vec<_> = Self::element_examples();
-        let tangent_examples: Vec<S::Vector<DOF>> = G::tangent_examples();
+        let group_examples: alloc::vec::Vec<_> = Self::element_examples();
+        let tangent_examples: alloc::vec::Vec<S::Vector<DOF>> = G::tangent_examples();
 
         for g in &group_examples {
             let mat: S::Matrix<AMBIENT, AMBIENT> = g.matrix();
@@ -281,8 +283,8 @@ impl<
     }
 
     fn exp_tests() {
-        let group_examples: Vec<_> = Self::element_examples();
-        let tangent_examples: Vec<S::Vector<DOF>> = G::tangent_examples();
+        let group_examples: alloc::vec::Vec<_> = Self::element_examples();
+        let tangent_examples: alloc::vec::Vec<S::Vector<DOF>> = G::tangent_examples();
 
         for g in &group_examples {
             let matrix_before = *g.compact().real_matrix();
@@ -308,7 +310,7 @@ impl<
     }
 
     fn hat_tests() {
-        let tangent_examples: Vec<S::Vector<DOF>> = G::tangent_examples();
+        let tangent_examples: alloc::vec::Vec<S::Vector<DOF>> = G::tangent_examples();
 
         for omega in &tangent_examples {
             assert_relative_eq!(
@@ -320,7 +322,7 @@ impl<
     }
 
     fn group_operation_tests() {
-        let group_examples: Vec<_> = Self::element_examples();
+        let group_examples: alloc::vec::Vec<_> = Self::element_examples();
 
         for g1 in &group_examples {
             for g2 in &group_examples {
@@ -351,9 +353,9 @@ impl<
     /// run all tests
     pub fn test_suite() {
         // Most tests will trivially pass if there are no examples. So first we make sure we have at least three per group.
-        let group_examples: Vec<_> = Self::element_examples();
+        let group_examples: alloc::vec::Vec<_> = Self::element_examples();
         assert!(group_examples.len() >= 3);
-        let tangent_examples: Vec<S::Vector<DOF>> = G::tangent_examples();
+        let tangent_examples: alloc::vec::Vec<S::Vector<DOF>> = G::tangent_examples();
         assert!(tangent_examples.len() >= 3);
 
         Self::presentability_tests();

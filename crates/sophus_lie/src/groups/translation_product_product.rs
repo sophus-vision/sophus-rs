@@ -9,6 +9,8 @@ use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
 use sophus_core::points::example_points;
 
+extern crate alloc;
+
 /// implementation of a translation product group
 ///
 /// It is a semi-direct product of the commutative translation group (Euclidean vector space) and a factor group.
@@ -24,7 +26,7 @@ pub struct TranslationProductGroupImpl<
     const BATCH: usize,
     F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH>,
 > {
-    phantom: std::marker::PhantomData<(S, F)>,
+    phantom: core::marker::PhantomData<(S, F)>,
 }
 
 impl<
@@ -75,7 +77,7 @@ impl<
         S::Vector::block_vec2(translation.clone(), factor_tangent.clone())
     }
 
-    fn translation_examples() -> Vec<S::Vector<POINT>> {
+    fn translation_examples() -> alloc::vec::Vec<S::Vector<POINT>> {
         example_points::<S, POINT, BATCH>()
     }
 }
@@ -118,14 +120,14 @@ impl<
         F::are_params_valid(&Self::factor_params(params))
     }
 
-    fn params_examples() -> Vec<S::Vector<PARAMS>> {
-        let mut examples = vec![];
+    fn params_examples() -> alloc::vec::Vec<S::Vector<PARAMS>> {
+        let mut examples = alloc::vec![];
 
         let factor_examples = F::params_examples();
         let translation_examples = Self::translation_examples();
 
         // Determine the maximum length of factor and translation examples
-        let max_len = std::cmp::max(factor_examples.len(), translation_examples.len());
+        let max_len = core::cmp::max(factor_examples.len(), translation_examples.len());
 
         for i in 0..max_len {
             // Wrap around indices if one vector is shorter than the other
@@ -137,8 +139,8 @@ impl<
         examples
     }
 
-    fn invalid_params_examples() -> Vec<S::Vector<PARAMS>> {
-        vec![Self::params_from(
+    fn invalid_params_examples() -> alloc::vec::Vec<S::Vector<PARAMS>> {
+        alloc::vec![Self::params_from(
             &S::Vector::zeros(),
             &F::invalid_params_examples()[0],
         )]
@@ -158,14 +160,14 @@ impl<
     > TangentImpl<S, DOF, BATCH>
     for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, F>
 {
-    fn tangent_examples() -> Vec<S::Vector<DOF>> {
-        let mut examples = vec![];
+    fn tangent_examples() -> alloc::vec::Vec<S::Vector<DOF>> {
+        let mut examples = alloc::vec![];
 
         let factor_examples = F::tangent_examples();
         let translation_examples = Self::translation_examples();
 
         // Determine the maximum length of factor and translation examples
-        let max_len = std::cmp::max(factor_examples.len(), translation_examples.len());
+        let max_len = core::cmp::max(factor_examples.len(), translation_examples.len());
 
         for i in 0..max_len {
             // Wrap around indices if one vector is shorter than the other

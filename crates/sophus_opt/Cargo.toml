@@ -18,7 +18,6 @@ sophus_sensor.workspace = true
 
 approx.workspace = true
 as-any.workspace = true
-assertables.workspace = true
 dyn-clone.workspace = true
 faer.workspace = true
 log.workspace = true

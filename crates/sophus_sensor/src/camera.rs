@@ -2,6 +2,8 @@ use super::traits::IsCameraDistortionImpl;
 use crate::prelude::*;
 use sophus_image::ImageSize;
 
+extern crate alloc;
+
 /// A generic camera model
 #[derive(Debug, Copy, Clone)]
 pub struct Camera<
@@ -13,7 +15,7 @@ pub struct Camera<
     Proj: IsProjection<S, BATCH>,
 > {
     params: S::Vector<PARAMS>,
-    phantom: std::marker::PhantomData<(Distort, Proj)>,
+    phantom: core::marker::PhantomData<(Distort, Proj)>,
     image_size: ImageSize,
 }
 
@@ -40,7 +42,7 @@ impl<
         );
         Self {
             params: params.clone(),
-            phantom: std::marker::PhantomData,
+            phantom: core::marker::PhantomData,
             image_size: size,
         }
     }
@@ -104,12 +106,12 @@ impl<
     }
 
     /// Examples of valid parameters
-    pub fn params_examples() -> Vec<S::Vector<PARAMS>> {
+    pub fn params_examples() -> alloc::vec::Vec<S::Vector<PARAMS>> {
         Distort::params_examples()
     }
 
     /// Examples of invalid parameters
-    pub fn invalid_params_examples() -> Vec<S::Vector<PARAMS>> {
+    pub fn invalid_params_examples() -> alloc::vec::Vec<S::Vector<PARAMS>> {
         Distort::invalid_params_examples()
     }
 }

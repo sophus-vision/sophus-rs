@@ -17,6 +17,8 @@ use sophus_lie::Isometry2F64;
 use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
 
+extern crate alloc;
+
 /// Simple 2D isometry prior problem
 pub struct SimpleIso2PriorProblem {
     /// True world from robot isometry
@@ -44,7 +46,7 @@ impl SimpleIso2PriorProblem {
     /// Test the simple 2D isometry prior problem
     pub fn test(&self) {
         use sophus_core::linalg::EPS_F64;
-        let cost_signature = vec![Isometry2PriorTermSignature {
+        let cost_signature = alloc::vec![Isometry2PriorTermSignature {
             isometry_prior_mean: self.true_world_from_robot,
             entity_indices: [0],
         }];
@@ -56,7 +58,7 @@ impl SimpleIso2PriorProblem {
         >::new(["poses".into()], cost_signature);
 
         let family: VarFamily<Isometry2F64> =
-            VarFamily::new(VarKind::Free, vec![self.est_world_from_robot]);
+            VarFamily::new(VarKind::Free, alloc::vec![self.est_world_from_robot]);
 
         let families = VarPoolBuilder::new().add_family("poses", family).build();
 
@@ -68,7 +70,7 @@ impl SimpleIso2PriorProblem {
 
         let up_families = optimize(
             families,
-            vec![CostFn::new_box(
+            alloc::vec![CostFn::new_box(
                 (),
                 obs_pose_a_from_pose_b_poses.clone(),
                 Isometry2PriorCostFn {},
@@ -117,7 +119,7 @@ impl SimpleIso3PriorProblem {
     pub fn test(&self) {
         use sophus_core::linalg::EPS_F64;
 
-        let cost_signature = vec![Isometry3PriorTermSignature {
+        let cost_signature = alloc::vec![Isometry3PriorTermSignature {
             isometry_prior: (self.true_world_from_robot, MatF64::<6, 6>::identity()),
             entity_indices: [0],
         }];
@@ -129,7 +131,7 @@ impl SimpleIso3PriorProblem {
         >::new(["poses".into()], cost_signature);
 
         let family: VarFamily<Isometry3F64> =
-            VarFamily::new(VarKind::Free, vec![self.est_world_from_robot]);
+            VarFamily::new(VarKind::Free, alloc::vec![self.est_world_from_robot]);
 
         let families = VarPoolBuilder::new().add_family("poses", family).build();
 
@@ -141,7 +143,7 @@ impl SimpleIso3PriorProblem {
 
         let up_families = optimize(
             families,
-            vec![CostFn::new_box(
+            alloc::vec![CostFn::new_box(
                 (),
                 obs_pose_a_from_pose_b_poses.clone(),
                 Isometry3PriorCostFn {},

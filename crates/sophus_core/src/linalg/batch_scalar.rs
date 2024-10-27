@@ -10,24 +10,28 @@ use crate::linalg::BatchVecF64;
 use crate::linalg::EPS_F64;
 use crate::prelude::IsCoreScalar;
 use crate::prelude::*;
+use alloc::vec;
+use alloc::vec::Vec;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
-use std::fmt::Debug;
-use std::ops::AddAssign;
-use std::ops::Div;
-use std::ops::Mul;
-use std::ops::MulAssign;
-use std::ops::Neg;
-use std::ops::Sub;
-use std::ops::SubAssign;
-use std::simd::cmp::SimdPartialOrd;
-use std::simd::num::SimdFloat;
-use std::simd::LaneCount;
-use std::simd::Mask;
-use std::simd::Simd;
-use std::simd::SimdElement;
-use std::simd::StdFloat;
-use std::simd::SupportedLaneCount;
+use core::fmt::Debug;
+use core::ops::AddAssign;
+use core::ops::Div;
+use core::ops::Mul;
+use core::ops::MulAssign;
+use core::ops::Neg;
+use core::ops::Sub;
+use core::ops::SubAssign;
+use core::simd::cmp::SimdPartialOrd;
+use core::simd::num::SimdFloat;
+use core::simd::LaneCount;
+use core::simd::Mask;
+use core::simd::Simd;
+use core::simd::SimdElement;
+use core::simd::SupportedLaneCount;
+use sleef::Sleef;
+
+extern crate alloc;
 
 impl<S: SimdElement + IsCoreScalar, const BATCH_SIZE: usize> IsCoreScalar
     for BatchScalar<S, BATCH_SIZE>
@@ -35,7 +39,7 @@ where
     LaneCount<BATCH_SIZE>: SupportedLaneCount,
     Simd<S, BATCH_SIZE>: SimdFloat,
     BatchScalar<S, BATCH_SIZE>:
-        Clone + Debug + nalgebra::Scalar + num_traits::Zero + std::ops::AddAssign,
+        Clone + Debug + nalgebra::Scalar + num_traits::Zero + core::ops::AddAssign,
 {
     fn number_category() -> NumberCategory {
         NumberCategory::Real
@@ -296,7 +300,9 @@ where
     }
 
     fn fract(self) -> Self {
-        BatchScalarF64 { 0: self.0.fract() }
+        BatchScalarF64 {
+            0: self.0.frfrexp(),
+        }
     }
 
     fn floor(&self) -> BatchScalarF64<BATCH> {

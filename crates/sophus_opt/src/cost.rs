@@ -1,9 +1,11 @@
 use crate::term::Term;
 use crate::variables::VarKind;
 use crate::variables::VarPool;
+use core::fmt::Debug;
+use core::ops::AddAssign;
 use dyn_clone::DynClone;
-use std::fmt::Debug;
-use std::ops::AddAssign;
+
+extern crate alloc;
 
 /// Evaluated cost
 pub trait IsCost: Debug + DynClone {
@@ -15,7 +17,7 @@ pub trait IsCost: Debug + DynClone {
         &self,
         variables: &VarPool,
         nu: f64,
-        upper_hessian_triplet: &mut Vec<(usize, usize, f64)>,
+        upper_hessian_triplet: &mut alloc::vec::Vec<(usize, usize, f64)>,
         neg_grad: &mut nalgebra::DVector<f64>,
     );
 }
@@ -24,19 +26,22 @@ pub trait IsCost: Debug + DynClone {
 #[derive(Debug, Clone)]
 pub struct Cost<const NUM: usize, const NUM_ARGS: usize> {
     /// one name (of the corresponding variable family) for each argument (of the cost function
-    pub family_names: [String; NUM_ARGS],
+    pub family_names: [alloc::string::String; NUM_ARGS],
     /// evaluated terms of the cost function
-    pub terms: Vec<Term<NUM, NUM_ARGS>>,
+    pub terms: alloc::vec::Vec<Term<NUM, NUM_ARGS>>,
     /// degrees of freedom for each argument
     pub dof_tuple: [i64; NUM_ARGS],
 }
 
 impl<const NUM: usize, const NUM_ARGS: usize> Cost<NUM, NUM_ARGS> {
     /// create a new evaluated cost
-    pub fn new(family_names: [String; NUM_ARGS], dof_tuple: [i64; NUM_ARGS]) -> Self {
+    pub fn new(
+        family_names: [alloc::string::String; NUM_ARGS],
+        dof_tuple: [i64; NUM_ARGS],
+    ) -> Self {
         Cost {
             family_names,
-            terms: Vec::new(),
+            terms: alloc::vec::Vec::new(),
             dof_tuple,
         }
     }
@@ -69,14 +74,14 @@ impl<const NUM: usize, const NUM_ARGS: usize> IsCost for Cost<NUM, NUM_ARGS> {
         &self,
         variables: &VarPool,
         nu: f64,
-        upper_hessian_triplet: &mut Vec<(usize, usize, f64)>,
+        upper_hessian_triplet: &mut alloc::vec::Vec<(usize, usize, f64)>,
         neg_grad: &mut nalgebra::DVector<f64>,
     ) {
         let num_args = self.family_names.len();
 
-        let mut start_indices_per_arg = Vec::new();
+        let mut start_indices_per_arg = alloc::vec::Vec::new();
 
-        let mut dof_per_arg = Vec::new();
+        let mut dof_per_arg = alloc::vec::Vec::new();
         for name in self.family_names.iter() {
             let family = variables.families.get(name).unwrap();
             start_indices_per_arg.push(family.get_start_indices().clone());

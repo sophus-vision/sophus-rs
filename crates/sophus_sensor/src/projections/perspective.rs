@@ -9,7 +9,7 @@ use sophus_core::prelude::IsSingleScalar;
 /// Projects a 3D point in the camera frame to a 2D point in the z=1 plane
 #[derive(Debug, Clone, Copy)]
 pub struct PerspectiveProjectionImpl<S: IsScalar<BATCH>, const BATCH: usize> {
-    phantom: std::marker::PhantomData<S>,
+    phantom: core::marker::PhantomData<S>,
 }
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> IsProjection<S, BATCH>

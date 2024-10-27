@@ -1,4 +1,4 @@
-use std::any::TypeId;
+use core::any::TypeId;
 
 use crate::arc_image::ArcImageR;
 use crate::intensity_image::dyn_intensity_image::DynIntensityArcImage;
@@ -28,7 +28,7 @@ use sophus_core::linalg::SVec;
 pub trait IsIntensityArcImage<
     Scalar: IsIntensityScalar + 'static,
     Pixel: IntensityPixel<Scalar> + 'static,
->: std::marker::Sized
+>: core::marker::Sized
 {
     /// Pixel type
     type Pixel<OtherScalar: IsIntensityScalar>: IntensityPixel<OtherScalar>;
@@ -97,7 +97,9 @@ impl<Scalar: IsIntensityScalar + 'static> IsIntensityArcImage<Scalar, Scalar> fo
             // If the scalar type is the same, just return the image.
 
             // Safety: This is safe because the types are actually the same.
-            return unsafe { std::mem::transmute::<ArcImage<Scalar>, ArcImage<OtherScalar>>(self) };
+            return unsafe {
+                core::mem::transmute::<ArcImage<Scalar>, ArcImage<OtherScalar>>(self)
+            };
         }
         ArcImage::<OtherScalar>::from_map(&self.image_view(), |rgb: &Scalar| -> OtherScalar {
             OtherScalar::from(*rgb)
@@ -153,7 +155,7 @@ impl<Scalar: IsIntensityScalar + 'static> IsIntensityArcImage<Scalar, SVec<Scala
 
             // Safety: This is safe because the types are actually the same.
             return unsafe {
-                std::mem::transmute::<ArcImageR<Scalar, 2>, ArcImageR<OtherScalar, 2>>(self)
+                core::mem::transmute::<ArcImageR<Scalar, 2>, ArcImageR<OtherScalar, 2>>(self)
             };
         }
         ArcImageR::<OtherScalar, 2>::from_map(
@@ -209,7 +211,7 @@ impl<Scalar: IsIntensityScalar + 'static> IsIntensityArcImage<Scalar, SVec<Scala
 
             // Safety: This is safe because the types are actually the same.
             return unsafe {
-                std::mem::transmute::<ArcImageR<Scalar, 3>, ArcImageR<OtherScalar, 3>>(self)
+                core::mem::transmute::<ArcImageR<Scalar, 3>, ArcImageR<OtherScalar, 3>>(self)
             };
         }
         ArcImageR::<OtherScalar, 3>::from_map(
@@ -269,7 +271,7 @@ impl<Scalar: IsIntensityScalar + 'static> IsIntensityArcImage<Scalar, SVec<Scala
 
             // Safety: This is safe because the types are actually the same.
             return unsafe {
-                std::mem::transmute::<ArcImageR<Scalar, 4>, ArcImageR<OtherScalar, 4>>(self)
+                core::mem::transmute::<ArcImageR<Scalar, 4>, ArcImageR<OtherScalar, 4>>(self)
             };
         }
         ArcImageR::<OtherScalar, 4>::from_map(

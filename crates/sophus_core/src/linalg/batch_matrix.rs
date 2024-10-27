@@ -1,14 +1,11 @@
 use crate::calculus::dual::DualBatchMatrix;
-
 use crate::linalg::BatchMatF64;
 use crate::linalg::BatchScalarF64;
 use crate::linalg::BatchVecF64;
-
 use crate::prelude::*;
-
-use std::simd::LaneCount;
-use std::simd::Mask;
-use std::simd::SupportedLaneCount;
+use core::simd::LaneCount;
+use core::simd::Mask;
+use core::simd::SupportedLaneCount;
 
 impl<const ROWS: usize, const COLS: usize, const BATCH: usize>
     IsMatrix<BatchScalarF64<BATCH>, ROWS, COLS, BATCH> for BatchMatF64<ROWS, COLS, BATCH>

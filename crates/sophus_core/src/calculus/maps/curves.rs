@@ -8,7 +8,7 @@ use nalgebra::SVector;
 ///
 ///  f: ℝ -> ℝ
 pub struct ScalarValuedCurve<S: IsScalar<BATCH>, const BATCH: usize> {
-    phantom: std::marker::PhantomData<S>,
+    phantom: core::marker::PhantomData<S>,
 }
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> ScalarValuedCurve<S, BATCH> {
@@ -44,7 +44,7 @@ impl<D: IsDualScalar<BATCH>, const BATCH: usize> ScalarValuedCurve<D, BATCH> {
 ///
 ///   f: ℝ -> ℝʳ
 pub struct VectorValuedCurve<S: IsScalar<BATCH>, const BATCH: usize> {
-    phantom: std::marker::PhantomData<S>,
+    phantom: core::marker::PhantomData<S>,
 }
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> VectorValuedCurve<S, BATCH> {
@@ -79,7 +79,7 @@ impl<D: IsDualScalar<BATCH>, const BATCH: usize> VectorValuedCurve<D, BATCH> {
 /// This is a function which takes a scalar and returns a matrix:
 ///   f: ℝ -> ℝʳ x ℝᶜ
 pub struct MatrixValuedCurve<S: IsScalar<BATCH>, const BATCH: usize> {
-    phantom: std::marker::PhantomData<S>,
+    phantom: core::marker::PhantomData<S>,
 }
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> MatrixValuedCurve<S, BATCH> {

@@ -4,13 +4,13 @@ use crate::linalg::VecF64;
 use crate::prelude::*;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
-use std::fmt::Debug;
-use std::ops::Add;
-use std::ops::Index;
-use std::ops::IndexMut;
-use std::ops::Mul;
-use std::ops::Neg;
-use std::ops::Sub;
+use core::fmt::Debug;
+use core::ops::Add;
+use core::ops::Index;
+use core::ops::IndexMut;
+use core::ops::Mul;
+use core::ops::Neg;
+use core::ops::Sub;
 
 /// Matrix trait
 ///  - either a real (f64) or a dual number matrix

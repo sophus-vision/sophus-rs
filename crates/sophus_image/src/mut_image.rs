@@ -6,6 +6,8 @@ use sophus_core::linalg::SVec;
 use sophus_core::tensor::MutTensor;
 use sophus_core::tensor::TensorView;
 
+extern crate alloc;
+
 /// Mutable image of static tensors
 #[derive(Debug, Clone, Default)]
 pub struct GenMutImage<
@@ -184,16 +186,16 @@ macro_rules! mut_image {
             pub fn try_make_copy_from_size_and_bytes(
                 image_size: ImageSize,
                 bytes: &'a [u8],
-            ) -> Result<Self,String> {
+            ) -> Result<Self, alloc::string::String> {
                 let num_scalars_in_pixel = STensor::num_scalars();
                 let num_scalars_in_image =  num_scalars_in_pixel * image_size.width * image_size.height;
-                let size_in_bytes = num_scalars_in_image * std::mem::size_of::<Scalar>();
+                let size_in_bytes = num_scalars_in_image * core::mem::size_of::<Scalar>();
                 if(bytes.len() != size_in_bytes){
-                    return Err(format!("bytes.len() = {} != size_in_bytes = {}",
+                    return Err(alloc::format!("bytes.len() = {} != size_in_bytes = {}",
                                        bytes.len(), size_in_bytes));
                 }
                 let stensor_slice = unsafe {
-                    std::slice::from_raw_parts(
+                    core::slice::from_raw_parts(
                         bytes.as_ptr() as *const Scalar,
                         num_scalars_in_image)
                 };
@@ -311,7 +313,7 @@ macro_rules! mut_image {
                 }
             }
 
-            fn mut_pixel(&'a mut self, u: usize, v: usize) -> &mut STensor {
+            fn mut_pixel(&'a mut self, u: usize, v: usize) -> &'a mut STensor {
                 self.mut_tensor.get_mut([v, u])
             }
         }

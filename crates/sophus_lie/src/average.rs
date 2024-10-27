@@ -4,19 +4,19 @@ use crate::groups::rotation2::Rotation2F64;
 use crate::groups::rotation3::Rotation3F64;
 use crate::traits::IsLieGroupImpl;
 use crate::LieGroup;
+use snafu::prelude::*;
 use sophus_core::linalg::EPS_F64;
 use sophus_core::prelude::IsSingleScalar;
 use sophus_core::prelude::IsVector;
-use thiserror::Error;
 
 /// error of iterative_average
-#[derive(Error, Debug)]
+#[derive(Snafu, Debug)]
 pub enum IterativeAverageError<Group> {
     /// slice is empty
-    #[error("empty slice")]
+    #[snafu(display("empty slice"))]
     EmptySlice,
     /// not converged
-    #[error("no convergence after {max_iteration_count:?} iterations")]
+    #[snafu(display("no convergence after {max_iteration_count:?} iterations"))]
     NotConverged {
         /// max iteration count
         max_iteration_count: u32,

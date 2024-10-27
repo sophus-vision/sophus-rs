@@ -9,6 +9,8 @@ use sophus_image::interpolation::interpolate;
 use sophus_image::mut_image::MutImage2F32;
 use sophus_image::mut_image_view::IsMutImageView;
 
+extern crate alloc;
+
 /// A table of distortion values.
 #[derive(Debug, Clone)]
 pub struct DistortTable {
@@ -111,7 +113,7 @@ fn camera_distortion_table_tests() {
     type DynCameraF64 = DynCamera<f64, 1>;
 
     {
-        let mut cameras: Vec<DynCameraF64> = vec![];
+        let mut cameras: alloc::vec::Vec<DynCameraF64> = alloc::vec![];
         cameras.push(DynCameraF64::new_pinhole(
             &VecF64::<4>::new(600.0, 600.0, 1.0, 0.5),
             ImageSize {
@@ -121,7 +123,9 @@ fn camera_distortion_table_tests() {
         ));
 
         cameras.push(DynCamera::new_kannala_brandt(
-            &VecF64::<8>::from_vec(vec![1000.0, 1000.0, 320.0, 280.0, 0.1, 0.01, 0.001, 0.0001]),
+            &VecF64::<8>::from_vec(alloc::vec![
+                1000.0, 1000.0, 320.0, 280.0, 0.1, 0.01, 0.001, 0.0001
+            ]),
             ImageSize {
                 width: 640,
                 height: 480,
@@ -129,7 +133,7 @@ fn camera_distortion_table_tests() {
         ));
 
         for camera in cameras {
-            let pixels_in_image = vec![
+            let pixels_in_image = alloc::vec![
                 VecF64::<2>::new(0.0, 0.0),
                 VecF64::<2>::new(2.0, 1.0),
                 VecF64::<2>::new(2.9, 1.9),

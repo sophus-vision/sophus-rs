@@ -1,5 +1,7 @@
 use nalgebra::DMatrix;
 
+extern crate alloc;
+
 /// A matrix in triplet format for sparse LDLT factorization / using faer crate
 pub struct SparseLdlt {
     upper_ccs: faer::sparse::SparseColMat<usize, f64>,
@@ -8,7 +10,7 @@ pub struct SparseLdlt {
 /// A matrix in triplet format
 pub struct SymmetricTripletMatrix {
     /// upper diagonal triplets
-    pub upper_triplets: Vec<(usize, usize, f64)>,
+    pub upper_triplets: alloc::vec::Vec<(usize, usize, f64)>,
     /// row count (== column count)
     pub size: usize,
 }
@@ -17,7 +19,7 @@ impl SymmetricTripletMatrix {
     /// Create an example matrix
     pub fn example() -> Self {
         Self {
-            upper_triplets: vec![
+            upper_triplets: alloc::vec![
                 (0, 0, 3.05631771),
                 (1, 1, 60.05631771),
                 (2, 2, 6.05631771),
@@ -63,8 +65,8 @@ impl SymmetricTripletMatrix {
 }
 
 struct SparseLdltPerm {
-    perm: Vec<usize>,
-    perm_inv: Vec<usize>,
+    perm: alloc::vec::Vec<usize>,
+    perm_inv: alloc::vec::Vec<usize>,
 }
 
 impl SparseLdltPerm {
@@ -76,9 +78,9 @@ impl SparseLdltPerm {
         let nnz = upper_ccs.compute_nnz();
         let perm_ref = unsafe { faer::perm::PermRef::new_unchecked(&self.perm, &self.perm_inv) };
 
-        let mut ccs_perm_col_ptrs = Vec::new();
-        let mut ccs_perm_row_indices = Vec::new();
-        let mut ccs_perm_values = Vec::new();
+        let mut ccs_perm_col_ptrs = alloc::vec::Vec::new();
+        let mut ccs_perm_row_indices = alloc::vec::Vec::new();
+        let mut ccs_perm_values = alloc::vec::Vec::new();
 
         ccs_perm_col_ptrs.try_reserve_exact(dim + 1).unwrap();
         ccs_perm_col_ptrs.resize(dim + 1, 0usize);
@@ -130,8 +132,8 @@ impl SparseLdlt {
         let nnz = self.upper_ccs.compute_nnz();
 
         let (perm, perm_inv) = {
-            let mut perm = Vec::new();
-            let mut perm_inv = Vec::new();
+            let mut perm = alloc::vec::Vec::new();
+            let mut perm_inv = alloc::vec::Vec::new();
             perm.try_reserve_exact(dim).unwrap();
             perm_inv.try_reserve_exact(dim).unwrap();
             perm.resize(dim, 0usize);
@@ -169,8 +171,8 @@ impl SparseLdlt {
             ).unwrap();
             let mut stack = faer::dyn_stack::PodStack::new(&mut mem);
 
-            let mut etree = Vec::new();
-            let mut col_counts = Vec::new();
+            let mut etree = alloc::vec::Vec::new();
+            let mut col_counts = alloc::vec::Vec::new();
             etree.try_reserve_exact(dim).unwrap();
             etree.resize(dim, 0isize);
             col_counts.try_reserve_exact(dim).unwrap();
@@ -223,7 +225,7 @@ impl SparseLdlt {
         ]).unwrap()).unwrap();
         let mut stack = faer::dyn_stack::PodStack::new(&mut mem);
 
-        let mut l_values = Vec::new();
+        let mut l_values = alloc::vec::Vec::new();
         l_values.try_reserve_exact(symbolic.len_values()).unwrap();
         l_values.resize(symbolic.len_values(), 0.0f64);
         let ccs_perm_upper = symbolic_perm.permutation.perm_upper_ccs(&self.upper_ccs);

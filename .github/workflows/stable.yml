@@ -18,6 +18,7 @@ jobs:
       - name: Run sccache stat for check before
         shell: bash
         run: ${SCCACHE_PATH} --show-stats
+      - uses: extractions/setup-just@v1
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -27,6 +28,7 @@ jobs:
           RUSTC_WRAPPER: "sccache"
         run: |
           cargo build --release --all-targets
+          just build-std
       - name: cargo test
         env:
           SCCACHE_GHA_ENABLED: "true"

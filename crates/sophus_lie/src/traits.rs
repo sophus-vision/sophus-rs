@@ -1,7 +1,7 @@
 use crate::prelude::*;
+use core::fmt::Debug;
 use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
-use std::fmt::Debug;
 
 /// Disambiguate the parameters.
 pub trait HasDisambiguate<S: IsScalar<BATCH_SIZE>, const PARAMS: usize, const BATCH_SIZE: usize>:
@@ -297,7 +297,7 @@ pub trait HasAverage<
     const PARAMS: usize,
     const POINT: usize,
     const AMBIENT: usize,
->: IsLieGroup<S, DOF, PARAMS, POINT, AMBIENT, 1> + std::marker::Sized
+>: IsLieGroup<S, DOF, PARAMS, POINT, AMBIENT, 1> + core::marker::Sized
 {
     /// Lie group average
     fn average(parent_from_body_transforms: &[Self]) -> Result<Self, EmptySliceError>;

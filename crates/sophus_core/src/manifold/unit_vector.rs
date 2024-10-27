@@ -8,10 +8,9 @@ use crate::traits::ManifoldImpl;
 use crate::traits::TangentImpl;
 use crate::HasParams;
 use crate::ParamsImpl;
-use assertables::assert_le;
-use std::marker::PhantomData;
-use std::ops::Neg;
-use thiserror::Error;
+use core::marker::PhantomData;
+use core::ops::Neg;
+extern crate alloc;
 
 #[derive(Clone, Debug, Copy)]
 struct UnitVectorImpl<
@@ -27,14 +26,14 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
     UnitVectorImpl<S, DOF, DIM, BATCH_SIZE>
 {
     fn unit(i: usize) -> S::Vector<DIM> {
-        assert_le!(i, DIM);
+        assert!(i < DIM, "{} < {}", i, DIM);
         let mut v = S::Vector::<DIM>::zeros();
         v.set_elem(i, S::from_f64(1.0));
         v
     }
 
     fn unit_tangent(i: usize) -> S::Vector<DOF> {
-        assert_le!(i, DOF);
+        assert!(i < DOF, "{} < {}", i, DOF);
         let mut v = S::Vector::<DOF>::zeros();
         v.set_elem(i, S::from_f64(1.0));
         v
@@ -89,7 +88,7 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
 impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SIZE: usize>
     TangentImpl<S, DOF, BATCH_SIZE> for UnitVectorImpl<S, DOF, DIM, BATCH_SIZE>
 {
-    fn tangent_examples() -> Vec<S::Vector<DOF>> {
+    fn tangent_examples() -> alloc::vec::Vec<S::Vector<DOF>> {
         todo!()
     }
 }
@@ -104,11 +103,11 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
             .less_equal(&eps)
     }
 
-    fn params_examples() -> Vec<S::Vector<DIM>> {
+    fn params_examples() -> alloc::vec::Vec<S::Vector<DIM>> {
         todo!()
     }
 
-    fn invalid_params_examples() -> Vec<S::Vector<DIM>> {
+    fn invalid_params_examples() -> alloc::vec::Vec<S::Vector<DIM>> {
         todo!()
     }
 }
@@ -201,12 +200,12 @@ pub type UnitVector2<S, const B: usize> = UnitVector<S, 1, 2, B>;
 pub type UnitVector3<S, const B: usize> = UnitVector<S, 2, 3, B>;
 
 /// Vector is near zero.
-#[derive(Clone, Debug, Error)]
+#[derive(Clone, Debug)]
 
 pub struct NearZeroUnitVector;
 
-impl std::fmt::Display for NearZeroUnitVector {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for NearZeroUnitVector {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Vector is near zero")
     }
 }
@@ -264,11 +263,11 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
         UnitVectorImpl::<S, DOF, DIM, BATCH_SIZE>::are_params_valid(params)
     }
 
-    fn params_examples() -> Vec<S::Vector<DIM>> {
+    fn params_examples() -> alloc::vec::Vec<S::Vector<DIM>> {
         UnitVectorImpl::<S, DOF, DIM, BATCH_SIZE>::params_examples()
     }
 
-    fn invalid_params_examples() -> Vec<S::Vector<DIM>> {
+    fn invalid_params_examples() -> alloc::vec::Vec<S::Vector<DIM>> {
         UnitVectorImpl::<S, DOF, DIM, BATCH_SIZE>::invalid_params_examples()
     }
 }

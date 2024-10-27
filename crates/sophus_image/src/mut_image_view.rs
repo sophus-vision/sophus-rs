@@ -87,7 +87,7 @@ macro_rules! mut_image_view {
                 }
             }
 
-            fn mut_pixel(&'a mut self, u: usize, v: usize) -> &mut STensor {
+            fn mut_pixel(&'a mut self, u: usize, v: usize) -> &'a mut STensor {
                 // NOTE:
                 // We are converting from Image Indexing Convention (d0 = u = col_idx, d1 = v = row_idx)
                 // to tensor (and matrix) convention (d0 = rows, d1 = cols).
@@ -119,5 +119,5 @@ pub trait IsMutImageView<
     ) -> GenMutImageView<'a, TOTAL_RANK, SRANK, Scalar, STensor, ROWS, COLS>;
 
     /// returns mutable u,v pixel
-    fn mut_pixel(&'a mut self, u: usize, v: usize) -> &mut STensor;
+    fn mut_pixel(&'a mut self, u: usize, v: usize) -> &'a mut STensor;
 }

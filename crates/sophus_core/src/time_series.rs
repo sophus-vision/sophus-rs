@@ -1,11 +1,9 @@
-use std::collections::VecDeque;
-use std::ops::Index;
-use std::time::Duration;
-
-use log::warn;
-
 use crate::calculus::Interval;
 use crate::prelude::IsRegion;
+use core::ops::Index;
+use core::time::Duration;
+use log::warn;
+extern crate alloc;
 
 /// has time_stamp method
 pub trait HasTimeStamp: Clone {
@@ -38,7 +36,7 @@ pub trait HasInterpolate: HasTimeStamp {
 /// - Finding the nearest item to a given time stamp.
 #[derive(Clone)]
 pub struct TimeSeries<T: HasTimeStamp> {
-    sorted_data: VecDeque<T>,
+    sorted_data: alloc::collections::vec_deque::VecDeque<T>,
 }
 
 /// item with index
@@ -59,7 +57,7 @@ impl<T: HasTimeStamp> TimeSeries<T> {
     /// Create a new empty time series.
     pub fn new() -> Self {
         TimeSeries {
-            sorted_data: VecDeque::new(),
+            sorted_data: alloc::collections::vec_deque::VecDeque::new(),
         }
     }
 
@@ -216,7 +214,7 @@ impl<T: HasTimeStamp> TimeSeries<T> {
     }
 
     /// removes specified range of elements
-    pub fn drain<R: std::ops::RangeBounds<usize>>(&mut self, range: R) {
+    pub fn drain<R: core::ops::RangeBounds<usize>>(&mut self, range: R) {
         self.sorted_data.drain(range);
     }
 
@@ -265,7 +263,7 @@ impl<T: HasInterpolate> TimeSeries<T> {
 
 impl<T: HasTimeStamp> IntoIterator for TimeSeries<T> {
     type Item = T;
-    type IntoIter = std::collections::vec_deque::IntoIter<T>;
+    type IntoIter = alloc::collections::vec_deque::IntoIter<T>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.sorted_data.into_iter()
@@ -274,7 +272,7 @@ impl<T: HasTimeStamp> IntoIterator for TimeSeries<T> {
 
 impl<'a, T: HasTimeStamp> IntoIterator for &'a TimeSeries<T> {
     type Item = &'a T;
-    type IntoIter = std::collections::vec_deque::Iter<'a, T>;
+    type IntoIter = alloc::collections::vec_deque::Iter<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.sorted_data.iter()
@@ -292,7 +290,7 @@ impl<T: HasTimeStamp> Index<usize> for TimeSeries<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Duration;
+    use core::time::Duration;
 
     // Mock struct implementing HasTimeStamp
     #[derive(Debug, PartialEq, Clone)]
@@ -417,7 +415,7 @@ mod tests {
     #[test]
     fn test_insert_duplicate_timestamps() {
         let mut series = TimeSeries::new();
-        let items = vec![
+        let items = alloc::vec![
             TestItem {
                 timestamp: 1.0,
                 value: 10.0,
@@ -601,7 +599,7 @@ mod tests {
     #[test]
     fn test_find_nearest_within_multiple_items_left_closer() {
         let mut series = TimeSeries::new();
-        let items = vec![
+        let items = alloc::vec![
             TestItem {
                 timestamp: 1.0,
                 value: 10.0,
@@ -633,7 +631,7 @@ mod tests {
     #[test]
     fn test_find_nearest_within_multiple_items_right_closer() {
         let mut series = TimeSeries::new();
-        let items = vec![
+        let items = alloc::vec![
             TestItem {
                 timestamp: 1.0,
                 value: 10.0,
@@ -665,7 +663,7 @@ mod tests {
     #[test]
     fn test_find_nearest_within_exact_match() {
         let mut series = TimeSeries::new();
-        let items = vec![
+        let items = alloc::vec![
             TestItem {
                 timestamp: 1.0,
                 value: 10.0,
@@ -695,7 +693,7 @@ mod tests {
     #[test]
     fn test_find_nearest_within_ouserieside_max_dist() {
         let mut series = TimeSeries::new();
-        let items = vec![
+        let items = alloc::vec![
             TestItem {
                 timestamp: 1.0,
                 value: 10.0,
@@ -742,7 +740,7 @@ mod tests {
     #[test]
     fn test_prune_older_than_no_prune() {
         let mut series = TimeSeries::new();
-        let items = vec![
+        let items = alloc::vec![
             TestItem {
                 timestamp: 10.0,
                 value: 100.0,
@@ -772,7 +770,7 @@ mod tests {
     #[test]
     fn test_prune_older_than_some_prune() {
         let mut series = TimeSeries::new();
-        let items = vec![
+        let items = alloc::vec![
             TestItem {
                 timestamp: 10.0,
                 value: 100.0,
@@ -814,7 +812,7 @@ mod tests {
     #[test]
     fn test_time_interval_non_empty() {
         let mut series = TimeSeries::new();
-        let items = vec![
+        let items = alloc::vec![
             TestItem {
                 timestamp: 5.0,
                 value: 50.0,

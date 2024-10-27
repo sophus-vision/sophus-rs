@@ -1,10 +1,12 @@
 use crate::distortions::affine::AffineDistortionImpl;
 use crate::prelude::*;
 use crate::traits::IsCameraDistortionImpl;
+use core::marker::PhantomData;
 use log::warn;
 use sophus_core::linalg::EPS_F64;
 use sophus_core::params::ParamsImpl;
-use std::marker::PhantomData;
+
+extern crate alloc;
 
 /// Kannala-Brandt distortion implementation
 #[derive(Debug, Clone, Copy)]
@@ -19,8 +21,8 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 12, BATCH>
         S::Mask::all_true()
     }
 
-    fn params_examples() -> Vec<S::Vector<12>> {
-        vec![S::Vector::<12>::from_f64_array([
+    fn params_examples() -> alloc::vec::Vec<S::Vector<12>> {
+        alloc::vec![S::Vector::<12>::from_f64_array([
             286.0,
             286.0,
             424.0,
@@ -36,8 +38,8 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 12, BATCH>
         ])]
     }
 
-    fn invalid_params_examples() -> Vec<S::Vector<12>> {
-        vec![]
+    fn invalid_params_examples() -> alloc::vec::Vec<S::Vector<12>> {
+        alloc::vec![]
     }
 }
 

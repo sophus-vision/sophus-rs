@@ -9,8 +9,11 @@ use crate::mut_image::MutImage4U8;
 use crate::mut_image::MutImageU16;
 use crate::mut_image::MutImageU8;
 use crate::ImageSize;
+use std::format;
 use std::fs::File;
 use std::io::BufWriter;
+use std::string::ToString;
+use std::vec;
 
 /// Save an image of unsigned integers as a PNG file
 pub fn save_as_png<'a, ImageView: IsIntensityViewImageU<'a>>(

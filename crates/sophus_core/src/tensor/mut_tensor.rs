@@ -4,10 +4,10 @@ use crate::prelude::*;
 use crate::tensor::ArcTensor;
 use crate::tensor::MutTensorView;
 use crate::tensor::TensorView;
+use core::fmt::Debug;
+use core::marker::PhantomData;
 use ndarray::Dim;
 use ndarray::Ix;
-use std::fmt::Debug;
-use std::marker::PhantomData;
 
 /// mutable tensor
 ///

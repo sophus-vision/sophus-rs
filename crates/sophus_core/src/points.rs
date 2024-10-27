@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use nalgebra::SVector;
 use num_traits::Bounded;
+extern crate alloc;
 
 /// Traits for points
 pub trait IsPoint<const D: usize>: Copy + Bounded {
@@ -86,8 +87,8 @@ impl<const D: usize> IsPoint<D> for SVector<i64, D> {
 
 /// Example points
 pub fn example_points<S: IsScalar<BATCH>, const POINT: usize, const BATCH: usize>(
-) -> Vec<S::Vector<POINT>> {
-    let points4 = vec![
+) -> alloc::vec::Vec<S::Vector<POINT>> {
+    let points4 = alloc::vec![
         S::Vector::<4>::from_f64_array([0.1, 0.0, 0.0, 0.0]),
         S::Vector::<4>::from_f64_array([1.0, 4.0, 1.0, 0.5]),
         S::Vector::<4>::from_f64_array([0.7, 5.0, 1.1, (-5.0)]),
@@ -98,7 +99,7 @@ pub fn example_points<S: IsScalar<BATCH>, const POINT: usize, const BATCH: usize
         S::Vector::<4>::from_f64_array([2.0, (-3.0), 1.0, 0.5]),
     ];
 
-    let mut out: Vec<S::Vector<POINT>> = vec![];
+    let mut out: alloc::vec::Vec<S::Vector<POINT>> = alloc::vec![];
     for p4 in points4 {
         let mut v = S::Vector::<POINT>::zeros();
         for i in 0..POINT.min(4) {

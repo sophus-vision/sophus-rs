@@ -1,8 +1,8 @@
 use crate::prelude::IsBoolMask;
-use std::simd::LaneCount;
-use std::simd::Mask;
-use std::simd::MaskElement;
-use std::simd::SupportedLaneCount;
+use core::simd::LaneCount;
+use core::simd::Mask;
+use core::simd::MaskElement;
+use core::simd::SupportedLaneCount;
 
 impl<const BATCH: usize, T> IsBoolMask for Mask<T, BATCH>
 where

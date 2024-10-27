@@ -12,15 +12,16 @@ use crate::variables::VarPoolBuilder;
 use sophus_core::linalg::VecF64;
 use sophus_lie::Isometry2;
 use sophus_lie::Isometry2F64;
-use std::collections::HashMap;
+
+extern crate alloc;
 
 /// Pose graph example problem
 #[derive(Debug, Clone)]
 pub struct PoseCircleProblem {
     /// true poses
-    pub true_world_from_robot: Vec<Isometry2F64>,
+    pub true_world_from_robot: alloc::vec::Vec<Isometry2F64>,
     /// estimated poses
-    pub est_world_from_robot: Vec<Isometry2F64>,
+    pub est_world_from_robot: alloc::vec::Vec<Isometry2F64>,
     /// pose-pose constraints
     pub obs_pose_a_from_pose_b_poses: CostSignature<2, Isometry2F64, PoseGraphCostTermSignature>,
 }
@@ -34,19 +35,19 @@ impl Default for PoseCircleProblem {
 impl PoseCircleProblem {
     /// Create a new pose graph problem
     pub fn new(len: usize) -> Self {
-        let mut true_world_from_robot_poses = vec![];
-        let mut est_world_from_robot_poses = vec![];
+        let mut true_world_from_robot_poses = alloc::vec![];
+        let mut est_world_from_robot_poses = alloc::vec![];
         let mut obs_pose_a_from_pose_b_poses =
             CostSignature::<2, Isometry2F64, PoseGraphCostTermSignature>::new(
                 ["poses".into(), "poses".into()],
-                vec![],
+                alloc::vec![],
             );
 
         let radius = 10.0;
 
         for i in 0..len {
             let frac = i as f64 / len as f64;
-            let angle = frac * std::f64::consts::TAU;
+            let angle = frac * core::f64::consts::TAU;
             let x = radius * angle.cos();
             let y = radius * angle.sin();
             let p = VecF64::<3>::from_real_array([x, y, 0.1 * angle]);
@@ -121,7 +122,7 @@ impl PoseCircleProblem {
 
     /// Optimize the problem
     pub fn optimize(&self) -> VarPool {
-        let mut constants = HashMap::new();
+        let mut constants = alloc::collections::BTreeMap::new();
         constants.insert(0, ());
 
         let family: VarFamily<Isometry2F64> = VarFamily::new_with_const_ids(
@@ -134,7 +135,7 @@ impl PoseCircleProblem {
 
         optimize(
             var_pool,
-            vec![CostFn::new_box(
+            alloc::vec![CostFn::new_box(
                 (),
                 self.obs_pose_a_from_pose_b_poses.clone(),
                 PoseGraphCostFn {},

@@ -6,6 +6,8 @@ use crate::variables::VarKind;
 use sophus_core::linalg::MatF64;
 use sophus_core::linalg::VecF64;
 
+extern crate alloc;
+
 /// Evaluated cost term
 #[derive(Debug, Clone)]
 pub struct Term<const DIM: usize, const NUM_ARGS: usize> {
@@ -248,7 +250,7 @@ where
             (),
         );
 
-        let dims = vec![D0];
+        let dims = alloc::vec![D0];
         let mut hessian = BlockMatrix::new(&dims);
         let mut gradient = BlockVector::new(&[D0]);
 

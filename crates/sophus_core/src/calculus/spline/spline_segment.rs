@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 /// cubic basis function
 pub struct CubicBasisFunction<S> {

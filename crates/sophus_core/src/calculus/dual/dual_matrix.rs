@@ -8,12 +8,12 @@ use crate::tensor::mut_tensor::MutTensorDDR;
 use crate::tensor::mut_tensor::MutTensorDDRC;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
+use core::fmt::Debug;
+use core::ops::Add;
+use core::ops::Mul;
+use core::ops::Neg;
+use core::ops::Sub;
 use num_traits::Zero;
-use std::fmt::Debug;
-use std::ops::Add;
-use std::ops::Mul;
-use std::ops::Neg;
-use std::ops::Sub;
 
 /// DualScalarLike matrix
 #[derive(Clone)]
@@ -25,7 +25,7 @@ pub struct DualMatrix<const ROWS: usize, const COLS: usize> {
 }
 
 impl<const ROWS: usize, const COLS: usize> Debug for DualMatrix<ROWS, COLS> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if self.dij_part.is_some() {
             f.debug_struct("DualScalarLike")
                 .field("val", &self.real_part)

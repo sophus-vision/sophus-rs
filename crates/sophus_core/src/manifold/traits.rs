@@ -1,11 +1,12 @@
 use crate::linalg::VecF64;
 use crate::params::ParamsImpl;
 use crate::prelude::*;
+extern crate alloc;
 
 /// A tangent implementation.
 pub trait TangentImpl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const BATCH_SIZE: usize> {
     /// Examples of tangent vectors.
-    fn tangent_examples() -> Vec<S::Vector<DOF>>;
+    fn tangent_examples() -> alloc::vec::Vec<S::Vector<DOF>>;
 }
 
 /// A manifold implementation.
@@ -28,7 +29,7 @@ pub trait IsManifold<
     const PARAMS: usize,
     const DOF: usize,
     const BATCH_SIZE: usize,
->: HasParams<S, PARAMS, BATCH_SIZE> + std::fmt::Debug + Clone
+>: HasParams<S, PARAMS, BATCH_SIZE> + core::fmt::Debug + Clone
 {
     /// o-plus operation
     fn oplus(&self, tangent: &S::Vector<DOF>) -> Self;

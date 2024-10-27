@@ -45,7 +45,7 @@ impl<const D: usize> IRegion<D> {
 }
 
 /// Traits for regions
-pub trait IsRegion<const D: usize, P: IsPoint<D>>: std::marker::Sized {
+pub trait IsRegion<const D: usize, P: IsPoint<D>>: core::marker::Sized {
     /// create unbounded region
     fn unbounded() -> Self;
 

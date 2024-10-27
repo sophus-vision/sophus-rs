@@ -10,7 +10,7 @@ use crate::tensor::mut_tensor::MutTensorDD;
 /// These functions are also called a scalar fields (on vector spaces).
 ///
 pub struct ScalarValuedMapFromVector<S: IsScalar<BATCH>, const BATCH: usize> {
-    phantom: std::marker::PhantomData<S>,
+    phantom: core::marker::PhantomData<S>,
 }
 
 impl<S: IsRealScalar<BATCH>, const BATCH: usize> ScalarValuedMapFromVector<S, BATCH> {
@@ -73,7 +73,7 @@ impl<D: IsDualScalar<BATCH>, const BATCH: usize> ScalarValuedMapFromVector<D, BA
 ///
 ///   f: ℝᵐ x ℝⁿ -> ℝ
 pub struct ScalarValuedMapFromMatrix<S: IsScalar<BATCH>, const BATCH: usize> {
-    phantom: std::marker::PhantomData<S>,
+    phantom: core::marker::PhantomData<S>,
 }
 
 impl<S: IsRealScalar<BATCH>, const BATCH: usize> ScalarValuedMapFromMatrix<S, BATCH> {
