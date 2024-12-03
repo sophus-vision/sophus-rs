@@ -15,3 +15,12 @@ build-simd:
 
 test:
     cargo +nightly test --release
+
+format:
+    cargo +nightly fmt
+
+camera_sim:
+    cargo run --example camera_sim --release --features std
+
+viewer_ex:
+    cargo run --example viewer_ex --release --features std

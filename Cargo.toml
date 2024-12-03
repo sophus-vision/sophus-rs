@@ -6,6 +6,9 @@ members = [
   "crates/sophus_image",
   "crates/sophus_sensor",
   "crates/sophus_opt",
+  "crates/sophus_renderer",
+  "crates/sophus_viewer",
+  "crates/sophus_sim",
 ]
 resolver = "2"
 
@@ -30,6 +33,10 @@ sophus_lie = {path = "crates/sophus_lie", version = "0.10.0"}
 sophus_opt = {path = "crates/sophus_opt", version = "0.10.0"}
 sophus_sensor = {path = "crates/sophus_sensor", version = "0.10.0"}
 
+sophus_renderer = { path = "crates/sophus_renderer", version = "0.10.0" }
+sophus_sim = { path = "crates/sophus_sim", version = "0.10.0" }
+sophus_viewer = { path = "crates/sophus_viewer", version = "0.10.0" }
+
 approx = "0.5"
 as-any = "0.3"
 async-trait = "0.1"
@@ -48,6 +55,14 @@ rand = "0.8"
 snafu = "0.8.5"
 typenum = {version = "1.17", features = ["const-generics"]}
 winit = {version = "0.30", features = ["android-native-activity"]}
+
+# viewer
+eframe = { version = "0.28.1", features = ["wgpu"] }
+egui-wgpu = "0.28.1"
+egui_plot = "0.28.1"
+egui_extras = "0.28.1"
+thingbuf = "0.1.6"
+wgpu = "0.20.1"
 
 [profile.release]
 debug = 1

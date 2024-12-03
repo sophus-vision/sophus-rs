@@ -16,9 +16,23 @@ sophus_image.workspace = true
 sophus_lie.workspace = true
 sophus_opt.workspace = true
 sophus_sensor.workspace = true
+sophus_renderer.workspace = true
+sophus_sim.workspace = true
+sophus_viewer.workspace = true
 
 nalgebra.workspace = true
 ndarray.workspace = true
+
+approx.workspace = true
+bytemuck.workspace = true
+eframe.workspace = true
+egui-wgpu.workspace = true
+egui_extras.workspace = true
+env_logger.workspace = true
+thingbuf.workspace = true
+tokio = { version = "1", features = ["full"] }
+wgpu.workspace = true
+
 
 [features]
 simd = [
@@ -35,3 +49,11 @@ std = [
   "sophus_opt/std",
   "sophus_sensor/std",
 ]
+
+[[example]]
+name = "camera_sim"
+required-features = ["std"]
+
+[[example]]
+name = "viewer_ex"
+required-features = ["std"]

@@ -1,0 +1,35 @@
+[package]
+description = "sophus renderer"
+name = "sophus_renderer"
+readme = "../../README.md"
+
+edition.workspace = true
+include.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+approx.workspace = true
+bytemuck.workspace = true
+eframe.workspace = true
+egui_extras.workspace = true
+env_logger.workspace = true
+linked-hash-map.workspace = true
+num-traits.workspace = true
+sophus_core.workspace = true
+sophus_image.workspace = true
+sophus_lie.workspace = true
+sophus_opt.workspace = true
+sophus_sensor.workspace = true
+wgpu.workspace = true
+
+[features]
+std = [
+  "sophus_core/std",
+  "sophus_image/std",
+  "sophus_lie/std",
+  "sophus_opt/std",
+  "sophus_sensor/std",
+]
