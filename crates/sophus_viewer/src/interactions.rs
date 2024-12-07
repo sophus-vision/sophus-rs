@@ -7,17 +7,17 @@ use crate::interactions::inplane_interaction::InplaneInteraction;
 use crate::interactions::orbit_interaction::OrbitalInteraction;
 use crate::preludes::*;
 use crate::views::ViewportSize;
+use eframe::egui;
+use sophus_core::linalg::VecF64;
+use sophus_image::arc_image::ArcImageF32;
+use sophus_image::ImageSize;
+use sophus_lie::Isometry3F64;
 use sophus_renderer::camera::clipping_planes::ClippingPlanesF64;
 use sophus_renderer::camera::intrinsics::RenderIntrinsics;
 use sophus_renderer::renderables::color::Color;
 use sophus_renderer::textures::depth_image::ndc_z_to_color;
 use sophus_renderer::types::SceneFocusMarker;
 use sophus_renderer::types::TranslationAndScaling;
-use eframe::egui;
-use sophus_core::linalg::VecF64;
-use sophus_image::arc_image::ArcImageF32;
-use sophus_image::ImageSize;
-use sophus_lie::Isometry3F64;
 
 /// Viewport scale
 pub struct ViewportScale {

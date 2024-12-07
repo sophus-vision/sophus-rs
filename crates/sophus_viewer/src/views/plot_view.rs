@@ -8,8 +8,8 @@ use crate::packets::plot_view_packet::CurveTrait;
 use crate::packets::plot_view_packet::PlotViewPacket;
 use crate::preludes::*;
 use crate::views::View;
-use sophus_renderer::aspect_ratio::HasAspectRatio;
 use linked_hash_map::LinkedHashMap;
+use sophus_renderer::aspect_ratio::HasAspectRatio;
 
 pub(crate) struct PlotView {
     pub(crate) enabled: bool,

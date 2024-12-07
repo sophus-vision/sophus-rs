@@ -1,7 +1,15 @@
 #![cfg(feature = "std")]
 
 use core::f64::consts::TAU;
+use sophus::core::linalg::VecF64;
 use sophus::examples::viewer_example::make_distorted_frame;
+use sophus::lie::prelude::IsVector;
+use sophus::lie::Isometry3;
+use sophus::sensor::dyn_camera::DynCameraF64;
+use sophus_image::intensity_image::intensity_arc_image::IsIntensityArcImage;
+use sophus_image::mut_image::MutImageF32;
+use sophus_image::mut_image_view::IsMutImageView;
+use sophus_image::ImageSize;
 use sophus_renderer::camera::clipping_planes::ClippingPlanes;
 use sophus_renderer::camera::properties::RenderCameraProperties;
 use sophus_renderer::camera::RenderCamera;
@@ -13,15 +21,6 @@ use sophus_renderer::renderables::scene_renderable::make_line3;
 use sophus_renderer::renderables::scene_renderable::make_mesh3_at;
 use sophus_renderer::renderables::scene_renderable::make_point3;
 use sophus_renderer::RenderContext;
-use sophus::core::linalg::VecF64;
-use sophus_image::intensity_image::intensity_arc_image::IsIntensityArcImage;
-use sophus_image::mut_image::MutImageF32;
-use sophus_image::mut_image_view::IsMutImageView;
-use sophus_image::ImageSize;
-use sophus::lie::prelude::IsVector;
-use sophus::lie::Isometry3;
-use sophus::sensor::dyn_camera::DynCameraF64;
-use thingbuf::mpsc::blocking::channel;
 use sophus_viewer::packets::append_to_scene_packet;
 use sophus_viewer::packets::create_scene_packet;
 use sophus_viewer::packets::image_view_packet::ImageViewPacket;
@@ -34,6 +33,7 @@ use sophus_viewer::packets::plot_view_packet::PlotViewPacket;
 use sophus_viewer::packets::Packet;
 use sophus_viewer::simple_viewer::SimpleViewer;
 use std::thread::spawn;
+use thingbuf::mpsc::blocking::channel;
 
 fn create_distorted_image_packet() -> Packet {
     let mut image_packet = ImageViewPacket {
