@@ -21,7 +21,7 @@ jobs:
           run: pre-commit run --all-files
         - uses: actions-rs/toolchain@v1
           with:
-            toolchain: nightly-2024-09-01
+            toolchain: nightly
         - name: cargo doc
           run: |
             cargo +nightly fmt
