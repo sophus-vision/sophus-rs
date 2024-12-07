@@ -23,38 +23,37 @@ include = [
 keywords = ["robotics", "optimization"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/sophus-vision/sophus-rs/"
-version = "0.10.0"
+version = "0.11.0"
 
 [workspace.dependencies]
-sophus = {path = "crates/sophus", version = "0.10.0"}
-sophus_core = {path = "crates/sophus_core", version = "0.10.0"}
-sophus_image = {path = "crates/sophus_image", version = "0.10.0"}
-sophus_lie = {path = "crates/sophus_lie", version = "0.10.0"}
-sophus_opt = {path = "crates/sophus_opt", version = "0.10.0"}
-sophus_sensor = {path = "crates/sophus_sensor", version = "0.10.0"}
+sophus = {path = "crates/sophus", version = "0.11.0"}
+sophus_core = {path = "crates/sophus_core", version = "0.11.0"}
+sophus_image = {path = "crates/sophus_image", version = "0.11.0"}
+sophus_lie = {path = "crates/sophus_lie", version = "0.11.0"}
+sophus_opt = {path = "crates/sophus_opt", version = "0.11.0"}
+sophus_sensor = {path = "crates/sophus_sensor", version = "0.11.0"}
 
-sophus_renderer = { path = "crates/sophus_renderer", version = "0.10.0" }
-sophus_sim = { path = "crates/sophus_sim", version = "0.10.0" }
-sophus_viewer = { path = "crates/sophus_viewer", version = "0.10.0" }
+sophus_renderer = { path = "crates/sophus_renderer", version = "0.11.0" }
+sophus_sim = { path = "crates/sophus_sim", version = "0.11.0" }
+sophus_viewer = { path = "crates/sophus_viewer", version = "0.11.0" }
 
 approx = "0.5"
 as-any = "0.3"
 async-trait = "0.1"
-bytemuck = {version = "1.14", features = ["derive"]}
+bytemuck = {version = "1.20.0", features = ["derive"]}
 concat-arrays = "0.1"
 dyn-clone = "1.0"
 env_logger = "0.11"
 faer = "0.19"
 linked-hash-map = "0.5"
 log = "0.4"
-nalgebra = {version = "0.33", features = ["rand", "bytemuck"]}
+nalgebra = {version = "0.33.2", features = ["rand", "bytemuck"]}
 ndarray = {version = "0.15", features = ["approx-0_5"]}
 num-traits = "0.2"
-numpy = "0.21"
 rand = "0.8"
 snafu = "0.8.5"
 typenum = {version = "1.17", features = ["const-generics"]}
-winit = {version = "0.30", features = ["android-native-activity"]}
+winit = {version = "0.30.5", features = ["android-native-activity"]}
 
 # viewer
 eframe = { version = "0.28.1", features = ["wgpu"] }
