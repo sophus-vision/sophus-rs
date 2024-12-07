@@ -24,5 +24,6 @@ jobs:
             toolchain: nightly
         - name: cargo doc
           run: |
-            cargo +nightly fmt
-            cargo +nightly doc --no-deps --all-features
+            rustup default nightly
+            cargo fmt
+            cargo doc --no-deps --all-features
