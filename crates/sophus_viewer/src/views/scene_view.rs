@@ -5,12 +5,12 @@ use crate::packets::scene_view_packet::SceneViewPacket;
 use crate::packets::scene_view_packet::SceneViewPacketContent;
 use crate::preludes::*;
 use crate::views::View;
+use linked_hash_map::LinkedHashMap;
+use log::warn;
 use sophus_renderer::aspect_ratio::HasAspectRatio;
 use sophus_renderer::camera::intrinsics::RenderIntrinsics;
 use sophus_renderer::offscreen_renderer::OffscreenRenderer;
 use sophus_renderer::RenderContext;
-use linked_hash_map::LinkedHashMap;
-use log::warn;
 
 pub(crate) struct SceneView {
     pub(crate) renderer: OffscreenRenderer,

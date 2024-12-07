@@ -1,13 +1,13 @@
 use crate::interactions::SceneFocus;
 use crate::interactions::ViewportScale;
 use crate::preludes::*;
-use sophus_renderer::camera::intrinsics::RenderIntrinsics;
-use sophus_renderer::types::TranslationAndScaling;
 use eframe::egui;
 use sophus_core::linalg::VecF64;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
+use sophus_renderer::camera::intrinsics::RenderIntrinsics;
+use sophus_renderer::types::TranslationAndScaling;
 
 #[derive(Clone, Copy)]
 pub(crate) struct InplaneScrollState {}

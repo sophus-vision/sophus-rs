@@ -17,7 +17,9 @@ test:
     cargo +nightly test --release
 
 format:
+    pre-commit run -a
     cargo +nightly fmt
+    cargo +nightly doc --no-deps --all-features
 
 camera_sim:
     cargo run --example camera_sim --release --features std

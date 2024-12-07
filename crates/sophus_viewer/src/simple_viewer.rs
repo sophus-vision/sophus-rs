@@ -2,8 +2,8 @@ use crate::packets::Packet;
 use crate::preludes::*;
 use crate::viewer_base::ViewerBase;
 use crate::viewer_base::ViewerBaseConfig;
-use sophus_renderer::RenderContext;
 use eframe::egui;
+use sophus_renderer::RenderContext;
 use thingbuf::mpsc::blocking::Receiver;
 
 /// Simple viewer

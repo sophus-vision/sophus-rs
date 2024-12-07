@@ -1,8 +1,8 @@
 use crate::preludes::*;
-use sophus_renderer::camera::properties::RenderCameraProperties;
-use sophus_renderer::types::SceneFocusMarker;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;
+use sophus_renderer::camera::properties::RenderCameraProperties;
+use sophus_renderer::types::SceneFocusMarker;
 
 /// active view info
 pub struct ActiveViewInfo {

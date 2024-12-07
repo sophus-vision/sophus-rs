@@ -4,11 +4,11 @@ use crate::packets::scene_view_packet::SceneViewCreation;
 use crate::packets::scene_view_packet::SceneViewPacket;
 use crate::packets::scene_view_packet::SceneViewPacketContent;
 use crate::preludes::*;
+use sophus_lie::Isometry3F64;
 use sophus_renderer::camera::RenderCamera;
 use sophus_renderer::renderables::frame::ImageFrame;
 use sophus_renderer::renderables::pixel_renderable::PixelRenderable;
 use sophus_renderer::renderables::scene_renderable::SceneRenderable;
-use sophus_lie::Isometry3F64;
 
 /// image packet
 pub mod image_view_packet;

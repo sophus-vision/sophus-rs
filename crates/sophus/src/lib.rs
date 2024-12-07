@@ -11,9 +11,9 @@ pub use sophus_lie as lie;
 #[doc(inline)]
 pub use sophus_opt as opt;
 #[doc(inline)]
-pub use sophus_sensor as sensor;
-#[doc(inline)]
 pub use sophus_renderer as renderer;
+#[doc(inline)]
+pub use sophus_sensor as sensor;
 #[doc(inline)]
 pub use sophus_sim as sim;
 #[doc(inline)]
@@ -22,7 +22,6 @@ pub use sophus_viewer as viewer;
 pub mod examples;
 pub use eframe;
 pub use thingbuf;
-
 
 pub use nalgebra;
 pub use ndarray;

@@ -217,310 +217,140 @@ pub trait MakeTerm<const R: usize, const N: usize> {
     ) -> Term<DIM, N>;
 }
 
-// TODO: Improve MakeTerm implementations:
-//  - Figure out how to make this work for arbitrary length tuples without code duplication.
-//  - Benchmark the performance the implementation against hand-written versions to rule out
-// pessimization.
-
-impl<F0, const D0: usize, const R: usize> MakeTerm<R, 1> for (F0,)
-where
-    F0: FnOnce() -> MatF64<R, D0>,
-{
-    fn make_term<const DIM: usize>(
-        self,
-        idx: [usize; 1],
-        var_kinds: [VarKind; 1],
-        residual: VecF64<R>,
-        robust_kernel: Option<robust_kernel::RobustKernel>,
-        precision_mat: Option<MatF64<R, R>>,
-    ) -> Term<DIM, 1> {
-        const SIZE: usize = 1;
-
-        let residual = match robust_kernel {
-            Some(robust_kernel) => robust_kernel.weight(residual.norm()) * residual,
-            None => residual,
-        };
-
-        let maybe_dx = (
-            if var_kinds[0] != VarKind::Conditioned {
-                Some(self.0())
+macro_rules! nested_option_tuple {
+    // Base case
+    ($var_kinds:ident; $F:ident, $D:ident, $idx:tt) => {
+        (
+            if $var_kinds[$idx] != VarKind::Conditioned {
+                Some($F())
             } else {
                 None
             },
-            (),
-        );
+            ()
+        )
+    };
+    // Recursive case
+    ($var_kinds:ident; $F:ident, $D:ident, $idx:tt, $($rest:tt)*) => {
+        (
+            if $var_kinds[$idx] != VarKind::Conditioned {
+                Some($F())
+            } else {
+                None
+            },
+            nested_option_tuple!($var_kinds; $($rest)*)
+        )
+    };
+}
 
-        let dims = alloc::vec![D0];
-        let mut hessian = BlockMatrix::new(&dims);
-        let mut gradient = BlockVector::new(&[D0]);
+macro_rules! impl_make_term_for_tuples {
+    ($($N:literal: ($($F:ident, $D:ident, $idx:tt),+),)+) => {
+        $(
+            #[allow(non_snake_case)]
+            impl<const R: usize, $($F,)+ $(const $D: usize,)+> MakeTerm<R, $N> for ($($F,)+)
+            where
+                $(
+                    $F: FnOnce() -> MatF64<R, $D>,
+                )+
+            {
+                fn make_term<const DIM: usize>(
+                    self,
+                    idx: [usize; $N],
+                    var_kinds: [VarKind; $N],
+                    residual: VecF64<R>,
+                    robust_kernel: Option<robust_kernel::RobustKernel>,
+                    precision_mat: Option<MatF64<R, R>>,
+                ) -> Term<DIM, $N> {
+                    let residual = match robust_kernel {
+                        Some(rk) => rk.weight(residual.norm()) * residual,
+                        None => residual,
+                    };
 
-        let lambda_res = match precision_mat {
-            Some(precision_mat) => precision_mat * residual,
-            None => residual,
-        };
+                    let ($($F,)+) = self;
 
-        for i in 0..SIZE {
-            maybe_dx.set_diagonal(
-                0,
-                i,
-                &lambda_res,
-                &mut gradient,
-                &mut hessian,
-                precision_mat,
-            );
-            for j in i + 1..SIZE {
-                maybe_dx.set_off_diagonal(0, i, j, &mut hessian, precision_mat);
+                    let maybe_dx = nested_option_tuple!(var_kinds; $($F, $D, $idx),+);
+
+                    let dims = [$($D,)+];
+                    let mut hessian = BlockMatrix::new(&dims);
+                    let mut gradient = BlockVector::new(&dims);
+
+                    let lambda_res = match precision_mat {
+                        Some(pm) => pm * residual,
+                        None => residual,
+                    };
+
+                    for i in 0..$N {
+                        maybe_dx.set_diagonal(
+                            0, i, &lambda_res, &mut gradient, &mut hessian, precision_mat);
+                        for j in (i+1)..$N {
+                            maybe_dx.set_off_diagonal(0, i, j, &mut hessian, precision_mat);
+                        }
+                    }
+
+                    Term {
+                        hessian,
+                        gradient,
+                        cost: (residual.transpose() * lambda_res)[0],
+                        idx,
+                        num_sub_terms: 1,
+                    }
+                }
             }
-        }
-
-        Term {
-            hessian,
-            gradient,
-            cost: (residual.transpose() * lambda_res)[0],
-            idx,
-            num_sub_terms: 1,
-        }
+        )+
     }
 }
 
-impl<F0, F1, const D0: usize, const D1: usize, const R: usize> MakeTerm<R, 2> for (F0, F1)
-where
-    F0: FnOnce() -> MatF64<R, D0>,
-    F1: FnOnce() -> MatF64<R, D1>,
-{
-    fn make_term<const DIM: usize>(
-        self,
-        idx: [usize; 2],
-        var_kinds: [VarKind; 2],
-        residual: VecF64<R>,
-        robust_kernel: Option<robust_kernel::RobustKernel>,
-        precision_mat: Option<MatF64<R, R>>,
-    ) -> Term<DIM, 2> {
-        const SIZE: usize = 2;
-
-        let residual = match robust_kernel {
-            Some(robust_kernel) => robust_kernel.weight(residual.norm()) * residual,
-            None => residual,
-        };
-
-        let maybe_dx = (
-            if var_kinds[0] != VarKind::Conditioned {
-                Some(self.0())
-            } else {
-                None
-            },
-            (
-                if var_kinds[1] != VarKind::Conditioned {
-                    Some(self.1())
-                } else {
-                    None
-                },
-                (),
-            ),
-        );
-
-        let dims = [D0, D1];
-        let mut hessian = BlockMatrix::new(&dims);
-        let mut gradient = BlockVector::new(&dims);
-
-        let lambda_res = match precision_mat {
-            Some(precision_mat) => precision_mat * residual,
-            None => residual,
-        };
-
-        for i in 0..SIZE {
-            maybe_dx.set_diagonal(
-                0,
-                i,
-                &lambda_res,
-                &mut gradient,
-                &mut hessian,
-                precision_mat,
-            );
-            for j in i + 1..SIZE {
-                maybe_dx.set_off_diagonal(0, i, j, &mut hessian, precision_mat);
-            }
-        }
-
-        Term {
-            hessian,
-            gradient,
-            cost: (residual.transpose() * lambda_res)[0],
-            idx,
-            num_sub_terms: 1,
-        }
-    }
-}
-
-impl<F0, F1, F2, const D0: usize, const D1: usize, const D2: usize, const R: usize> MakeTerm<R, 3>
-    for (F0, F1, F2)
-where
-    F0: FnOnce() -> MatF64<R, D0>,
-    F1: FnOnce() -> MatF64<R, D1>,
-    F2: FnOnce() -> MatF64<R, D2>,
-{
-    fn make_term<const DIM: usize>(
-        self,
-        idx: [usize; 3],
-        var_kinds: [VarKind; 3],
-        residual: VecF64<R>,
-        robust_kernel: Option<robust_kernel::RobustKernel>,
-        precision_mat: Option<MatF64<R, R>>,
-    ) -> Term<DIM, 3> {
-        const SIZE: usize = 3;
-
-        let residual = match robust_kernel {
-            Some(robust_kernel) => robust_kernel.weight(residual.norm()) * residual,
-            None => residual,
-        };
-
-        let maybe_dx = (
-            if var_kinds[0] != VarKind::Conditioned {
-                Some(self.0())
-            } else {
-                None
-            },
-            (
-                if var_kinds[1] != VarKind::Conditioned {
-                    Some(self.1())
-                } else {
-                    None
-                },
-                (
-                    if var_kinds[2] != VarKind::Conditioned {
-                        Some(self.2())
-                    } else {
-                        None
-                    },
-                    (),
-                ),
-            ),
-        );
-
-        let dims = [D0, D1, D2];
-        let mut hessian = BlockMatrix::new(&dims);
-        let mut gradient = BlockVector::new(&dims);
-
-        let lambda_res = match precision_mat {
-            Some(precision_mat) => precision_mat * residual,
-            None => residual,
-        };
-
-        for i in 0..SIZE {
-            maybe_dx.set_diagonal(
-                0,
-                i,
-                &lambda_res,
-                &mut gradient,
-                &mut hessian,
-                precision_mat,
-            );
-            for j in i + 1..SIZE {
-                maybe_dx.set_off_diagonal(0, i, j, &mut hessian, precision_mat);
-            }
-        }
-
-        Term {
-            hessian,
-            gradient,
-            cost: (residual.transpose() * lambda_res)[0],
-            idx,
-            num_sub_terms: 1,
-        }
-    }
-}
-
-impl<
-        F0,
-        F1,
-        F2,
-        F3,
-        const D0: usize,
-        const D1: usize,
-        const D2: usize,
-        const D3: usize,
-        const R: usize,
-    > MakeTerm<R, 4> for (F0, F1, F2, F3)
-where
-    F0: FnOnce() -> MatF64<R, D0>,
-    F1: FnOnce() -> MatF64<R, D1>,
-    F2: FnOnce() -> MatF64<R, D2>,
-    F3: FnOnce() -> MatF64<R, D3>,
-{
-    fn make_term<const DIM: usize>(
-        self,
-        idx: [usize; 4],
-        var_kinds: [VarKind; 4],
-        residual: VecF64<R>,
-        robust_kernel: Option<robust_kernel::RobustKernel>,
-        precision_mat: Option<MatF64<R, R>>,
-    ) -> Term<DIM, 4> {
-        const SIZE: usize = 4;
-
-        let residual = match robust_kernel {
-            Some(robust_kernel) => robust_kernel.weight(residual.norm()) * residual,
-            None => residual,
-        };
-
-        let maybe_dx = (
-            if var_kinds[0] != VarKind::Conditioned {
-                Some(self.0())
-            } else {
-                None
-            },
-            (
-                if var_kinds[1] != VarKind::Conditioned {
-                    Some(self.1())
-                } else {
-                    None
-                },
-                (
-                    if var_kinds[2] != VarKind::Conditioned {
-                        Some(self.2())
-                    } else {
-                        None
-                    },
-                    (
-                        if var_kinds[3] != VarKind::Conditioned {
-                            Some(self.3())
-                        } else {
-                            None
-                        },
-                        (),
-                    ),
-                ),
-            ),
-        );
-
-        let dims = [D0, D1, D2, D3];
-        let mut hessian = BlockMatrix::new(&dims);
-        let mut gradient = BlockVector::new(&dims);
-
-        let lambda_res = match precision_mat {
-            Some(precision_mat) => precision_mat * residual,
-            None => residual,
-        };
-
-        for i in 0..SIZE {
-            maybe_dx.set_diagonal(
-                0,
-                i,
-                &lambda_res,
-                &mut gradient,
-                &mut hessian,
-                precision_mat,
-            );
-            for j in i + 1..SIZE {
-                maybe_dx.set_off_diagonal(0, i, j, &mut hessian, precision_mat);
-            }
-        }
-
-        Term {
-            hessian,
-            gradient,
-            cost: (residual.transpose() * lambda_res)[0],
-            idx,
-            num_sub_terms: 1,
-        }
-    }
+// implement MakeTerm for up to 25 arguments.
+impl_make_term_for_tuples! {
+    1: ( F0, D0, 0),
+    2: ( F0, D0, 0, F1 ,D1, 1),
+    3: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2),
+    4: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3),
+    5: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4),
+    6: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5),
+    7: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6),
+    8: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7),
+    9: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8),
+   10: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8, F9, D9, 9),
+   11: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8, F9, D9, 9,F10,D10,10),
+   12: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8, F9, D9, 9,F10,D10,10,F11,D11,11),
+   13: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8, F9, D9, 9,F10,D10,10,F11,D11,11,F12,D12,12),
+   14: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8, F9, D9, 9,F10,D10,10,F11,D11,11,F12,D12,12,F13,D13,13),
+   15: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8, F9, D9, 9,F10,D10,10,F11,D11,11,F12,D12,12,F13,D13,13,F14,D14,14),
+   16: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8, F9, D9, 9,F10,D10,10,F11,D11,11,F12,D12,12,F13,D13,13,F14,D14,14,F15,D15,15),
+   17: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8, F9, D9, 9,F10,D10,10,F11,D11,11,F12,D12,12,F13,D13,13,F14,D14,14,F15,D15,15,
+        F16,D16,16),
+   18: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8, F9, D9, 9,F10,D10,10,F11,D11,11,F12,D12,12,F13,D13,13,F14,D14,14,F15,D15,15,
+        F16,D16,16,F17,D17,17),
+   19: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8, F9, D9, 9,F10,D10,10,F11,D11,11,F12,D12,12,F13,D13,13,F14,D14,14,F15,D15,15,
+        F16,D16,16,F17,D17,17,F18,D18,18),
+   20: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8, F9, D9, 9,F10,D10,10,F11,D11,11,F12,D12,12,F13,D13,13,F14,D14,14,F15,D15,15,
+        F16,D16,16,F17,D17,17,F18,D18,18,F19,D19,19),
+   21: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8, F9, D9, 9,F10,D10,10,F11,D11,11,F12,D12,12,F13,D13,13,F14,D14,14,F15,D15,15,
+        F16,D16,16,F17,D17,17,F18,D18,18,F19,D19,19,F20,D20,20),
+   22: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8, F9, D9, 9,F10,D10,10,F11,D11,11,F12,D12,12,F13,D13,13,F14,D14,14,F15,D15,15,
+        F16,D16,16,F17,D17,17,F18,D18,18,F19,D19,19,F20,D20,20,F21,D21,21),
+   23: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8, F9, D9, 9,F10,D10,10,F11,D11,11,F12,D12,12,F13,D13,13,F14,D14,14,F15,D15,15,
+        F16,D16,16,F17,D17,17,F18,D18,18,F19,D19,19,F20,D20,20,F21,D21,21,F22,D22,22),
+   24: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8, F9, D9, 9,F10,D10,10,F11,D11,11,F12,D12,12,F13,D13,13,F14,D14,14,F15,D15,15,
+        F16,D16,16,F17,D17,17,F18,D18,18,F19,D19,19,F20,D20,20,F21,D21,21,F22,D22,22,F23,D23,23),
+   25: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2, F3, D3, 3, F4, D4, 4, F5, D5, 5, F6, D6, 6, F7, D7, 7,
+         F8, D8, 8, F9, D9, 9,F10,D10,10,F11,D11,11,F12,D12,12,F13,D13,13,F14,D14,14,F15,D15,15,
+        F16,D16,16,F17,D17,17,F18,D18,18,F19,D19,19,F20,D20,20,F21,D21,21,F22,D22,22,F23,D23,23,
+        F24,D24,24),
 }
