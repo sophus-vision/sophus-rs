@@ -181,6 +181,228 @@ impl<
     }
 }
 
+impl<
+        M0: IsVariable + 'static + Send + Sync,
+        M1: IsVariable + 'static + Send + Sync,
+        M2: IsVariable + 'static + Send + Sync,
+        M3: IsVariable + 'static + Send + Sync,
+    > IsVarTuple<4> for (M0, M1, M2, M3)
+{
+    const DOF_T: [usize; 4] = [M0::DOF, M1::DOF, M2::DOF, M3::DOF];
+    type VarFamilyTupleRef<'a> = (
+        &'a VarFamily<M0>,
+        &'a VarFamily<M1>,
+        &'a VarFamily<M2>,
+        &'a VarFamily<M3>,
+    );
+
+    fn var_kind_array(families: &VarPool, names: [alloc::string::String; 4]) -> [VarKind; 4] {
+        [
+            families.families.get(&names[0]).unwrap().get_var_kind(),
+            families.families.get(&names[1]).unwrap().get_var_kind(),
+            families.families.get(&names[2]).unwrap().get_var_kind(),
+            families.families.get(&names[3]).unwrap().get_var_kind(),
+        ]
+    }
+
+    fn ref_var_family_tuple(
+        families: &VarPool,
+        names: [alloc::string::String; 4],
+    ) -> Self::VarFamilyTupleRef<'_> {
+        (
+            families.get::<VarFamily<M0>>(names[0].clone()),
+            families.get::<VarFamily<M1>>(names[1].clone()),
+            families.get::<VarFamily<M2>>(names[2].clone()),
+            families.get::<VarFamily<M3>>(names[3].clone()),
+        )
+    }
+
+    fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; 4]) -> Self {
+        (
+            family_tuple.0.members[ids[0]].clone(),
+            family_tuple.1.members[ids[1]].clone(),
+            family_tuple.2.members[ids[2]].clone(),
+            family_tuple.3.members[ids[3]].clone(),
+        )
+    }
+}
+
+impl<
+        M0: IsVariable + 'static + Send + Sync,
+        M1: IsVariable + 'static + Send + Sync,
+        M2: IsVariable + 'static + Send + Sync,
+        M3: IsVariable + 'static + Send + Sync,
+        M4: IsVariable + 'static + Send + Sync,
+    > IsVarTuple<5> for (M0, M1, M2, M3, M4)
+{
+    const DOF_T: [usize; 5] = [M0::DOF, M1::DOF, M2::DOF, M3::DOF, M4::DOF];
+    type VarFamilyTupleRef<'a> = (
+        &'a VarFamily<M0>,
+        &'a VarFamily<M1>,
+        &'a VarFamily<M2>,
+        &'a VarFamily<M3>,
+        &'a VarFamily<M4>,
+    );
+
+    fn var_kind_array(families: &VarPool, names: [alloc::string::String; 5]) -> [VarKind; 5] {
+        [
+            families.families.get(&names[0]).unwrap().get_var_kind(),
+            families.families.get(&names[1]).unwrap().get_var_kind(),
+            families.families.get(&names[2]).unwrap().get_var_kind(),
+            families.families.get(&names[3]).unwrap().get_var_kind(),
+            families.families.get(&names[4]).unwrap().get_var_kind(),
+        ]
+    }
+
+    fn ref_var_family_tuple(
+        families: &VarPool,
+        names: [alloc::string::String; 5],
+    ) -> Self::VarFamilyTupleRef<'_> {
+        (
+            families.get::<VarFamily<M0>>(names[0].clone()),
+            families.get::<VarFamily<M1>>(names[1].clone()),
+            families.get::<VarFamily<M2>>(names[2].clone()),
+            families.get::<VarFamily<M3>>(names[3].clone()),
+            families.get::<VarFamily<M4>>(names[4].clone()),
+        )
+    }
+
+    fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; 5]) -> Self {
+        (
+            family_tuple.0.members[ids[0]].clone(),
+            family_tuple.1.members[ids[1]].clone(),
+            family_tuple.2.members[ids[2]].clone(),
+            family_tuple.3.members[ids[3]].clone(),
+            family_tuple.4.members[ids[4]].clone(),
+        )
+    }
+}
+
+impl<
+        M0: IsVariable + 'static + Send + Sync,
+        M1: IsVariable + 'static + Send + Sync,
+        M2: IsVariable + 'static + Send + Sync,
+        M3: IsVariable + 'static + Send + Sync,
+        M4: IsVariable + 'static + Send + Sync,
+        M5: IsVariable + 'static + Send + Sync,
+    > IsVarTuple<6> for (M0, M1, M2, M3, M4, M5)
+{
+    const DOF_T: [usize; 6] = [M0::DOF, M1::DOF, M2::DOF, M3::DOF, M4::DOF, M5::DOF];
+    type VarFamilyTupleRef<'a> = (
+        &'a VarFamily<M0>,
+        &'a VarFamily<M1>,
+        &'a VarFamily<M2>,
+        &'a VarFamily<M3>,
+        &'a VarFamily<M4>,
+        &'a VarFamily<M5>,
+    );
+
+    fn var_kind_array(families: &VarPool, names: [alloc::string::String; 6]) -> [VarKind; 6] {
+        [
+            families.families.get(&names[0]).unwrap().get_var_kind(),
+            families.families.get(&names[1]).unwrap().get_var_kind(),
+            families.families.get(&names[2]).unwrap().get_var_kind(),
+            families.families.get(&names[3]).unwrap().get_var_kind(),
+            families.families.get(&names[4]).unwrap().get_var_kind(),
+            families.families.get(&names[5]).unwrap().get_var_kind(),
+        ]
+    }
+
+    fn ref_var_family_tuple(
+        families: &VarPool,
+        names: [alloc::string::String; 6],
+    ) -> Self::VarFamilyTupleRef<'_> {
+        (
+            families.get::<VarFamily<M0>>(names[0].clone()),
+            families.get::<VarFamily<M1>>(names[1].clone()),
+            families.get::<VarFamily<M2>>(names[2].clone()),
+            families.get::<VarFamily<M3>>(names[3].clone()),
+            families.get::<VarFamily<M4>>(names[4].clone()),
+            families.get::<VarFamily<M5>>(names[5].clone()),
+        )
+    }
+
+    fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; 6]) -> Self {
+        (
+            family_tuple.0.members[ids[0]].clone(),
+            family_tuple.1.members[ids[1]].clone(),
+            family_tuple.2.members[ids[2]].clone(),
+            family_tuple.3.members[ids[3]].clone(),
+            family_tuple.4.members[ids[4]].clone(),
+            family_tuple.5.members[ids[5]].clone(),
+        )
+    }
+}
+
+impl<
+        M0: IsVariable + 'static + Send + Sync,
+        M1: IsVariable + 'static + Send + Sync,
+        M2: IsVariable + 'static + Send + Sync,
+        M3: IsVariable + 'static + Send + Sync,
+        M4: IsVariable + 'static + Send + Sync,
+        M5: IsVariable + 'static + Send + Sync,
+        M6: IsVariable + 'static + Send + Sync,
+    > IsVarTuple<7> for (M0, M1, M2, M3, M4, M5, M6)
+{
+    const DOF_T: [usize; 7] = [
+        M0::DOF,
+        M1::DOF,
+        M2::DOF,
+        M3::DOF,
+        M4::DOF,
+        M5::DOF,
+        M6::DOF,
+    ];
+    type VarFamilyTupleRef<'a> = (
+        &'a VarFamily<M0>,
+        &'a VarFamily<M1>,
+        &'a VarFamily<M2>,
+        &'a VarFamily<M3>,
+        &'a VarFamily<M4>,
+        &'a VarFamily<M5>,
+        &'a VarFamily<M6>,
+    );
+
+    fn var_kind_array(families: &VarPool, names: [alloc::string::String; 7]) -> [VarKind; 7] {
+        [
+            families.families.get(&names[0]).unwrap().get_var_kind(),
+            families.families.get(&names[1]).unwrap().get_var_kind(),
+            families.families.get(&names[2]).unwrap().get_var_kind(),
+            families.families.get(&names[3]).unwrap().get_var_kind(),
+            families.families.get(&names[4]).unwrap().get_var_kind(),
+            families.families.get(&names[5]).unwrap().get_var_kind(),
+            families.families.get(&names[6]).unwrap().get_var_kind(),
+        ]
+    }
+
+    fn ref_var_family_tuple(
+        families: &VarPool,
+        names: [alloc::string::String; 7],
+    ) -> Self::VarFamilyTupleRef<'_> {
+        (
+            families.get::<VarFamily<M0>>(names[0].clone()),
+            families.get::<VarFamily<M1>>(names[1].clone()),
+            families.get::<VarFamily<M2>>(names[2].clone()),
+            families.get::<VarFamily<M3>>(names[3].clone()),
+            families.get::<VarFamily<M4>>(names[4].clone()),
+            families.get::<VarFamily<M5>>(names[5].clone()),
+            families.get::<VarFamily<M6>>(names[6].clone()),
+        )
+    }
+
+    fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; 7]) -> Self {
+        (
+            family_tuple.0.members[ids[0]].clone(),
+            family_tuple.1.members[ids[1]].clone(),
+            family_tuple.2.members[ids[2]].clone(),
+            family_tuple.3.members[ids[3]].clone(),
+            family_tuple.4.members[ids[4]].clone(),
+            family_tuple.5.members[ids[5]].clone(),
+            family_tuple.6.members[ids[6]].clone(),
+        )
+    }
+}
+
 impl<const N: usize> IsVariable for VecF64<N> {
     const DOF: usize = N;
 
