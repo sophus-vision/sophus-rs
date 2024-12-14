@@ -1,7 +1,9 @@
-use crate::average::iterative_average;
-use crate::average::IterativeAverageError;
+use core::borrow::Borrow;
+
 use crate::groups::rotation2::Rotation2Impl;
 use crate::groups::translation_product_product::TranslationProductGroupImpl;
+use crate::lie_group::average::iterative_average;
+use crate::lie_group::average::IterativeAverageError;
 use crate::lie_group::LieGroup;
 use crate::prelude::*;
 use crate::traits::EmptySliceError;
@@ -22,40 +24,62 @@ pub type Isometry2F64 = Isometry2<f64, 1>;
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry2<S, BATCH> {
     /// create isometry from translation and rotation
-    pub fn from_translation_and_rotation(
-        translation: &S::Vector<2>,
-        rotation: &Rotation2<S, BATCH>,
-    ) -> Self {
+    pub fn from_translation_and_rotation<P, F>(translation: P, rotation: F) -> Self
+    where
+        P: Borrow<S::Vector<2>>,
+        F: Borrow<Rotation2<S, BATCH>>,
+    {
         Self::from_translation_and_factor(translation, rotation)
     }
 
     /// create isometry from translation
-    pub fn from_translation(translation: &S::Vector<2>) -> Self {
-        Self::from_translation_and_factor(translation, &Rotation2::identity())
+    pub fn from_translation<P>(translation: P) -> Self
+    where
+        P: Borrow<S::Vector<2>>,
+    {
+        Self::from_translation_and_factor(translation, Rotation2::identity())
     }
 
     /// create isometry from rotation
-    pub fn from_rotation(rotation: &Rotation2<S, BATCH>) -> Self {
-        Self::from_translation_and_factor(&S::Vector::<2>::zeros(), rotation)
+    pub fn from_rotation<F>(rotation: F) -> Self
+    where
+        F: Borrow<Rotation2<S, BATCH>>,
+    {
+        Self::from_translation_and_factor(S::Vector::<2>::zeros(), rotation)
     }
 
     /// translate along x axis
-    pub fn trans_x(x: S) -> Self {
-        Self::from_translation(&S::Vector::from_array([x, S::zero()]))
+    pub fn trans_x<U>(x: U) -> Self
+    where
+        U: Borrow<S>,
+    {
+        let x: &S = x.borrow();
+        Self::from_translation(S::Vector::from_array([x.clone(), S::zero()]))
     }
 
     /// translate along y axis
-    pub fn trans_y(y: S) -> Self {
-        Self::from_translation(&S::Vector::from_array([S::zero(), y]))
+    pub fn trans_y<U>(y: U) -> Self
+    where
+        U: Borrow<S>,
+    {
+        let y: &S = y.borrow();
+        Self::from_translation(S::Vector::from_array([S::zero(), y.clone()]))
     }
 
     /// Rotate by angle
-    pub fn rot(theta: S) -> Self {
-        Self::from_rotation(&Rotation2::rot(theta))
+    pub fn rot<U>(theta: U) -> Self
+    where
+        U: Borrow<S>,
+    {
+        let theta: &S = theta.borrow();
+        Self::from_rotation(Rotation2::rot(theta))
     }
 
     /// set rotation
-    pub fn set_rotation(&mut self, rotation: &Rotation2<S, BATCH>) {
+    pub fn set_rotation<F>(&mut self, rotation: F)
+    where
+        F: Borrow<Rotation2<S, BATCH>>,
+    {
         self.set_factor(rotation)
     }
 
@@ -98,7 +122,7 @@ impl<S: IsSingleScalar + PartialOrd> HasAverage<S, 3, 4, 2, 3> for Isometry2<S, 
 
 #[test]
 fn isometry2_prop_tests() {
-    use crate::real_lie_group::RealLieGroupTest;
+    use crate::lie_group::real_lie_group::RealLieGroupTest;
     use sophus_core::calculus::dual::dual_scalar::DualScalar;
 
     #[cfg(feature = "simd")]

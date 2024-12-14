@@ -13,8 +13,11 @@ build-std:
 build-simd:
     cargo +nightly build --release --all-targets --features simd
 
+test-simd:
+    cargo +nightly test --release --features simd
+
 test:
-    cargo +nightly test --release
+    cargo test --release
 
 format:
     pre-commit run -a

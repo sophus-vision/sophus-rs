@@ -4,6 +4,7 @@ use crate::linalg::VecF64;
 use crate::prelude::*;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
+use core::borrow::Borrow;
 use core::fmt::Debug;
 use core::ops::Add;
 use core::ops::Index;
@@ -51,7 +52,9 @@ pub trait IsMatrix<
     ) -> Self;
 
     /// creates matrix from a 2d array of scalars
-    fn from_array2(vals: [[S; COLS]; ROWS]) -> Self;
+    fn from_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[S; COLS]; ROWS]>;
 
     /// creates matrix with all real elements (and lanes) set to the given value
     ///
@@ -62,18 +65,26 @@ pub trait IsMatrix<
     ///
     ///  - all lanes are set to the same value
     ///  - for dual numbers, the infinitesimal part is set to zero
-    fn from_f64_array2(vals: [[f64; COLS]; ROWS]) -> Self;
+    fn from_f64_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[f64; COLS]; ROWS]>;
 
     /// creates matrix from a 2d array of real scalars
     ///
     /// (for dual numbers, the infinitesimal part is set to zero)
-    fn from_real_scalar_array2(vals: [[S::RealScalar; COLS]; ROWS]) -> Self;
+    fn from_real_scalar_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[S::RealScalar; COLS]; ROWS]>;
 
     /// create a constant matrix
-    fn from_real_matrix(val: S::RealMatrix<ROWS, COLS>) -> Self;
+    fn from_real_matrix<A>(val: A) -> Self
+    where
+        A: Borrow<S::RealMatrix<ROWS, COLS>>;
 
     /// create a constant scalar
-    fn from_scalar(val: S) -> Self;
+    fn from_scalar<Q>(val: Q) -> Self
+    where
+        Q: Borrow<S>;
 
     /// extract column vector
     fn get_col_vec(&self, c: usize) -> S::Vector<ROWS>;
@@ -95,7 +106,9 @@ pub trait IsMatrix<
     fn identity() -> Self;
 
     /// matrix multiplication
-    fn mat_mul<const C2: usize>(&self, other: S::Matrix<COLS, C2>) -> S::Matrix<ROWS, C2>;
+    fn mat_mul<const C2: usize, M>(&self, other: M) -> S::Matrix<ROWS, C2>
+    where
+        M: Borrow<S::Matrix<COLS, C2>>;
 
     /// ones
     fn ones() -> Self {
@@ -106,12 +119,16 @@ pub trait IsMatrix<
     fn real_matrix(&self) -> &S::RealMatrix<ROWS, COLS>;
 
     /// return scaled matrix
-    fn scaled(&self, v: S) -> Self;
+    fn scaled<Q>(&self, v: Q) -> Self
+    where
+        Q: Borrow<S>;
 
     /// Returns self if mask is true, otherwise returns other
     ///
     /// For batch matrices, this is a lane-wise operation
-    fn select(self, mask: &S::Mask, other: Self) -> Self;
+    fn select<Q>(&self, mask: &S::Mask, other: Q) -> Self
+    where
+        Q: Borrow<Self>;
 
     /// set i-th element
     fn set_elem(&mut self, idx: [usize; 2], val: S);
@@ -120,13 +137,13 @@ pub trait IsMatrix<
     fn set_col_vec(&mut self, c: usize, v: S::Vector<ROWS>);
 
     /// transpose
-    fn transposed(self) -> S::Matrix<COLS, ROWS>;
+    fn transposed(&self) -> S::Matrix<COLS, ROWS>;
 
     /// Return dual matrix
     ///
     /// If self is a real matrix, this will return a dual matrix with the infinitesimal part set to
     /// zero: (self, 0ϵ)
-    fn to_dual(self) -> S::DualMatrix<ROWS, COLS>;
+    fn to_dual(&self) -> S::DualMatrix<ROWS, COLS>;
 
     /// zeros
     fn zeros() -> Self {
@@ -165,15 +182,25 @@ impl<const ROWS: usize, const COLS: usize> IsSingleMatrix<f64, ROWS, COLS> for M
 }
 
 impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF64<ROWS, COLS> {
-    fn from_real_matrix(val: MatF64<ROWS, COLS>) -> Self {
-        val
+    fn from_real_matrix<A>(val: A) -> Self
+    where
+        A: Borrow<MatF64<ROWS, COLS>>,
+    {
+        *val.borrow()
     }
 
-    fn from_scalar(val: f64) -> Self {
-        Self::from_f64(val)
+    fn from_scalar<S>(val: S) -> Self
+    where
+        S: Borrow<f64>,
+    {
+        Self::from_f64(*val.borrow())
     }
 
-    fn from_array2(vals: [[f64; COLS]; ROWS]) -> MatF64<ROWS, COLS> {
+    fn from_array2<A>(vals: A) -> MatF64<ROWS, COLS>
+    where
+        A: Borrow<[[f64; COLS]; ROWS]>,
+    {
+        let vals = vals.borrow();
         let mut m = MatF64::<ROWS, COLS>::zeros();
 
         for c in 0..COLS {
@@ -184,7 +211,11 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF
         m
     }
 
-    fn from_real_scalar_array2(vals: [[f64; COLS]; ROWS]) -> Self {
+    fn from_real_scalar_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[f64; COLS]; ROWS]>,
+    {
+        let vals = vals.borrow();
         let mut m = MatF64::<ROWS, COLS>::zeros();
         for c in 0..COLS {
             for r in 0..ROWS {
@@ -206,8 +237,11 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF
         self
     }
 
-    fn mat_mul<const C2: usize>(&self, other: MatF64<COLS, C2>) -> MatF64<ROWS, C2> {
-        self * other
+    fn mat_mul<const C2: usize, M>(&self, other: M) -> MatF64<ROWS, C2>
+    where
+        M: Borrow<MatF64<COLS, C2>>,
+    {
+        self * other.borrow()
     }
 
     fn block_mat2x1<const R0: usize, const R1: usize>(
@@ -267,11 +301,18 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF
         self.fixed_view::<1, COLS>(r, 0).transpose()
     }
 
-    fn scaled(&self, v: f64) -> Self {
-        self * v
+    fn scaled<Q>(&self, v: Q) -> Self
+    where
+        Q: Borrow<f64>,
+    {
+        *self * *v.borrow()
     }
 
-    fn from_f64_array2(vals: [[f64; COLS]; ROWS]) -> Self {
+    fn from_f64_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[f64; COLS]; ROWS]>,
+    {
+        let vals = vals.borrow();
         let mut m = MatF64::<ROWS, COLS>::zeros();
         for c in 0..COLS {
             for r in 0..ROWS {
@@ -289,15 +330,18 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF
         self.fixed_columns_mut::<1>(c).copy_from(&v);
     }
 
-    fn to_dual(self) -> <f64 as IsScalar<1>>::DualMatrix<ROWS, COLS> {
+    fn to_dual(&self) -> <f64 as IsScalar<1>>::DualMatrix<ROWS, COLS> {
         DualMatrix::from_real_matrix(self)
     }
 
-    fn select(self, mask: &bool, other: Self) -> Self {
+    fn select<Q>(&self, mask: &bool, other: Q) -> Self
+    where
+        Q: Borrow<Self>,
+    {
         if *mask {
-            self
+            *self
         } else {
-            other
+            *other.borrow()
         }
     }
 
@@ -305,7 +349,7 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF
         self[(idx[0], idx[1])] = val;
     }
 
-    fn transposed(self) -> MatF64<COLS, ROWS> {
+    fn transposed(&self) -> MatF64<COLS, ROWS> {
         self.transpose()
     }
 }

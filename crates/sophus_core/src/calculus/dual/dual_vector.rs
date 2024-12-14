@@ -7,6 +7,7 @@ use crate::tensor::mut_tensor::MutTensorDD;
 use crate::tensor::mut_tensor::MutTensorDDR;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
+use core::borrow::Borrow;
 use core::fmt::Debug;
 use core::ops::Add;
 use core::ops::Neg;
@@ -302,7 +303,11 @@ impl<const ROWS: usize> IsVector<DualScalar, ROWS, 1> for DualVector<ROWS> {
         }
     }
 
-    fn from_array(duals: [DualScalar; ROWS]) -> Self {
+    fn from_array<A>(duals: A) -> Self
+    where
+        A: Borrow<[DualScalar; ROWS]>,
+    {
+        let duals = duals.borrow();
         let mut shape = None;
         let mut val_v = VecF64::<ROWS>::zeros();
         for i in 0..duals.len() {
@@ -341,16 +346,22 @@ impl<const ROWS: usize> IsVector<DualScalar, ROWS, 1> for DualVector<ROWS> {
         }
     }
 
-    fn from_real_array(vals: [f64; ROWS]) -> Self {
+    fn from_real_array<A>(vals: A) -> Self
+    where
+        A: Borrow<[f64; ROWS]>,
+    {
         DualVector {
             real_part: VecF64::from_real_array(vals),
             dij_part: None,
         }
     }
 
-    fn from_real_vector(val: VecF64<ROWS>) -> Self {
+    fn from_real_vector<A>(val: A) -> Self
+    where
+        A: Borrow<VecF64<ROWS>>,
+    {
         Self {
-            real_part: val,
+            real_part: *val.borrow(),
             dij_part: None,
         }
     }
@@ -359,10 +370,10 @@ impl<const ROWS: usize> IsVector<DualScalar, ROWS, 1> for DualVector<ROWS> {
         &self.real_part
     }
 
-    fn to_mat(self) -> DualMatrix<ROWS, 1> {
+    fn to_mat(&self) -> DualMatrix<ROWS, 1> {
         DualMatrix {
             real_part: self.real_part,
-            dij_part: self.dij_part.map(|dij| dij.inner_vec_to_mat()),
+            dij_part: self.dij_part.clone().map(|dij| dij.inner_vec_to_mat()),
         }
     }
 
@@ -393,7 +404,11 @@ impl<const ROWS: usize> IsVector<DualScalar, ROWS, 1> for DualVector<ROWS> {
         }
     }
 
-    fn scaled(&self, s: DualScalar) -> Self {
+    fn scaled<U>(&self, s: U) -> Self
+    where
+        U: Borrow<DualScalar>,
+    {
+        let s = s.borrow();
         DualVector {
             real_part: self.real_part * s.real_part,
             dij_part: Self::binary_vs_dij(
@@ -405,11 +420,14 @@ impl<const ROWS: usize> IsVector<DualScalar, ROWS, 1> for DualVector<ROWS> {
         }
     }
 
-    fn dot(self, rhs: Self) -> DualScalar {
+    fn dot<V>(&self, rhs: V) -> DualScalar
+    where
+        V: Borrow<Self>,
+    {
         let mut sum = <DualScalar>::from_f64(0.0);
 
         for i in 0..ROWS {
-            sum += self.get_elem(i) * rhs.get_elem(i);
+            sum += self.get_elem(i) * rhs.borrow().get_elem(i);
         }
 
         sum
@@ -420,14 +438,21 @@ impl<const ROWS: usize> IsVector<DualScalar, ROWS, 1> for DualVector<ROWS> {
             .scaled(<DualScalar>::from_f64(1.0) / self.norm())
     }
 
-    fn from_f64_array(vals: [f64; ROWS]) -> Self {
+    fn from_f64_array<A>(vals: A) -> Self
+    where
+        A: Borrow<[f64; ROWS]>,
+    {
         DualVector {
             real_part: VecF64::from_f64_array(vals),
             dij_part: None,
         }
     }
 
-    fn from_scalar_array(vals: [DualScalar; ROWS]) -> Self {
+    fn from_scalar_array<A>(vals: A) -> Self
+    where
+        A: Borrow<[DualScalar; ROWS]>,
+    {
+        let vals = vals.borrow();
         let mut shape = None;
         let mut val_v = VecF64::<ROWS>::zeros();
         for i in 0..vals.len() {
@@ -478,28 +503,31 @@ impl<const ROWS: usize> IsVector<DualScalar, ROWS, 1> for DualVector<ROWS> {
         }
     }
 
-    fn to_dual(self) -> <DualScalar as IsScalar<1>>::DualVector<ROWS> {
-        self
+    fn to_dual(&self) -> <DualScalar as IsScalar<1>>::DualVector<ROWS> {
+        self.clone()
     }
 
-    fn outer<const R2: usize>(
-        self,
-        rhs: DualVector<R2>,
-    ) -> <DualScalar as IsScalar<1>>::Matrix<ROWS, R2> {
+    fn outer<const R2: usize, V>(&self, rhs: V) -> <DualScalar as IsScalar<1>>::Matrix<ROWS, R2>
+    where
+        V: Borrow<DualVector<R2>>,
+    {
         let mut out = DualMatrix::<ROWS, R2>::zeros();
         for i in 0..ROWS {
             for j in 0..R2 {
-                out.set_elem([i, j], self.get_elem(i) * rhs.get_elem(j));
+                out.set_elem([i, j], self.get_elem(i) * rhs.borrow().get_elem(j));
             }
         }
         out
     }
 
-    fn select(self, mask: &bool, other: Self) -> Self {
+    fn select<Q>(&self, mask: &bool, other: Q) -> Self
+    where
+        Q: Borrow<Self>,
+    {
         if *mask {
-            self
+            self.clone()
         } else {
-            other
+            other.borrow().clone()
         }
     }
 

@@ -1,11 +1,21 @@
 use super::traits::IsLieGroupImpl;
 use crate::prelude::*;
 use approx::assert_relative_eq;
+use core::borrow::Borrow;
 use core::fmt::Debug;
 use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
 
 extern crate alloc;
+
+/// Lie group average
+pub mod average;
+/// Group multiplication
+pub mod group_mul;
+/// Lie group as a manifold
+pub mod lie_group_manifold;
+/// Real lie group
+pub mod real_lie_group;
 
 /// Lie group
 #[derive(Debug, Copy, Clone, Default)]
@@ -33,7 +43,10 @@ impl<
     > ParamsImpl<S, PARAMS, BATCH_SIZE>
     for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
 {
-    fn are_params_valid(params: &<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>) -> S::Mask {
+    fn are_params_valid<P>(params: P) -> S::Mask
+    where
+        P: for<'a> Borrow<S::Vector<PARAMS>>,
+    {
         G::are_params_valid(params)
     }
 
@@ -56,7 +69,12 @@ impl<
         G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
     > HasParams<S, PARAMS, BATCH_SIZE> for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
 {
-    fn from_params(params: &S::Vector<PARAMS>) -> Self {
+    fn from_params<P>(params: P) -> Self
+    where
+        P: for<'a> Borrow<S::Vector<PARAMS>>,
+    {
+        let params = params.borrow();
+
         assert!(
             G::are_params_valid(params).all(),
             "Invalid parameters for {:?}",
@@ -68,7 +86,11 @@ impl<
         }
     }
 
-    fn set_params(&mut self, params: &S::Vector<PARAMS>) {
+    fn set_params<P>(&mut self, params: P)
+    where
+        P: for<'a> Borrow<S::Vector<PARAMS>>,
+    {
+        let params = params.borrow();
         self.params = G::disambiguate(params.clone());
     }
 
@@ -140,8 +162,11 @@ impl<
     }
 
     /// exponential map
-    pub fn exp(omega: &S::Vector<DOF>) -> Self {
-        Self::from_params(&G::exp(omega))
+    pub fn exp<T>(omega: T) -> Self
+    where
+        T: Borrow<S::Vector<DOF>>,
+    {
+        Self::from_params(G::exp(omega.borrow()))
     }
 
     /// Interpolate between "(w-1) * self" and "w * other".
@@ -149,7 +174,7 @@ impl<
     /// w is typically in [0, 1]. If w=0, self is returned. If w=1 other is returned.
     ///
     pub fn interpolate(&self, other: &Self, w: S) -> Self {
-        self.group_mul(&Self::exp(&self.inverse().group_mul(other).log().scaled(w)))
+        self * &Self::exp((self.inverse() * other).log().scaled(w))
     }
 
     /// logarithmic map
@@ -158,38 +183,50 @@ impl<
     }
 
     /// hat operator: hat: R^d -> R^{a x a}
-    pub fn hat(omega: &S::Vector<DOF>) -> S::Matrix<AMBIENT, AMBIENT> {
-        G::hat(omega)
+    pub fn hat<T>(omega: T) -> S::Matrix<AMBIENT, AMBIENT>
+    where
+        T: Borrow<S::Vector<DOF>>,
+    {
+        G::hat(omega.borrow())
     }
 
     /// vee operator: vee: R^{a x a} -> R^d
-    pub fn vee(xi: &S::Matrix<AMBIENT, AMBIENT>) -> S::Vector<DOF> {
-        G::vee(xi)
+    pub fn vee<M>(xi: M) -> S::Vector<DOF>
+    where
+        M: Borrow<S::Matrix<AMBIENT, AMBIENT>>,
+    {
+        G::vee(xi.borrow())
     }
 
     /// identity element
     pub fn identity() -> Self {
-        Self::from_params(&G::identity_params())
+        Self::from_params(G::identity_params())
     }
 
     /// group multiplication
     pub fn group_mul(&self, other: &Self) -> Self {
-        Self::from_params(&G::group_mul(&self.params, &other.params))
+        Self::from_params(G::group_mul(&self.params, &other.params))
     }
 
     /// group inverse
     pub fn inverse(&self) -> Self {
-        Self::from_params(&G::inverse(&self.params))
+        Self::from_params(G::inverse(&self.params))
     }
 
     /// transform a point
-    pub fn transform(&self, point: &S::Vector<POINT>) -> S::Vector<POINT> {
-        G::transform(&self.params, point)
+    pub fn transform<T>(&self, point: T) -> S::Vector<POINT>
+    where
+        T: Borrow<S::Vector<POINT>>,
+    {
+        G::transform(&self.params, point.borrow())
     }
 
     /// convert point to ambient space
-    pub fn to_ambient(point: &S::Vector<POINT>) -> S::Vector<AMBIENT> {
-        G::to_ambient(point)
+    pub fn to_ambient<P>(point: P) -> S::Vector<AMBIENT>
+    where
+        P: Borrow<S::Vector<POINT>>,
+    {
+        G::to_ambient(point.borrow())
     }
 
     /// return compact matrix representation
@@ -203,8 +240,11 @@ impl<
     }
 
     /// algebra adjoint
-    pub fn ad(tangent: &S::Vector<DOF>) -> S::Matrix<DOF, DOF> {
-        G::ad(tangent)
+    pub fn ad<T>(tangent: T) -> S::Matrix<DOF, DOF>
+    where
+        T: Borrow<S::Vector<DOF>>,
+    {
+        G::ad(tangent.borrow())
     }
 
     /// group element examples
@@ -232,7 +272,7 @@ impl<
             let mut num = 0;
             for g in &Self::element_examples() {
                 let o = S::Vector::<POINT>::zeros();
-                let o_transformed = g.transform(&o);
+                let o_transformed = g.transform(o);
                 let mask = (o_transformed.real_vector())
                     .norm()
                     .less_equal(&S::RealScalar::from_f64(0.0001));
@@ -257,7 +297,7 @@ impl<
                 let mat_adj_x = mat_adj.clone() * x.clone();
 
                 let inv_mat: S::Matrix<AMBIENT, AMBIENT> = g.inverse().matrix();
-                let mat_adj_x2 = Self::vee(&mat.mat_mul(Self::hat(x).mat_mul(inv_mat)));
+                let mat_adj_x2 = Self::vee(mat.mat_mul(Self::hat(x).mat_mul(inv_mat)));
                 assert_relative_eq!(
                     mat_adj_x.real_vector(),
                     mat_adj_x2.real_vector(),
@@ -288,7 +328,7 @@ impl<
 
         for g in &group_examples {
             let matrix_before = *g.compact().real_matrix();
-            let matrix_after = *Self::exp(&g.log()).compact().real_matrix();
+            let matrix_after = *Self::exp(g.log()).compact().real_matrix();
 
             assert_relative_eq!(matrix_before, matrix_after, epsilon = 0.0001);
 
@@ -315,7 +355,7 @@ impl<
         for omega in &tangent_examples {
             assert_relative_eq!(
                 omega.real_vector(),
-                Self::vee(&Self::hat(omega)).real_vector(),
+                Self::vee(Self::hat(omega)).real_vector(),
                 epsilon = 0.0001
             );
         }
@@ -327,8 +367,8 @@ impl<
         for g1 in &group_examples {
             for g2 in &group_examples {
                 for g3 in &group_examples {
-                    let left_hugging = (g1.group_mul(g2)).group_mul(g3);
-                    let right_hugging = g1.group_mul(&g2.group_mul(g3));
+                    let left_hugging = (g1 * g2) * g3;
+                    let right_hugging = g1 * (g2 * g3);
                     assert_relative_eq!(
                         left_hugging.compact(),
                         right_hugging.compact(),
@@ -339,8 +379,8 @@ impl<
         }
         for g1 in &group_examples {
             for g2 in &group_examples {
-                let daz_from_foo_transform_1 = g2.inverse().group_mul(&g1.inverse());
-                let daz_from_foo_transform_2 = g1.group_mul(g2).inverse();
+                let daz_from_foo_transform_1 = g2.inverse() * g1.inverse();
+                let daz_from_foo_transform_2 = (g1 * g2).inverse();
                 assert_relative_eq!(
                     daz_from_foo_transform_1.compact(),
                     daz_from_foo_transform_2.compact(),

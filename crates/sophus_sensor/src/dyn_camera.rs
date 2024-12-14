@@ -1,3 +1,5 @@
+use core::borrow::Borrow;
+
 use crate::camera_enum::perspective_camera::UnifiedCamera;
 use crate::camera_enum::GeneralCameraEnum;
 use crate::camera_enum::PerspectiveCameraEnum;
@@ -14,7 +16,7 @@ extern crate alloc;
 pub struct DynCameraFacade<
     S: IsScalar<BATCH>,
     const BATCH: usize,
-    CameraType: IsCameraEnum<S, BATCH>,
+    CameraType: IsPerspectiveCamera<S, BATCH>,
 > {
     camera_type: CameraType,
     phantom: core::marker::PhantomData<S>,
@@ -30,8 +32,11 @@ pub type DynCamera<S, const BATCH: usize> =
 /// Create a new dynamic camera facade from a camera model
 pub type DynCameraF64 = DynCamera<f64, 1>;
 
-impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
-    DynCameraFacade<S, BATCH, CameraType>
+impl<
+        S: IsScalar<BATCH>,
+        const BATCH: usize,
+        CameraType: IsPerspectiveCamera<S, BATCH> + IsCamera<S, BATCH>,
+    > DynCameraFacade<S, BATCH, CameraType>
 {
     /// Create default pinhole from Image Size
     pub fn default_pinhole(image_size: ImageSize) -> Self {
@@ -41,7 +46,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
         let focal_length = (w + h) * 0.5;
         Self {
             camera_type: CameraType::new_pinhole(
-                &S::Vector::<4>::from_f64_array([
+                S::Vector::<4>::from_f64_array([
                     focal_length,
                     focal_length,
                     0.5 * w - 0.5,
@@ -61,7 +66,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
         let focal_length = (w + h) * 0.5;
         Self {
             camera_type: CameraType::new_kannala_brandt(
-                &S::Vector::<8>::from_f64_array([
+                S::Vector::<8>::from_f64_array([
                     focal_length,
                     focal_length,
                     0.5 * w - 0.5,
@@ -86,53 +91,57 @@ impl<S: IsScalar<BATCH>, const BATCH: usize, CameraType: IsCameraEnum<S, BATCH>>
     }
 
     /// Create a pinhole camera instance
-    pub fn new_pinhole(params: &S::Vector<4>, image_size: ImageSize) -> Self {
+    pub fn new_pinhole(params: impl Borrow<S::Vector<4>>, image_size: ImageSize) -> Self {
         Self::from_model(CameraType::new_pinhole(params, image_size))
     }
 
     /// Create a Kannala-Brandt camera instance
-    pub fn new_kannala_brandt(params: &S::Vector<8>, image_size: ImageSize) -> Self {
+    pub fn new_kannala_brandt(params: impl Borrow<S::Vector<8>>, image_size: ImageSize) -> Self {
         Self::from_model(CameraType::new_kannala_brandt(params, image_size))
     }
 
     /// Create a Brown-Conrady camera instance
-    pub fn new_brown_conrady(params: &S::Vector<12>, image_size: ImageSize) -> Self {
+    pub fn new_brown_conrady(params: impl Borrow<S::Vector<12>>, image_size: ImageSize) -> Self {
         Self::from_model(CameraType::new_brown_conrady(params, image_size))
     }
 
     /// Create a unified camera instance
-    pub fn new_unified(params: &S::Vector<6>, image_size: ImageSize) -> Self {
+    pub fn new_unified(params: impl Borrow<S::Vector<6>>, image_size: ImageSize) -> Self {
         Self::from_model(CameraType::new_unified(params, image_size))
     }
 
     /// Projects a 3D point in the camera frame to a pixel in the image
-    pub fn cam_proj(&self, point_in_camera: &S::Vector<3>) -> S::Vector<2> {
-        self.camera_type.cam_proj(point_in_camera)
+    pub fn cam_proj(&self, point_in_camera: impl Borrow<S::Vector<3>>) -> S::Vector<2> {
+        self.camera_type.cam_proj(point_in_camera.borrow())
     }
 
     /// Unprojects a pixel in the image to a 3D point in the camera frame - assuming z=1
-    pub fn cam_unproj(&self, pixel: &S::Vector<2>) -> S::Vector<3> {
-        self.cam_unproj_with_z(pixel, S::ones())
+    pub fn cam_unproj(&self, pixel: impl Borrow<S::Vector<2>>) -> S::Vector<3> {
+        self.cam_unproj_with_z(pixel.borrow(), S::ones())
     }
 
     /// Unprojects a pixel in the image to a 3D point in the camera frame
-    pub fn cam_unproj_with_z(&self, pixel: &S::Vector<2>, z: S) -> S::Vector<3> {
-        self.camera_type.cam_unproj_with_z(pixel, z)
+    pub fn cam_unproj_with_z(&self, pixel: impl Borrow<S::Vector<2>>, z: S) -> S::Vector<3> {
+        self.camera_type.cam_unproj_with_z(pixel.borrow(), z)
     }
 
     /// Distortion - maps a point in the camera z=1 plane to a distorted point
-    pub fn distort(&self, proj_point_in_camera_z1_plane: &S::Vector<2>) -> S::Vector<2> {
-        self.camera_type.distort(proj_point_in_camera_z1_plane)
+    pub fn distort(
+        &self,
+        proj_point_in_camera_z1_plane: impl Borrow<S::Vector<2>>,
+    ) -> S::Vector<2> {
+        self.camera_type
+            .distort(proj_point_in_camera_z1_plane.borrow())
     }
 
     /// Undistortion - maps a distorted pixel to a point in the camera z=1 plane
-    pub fn undistort(&self, pixel: &S::Vector<2>) -> S::Vector<2> {
-        self.camera_type.undistort(pixel)
+    pub fn undistort(&self, pixel: impl Borrow<S::Vector<2>>) -> S::Vector<2> {
+        self.camera_type.undistort(pixel.borrow())
     }
 
     /// Derivative of the distortion w.r.t. the point in the camera z=1 plane
-    pub fn dx_distort_x(&self, point_in_camera: &S::Vector<2>) -> S::Matrix<2, 2> {
-        self.camera_type.dx_distort_x(point_in_camera)
+    pub fn dx_distort_x(&self, point_in_camera: impl Borrow<S::Vector<2>>) -> S::Matrix<2, 2> {
+        self.camera_type.dx_distort_x(point_in_camera.borrow())
     }
 
     /// Returns the image size
@@ -191,7 +200,7 @@ fn dyn_camera_tests() {
     {
         let mut cameras: alloc::vec::Vec<DynCameraF64> = alloc::vec![];
         cameras.push(DynCameraF64::new_pinhole(
-            &VecF64::<4>::new(600.0, 599.0, 1.0, 0.5),
+            VecF64::<4>::new(600.0, 599.0, 1.0, 0.5),
             ImageSize {
                 width: 3,
                 height: 2,
@@ -199,7 +208,7 @@ fn dyn_camera_tests() {
         ));
 
         cameras.push(DynCamera::new_unified(
-            &VecF64::<6>::from_vec(alloc::vec![998.0, 1000.0, 320.0, 280.0, 0.5, 1.2]),
+            VecF64::<6>::from_vec(alloc::vec![998.0, 1000.0, 320.0, 280.0, 0.5, 1.2]),
             ImageSize {
                 width: 640,
                 height: 480,
@@ -207,7 +216,7 @@ fn dyn_camera_tests() {
         ));
 
         cameras.push(DynCamera::new_kannala_brandt(
-            &VecF64::<8>::from_vec(alloc::vec![
+            VecF64::<8>::from_vec(alloc::vec![
                 999.0, 1000.0, 320.0, 280.0, 0.1, 0.01, 0.001, 0.0001
             ]),
             ImageSize {
@@ -217,7 +226,7 @@ fn dyn_camera_tests() {
         ));
 
         cameras.push(DynCamera::new_brown_conrady(
-            &VecF64::<12>::from_vec(alloc::vec![
+            VecF64::<12>::from_vec(alloc::vec![
                 288.0,
                 284.0,
                 0.5 * (424.0 - 1.0),
@@ -262,20 +271,20 @@ fn dyn_camera_tests() {
                 }
 
                 for d in [1.0, 0.1, 0.5, 1.1, 3.0, 15.0] {
-                    let point_in_camera = camera.cam_unproj_with_z(&pixel, d);
+                    let point_in_camera = camera.cam_unproj_with_z(pixel, d);
                     assert_relative_eq!(point_in_camera[2], d, epsilon = EPS_F64);
 
-                    let pixel_in_image2 = camera.cam_proj(&point_in_camera);
+                    let pixel_in_image2 = camera.cam_proj(point_in_camera);
                     assert_relative_eq!(pixel_in_image2, pixel, epsilon = 1e-4);
                 }
-                let ab_in_z1plane = camera.undistort(&pixel);
+                let ab_in_z1plane = camera.undistort(pixel);
 
-                let pixel_in_image3 = camera.distort(&ab_in_z1plane);
+                let pixel_in_image3 = camera.distort(ab_in_z1plane);
                 assert_relative_eq!(pixel_in_image3, pixel, epsilon = 1e-4);
 
-                let dx = camera.dx_distort_x(&pixel);
+                let dx = camera.dx_distort_x(pixel);
                 let numeric_dx = VectorValuedMapFromVector::static_sym_diff_quotient(
-                    |x: VecF64<2>| camera.distort(&x),
+                    |x: VecF64<2>| camera.distort(x),
                     pixel,
                     EPS_F64,
                 );
@@ -284,24 +293,22 @@ fn dyn_camera_tests() {
 
                 match camera.camera_type {
                     PerspectiveCameraEnum::Pinhole(camera) => {
-                        let dx_params = camera.dx_distort_params(&pixel);
+                        let dx_params = camera.dx_distort_params(pixel);
 
                         let params = *camera.params();
                         let numeric_dx_params = VectorValuedMapFromVector::static_sym_diff_quotient(
-                            |p: VecF64<4>| AffineDistortionImpl::<f64, 1>::distort(&p, &pixel),
+                            |p: VecF64<4>| AffineDistortionImpl::<f64, 1>::distort(p, pixel),
                             params,
                             EPS_F64,
                         );
                         assert_relative_eq!(dx_params, numeric_dx_params, epsilon = 1e-4);
                     }
                     PerspectiveCameraEnum::KannalaBrandt(camera) => {
-                        let dx_params = camera.dx_distort_params(&pixel);
+                        let dx_params = camera.dx_distort_params(pixel);
 
                         let params = *camera.params();
                         let numeric_dx_params = VectorValuedMapFromVector::static_sym_diff_quotient(
-                            |p: VecF64<8>| {
-                                KannalaBrandtDistortionImpl::<f64, 1>::distort(&p, &pixel)
-                            },
+                            |p: VecF64<8>| KannalaBrandtDistortionImpl::<f64, 1>::distort(p, pixel),
                             params,
                             EPS_F64,
                         );
@@ -321,11 +328,11 @@ fn dyn_camera_tests() {
                         // assert_relative_eq!(dx_params, numeric_dx_params, epsilon = 1e-4);
                     }
                     PerspectiveCameraEnum::UnifiedExtended(camera) => {
-                        let dx_params = camera.dx_distort_params(&pixel);
+                        let dx_params = camera.dx_distort_params(pixel);
 
                         let params = camera.params();
                         let numeric_dx_params = VectorValuedMapFromVector::static_sym_diff_quotient(
-                            |p: VecF64<6>| UnifiedDistortionImpl::<f64, 1>::distort(&p, &pixel),
+                            |p: VecF64<6>| UnifiedDistortionImpl::<f64, 1>::distort(p, pixel),
                             *params,
                             EPS_F64,
                         );

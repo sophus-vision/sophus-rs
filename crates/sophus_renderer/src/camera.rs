@@ -32,7 +32,7 @@ impl RenderCamera {
     pub fn default_from(image_size: ImageSize) -> RenderCamera {
         RenderCamera {
             properties: RenderCameraProperties::default_from(image_size),
-            scene_from_camera: Isometry3::from_translation(&VecF64::<3>::new(0.0, 0.0, -5.0)),
+            scene_from_camera: Isometry3::from_translation(VecF64::<3>::new(0.0, 0.0, -5.0)),
         }
     }
 }

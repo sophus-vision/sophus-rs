@@ -49,7 +49,7 @@ impl RenderIntrinsics {
         match self {
             RenderIntrinsics::Pinhole(camera) => *camera,
             RenderIntrinsics::UnifiedExtended(camera) => PinholeCameraF64::new(
-                &VecF64::<4>::from_array([
+                VecF64::<4>::from_array([
                     0.5 * camera.params()[0],
                     0.5 * camera.params()[1],
                     camera.params()[2],

@@ -1,9 +1,9 @@
-use super::traits::IsLieGroupImpl;
-use super::traits::IsRealLieGroupImpl;
 use crate::groups::isometry2::Isometry2F64;
 use crate::groups::isometry3::Isometry3F64;
 use crate::lie_group::LieGroup;
 use crate::prelude::*;
+use crate::traits::IsLieGroupImpl;
+use crate::traits::IsRealLieGroupImpl;
 use crate::Isometry2;
 use crate::Isometry3;
 use crate::Rotation2;
@@ -22,6 +22,7 @@ use sophus_core::calculus::dual::dual_batch_scalar::DualBatchScalar;
 #[cfg(feature = "simd")]
 use sophus_core::linalg::BatchScalarF64;
 
+use core::borrow::Borrow;
 use core::fmt::Display;
 use core::fmt::Formatter;
 
@@ -43,8 +44,11 @@ where
     }
 
     /// derivative of exponential map times point at the identity
-    pub fn dx_exp_x_times_point_at_0(point: S::Vector<POINT>) -> S::Matrix<POINT, DOF> {
-        G::dx_exp_x_times_point_at_0(point)
+    pub fn dx_exp_x_times_point_at_0<P>(point: P) -> S::Matrix<POINT, DOF>
+    where
+        P: Borrow<S::Vector<POINT>>,
+    {
+        G::dx_exp_x_times_point_at_0(point.borrow())
     }
 
     /// are there multiple shortest paths to the identity?
@@ -53,38 +57,62 @@ where
     }
 
     /// derivative of exponential map
-    pub fn dx_exp(tangent: &S::Vector<DOF>) -> S::Matrix<PARAMS, DOF> {
-        G::dx_exp(tangent)
+    pub fn dx_exp<T>(tangent: T) -> S::Matrix<PARAMS, DOF>
+    where
+        T: Borrow<S::Vector<DOF>>,
+    {
+        G::dx_exp(tangent.borrow())
     }
 
     /// derivative of logarithmic map
-    pub fn dx_log_x(params: &S::Vector<PARAMS>) -> S::Matrix<DOF, PARAMS> {
-        G::dx_log_x(params)
+    pub fn dx_log_x<P>(params: P) -> S::Matrix<DOF, PARAMS>
+    where
+        P: Borrow<S::Vector<PARAMS>>,
+    {
+        G::dx_log_x(params.borrow())
     }
 
     /// dual representation of the group
     pub fn to_dual_c(
         self,
     ) -> LieGroup<S::DualScalar, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G::DualG> {
-        LieGroup::from_params(&self.params.to_dual())
+        LieGroup::from_params(self.params.to_dual())
     }
 
     /// derivative of log(exp(x)) at the identity
-    pub fn dx_log_a_exp_x_b_at_0(a: &Self, b: &Self) -> S::Matrix<DOF, DOF> {
-        let ab = a.group_mul(b);
+    pub fn dx_log_a_exp_x_b_at_0<A, B>(a: A, b: B) -> S::Matrix<DOF, DOF>
+    where
+        A: Borrow<Self>,
+        B: Borrow<Self>,
+    {
+        let a = a.borrow();
+        let b = b.borrow();
+        let ab = a * b;
         Self::dx_log_x(ab.params())
-            .mat_mul(Self::da_a_mul_b(&Self::identity(), &ab))
+            .mat_mul(Self::da_a_mul_b(Self::identity(), ab))
             .mat_mul(Self::dx_exp_x_at_0())
             .mat_mul(Self::adj(a))
     }
 
     /// derivative of group multiplication with respect to the first argument
-    pub fn da_a_mul_b(a: &Self, b: &Self) -> S::Matrix<PARAMS, PARAMS> {
+    pub fn da_a_mul_b<A, B>(a: A, b: B) -> S::Matrix<PARAMS, PARAMS>
+    where
+        A: Borrow<Self>,
+        B: Borrow<Self>,
+    {
+        let a = a.borrow();
+        let b = b.borrow();
         G::da_a_mul_b(a.params(), b.params())
     }
 
     /// derivative of group multiplication with respect to the second argument
-    pub fn db_a_mul_b(a: &Self, b: &Self) -> S::Matrix<PARAMS, PARAMS> {
+    pub fn db_a_mul_b<A, B>(a: A, b: B) -> S::Matrix<PARAMS, PARAMS>
+    where
+        A: Borrow<Self>,
+        B: Borrow<Self>,
+    {
+        let a = a.borrow();
+        let b = b.borrow();
         G::db_a_mul_b(a.params(), b.params())
     }
 }
@@ -284,7 +312,7 @@ macro_rules! def_real_group_test_template {
                     let exp_t = |t: <$scalar as IsScalar<$batch>>::Vector<DOF>|
                         -> <$scalar as IsScalar<$batch>>::Vector<POINT>
                         {
-                            Self::exp(&t).transform(&point)
+                            Self::exp(&t).transform(point)
                         };
                     let dual_exp_t = |vv: <$dual_scalar as IsScalar<$batch>>::Vector<DOF>|
                         -> <$dual_scalar as IsScalar<$batch>>::Vector<POINT>
@@ -322,7 +350,7 @@ macro_rules! def_real_group_test_template {
                         let log_x = |t: <$scalar as IsScalar<$batch>>::Vector<DOF>|
                             -> <$scalar as IsScalar<$batch>>::Vector<DOF>
                             {
-                                Self::exp(&t).group_mul(&g).log()
+                                (Self::exp(&t) * g).log()
                             };
                         let o = <$scalar as IsScalar<$batch>>::Vector::zeros();
 
@@ -381,7 +409,7 @@ macro_rules! def_real_group_test_template {
                         let dual_log_x = |t: <$dual_scalar as IsScalar<$batch>>::Vector<DOF>|
                             -> <$dual_scalar as IsScalar<$batch>>::Vector<DOF>
                             {
-                                dual_a.group_mul(
+                                (&dual_a *
                                         &<$dual_group>::exp(&t)
                                         .group_mul(&dual_b)
                                     ).log()

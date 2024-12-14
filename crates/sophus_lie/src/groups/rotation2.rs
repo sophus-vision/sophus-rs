@@ -7,6 +7,7 @@ use crate::traits::IsLieFactorGroupImpl;
 use crate::traits::IsLieGroupImpl;
 use crate::traits::IsRealLieFactorGroupImpl;
 use crate::traits::IsRealLieGroupImpl;
+use core::borrow::Borrow;
 use core::marker::PhantomData;
 use sophus_core::linalg::EPS_F64;
 use sophus_core::manifold::traits::TangentImpl;
@@ -35,7 +36,7 @@ impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> ParamsImpl<S, 2, BATCH_SI
         for i in 0..10 {
             let angle = S::from_f64(i as f64 * core::f64::consts::PI / 5.0);
             params.push(
-                Rotation2::<S, BATCH_SIZE>::exp(&S::Vector::<1>::from_array([angle]))
+                Rotation2::<S, BATCH_SIZE>::exp(S::Vector::<1>::from_array([angle]))
                     .params()
                     .clone(),
             );
@@ -51,8 +52,11 @@ impl<S: IsScalar<BATCH_SIZE>, const BATCH_SIZE: usize> ParamsImpl<S, 2, BATCH_SI
         ]
     }
 
-    fn are_params_valid(params: &S::Vector<2>) -> S::Mask {
-        let norm = params.norm();
+    fn are_params_valid<P>(params: P) -> S::Mask
+    where
+        P: Borrow<S::Vector<2>>,
+    {
+        let norm = params.borrow().norm();
         (norm - S::from_f64(1.0))
             .abs()
             .less_equal(&S::from_f64(EPS_F64))
@@ -164,7 +168,7 @@ impl<S: IsRealScalar<BATCH_SIZE>, const BATCH_SIZE: usize>
         S::Matrix::from_real_scalar_array2([[S::RealScalar::zeros()], [S::RealScalar::ones()]])
     }
 
-    fn dx_exp_x_times_point_at_0(point: S::Vector<2>) -> S::Matrix<2, 1> {
+    fn dx_exp_x_times_point_at_0(point: &S::Vector<2>) -> S::Matrix<2, 1> {
         S::Matrix::from_array2([[-point.get_elem(1)], [point.get_elem(0)]])
     }
 
@@ -203,8 +207,12 @@ pub type Rotation2F64 = Rotation2<f64, 1>;
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> Rotation2<S, BATCH> {
     /// Rotate by angle
-    pub fn rot(theta: S) -> Self {
-        Rotation2::exp(&S::Vector::<1>::from_array([theta]))
+    pub fn rot<U>(theta: U) -> Self
+    where
+        U: Borrow<S>,
+    {
+        let theta: &S = theta.borrow();
+        Rotation2::exp(S::Vector::<1>::from_array([theta.clone()]))
     }
 }
 
@@ -328,21 +336,19 @@ impl<S: IsSingleScalar + PartialOrd> HasAverage<S, 1, 2, 2, 2> for Rotation2<S, 
 
         for parent_from_body in parent_from_body_transforms {
             average_tangent = average_tangent
-                + parent_from_body0
-                    .inverse()
-                    .group_mul(parent_from_body)
+                + (parent_from_body0.inverse() * parent_from_body)
                     .log()
                     .scaled(w.clone());
         }
 
-        Ok(parent_from_body0.group_mul(&LieGroup::exp(&average_tangent)))
+        Ok(parent_from_body0 * LieGroup::exp(&average_tangent))
     }
 }
 
 #[test]
 fn rotation2_prop_tests() {
     use crate::factor_lie_group::RealFactorLieGroupTest;
-    use crate::real_lie_group::RealLieGroupTest;
+    use crate::lie_group::real_lie_group::RealLieGroupTest;
     use sophus_core::calculus::dual::dual_scalar::DualScalar;
 
     #[cfg(feature = "simd")]

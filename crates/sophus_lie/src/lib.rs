@@ -22,17 +22,8 @@ pub use crate::lie_group::LieGroup;
 /// Lie groups
 pub mod factor_lie_group;
 
-/// Lie group as a manifold
-pub mod lie_group_manifold;
-
 /// Lie group traits
 pub mod traits;
-
-/// Real lie group
-pub mod real_lie_group;
-
-/// Lie group average
-pub mod average;
 
 /// sophus_lie prelude
 pub mod prelude {

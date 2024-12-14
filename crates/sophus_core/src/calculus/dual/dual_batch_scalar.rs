@@ -13,6 +13,7 @@ use alloc::vec::Vec;
 use approx::assert_abs_diff_eq;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
+use core::borrow::Borrow;
 use core::fmt::Debug;
 use core::ops::Add;
 use core::ops::AddAssign;
@@ -340,7 +341,7 @@ where
         }
     }
 
-    fn cos(self) -> DualBatchScalar<BATCH>
+    fn cos(&self) -> DualBatchScalar<BATCH>
     where
         BatchScalarF64<BATCH>: IsCoreScalar,
         LaneCount<BATCH>: SupportedLaneCount,
@@ -367,7 +368,7 @@ where
         }
     }
 
-    fn sin(self) -> DualBatchScalar<BATCH>
+    fn sin(&self) -> DualBatchScalar<BATCH>
     where
         BatchScalarF64<BATCH>: IsCoreScalar,
         LaneCount<BATCH>: SupportedLaneCount,
@@ -387,7 +388,7 @@ where
         }
     }
 
-    fn abs(self) -> Self {
+    fn abs(&self) -> Self {
         Self {
             real_part: self.real_part.abs(),
             dij_part: match self.dij_part.clone() {
@@ -403,7 +404,11 @@ where
         }
     }
 
-    fn atan2(self, rhs: Self) -> Self {
+    fn atan2<S>(&self, rhs: S) -> Self
+    where
+        S: Borrow<Self>,
+    {
+        let rhs = rhs.borrow();
         let inv_sq_nrm: BatchScalarF64<BATCH> = BatchScalarF64::ones()
             / (self.real_part * self.real_part + rhs.real_part * rhs.real_part);
         Self {
@@ -421,11 +426,11 @@ where
         self.real_part
     }
 
-    fn sqrt(self) -> Self {
+    fn sqrt(&self) -> Self {
         let sqrt = self.real_part.sqrt();
         Self {
             real_part: sqrt,
-            dij_part: match self.dij_part {
+            dij_part: match &self.dij_part {
                 Some(dij) => {
                     let out_dij =
                         MutTensorDD::from_map(&dij.view(), |dij: &BatchScalarF64<BATCH>| {
@@ -439,12 +444,12 @@ where
         }
     }
 
-    fn to_vec(self) -> DualBatchVector<1, BATCH> {
+    fn to_vec(&self) -> DualBatchVector<1, BATCH> {
         DualBatchVector::<1, BATCH> {
             real_part: self.real_part.real_part().to_vec(),
-            dij_part: match self.dij_part {
+            dij_part: match &self.dij_part {
                 Some(dij) => {
-                    let tmp = dij.inner_scalar_to_vec();
+                    let tmp = dij.clone().inner_scalar_to_vec();
                     Some(tmp)
                 }
                 None => None,
@@ -452,7 +457,7 @@ where
         }
     }
 
-    fn tan(self) -> Self {
+    fn tan(&self) -> Self {
         Self {
             real_part: self.real_part.tan(),
             dij_part: match self.dij_part.clone() {
@@ -470,7 +475,7 @@ where
         }
     }
 
-    fn acos(self) -> Self {
+    fn acos(&self) -> Self {
         Self {
             real_part: self.real_part.acos(),
             dij_part: match self.dij_part.clone() {
@@ -489,7 +494,7 @@ where
         }
     }
 
-    fn asin(self) -> Self {
+    fn asin(&self) -> Self {
         Self {
             real_part: self.real_part.asin(),
             dij_part: match self.dij_part.clone() {
@@ -508,7 +513,7 @@ where
         }
     }
 
-    fn atan(self) -> Self {
+    fn atan(&self) -> Self {
         Self {
             real_part: self.real_part.atan(),
             dij_part: match self.dij_part.clone() {
@@ -526,7 +531,7 @@ where
         }
     }
 
-    fn fract(self) -> Self {
+    fn fract(&self) -> Self {
         Self {
             real_part: self.real_part.fract(),
             dij_part: match self.dij_part.clone() {
@@ -576,14 +581,14 @@ where
         self.real_part.less_equal(&rhs.real_part)
     }
 
-    fn to_dual(self) -> Self::DualScalar {
-        self
+    fn to_dual(&self) -> Self::DualScalar {
+        self.clone()
     }
 
-    fn select(self, mask: &Self::Mask, other: Self) -> Self {
+    fn select(&self, mask: &Self::Mask, other: Self) -> Self {
         Self {
             real_part: self.real_part.select(mask, other.real_part),
-            dij_part: match (self.dij_part, other.dij_part) {
+            dij_part: match (self.dij_part.clone(), other.dij_part) {
                 (Some(lhs), Some(rhs)) => {
                     let dyn_mat = MutTensorDD::from_map2(
                         &lhs.view(),

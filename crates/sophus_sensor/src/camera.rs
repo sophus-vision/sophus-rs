@@ -1,3 +1,5 @@
+use core::borrow::Borrow;
+
 use super::traits::IsCameraDistortionImpl;
 use crate::prelude::*;
 use sophus_image::ImageSize;
@@ -29,12 +31,19 @@ impl<
     > Camera<S, DISTORT, PARAMS, BATCH, Distort, Proj>
 {
     /// Creates a new camera
-    pub fn new(params: &S::Vector<PARAMS>, image_size: ImageSize) -> Self {
+    pub fn new<Q>(params: Q, image_size: ImageSize) -> Self
+    where
+        Q: Borrow<S::Vector<PARAMS>>,
+    {
         Self::from_params_and_size(params, image_size)
     }
 
     /// Creates a new camera from parameters and image size
-    pub fn from_params_and_size(params: &S::Vector<PARAMS>, size: ImageSize) -> Self {
+    pub fn from_params_and_size<Q>(params: Q, size: ImageSize) -> Self
+    where
+        Q: Borrow<S::Vector<PARAMS>>,
+    {
+        let params = params.borrow();
         assert!(
             Distort::are_params_valid(params).all(),
             "Invalid parameters for {:?}",
@@ -53,46 +62,67 @@ impl<
     }
 
     /// Distortion - maps a point in the camera z=1 plane to a distorted point
-    pub fn distort(&self, proj_point_in_camera_z1_plane: &S::Vector<2>) -> S::Vector<2> {
+    pub fn distort<Q>(&self, proj_point_in_camera_z1_plane: Q) -> S::Vector<2>
+    where
+        Q: Borrow<S::Vector<2>>,
+    {
         Distort::distort(&self.params, proj_point_in_camera_z1_plane)
     }
 
     /// Undistortion - maps a distorted pixel to a point in the camera z=1 plane
-    pub fn undistort(&self, pixel: &S::Vector<2>) -> S::Vector<2> {
+    pub fn undistort<Q>(&self, pixel: Q) -> S::Vector<2>
+    where
+        Q: Borrow<S::Vector<2>>,
+    {
         Distort::undistort(&self.params, pixel)
     }
 
     /// Derivative of the distortion w.r.t. the point in the camera z=1 plane
-    pub fn dx_distort_x(&self, proj_point_in_camera_z1_plane: &S::Vector<2>) -> S::Matrix<2, 2> {
+    pub fn dx_distort_x<Q>(&self, proj_point_in_camera_z1_plane: Q) -> S::Matrix<2, 2>
+    where
+        Q: Borrow<S::Vector<2>>,
+    {
         Distort::dx_distort_x(&self.params, proj_point_in_camera_z1_plane)
     }
 
     /// Derivative of the distortion w.r.t. the parameters
-    pub fn dx_distort_params(
-        &self,
-        proj_point_in_camera_z1_plane: &S::Vector<2>,
-    ) -> S::Matrix<2, PARAMS> {
+    pub fn dx_distort_params<Q>(&self, proj_point_in_camera_z1_plane: Q) -> S::Matrix<2, PARAMS>
+    where
+        Q: Borrow<S::Vector<2>>,
+    {
         Distort::dx_distort_params(&self.params, proj_point_in_camera_z1_plane)
     }
 
     /// Projects a 3D point in the camera frame to a pixel in the image
-    pub fn cam_proj(&self, point_in_camera: &S::Vector<3>) -> S::Vector<2> {
-        self.distort(&Proj::proj(point_in_camera))
+    pub fn cam_proj<Q>(&self, point_in_camera: Q) -> S::Vector<2>
+    where
+        Q: Borrow<S::Vector<3>>,
+    {
+        self.distort(Proj::proj(point_in_camera))
     }
 
     /// Unprojects a pixel in the image to a 3D point in the camera frame - assuming z=1
-    pub fn cam_unproj(&self, point_in_camera: &S::Vector<2>) -> S::Vector<3> {
+    pub fn cam_unproj<Q>(&self, point_in_camera: Q) -> S::Vector<3>
+    where
+        Q: Borrow<S::Vector<2>>,
+    {
         self.cam_unproj_with_z(point_in_camera, S::ones())
     }
 
     /// Unprojects a pixel in the image to a 3D point in the camera frame
-    pub fn cam_unproj_with_z(&self, point_in_camera: &S::Vector<2>, z: S) -> S::Vector<3> {
-        Proj::unproj(&self.undistort(point_in_camera), z)
+    pub fn cam_unproj_with_z<Q>(&self, point_in_camera: Q, z: S) -> S::Vector<3>
+    where
+        Q: Borrow<S::Vector<2>>,
+    {
+        Proj::unproj(self.undistort(point_in_camera), z)
     }
 
     /// Sets the camera parameters
-    pub fn set_params(&mut self, params: &S::Vector<PARAMS>) {
-        self.params = params.clone();
+    pub fn set_params<Q>(&mut self, params: Q)
+    where
+        Q: Borrow<S::Vector<PARAMS>>,
+    {
+        self.params = params.borrow().clone();
     }
 
     /// Returns the camera parameters
@@ -126,6 +156,6 @@ impl<
     > Default for Camera<S, DISTORT, PARAMS, BATCH, Distort, Proj>
 {
     fn default() -> Self {
-        Self::from_params_and_size(&Distort::identity_params(), ImageSize::default())
+        Self::from_params_and_size(Distort::identity_params(), ImageSize::default())
     }
 }

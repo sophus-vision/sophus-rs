@@ -87,10 +87,10 @@ impl IsResidualFn<13, 3, (), (PinholeCamera<f64, 1>, Isometry3F64, VecF64<3>), V
         let d1_res_fn = |x: DualVector<6>| -> DualVector<2> {
             res_fn(
                 PinholeCamera::<DualScalar, 1>::from_params_and_size(
-                    &DualVector::from_real_vector(*intrinsics.params()),
+                    DualVector::from_real_vector(*intrinsics.params()),
                     intrinsics.image_size(),
                 ),
-                Isometry3::<DualScalar, 1>::exp(&x).group_mul(&world_from_camera_pose.to_dual_c()),
+                Isometry3::<DualScalar, 1>::exp(&x) * world_from_camera_pose.to_dual_c(),
                 DualVector::from_real_vector(point_in_world),
                 DualVector::from_real_vector(*uv_in_image),
             )
@@ -99,7 +99,7 @@ impl IsResidualFn<13, 3, (), (PinholeCamera<f64, 1>, Isometry3F64, VecF64<3>), V
         let d2_res_fn = |x: DualVector<3>| -> DualVector<2> {
             res_fn(
                 PinholeCamera::<DualScalar, 1>::from_params_and_size(
-                    &DualVector::from_real_vector(*intrinsics.params()),
+                    DualVector::from_real_vector(*intrinsics.params()),
                     intrinsics.image_size(),
                 ),
                 world_from_camera_pose.to_dual_c(),

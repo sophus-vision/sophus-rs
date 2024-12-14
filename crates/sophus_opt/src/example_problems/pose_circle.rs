@@ -51,7 +51,7 @@ impl PoseCircleProblem {
             let x = radius * angle.cos();
             let y = radius * angle.sin();
             let p = VecF64::<3>::from_real_array([x, y, 0.1 * angle]);
-            true_world_from_robot_poses.push(Isometry2::exp(&p));
+            true_world_from_robot_poses.push(Isometry2::exp(p));
         }
 
         for i in 0..len {
@@ -61,11 +61,8 @@ impl PoseCircleProblem {
             let true_world_from_pose_b = true_world_from_robot_poses[b_idx];
 
             let p = VecF64::<3>::from_real_array([0.001, 0.001, 0.0001]);
-            let pose_a_from_pose_b = Isometry2::exp(&p).group_mul(
-                &true_world_from_pose_a
-                    .inverse()
-                    .group_mul(&true_world_from_pose_b),
-            );
+            let pose_a_from_pose_b =
+                Isometry2::exp(p) * true_world_from_pose_a.inverse() * true_world_from_pose_b;
 
             obs_pose_a_from_pose_b_poses
                 .terms
@@ -87,8 +84,7 @@ impl PoseCircleProblem {
             let world_from_pose_a = est_world_from_robot_poses[a_idx];
             let pose_a_from_pose_b = obs.pose_a_from_pose_b;
             let p = VecF64::<3>::from_real_array([0.1, 0.1, 0.1]);
-            let world_from_pose_b =
-                Isometry2::exp(&p).group_mul(&world_from_pose_a.group_mul(&pose_a_from_pose_b));
+            let world_from_pose_b = Isometry2::exp(p) * world_from_pose_a * pose_a_from_pose_b;
 
             est_world_from_robot_poses.push(world_from_pose_b);
         }
@@ -114,7 +110,7 @@ impl PoseCircleProblem {
                 est_world_from_robot[obs.entity_indices[1]],
                 obs.pose_a_from_pose_b,
             );
-            res_err += residual.dot(residual);
+            res_err += residual.dot(&residual);
         }
         res_err /= self.obs_pose_a_from_pose_b_poses.terms.len() as f64;
         res_err

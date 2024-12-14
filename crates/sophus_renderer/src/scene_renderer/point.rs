@@ -89,7 +89,7 @@ impl ScenePointRenderer {
                 .camera_from_entity_pose_buffer
                 .update_given_camera_and_entity(
                     &render_context.wgpu_queue,
-                    &world_from_scene.group_mul(scene_from_camera),
+                    &(world_from_scene * scene_from_camera),
                     &point.world_from_entity,
                 );
             render_pass.set_vertex_buffer(0, point.vertex_buffer.slice(..));

@@ -1,3 +1,5 @@
+use core::borrow::Borrow;
+
 use crate::lie_group::LieGroup;
 use crate::prelude::*;
 use crate::traits::IsRealLieFactorGroupImpl;
@@ -24,31 +26,44 @@ impl<
     > LieGroup<S, DOF, PARAMS, POINT, POINT, BATCH_SIZE, G>
 {
     /// V matrix - used in the exponential map
-    pub fn mat_v(tangent: &S::Vector<DOF>) -> S::Matrix<POINT, POINT> {
-        G::mat_v(tangent)
+    pub fn mat_v<T>(tangent: T) -> S::Matrix<POINT, POINT>
+    where
+        T: Borrow<S::Vector<DOF>>,
+    {
+        G::mat_v(tangent.borrow())
     }
 
     /// V matrix inverse - used in the logarithmic map
-    pub fn mat_v_inverse(tangent: &S::Vector<DOF>) -> S::Matrix<POINT, POINT> {
-        G::mat_v_inverse(tangent)
+    pub fn mat_v_inverse<T>(tangent: T) -> S::Matrix<POINT, POINT>
+    where
+        T: Borrow<S::Vector<DOF>>,
+    {
+        G::mat_v_inverse(tangent.borrow())
     }
 
     /// derivative of V matrix
-    pub fn dx_mat_v(tangent: &S::Vector<DOF>) -> [S::Matrix<POINT, POINT>; DOF] {
-        G::dx_mat_v(tangent)
+    pub fn dx_mat_v<T>(tangent: T) -> [S::Matrix<POINT, POINT>; DOF]
+    where
+        T: Borrow<S::Vector<DOF>>,
+    {
+        G::dx_mat_v(tangent.borrow())
     }
 
     /// derivative of V matrix inverse
-    pub fn dx_mat_v_inverse(tangent: &S::Vector<DOF>) -> [S::Matrix<POINT, POINT>; DOF] {
-        G::dx_mat_v_inverse(tangent)
+    pub fn dx_mat_v_inverse<T>(tangent: T) -> [S::Matrix<POINT, POINT>; DOF]
+    where
+        T: Borrow<S::Vector<DOF>>,
+    {
+        G::dx_mat_v_inverse(tangent.borrow())
     }
 
     /// derivative of V matrix times point
-    pub fn dparams_matrix_times_point(
-        params: &S::Vector<PARAMS>,
-        point: &S::Vector<POINT>,
-    ) -> S::Matrix<POINT, PARAMS> {
-        G::dparams_matrix_times_point(params, point)
+    pub fn dparams_matrix_times_point<PA, PO>(params: PA, point: PO) -> S::Matrix<POINT, PARAMS>
+    where
+        PA: Borrow<S::Vector<PARAMS>>,
+        PO: Borrow<S::Vector<POINT>>,
+    {
+        G::dparams_matrix_times_point(params.borrow(), point.borrow())
     }
 }
 

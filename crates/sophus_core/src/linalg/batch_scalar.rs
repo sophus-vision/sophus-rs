@@ -14,6 +14,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
+use core::borrow::Borrow;
 use core::fmt::Debug;
 use core::ops::AddAssign;
 use core::ops::Div;
@@ -233,7 +234,7 @@ where
         }
     }
 
-    fn abs(self) -> Self {
+    fn abs(&self) -> Self {
         BatchScalarF64 {
             0: SimdFloat::abs(self.0),
         }
@@ -249,57 +250,61 @@ where
         self.0.to_array()
     }
 
-    fn cos(self) -> Self {
+    fn cos(&self) -> Self {
         BatchScalarF64 {
             0: sleef::Sleef::cos(self.0),
         }
     }
 
-    fn sin(self) -> Self {
+    fn sin(&self) -> Self {
         BatchScalarF64 {
             0: sleef::Sleef::sin(self.0),
         }
     }
 
-    fn tan(self) -> Self {
+    fn tan(&self) -> Self {
         BatchScalarF64 {
             0: sleef::Sleef::tan(self.0),
         }
     }
 
-    fn acos(self) -> Self {
+    fn acos(&self) -> Self {
         BatchScalarF64 {
             0: sleef::Sleef::acos(self.0),
         }
     }
 
-    fn asin(self) -> Self {
+    fn asin(&self) -> Self {
         BatchScalarF64 {
             0: sleef::Sleef::asin(self.0),
         }
     }
 
-    fn atan(self) -> Self {
+    fn atan(&self) -> Self {
         BatchScalarF64 {
             0: sleef::Sleef::atan(self.0),
         }
     }
 
-    fn sqrt(self) -> Self {
+    fn sqrt(&self) -> Self {
         BatchScalarF64 { 0: self.0.sqrt() }
     }
 
-    fn atan2(self, x: Self) -> Self {
+    fn atan2<S>(&self, rhs: S) -> Self
+    where
+        S: Borrow<Self>,
+    {
+        let rhs = rhs.borrow();
         BatchScalarF64 {
-            0: sleef::Sleef::atan2(self.0, x.0),
+            0: sleef::Sleef::atan2(self.0, rhs.0),
         }
     }
 
-    fn to_vec(self) -> Self::Vector<1> {
+    fn to_vec(&self) -> Self::Vector<1> {
         BatchVecF64::<1, BATCH>::from_scalar(self)
     }
 
-    fn fract(self) -> Self {
+    fn fract(&self) -> Self {
         BatchScalarF64 {
             0: self.0.frfrexp(),
         }
@@ -317,11 +322,11 @@ where
 
     type DualMatrix<const ROWS: usize, const COLS: usize> = DualBatchMatrix<ROWS, COLS, BATCH>;
 
-    fn to_dual(self) -> Self::DualScalar {
-        DualBatchScalar::from_real_scalar(self)
+    fn to_dual(&self) -> Self::DualScalar {
+        DualBatchScalar::from_real_scalar(self.clone())
     }
 
-    fn select(self, mask: &Self::Mask, other: Self) -> Self {
+    fn select(&self, mask: &Self::Mask, other: Self) -> Self {
         BatchScalarF64 {
             0: mask.select(self.0, other.0),
         }

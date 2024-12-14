@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::traits::IsCameraDistortionImpl;
+use core::borrow::Borrow;
 use core::marker::PhantomData;
 use sophus_core::params::ParamsImpl;
 
@@ -16,7 +17,10 @@ pub struct AffineDistortionImpl<S: IsScalar<BATCH>, const BATCH: usize> {
 impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 4, BATCH>
     for AffineDistortionImpl<S, BATCH>
 {
-    fn are_params_valid(_params: &S::Vector<4>) -> S::Mask {
+    fn are_params_valid<P>(_params: P) -> S::Mask
+    where
+        P: Borrow<S::Vector<4>>,
+    {
         S::Mask::all_true()
     }
 
@@ -35,37 +39,53 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 4, BATCH>
 impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 0, 4, BATCH>
     for AffineDistortionImpl<S, BATCH>
 {
-    fn distort(
-        params: &S::Vector<4>,
-        proj_point_in_camera_z1_plane: &S::Vector<2>,
-    ) -> S::Vector<2> {
+    fn distort<PA, PO>(params: PA, proj_point_in_camera_z1_plane: PO) -> S::Vector<2>
+    where
+        PA: Borrow<S::Vector<4>>,
+        PO: Borrow<S::Vector<2>>,
+    {
+        let params = params.borrow();
+        let proj_point_in_camera_z1_plane = proj_point_in_camera_z1_plane.borrow();
         S::Vector::<2>::from_array([
             proj_point_in_camera_z1_plane.get_elem(0) * params.get_elem(0) + params.get_elem(2),
             proj_point_in_camera_z1_plane.get_elem(1) * params.get_elem(1) + params.get_elem(3),
         ])
     }
 
-    fn undistort(params: &S::Vector<4>, distorted_point: &S::Vector<2>) -> S::Vector<2> {
+    fn undistort<PA, PO>(params: PA, distorted_point: PO) -> S::Vector<2>
+    where
+        PA: Borrow<S::Vector<4>>,
+        PO: Borrow<S::Vector<2>>,
+    {
+        let params = params.borrow();
+        let distorted_point = distorted_point.borrow();
+
         S::Vector::<2>::from_array([
             (distorted_point.get_elem(0) - params.get_elem(2)) / params.get_elem(0),
             (distorted_point.get_elem(1) - params.get_elem(3)) / params.get_elem(1),
         ])
     }
 
-    fn dx_distort_x(
-        params: &S::Vector<4>,
-        _proj_point_in_camera_z1_plane: &S::Vector<2>,
-    ) -> S::Matrix<2, 2> {
+    fn dx_distort_x<PA, PO>(params: PA, _proj_point_in_camera_z1_plane: PO) -> S::Matrix<2, 2>
+    where
+        PA: Borrow<S::Vector<4>>,
+        PO: Borrow<S::Vector<2>>,
+    {
+        let params = params.borrow();
+
         S::Matrix::<2, 2>::from_array2([
             [params.get_elem(0), S::zeros()],
             [S::zeros(), params.get_elem(1)],
         ])
     }
 
-    fn dx_distort_params(
-        _params: &S::Vector<4>,
-        proj_point_in_camera_z1_plane: &S::Vector<2>,
-    ) -> S::Matrix<2, 4> {
+    fn dx_distort_params<PA, PO>(_params: PA, proj_point_in_camera_z1_plane: PO) -> S::Matrix<2, 4>
+    where
+        PA: Borrow<S::Vector<4>>,
+        PO: Borrow<S::Vector<2>>,
+    {
+        let proj_point_in_camera_z1_plane = proj_point_in_camera_z1_plane.borrow();
+
         S::Matrix::<2, 4>::from_array2([
             [
                 proj_point_in_camera_z1_plane.get_elem(0),

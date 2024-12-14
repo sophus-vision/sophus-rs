@@ -8,6 +8,7 @@ use crate::traits::ManifoldImpl;
 use crate::traits::TangentImpl;
 use crate::HasParams;
 use crate::ParamsImpl;
+use core::borrow::Borrow;
 use core::marker::PhantomData;
 use core::ops::Neg;
 extern crate alloc;
@@ -80,7 +81,7 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
         let near_zero = theta.clone().abs().less_equal(&eps);
 
         unit_x
-            .scaled(S::from_f64(0.0).atan2(x.clone()))
+            .scaled(S::from_f64(0.0).atan2(&x))
             .select(&near_zero, tail.scaled(theta.clone().atan2(x) / theta))
     }
 }
@@ -96,9 +97,12 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
 impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SIZE: usize>
     ParamsImpl<S, DIM, BATCH_SIZE> for UnitVectorImpl<S, DOF, DIM, BATCH_SIZE>
 {
-    fn are_params_valid(params: &S::Vector<DIM>) -> S::Mask {
+    fn are_params_valid<P>(params: P) -> S::Mask
+    where
+        P: Borrow<S::Vector<DIM>>,
+    {
         let eps = S::from_f64(-1e6);
-        (params.squared_norm() - S::from_f64(1.0))
+        (params.borrow().squared_norm() - S::from_f64(1.0))
             .abs()
             .less_equal(&eps)
     }
@@ -242,7 +246,7 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
         if vector.squared_norm().less_equal(&eps).any() {
             return Err(NearZeroUnitVector);
         }
-        Ok(Self::from_params(&vector.normalized()))
+        Ok(Self::from_params(vector.normalized()))
     }
 
     /// Returns self as vector
@@ -259,7 +263,10 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
 impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SIZE: usize>
     ParamsImpl<S, DIM, BATCH_SIZE> for UnitVector<S, DOF, DIM, BATCH_SIZE>
 {
-    fn are_params_valid(params: &S::Vector<DIM>) -> S::Mask {
+    fn are_params_valid<P>(params: P) -> S::Mask
+    where
+        P: Borrow<S::Vector<DIM>>,
+    {
         UnitVectorImpl::<S, DOF, DIM, BATCH_SIZE>::are_params_valid(params)
     }
 
@@ -275,11 +282,17 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
 impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SIZE: usize>
     HasParams<S, DIM, BATCH_SIZE> for UnitVector<S, DOF, DIM, BATCH_SIZE>
 {
-    fn from_params(params: &S::Vector<DIM>) -> Self {
-        Self::try_from(params).unwrap()
+    fn from_params<P>(params: P) -> Self
+    where
+        P: Borrow<S::Vector<DIM>>,
+    {
+        Self::try_from(params.borrow()).unwrap()
     }
 
-    fn set_params(&mut self, params: &S::Vector<DIM>) {
+    fn set_params<P>(&mut self, params: P)
+    where
+        P: Borrow<S::Vector<DIM>>,
+    {
         self.params = Self::from_params(params).params().clone();
     }
 
