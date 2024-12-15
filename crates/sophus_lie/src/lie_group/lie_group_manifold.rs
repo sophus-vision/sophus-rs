@@ -1,6 +1,7 @@
 use crate::lie_group::LieGroup;
 use crate::prelude::*;
 use crate::traits::IsLieGroupImpl;
+use core::borrow::Borrow;
 use core::fmt::Debug;
 use sophus_core::params::ParamsImpl;
 
@@ -34,7 +35,10 @@ impl<
     > ParamsImpl<S, PARAMS, BATCH_SIZE>
     for LeftGroupManifold<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
 {
-    fn are_params_valid(params: &<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>) -> S::Mask {
+    fn are_params_valid<P>(params: P) -> S::Mask
+    where
+        P: for<'a> Borrow<<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>>,
+    {
         G::are_params_valid(params)
     }
 
@@ -58,13 +62,19 @@ impl<
     > HasParams<S, PARAMS, BATCH_SIZE>
     for LeftGroupManifold<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
 {
-    fn from_params(params: &<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>) -> Self {
+    fn from_params<P>(params: P) -> Self
+    where
+        P: for<'a> Borrow<<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>>,
+    {
         Self {
             group: LieGroup::from_params(params),
         }
     }
 
-    fn set_params(&mut self, params: &<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>) {
+    fn set_params<P>(&mut self, params: P)
+    where
+        P: for<'a> Borrow<<S as IsScalar<BATCH_SIZE>>::Vector<PARAMS>>,
+    {
         self.group.set_params(params)
     }
 
@@ -86,12 +96,12 @@ impl<
 {
     fn oplus(&self, tangent: &<S as IsScalar<BATCH_SIZE>>::Vector<DOF>) -> Self {
         Self {
-            group: LieGroup::<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>::exp(tangent)
-                .group_mul(&self.group),
+            group: &LieGroup::<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>::exp(tangent)
+                * &self.group,
         }
     }
 
     fn ominus(&self, rhs: &Self) -> <S as IsScalar<BATCH_SIZE>>::Vector<DOF> {
-        self.group.inverse().group_mul(&rhs.group).log()
+        (&self.group.inverse() * &rhs.group).log()
     }
 }

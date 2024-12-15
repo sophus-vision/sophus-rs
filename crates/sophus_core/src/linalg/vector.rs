@@ -4,6 +4,7 @@ use crate::linalg::VecF64;
 use crate::prelude::*;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
+use core::borrow::Borrow;
 use core::fmt::Debug;
 use core::ops::Add;
 use core::ops::Index;
@@ -29,22 +30,32 @@ pub trait IsVector<S: IsScalar<BATCH_SIZE>, const ROWS: usize, const BATCH_SIZE:
     ) -> Self;
 
     /// dot product
-    fn dot(self, rhs: Self) -> S;
+    fn dot<V>(&self, rhs: V) -> S
+    where
+        V: Borrow<Self>;
 
     /// create a vector from an array
-    fn from_array(vals: [S; ROWS]) -> Self;
+    fn from_array<A>(vals: A) -> Self
+    where
+        A: Borrow<[S; ROWS]>;
 
     /// create a constant vector from an array
-    fn from_real_array(vals: [S::RealScalar; ROWS]) -> Self;
+    fn from_real_array<A>(vals: A) -> Self
+    where
+        A: Borrow<[S::RealScalar; ROWS]>;
 
     /// create a constant vector
-    fn from_real_vector(val: S::RealVector<ROWS>) -> Self;
+    fn from_real_vector<A>(val: A) -> Self
+    where
+        A: Borrow<S::RealVector<ROWS>>;
 
     /// create a constant scalar
     fn from_f64(val: f64) -> Self;
 
     /// create a constant vector from an array
-    fn from_f64_array(vals: [f64; ROWS]) -> Self;
+    fn from_f64_array<A>(vals: A) -> Self
+    where
+        A: Borrow<[f64; ROWS]>;
 
     /// get ith element
     fn get_elem(&self, idx: usize) -> S;
@@ -53,7 +64,9 @@ pub trait IsVector<S: IsScalar<BATCH_SIZE>, const ROWS: usize, const BATCH_SIZE:
     fn get_fixed_subvec<const R: usize>(&self, start_r: usize) -> S::Vector<R>;
 
     /// create a constant vector from an array
-    fn from_scalar_array(vals: [S; ROWS]) -> Self;
+    fn from_scalar_array<A>(vals: A) -> Self
+    where
+        A: Borrow<[S; ROWS]>;
 
     /// norm
     fn norm(&self) -> S;
@@ -62,7 +75,9 @@ pub trait IsVector<S: IsScalar<BATCH_SIZE>, const ROWS: usize, const BATCH_SIZE:
     fn normalized(&self) -> Self;
 
     /// outer product
-    fn outer<const R2: usize>(self, rhs: S::Vector<R2>) -> S::Matrix<ROWS, R2>;
+    fn outer<const R2: usize, V>(&self, rhs: V) -> S::Matrix<ROWS, R2>
+    where
+        V: Borrow<S::Vector<R2>>;
 
     /// return the real part
     fn real_vector(&self) -> &S::RealVector<ROWS>;
@@ -70,10 +85,14 @@ pub trait IsVector<S: IsScalar<BATCH_SIZE>, const ROWS: usize, const BATCH_SIZE:
     /// Returns self if mask is true, otherwise returns other
     ///
     /// For batch vectors, this is a lane-wise operation
-    fn select(self, mask: &S::Mask, other: Self) -> Self;
+    fn select<O>(&self, mask: &S::Mask, other: O) -> Self
+    where
+        O: Borrow<Self>;
 
     /// return scaled vector
-    fn scaled(&self, v: S) -> Self;
+    fn scaled<U>(&self, v: U) -> Self
+    where
+        U: Borrow<S>;
 
     /// set ith element to given scalar
     fn set_elem(&mut self, idx: usize, v: S);
@@ -86,11 +105,11 @@ pub trait IsVector<S: IsScalar<BATCH_SIZE>, const ROWS: usize, const BATCH_SIZE:
     /// If self is a real vector, this will return a dual vector with the infinitesimal part set to
     /// zero: (self, 0ϵ)
     fn to_dual(
-        self,
+        &self,
     ) -> <<S as IsScalar<BATCH_SIZE>>::DualScalar as IsScalar<BATCH_SIZE>>::Vector<ROWS>;
 
     /// return the matrix representation - in self as a column vector
-    fn to_mat(self) -> S::Matrix<ROWS, 1>;
+    fn to_mat(&self) -> S::Matrix<ROWS, 1>;
 
     /// ones
     fn ones() -> Self {
@@ -146,24 +165,39 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1> for VecF64<ROWS> {
         m
     }
 
-    fn from_array(vals: [f64; ROWS]) -> VecF64<ROWS> {
-        VecF64::<ROWS>::from_row_slice(&vals[..])
+    fn from_array<A>(vals: A) -> VecF64<ROWS>
+    where
+        A: Borrow<[f64; ROWS]>,
+    {
+        VecF64::<ROWS>::from_row_slice(&vals.borrow()[..])
     }
 
-    fn from_real_array(vals: [f64; ROWS]) -> Self {
-        VecF64::<ROWS>::from_row_slice(&vals[..])
+    fn from_real_array<A>(vals: A) -> Self
+    where
+        A: Borrow<[f64; ROWS]>,
+    {
+        VecF64::<ROWS>::from_row_slice(&vals.borrow()[..])
     }
 
-    fn from_real_vector(val: VecF64<ROWS>) -> Self {
-        val
+    fn from_real_vector<A>(val: A) -> Self
+    where
+        A: Borrow<VecF64<ROWS>>,
+    {
+        *val.borrow()
     }
 
-    fn from_f64_array(vals: [f64; ROWS]) -> Self {
-        VecF64::<ROWS>::from_row_slice(&vals[..])
+    fn from_f64_array<A>(vals: A) -> Self
+    where
+        A: Borrow<[f64; ROWS]>,
+    {
+        VecF64::<ROWS>::from_row_slice(&vals.borrow()[..])
     }
 
-    fn from_scalar_array(vals: [f64; ROWS]) -> Self {
-        VecF64::<ROWS>::from_row_slice(&vals[..])
+    fn from_scalar_array<A>(vals: A) -> Self
+    where
+        A: Borrow<[f64; ROWS]>,
+    {
+        VecF64::<ROWS>::from_row_slice(&vals.borrow()[..])
     }
 
     fn get_elem(&self, idx: usize) -> f64 {
@@ -186,16 +220,22 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1> for VecF64<ROWS> {
         self.norm_squared()
     }
 
-    fn to_mat(self) -> MatF64<ROWS, 1> {
-        self
+    fn to_mat(&self) -> MatF64<ROWS, 1> {
+        *self
     }
 
-    fn scaled(&self, v: f64) -> Self {
-        self * v
+    fn scaled<U>(&self, v: U) -> Self
+    where
+        U: Borrow<f64>,
+    {
+        self * *v.borrow()
     }
 
-    fn dot(self, rhs: Self) -> f64 {
-        VecF64::dot(&self, &rhs)
+    fn dot<V>(&self, rhs: V) -> f64
+    where
+        V: Borrow<Self>,
+    {
+        VecF64::dot(self, rhs.borrow())
     }
 
     fn normalized(&self) -> Self {
@@ -206,19 +246,25 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1> for VecF64<ROWS> {
         VecF64::<ROWS>::from_element(val)
     }
 
-    fn to_dual(self) -> <f64 as IsScalar<1>>::DualVector<ROWS> {
-        DualVector::from_real_vector(self)
+    fn to_dual(&self) -> <f64 as IsScalar<1>>::DualVector<ROWS> {
+        DualVector::from_real_vector(*self)
     }
 
-    fn outer<const R2: usize>(self, rhs: VecF64<R2>) -> MatF64<ROWS, R2> {
-        self * rhs.transpose()
+    fn outer<const R2: usize, V>(&self, rhs: V) -> MatF64<ROWS, R2>
+    where
+        V: Borrow<VecF64<R2>>,
+    {
+        self * rhs.borrow().transpose()
     }
 
-    fn select(self, mask: &bool, other: Self) -> Self {
+    fn select<Q>(&self, mask: &bool, other: Q) -> Self
+    where
+        Q: Borrow<Self>,
+    {
         if *mask {
-            self
+            *self
         } else {
-            other
+            *other.borrow()
         }
     }
 
@@ -229,8 +275,8 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1> for VecF64<ROWS> {
 
 /// cross product
 pub fn cross<S: IsScalar<BATCH>, const BATCH: usize>(
-    lhs: S::Vector<3>,
-    rhs: S::Vector<3>,
+    lhs: &S::Vector<3>,
+    rhs: &S::Vector<3>,
 ) -> S::Vector<3> {
     let l0 = lhs.get_elem(0);
     let l1 = lhs.get_elem(1);

@@ -53,18 +53,13 @@ pub fn iterative_average<
 
         for parent_from_body in parent_from_body_transforms {
             average_tangent = average_tangent
-                + parent_from_body_average
-                    .inverse()
-                    .group_mul(parent_from_body)
+                + (parent_from_body_average.inverse() * parent_from_body)
                     .log()
                     .scaled(w.clone());
         }
         let refined_parent_from_body_average =
-            parent_from_body_average.group_mul(&LieGroup::exp(&average_tangent));
-        let step = refined_parent_from_body_average
-            .inverse()
-            .group_mul(&parent_from_body_average)
-            .log();
+            parent_from_body_average.clone() * LieGroup::exp(&average_tangent);
+        let step = (refined_parent_from_body_average.inverse() * parent_from_body_average).log();
         if step.squared_norm() < S::from_f64(EPS_F64) {
             return Ok(refined_parent_from_body_average);
         }
@@ -109,11 +104,7 @@ macro_rules! def_average_test_template {
                     for parent_from_b in Self::element_examples() {
                         // test: average of two elements is identical to interpolation
 
-                        if parent_from_a
-                            .inverse()
-                            .group_mul(&parent_from_b)
-                            .has_shortest_path_ambiguity()
-                        {
+                        if (parent_from_a.inverse() * parent_from_b).has_shortest_path_ambiguity() {
                             continue;
                         }
                         let averaged_element =
@@ -135,9 +126,7 @@ macro_rules! def_average_test_template {
 
                             let w = 1.0 / (list.len() as f64);
                             for parent_from_x in list {
-                                average_tangent += parent_from_average
-                                    .inverse()
-                                    .group_mul(&parent_from_x)
+                                average_tangent += (parent_from_average.inverse() * parent_from_x)
                                     .log()
                                     .scaled(w);
                             }

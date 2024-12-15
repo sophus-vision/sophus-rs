@@ -3,6 +3,7 @@ use crate::linalg::BatchMatF64;
 use crate::linalg::BatchScalarF64;
 use crate::linalg::BatchVecF64;
 use crate::prelude::*;
+use core::borrow::Borrow;
 use core::simd::LaneCount;
 use core::simd::Mask;
 use core::simd::SupportedLaneCount;
@@ -12,35 +13,57 @@ impl<const ROWS: usize, const COLS: usize, const BATCH: usize>
 where
     LaneCount<BATCH>: SupportedLaneCount,
 {
-    fn from_scalar(val: BatchScalarF64<BATCH>) -> Self {
-        Self::from_element(val)
+    fn from_scalar<S>(val: S) -> Self
+    where
+        S: Borrow<BatchScalarF64<BATCH>>,
+    {
+        let val = val.borrow();
+        Self::from_element(*val)
     }
 
-    fn from_real_matrix(val: Self) -> Self {
-        val
+    fn from_real_matrix<M>(val: M) -> Self
+    where
+        M: Borrow<BatchMatF64<ROWS, COLS, BATCH>>,
+    {
+        val.borrow().clone()
     }
 
     fn real_matrix(&self) -> &Self {
         self
     }
 
-    fn scaled(&self, v: BatchScalarF64<BATCH>) -> Self {
-        self * v
+    fn scaled<S>(&self, v: S) -> Self
+    where
+        S: Borrow<BatchScalarF64<BATCH>>,
+    {
+        *self * *v.borrow()
     }
 
     fn identity() -> Self {
         nalgebra::SMatrix::<BatchScalarF64<BATCH>, ROWS, COLS>::identity()
     }
 
-    fn from_array2(vals: [[BatchScalarF64<BATCH>; COLS]; ROWS]) -> Self {
+    fn from_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[BatchScalarF64<BATCH>; COLS]; ROWS]>,
+    {
+        let vals = vals.borrow();
         Self::from_fn(|r, c| vals[r][c])
     }
 
-    fn from_real_scalar_array2(vals: [[BatchScalarF64<BATCH>; COLS]; ROWS]) -> Self {
+    fn from_real_scalar_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[BatchScalarF64<BATCH>; COLS]; ROWS]>,
+    {
+        let vals = vals.borrow();
         Self::from_fn(|r, c| vals[r][c])
     }
 
-    fn from_f64_array2(vals: [[f64; COLS]; ROWS]) -> Self {
+    fn from_f64_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[f64; COLS]; ROWS]>,
+    {
+        let vals = vals.borrow();
         Self::from_fn(|r, c| BatchScalarF64::<BATCH>::from_f64(vals[r][c]))
     }
 
@@ -93,11 +116,11 @@ where
         })
     }
 
-    fn mat_mul<const C2: usize>(
-        &self,
-        other: BatchMatF64<COLS, C2, BATCH>,
-    ) -> BatchMatF64<ROWS, C2, BATCH> {
-        self * other
+    fn mat_mul<const C2: usize, M>(&self, other: M) -> BatchMatF64<ROWS, C2, BATCH>
+    where
+        M: Borrow<BatchMatF64<COLS, C2, BATCH>>,
+    {
+        *self * other.borrow().clone()
     }
 
     fn set_col_vec(&mut self, c: usize, v: BatchVecF64<ROWS, BATCH>) {
@@ -124,19 +147,22 @@ where
         Self::from_element(BatchScalarF64::<BATCH>::from_f64(val))
     }
 
-    fn to_dual(self) -> <BatchScalarF64<BATCH> as IsScalar<BATCH>>::DualMatrix<ROWS, COLS> {
+    fn to_dual(&self) -> <BatchScalarF64<BATCH> as IsScalar<BATCH>>::DualMatrix<ROWS, COLS> {
         DualBatchMatrix::from_real_matrix(self)
     }
 
-    fn select(self, mask: &Mask<i64, BATCH>, other: Self) -> Self {
-        self.zip_map(&other, |a, b| a.select(mask, b))
+    fn select<Q>(&self, mask: &Mask<i64, BATCH>, other: Q) -> Self
+    where
+        Q: Borrow<Self>,
+    {
+        self.zip_map(other.borrow(), |a, b| a.select(mask, b))
     }
 
     fn set_elem(&mut self, idx: [usize; 2], val: BatchScalarF64<BATCH>) {
         self[(idx[0], idx[1])] = val;
     }
 
-    fn transposed(self) -> BatchMatF64<COLS, ROWS, BATCH> {
+    fn transposed(&self) -> BatchMatF64<COLS, ROWS, BATCH> {
         self.transpose()
     }
 }

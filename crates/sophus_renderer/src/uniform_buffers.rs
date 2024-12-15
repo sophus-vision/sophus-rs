@@ -57,8 +57,7 @@ impl CameraFromEntityPoseUniform {
         scene_from_camera: &Isometry3F64,
         world_from_entity: &Isometry3F64,
     ) {
-        let camera_from_entity_mat4x4 =
-            (scene_from_camera.inverse().group_mul(world_from_entity)).matrix();
+        let camera_from_entity_mat4x4 = (scene_from_camera.inverse() * world_from_entity).matrix();
 
         let mut camera_from_entity_uniform: [[f32; 4]; 4] = [[0.0; 4]; 4];
         for i in 0..4 {

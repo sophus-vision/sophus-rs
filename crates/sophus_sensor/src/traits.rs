@@ -1,3 +1,5 @@
+use core::borrow::Borrow;
+
 use crate::camera_enum::perspective_camera::UnifiedCamera;
 use crate::prelude::*;
 use crate::BrownConradyCamera;
@@ -23,63 +25,93 @@ pub trait IsCameraDistortionImpl<
     }
 
     /// Distortion - maps a point in the camera z=1 plane to a distorted point
-    fn distort(
-        params: &S::Vector<PARAMS>,
-        proj_point_in_camera_z1_plane: &S::Vector<2>,
-    ) -> S::Vector<2>;
+    fn distort<PA, PO>(params: PA, proj_point_in_camera_z1_plane: PO) -> S::Vector<2>
+    where
+        PA: Borrow<S::Vector<PARAMS>>,
+        PO: Borrow<S::Vector<2>>;
 
     /// Undistortion - maps a distorted pixel to a point in the camera z=1 plane
-    fn undistort(params: &S::Vector<PARAMS>, distorted_point: &S::Vector<2>) -> S::Vector<2>;
+    fn undistort<PA, PO>(params: PA, distorted_point: PO) -> S::Vector<2>
+    where
+        PA: Borrow<S::Vector<PARAMS>>,
+        PO: Borrow<S::Vector<2>>;
 
     /// Derivative of the distortion w.r.t. the point in the camera z=1 plane
-    fn dx_distort_x(
-        params: &S::Vector<PARAMS>,
-        proj_point_in_camera_z1_plane: &S::Vector<2>,
-    ) -> S::Matrix<2, 2>;
+    fn dx_distort_x<PA, PO>(params: PA, proj_point_in_camera_z1_plane: PO) -> S::Matrix<2, 2>
+    where
+        PA: Borrow<S::Vector<PARAMS>>,
+        PO: Borrow<S::Vector<2>>;
 
     /// Derivative of the distortion w.r.t. the parameters
-    fn dx_distort_params(
-        params: &S::Vector<PARAMS>,
-        proj_point_in_camera_z1_plane: &S::Vector<2>,
-    ) -> S::Matrix<2, PARAMS>;
+    fn dx_distort_params<PA, PO>(
+        params: PA,
+        proj_point_in_camera_z1_plane: PO,
+    ) -> S::Matrix<2, PARAMS>
+    where
+        PA: Borrow<S::Vector<PARAMS>>,
+        PO: Borrow<S::Vector<2>>;
 }
 
 /// Camera projection implementation trait
 pub trait IsProjection<S: IsScalar<BATCH>, const BATCH: usize> {
     /// Projects a 3D point in the camera frame to a 2D point in the z=1 plane
-    fn proj(point_in_camera: &S::Vector<3>) -> S::Vector<2>;
+    fn proj<P>(point_in_camera: P) -> S::Vector<2>
+    where
+        P: Borrow<S::Vector<3>>;
 
     /// Unprojects a 2D point in the z=1 plane to a 3D point in the camera frame
-    fn unproj(point_in_camera: &S::Vector<2>, extension: S) -> S::Vector<3>;
+    fn unproj<P>(point_in_camera: P, extension: S) -> S::Vector<3>
+    where
+        P: Borrow<S::Vector<2>>;
 
     /// Derivative of the projection w.r.t. the point in the camera frame
-    fn dx_proj_x(point_in_camera: &S::Vector<3>) -> S::Matrix<2, 3>;
+    fn dx_proj_x<P>(point_in_camera: P) -> S::Matrix<2, 3>
+    where
+        P: Borrow<S::Vector<3>>;
 }
 
 /// Camera trait
-pub trait IsCameraEnum<S: IsScalar<BATCH>, const BATCH: usize> {
+pub trait IsCamera<S: IsScalar<BATCH>, const BATCH: usize> {
     /// Creates a new pinhole camera
-    fn new_pinhole(params: &S::Vector<4>, image_size: ImageSize) -> Self;
+    fn new_pinhole<P>(params: P, image_size: ImageSize) -> Self
+    where
+        P: Borrow<S::Vector<4>>;
     /// Creates a new Kannala-Brandt camera
-    fn new_kannala_brandt(params: &S::Vector<8>, image_size: ImageSize) -> Self;
+    fn new_kannala_brandt<P>(params: P, image_size: ImageSize) -> Self
+    where
+        P: Borrow<S::Vector<8>>;
     /// Creates a new Brown-Conrady camera
-    fn new_brown_conrady(params: &S::Vector<12>, image_size: ImageSize) -> Self;
+    fn new_brown_conrady<P>(params: P, image_size: ImageSize) -> Self
+    where
+        P: Borrow<S::Vector<12>>;
     /// Creates a new Unified Extended camera
-    fn new_unified(params: &S::Vector<6>, image_size: ImageSize) -> Self;
+    fn new_unified<P>(params: P, image_size: ImageSize) -> Self
+    where
+        P: Borrow<S::Vector<6>>;
 
     /// Returns the image size
     fn image_size(&self) -> ImageSize;
 
     /// Projects a 3D point in the camera frame to a pixel in the image
-    fn cam_proj(&self, point_in_camera: &S::Vector<3>) -> S::Vector<2>;
+    fn cam_proj<P>(&self, point_in_camera: P) -> S::Vector<2>
+    where
+        P: Borrow<S::Vector<3>>;
     /// Unprojects a pixel in the image to a 3D point in the camera frame
-    fn cam_unproj_with_z(&self, pixel: &S::Vector<2>, z: S) -> S::Vector<3>;
+    fn cam_unproj_with_z<P>(&self, pixel: P, z: S) -> S::Vector<3>
+    where
+        P: Borrow<S::Vector<2>>;
     /// Distortion - maps a point in the camera z=1 plane to a distorted point
-    fn distort(&self, proj_point_in_camera_z1_plane: &S::Vector<2>) -> S::Vector<2>;
+    fn distort<P>(&self, proj_point_in_camera_z1_plane: P) -> S::Vector<2>
+    where
+        P: Borrow<S::Vector<2>>;
     /// Undistortion - maps a distorted pixel to a point in the camera z=1 plane
-    fn undistort(&self, pixel: &S::Vector<2>) -> S::Vector<2>;
+    fn undistort<P>(&self, pixel: P) -> S::Vector<2>
+    where
+        P: Borrow<S::Vector<2>>;
     /// Derivative of the distortion w.r.t. the point in the camera z=1 plane
-    fn dx_distort_x(&self, proj_point_in_camera_z1_plane: &S::Vector<2>) -> S::Matrix<2, 2>;
+    fn dx_distort_x<P>(&self, proj_point_in_camera_z1_plane: P) -> S::Matrix<2, 2>
+    where
+        P: Borrow<S::Vector<2>>;
 
     /// Returns the brown-conrady camera
     fn try_get_brown_conrady(self) -> Option<BrownConradyCamera<S, BATCH>>;
@@ -95,7 +127,7 @@ pub trait IsCameraEnum<S: IsScalar<BATCH>, const BATCH: usize> {
 }
 
 /// Dynamic camera trait
-pub trait IsPerspectiveCameraEnum<S: IsScalar<BATCH>, const BATCH: usize> {
+pub trait IsPerspectiveCamera<S: IsScalar<BATCH>, const BATCH: usize> {
     /// Return the first four parameters: fx, fy, cx, cy
     fn pinhole_params(&self) -> S::Vector<4>;
 }

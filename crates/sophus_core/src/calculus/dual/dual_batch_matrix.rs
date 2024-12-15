@@ -1,4 +1,5 @@
 use crate::calculus::dual::dual_batch_scalar::DualBatchScalar;
+use crate::calculus::dual::dual_matrix::DijPairM;
 use crate::calculus::dual::dual_matrix::DijPairMV;
 use crate::calculus::dual::DualBatchVector;
 use crate::linalg::BatchMatF64;
@@ -10,6 +11,7 @@ use crate::tensor::mut_tensor::MutTensorDDR;
 use crate::tensor::mut_tensor::MutTensorDDRC;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
+use core::borrow::Borrow;
 use core::fmt::Debug;
 use core::ops::Add;
 use core::ops::Mul;
@@ -19,8 +21,6 @@ use core::simd::LaneCount;
 use core::simd::Mask;
 use core::simd::SupportedLaneCount;
 use num_traits::Zero;
-
-use crate::calculus::dual::dual_matrix::DijPairM;
 
 /// DualScalarLike matrix
 #[derive(Clone)]
@@ -307,10 +307,15 @@ where
         }
     }
 
-    fn from_scalar(val: DualBatchScalar<BATCH>) -> Self {
+    fn from_scalar<S>(val: S) -> Self
+    where
+        S: Borrow<DualBatchScalar<BATCH>>,
+    {
+        let val = val.borrow();
+
         DualBatchMatrix {
             real_part: BatchMatF64::<ROWS, COLS, BATCH>::from_scalar(val.real_part),
-            dij_part: val.dij_part.map(|dij_val| {
+            dij_part: val.dij_part.clone().map(|dij_val| {
                 MutTensorDDRC::from_map(&dij_val.view(), |v| {
                     BatchMatF64::<ROWS, COLS, BATCH>::from_scalar(*v)
                 })
@@ -318,29 +323,37 @@ where
         }
     }
 
-    fn mat_mul<const COLS2: usize>(
-        &self,
-        rhs: DualBatchMatrix<COLS, COLS2, BATCH>,
-    ) -> DualBatchMatrix<ROWS, COLS2, BATCH> {
+    fn mat_mul<const COLS2: usize, M>(&self, rhs: M) -> DualBatchMatrix<ROWS, COLS2, BATCH>
+    where
+        M: Borrow<DualBatchMatrix<COLS, COLS2, BATCH>>,
+    {
         DualBatchMatrix {
-            real_part: self.real_part * rhs.real_part,
+            real_part: self.real_part.mat_mul(rhs.borrow().real_part),
             dij_part: DualBatchMatrix::<ROWS, COLS2, BATCH>::binary_mm_dij(
                 &self.dij_part,
-                &rhs.dij_part,
-                |l_dij| l_dij * rhs.real_part,
-                |r_dij| self.real_part * r_dij,
+                &rhs.borrow().dij_part,
+                |l_dij| l_dij.mat_mul(rhs.borrow().real_part),
+                |r_dij| self.real_part.mat_mul(r_dij),
             ),
         }
     }
 
-    fn from_real_matrix(val: BatchMatF64<ROWS, COLS, BATCH>) -> Self {
+    fn from_real_matrix<A>(val: A) -> Self
+    where
+        A: Borrow<BatchMatF64<ROWS, COLS, BATCH>>,
+    {
+        let val = val.borrow();
         Self {
-            real_part: val,
+            real_part: *val,
             dij_part: None,
         }
     }
 
-    fn scaled(&self, s: DualBatchScalar<BATCH>) -> Self {
+    fn scaled<Q>(&self, s: Q) -> Self
+    where
+        Q: Borrow<DualBatchScalar<BATCH>>,
+    {
+        let s = s.borrow();
         DualBatchMatrix {
             real_part: self.real_part * s.real_part,
             dij_part: DualBatchMatrix::<ROWS, COLS, BATCH>::binary_ms_dij(
@@ -366,7 +379,11 @@ where
         }
     }
 
-    fn from_array2(duals: [[DualBatchScalar<BATCH>; COLS]; ROWS]) -> Self {
+    fn from_array2<A>(duals: A) -> Self
+    where
+        A: Borrow<[[DualBatchScalar<BATCH>; COLS]; ROWS]>,
+    {
+        let duals = duals.borrow();
         let mut shape = None;
         let mut val_mat = BatchMatF64::<ROWS, COLS, BATCH>::zeros();
         for i in 0..duals.len() {
@@ -532,14 +549,20 @@ where
         }
     }
 
-    fn from_real_scalar_array2(vals: [[BatchScalarF64<BATCH>; COLS]; ROWS]) -> Self {
+    fn from_real_scalar_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[BatchScalarF64<BATCH>; COLS]; ROWS]>,
+    {
         DualBatchMatrix {
             real_part: BatchMatF64::from_real_scalar_array2(vals),
             dij_part: None,
         }
     }
 
-    fn from_f64_array2(vals: [[f64; COLS]; ROWS]) -> Self {
+    fn from_f64_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[f64; COLS]; ROWS]>,
+    {
         DualBatchMatrix {
             real_part: BatchMatF64::from_f64_array2(vals),
             dij_part: None,
@@ -555,12 +578,16 @@ where
         todo!();
     }
 
-    fn to_dual(self) -> <DualBatchScalar<BATCH> as IsScalar<BATCH>>::DualMatrix<ROWS, COLS> {
-        self
+    fn to_dual(&self) -> <DualBatchScalar<BATCH> as IsScalar<BATCH>>::DualMatrix<ROWS, COLS> {
+        self.clone()
     }
 
-    fn select(self, mask: &Mask<i64, BATCH>, other: Self) -> Self {
-        let maybe_dij = Self::two_dx(self.dij_part, other.dij_part);
+    fn select<Q>(&self, mask: &Mask<i64, BATCH>, other: Q) -> Self
+    where
+        Q: Borrow<Self>,
+    {
+        let other = other.borrow();
+        let maybe_dij = Self::two_dx(self.dij_part.clone(), other.dij_part.clone());
 
         DualBatchMatrix {
             real_part: self.real_part.select(mask, other.real_part),
@@ -581,7 +608,7 @@ where
         }
     }
 
-    fn transposed(self) -> DualBatchMatrix<COLS, ROWS, BATCH> {
+    fn transposed(&self) -> DualBatchMatrix<COLS, ROWS, BATCH> {
         DualBatchMatrix {
             real_part: self.real_part.transpose(),
             dij_part: self.dij_part.clone().map(|_dij_val| todo!()),

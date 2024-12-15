@@ -9,6 +9,7 @@ use crate::tensor::mut_tensor::InnerScalarToVec;
 use crate::tensor::mut_tensor::MutTensorDD;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
+use core::borrow::Borrow;
 use core::fmt::Debug;
 use core::ops::Add;
 use core::ops::AddAssign;
@@ -286,7 +287,7 @@ impl IsScalar<1> for DualScalar {
         [self.real_part]
     }
 
-    fn cos(self) -> DualScalar {
+    fn cos(&self) -> DualScalar {
         Self {
             real_part: self.real_part.cos(),
             dij_part: match self.dij_part.clone() {
@@ -301,7 +302,7 @@ impl IsScalar<1> for DualScalar {
         }
     }
 
-    fn sin(self) -> DualScalar {
+    fn sin(&self) -> DualScalar {
         Self {
             real_part: self.real_part.sin(),
             dij_part: match self.dij_part.clone() {
@@ -316,7 +317,7 @@ impl IsScalar<1> for DualScalar {
         }
     }
 
-    fn abs(self) -> Self {
+    fn abs(&self) -> Self {
         Self {
             real_part: self.real_part.abs(),
             dij_part: match self.dij_part.clone() {
@@ -332,7 +333,11 @@ impl IsScalar<1> for DualScalar {
         }
     }
 
-    fn atan2(self, rhs: Self) -> Self {
+    fn atan2<S>(&self, rhs: S) -> Self
+    where
+        S: Borrow<Self>,
+    {
+        let rhs = rhs.borrow();
         let inv_sq_nrm: f64 =
             1.0 / (self.real_part * self.real_part + rhs.real_part * rhs.real_part);
         Self {
@@ -350,11 +355,11 @@ impl IsScalar<1> for DualScalar {
         self.real_part
     }
 
-    fn sqrt(self) -> Self {
+    fn sqrt(&self) -> Self {
         let sqrt = self.real_part.sqrt();
         Self {
             real_part: sqrt,
-            dij_part: match self.dij_part {
+            dij_part: match self.dij_part.clone() {
                 Some(dij) => {
                     let out_dij = <MutTensorDD<f64>>::from_map(&dij.view(), |dij: &f64| {
                         (*dij) * 1.0 / (2.0 * sqrt)
@@ -366,10 +371,10 @@ impl IsScalar<1> for DualScalar {
         }
     }
 
-    fn to_vec(self) -> DualVector<1> {
+    fn to_vec(&self) -> DualVector<1> {
         DualVector::<1> {
             real_part: self.real_part.real_part().to_vec(),
-            dij_part: match self.dij_part {
+            dij_part: match self.dij_part.clone() {
                 Some(dij) => {
                     let tmp = dij.inner_scalar_to_vec();
                     Some(tmp)
@@ -379,7 +384,7 @@ impl IsScalar<1> for DualScalar {
         }
     }
 
-    fn tan(self) -> Self {
+    fn tan(&self) -> Self {
         Self {
             real_part: self.real_part.tan(),
             dij_part: match self.dij_part.clone() {
@@ -396,7 +401,7 @@ impl IsScalar<1> for DualScalar {
         }
     }
 
-    fn acos(self) -> Self {
+    fn acos(&self) -> Self {
         Self {
             real_part: self.real_part.acos(),
             dij_part: match self.dij_part.clone() {
@@ -411,7 +416,7 @@ impl IsScalar<1> for DualScalar {
         }
     }
 
-    fn asin(self) -> Self {
+    fn asin(&self) -> Self {
         Self {
             real_part: self.real_part.asin(),
             dij_part: match self.dij_part.clone() {
@@ -426,7 +431,7 @@ impl IsScalar<1> for DualScalar {
         }
     }
 
-    fn atan(self) -> Self {
+    fn atan(&self) -> Self {
         Self {
             real_part: self.real_part.atan(),
             dij_part: match self.dij_part.clone() {
@@ -441,7 +446,7 @@ impl IsScalar<1> for DualScalar {
         }
     }
 
-    fn fract(self) -> Self {
+    fn fract(&self) -> Self {
         Self {
             real_part: self.real_part.fract(),
             dij_part: match self.dij_part.clone() {
@@ -490,13 +495,13 @@ impl IsScalar<1> for DualScalar {
         self.real_part.less_equal(&rhs.real_part)
     }
 
-    fn to_dual(self) -> Self::DualScalar {
-        self
+    fn to_dual(&self) -> Self::DualScalar {
+        self.clone()
     }
 
-    fn select(self, mask: &Self::Mask, other: Self) -> Self {
+    fn select(&self, mask: &Self::Mask, other: Self) -> Self {
         if *mask {
-            self
+            self.clone()
         } else {
             other
         }

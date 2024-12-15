@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::traits::IsCameraDistortionImpl;
+use core::borrow::Borrow;
 use core::marker::PhantomData;
 use sophus_core::params::ParamsImpl;
 use sophus_core::prelude::IsMatrix;
@@ -17,7 +18,10 @@ pub struct UnifiedDistortionImpl<S: IsScalar<BATCH>, const BATCH: usize> {
 impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 6, BATCH>
     for UnifiedDistortionImpl<S, BATCH>
 {
-    fn are_params_valid(_params: &S::Vector<6>) -> S::Mask {
+    fn are_params_valid<P>(_params: P) -> S::Mask
+    where
+        P: Borrow<S::Vector<6>>,
+    {
         S::Mask::all_true()
     }
 
@@ -39,10 +43,14 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 6, BATCH>
 impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 2, 6, BATCH>
     for UnifiedDistortionImpl<S, BATCH>
 {
-    fn distort(
-        params: &<S as IsScalar<BATCH>>::Vector<6>,
-        proj_point_in_camera_z1_plane: &<S as IsScalar<BATCH>>::Vector<2>,
-    ) -> <S as IsScalar<BATCH>>::Vector<2> {
+    fn distort<PA, PO>(params: PA, proj_point_in_camera_z1_plane: PO) -> S::Vector<2>
+    where
+        PA: Borrow<S::Vector<6>>,
+        PO: Borrow<S::Vector<2>>,
+    {
+        let params = params.borrow();
+        let proj_point_in_camera_z1_plane = proj_point_in_camera_z1_plane.borrow();
+
         // https://gitlab.com/VladyslavUsenko/basalt-headers/-/blob/master/include/basalt/camera/extended_camera.hpp?ref_type=heads#L125
         let fx = params.get_elem(0);
         let fy = params.get_elem(1);
@@ -66,10 +74,13 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 2, 6, BAT
         S::Vector::<2>::from_array([fx * mx + cx, fy * my + cy])
     }
 
-    fn undistort(
-        params: &<S as IsScalar<BATCH>>::Vector<6>,
-        distorted_point: &<S as IsScalar<BATCH>>::Vector<2>,
-    ) -> <S as IsScalar<BATCH>>::Vector<2> {
+    fn undistort<PA, PO>(params: PA, distorted_point: PO) -> S::Vector<2>
+    where
+        PA: Borrow<S::Vector<6>>,
+        PO: Borrow<S::Vector<2>>,
+    {
+        let params = params.borrow();
+        let distorted_point = distorted_point.borrow();
         let fx = params.get_elem(0);
         let fy = params.get_elem(1);
         let cx = params.get_elem(2);
@@ -94,11 +105,14 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 2, 6, BAT
 
         S::Vector::<2>::from_array([mx / k.clone(), my / k.clone()])
     }
+    fn dx_distort_x<PA, PO>(params: PA, proj_point_in_camera_z1_plane: PO) -> S::Matrix<2, 2>
+    where
+        PA: Borrow<S::Vector<6>>,
+        PO: Borrow<S::Vector<2>>,
+    {
+        let params = params.borrow();
+        let proj_point_in_camera_z1_plane = proj_point_in_camera_z1_plane.borrow();
 
-    fn dx_distort_x(
-        params: &<S as IsScalar<BATCH>>::Vector<6>,
-        proj_point_in_camera_z1_plane: &<S as IsScalar<BATCH>>::Vector<2>,
-    ) -> <S as IsScalar<BATCH>>::Matrix<2, 2> {
         let fx = params.get_elem(0);
         let fy = params.get_elem(1);
         let alpha = params.get_elem(4);
@@ -135,10 +149,14 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 2, 6, BAT
         ])
     }
 
-    fn dx_distort_params(
-        params: &<S as IsScalar<BATCH>>::Vector<6>,
-        proj_point_in_camera_z1_plane: &<S as IsScalar<BATCH>>::Vector<2>,
-    ) -> <S as IsScalar<BATCH>>::Matrix<2, 6> {
+    fn dx_distort_params<PA, PO>(params: PA, proj_point_in_camera_z1_plane: PO) -> S::Matrix<2, 6>
+    where
+        PA: Borrow<S::Vector<6>>,
+        PO: Borrow<S::Vector<2>>,
+    {
+        let params = params.borrow();
+        let proj_point_in_camera_z1_plane = proj_point_in_camera_z1_plane.borrow();
+
         let fx = params.get_elem(0);
         let fy = params.get_elem(1);
         let alpha = params.get_elem(4);

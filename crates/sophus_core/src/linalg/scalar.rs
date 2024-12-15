@@ -8,6 +8,7 @@ use crate::prelude::*;
 use approx::assert_abs_diff_eq;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
+use core::borrow::Borrow;
 use core::fmt::Debug;
 use core::ops::Add;
 use core::ops::AddAssign;
@@ -123,22 +124,24 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
     >;
 
     /// absolute value
-    fn abs(self) -> Self;
+    fn abs(&self) -> Self;
 
     /// arccosine
-    fn acos(self) -> Self;
+    fn acos(&self) -> Self;
 
     /// arcsine
-    fn asin(self) -> Self;
+    fn asin(&self) -> Self;
 
     /// arctangent
-    fn atan(self) -> Self;
+    fn atan(&self) -> Self;
 
     /// arctangent2
-    fn atan2(self, x: Self) -> Self;
+    fn atan2<S>(&self, x: S) -> Self
+    where
+        S: Borrow<Self>;
 
     /// cosine
-    fn cos(self) -> Self;
+    fn cos(&self) -> Self;
 
     /// eps
     fn eps() -> Self;
@@ -150,7 +153,7 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
     fn floor(&self) -> Self::RealScalar;
 
     /// fractional part
-    fn fract(self) -> Self;
+    fn fract(&self) -> Self;
 
     /// Creates a scalar with all real lanes set the given value
     ///
@@ -189,7 +192,7 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
     /// Return the self if the mask is true, otherwise the other value
     ///
     /// This is a lane-wise operation
-    fn select(self, mask: &Self::Mask, other: Self) -> Self;
+    fn select(&self, mask: &Self::Mask, other: Self) -> Self;
 
     /// Return the sign of the scalar
     ///
@@ -199,15 +202,15 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
     fn signum(&self) -> Self;
 
     /// sine
-    fn sin(self) -> Self;
+    fn sin(&self) -> Self;
 
     /// square root
-    fn sqrt(self) -> Self;
+    fn sqrt(&self) -> Self;
 
     /// Returns dual number representation
     ///
     /// If self is a real number, the infinitesimal part is zero: (self, 0ϵ)
-    fn to_dual(self) -> Self::DualScalar;
+    fn to_dual(&self) -> Self::DualScalar;
 
     /// Return as a real array
     ///
@@ -215,10 +218,10 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
     fn to_real_array(&self) -> [f64; BATCH_SIZE];
 
     /// tangent
-    fn tan(self) -> Self;
+    fn tan(&self) -> Self;
 
     /// return as a vector
-    fn to_vec(self) -> Self::Vector<1>;
+    fn to_vec(&self) -> Self::Vector<1>;
 
     /// zeros
     fn zeros() -> Self {
@@ -291,24 +294,24 @@ impl IsScalar<1> for f64 {
         alloc::vec![1.0, 2.0, 3.0]
     }
 
-    fn abs(self) -> f64 {
-        f64::abs(self)
+    fn abs(&self) -> f64 {
+        f64::abs(*self)
     }
 
-    fn cos(self) -> f64 {
-        f64::cos(self)
+    fn cos(&self) -> f64 {
+        f64::cos(*self)
     }
 
     fn eps() -> f64 {
         EPS_F64
     }
 
-    fn sin(self) -> f64 {
-        f64::sin(self)
+    fn sin(&self) -> f64 {
+        f64::sin(*self)
     }
 
-    fn sqrt(self) -> f64 {
-        f64::sqrt(self)
+    fn sqrt(&self) -> f64 {
+        f64::sqrt(*self)
     }
 
     fn from_f64(val: f64) -> f64 {
@@ -319,8 +322,11 @@ impl IsScalar<1> for f64 {
         val
     }
 
-    fn atan2(self, x: Self) -> Self {
-        self.atan2(x)
+    fn atan2<S>(&self, x: S) -> Self
+    where
+        S: Borrow<f64>,
+    {
+        f64::atan2(*self, *x.borrow())
     }
 
     fn from_real_array(arr: [Self::RealScalar; 1]) -> Self {
@@ -335,28 +341,28 @@ impl IsScalar<1> for f64 {
         *self
     }
 
-    fn to_vec(self) -> VecF64<1> {
-        VecF64::<1>::new(self)
+    fn to_vec(&self) -> VecF64<1> {
+        VecF64::<1>::new(*self)
     }
 
-    fn tan(self) -> Self {
-        self.tan()
+    fn tan(&self) -> Self {
+        f64::tan(*self)
     }
 
-    fn acos(self) -> Self {
-        self.acos()
+    fn acos(&self) -> Self {
+        f64::acos(*self)
     }
 
-    fn asin(self) -> Self {
-        self.asin()
+    fn asin(&self) -> Self {
+        f64::asin(*self)
     }
 
-    fn atan(self) -> Self {
-        self.atan()
+    fn atan(&self) -> Self {
+        f64::atan(*self)
     }
 
-    fn fract(self) -> Self {
-        f64::fract(self)
+    fn fract(&self) -> Self {
+        f64::fract(*self)
     }
 
     fn floor(&self) -> f64 {
@@ -375,13 +381,13 @@ impl IsScalar<1> for f64 {
 
     type DualMatrix<const ROWS: usize, const COLS: usize> = DualMatrix<ROWS, COLS>;
 
-    fn to_dual(self) -> Self::DualScalar {
-        DualScalar::from_f64(self)
+    fn to_dual(&self) -> Self::DualScalar {
+        DualScalar::from_f64(*self)
     }
 
-    fn select(self, mask: &Self::Mask, other: Self) -> Self {
+    fn select(&self, mask: &Self::Mask, other: Self) -> Self {
         if *mask {
-            self
+            *self
         } else {
             other
         }

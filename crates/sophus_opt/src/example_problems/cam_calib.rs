@@ -47,12 +47,12 @@ impl CamCalibProblem {
         let true_world_from_cameras = alloc::vec![
             Isometry3::identity(),
             Isometry3::from_translation_and_factor(
-                &VecF64::<3>::new(0.0, 1.0, 0.0),
-                &Rotation3::identity(),
+                VecF64::<3>::new(0.0, 1.0, 0.0),
+                Rotation3::identity(),
             ),
             Isometry3::from_translation_and_factor(
-                &VecF64::<3>::new(0.0, 2.0, 0.0),
-                &Rotation3::identity(),
+                VecF64::<3>::new(0.0, 2.0, 0.0),
+                Rotation3::identity(),
             ),
         ];
         use rand::prelude::*;
@@ -64,7 +64,7 @@ impl CamCalibProblem {
         };
 
         let true_intrinsics = PinholeCamera::<f64, 1>::from_params_and_size(
-            &VecF64::<4>::new(600.0, 600.0, 320.0, 240.0),
+            VecF64::<4>::new(600.0, 600.0, 320.0, 240.0),
             image_size,
         );
 
@@ -81,16 +81,15 @@ impl CamCalibProblem {
                 entity_indices: [0, 0, i],
             });
 
-            let true_point_in_cam0 = true_intrinsics.cam_unproj_with_z(&true_uv_in_img0, 10.0);
-            true_points_in_world.push(true_world_from_cameras[0].transform(&true_point_in_cam0));
-            let true_uv_in_img0_proof = true_intrinsics.cam_proj(&true_point_in_cam0);
+            let true_point_in_cam0 = true_intrinsics.cam_unproj_with_z(true_uv_in_img0, 10.0);
+            true_points_in_world.push(true_world_from_cameras[0].transform(true_point_in_cam0));
+            let true_uv_in_img0_proof = true_intrinsics.cam_proj(true_point_in_cam0);
             approx::assert_abs_diff_eq!(true_uv_in_img0, true_uv_in_img0_proof, epsilon = 0.1);
 
-            let true_cam1_from_cam0 = true_world_from_cameras[1]
-                .inverse()
-                .group_mul(&true_world_from_cameras[0]);
-            let true_point_in_cam1 = true_cam1_from_cam0.transform(&true_point_in_cam0);
-            let true_uv_in_img1 = true_intrinsics.cam_proj(&true_point_in_cam1);
+            let true_cam1_from_cam0 =
+                true_world_from_cameras[1].inverse() * true_world_from_cameras[0];
+            let true_point_in_cam1 = true_cam1_from_cam0.transform(true_point_in_cam0);
+            let true_uv_in_img1 = true_intrinsics.cam_proj(true_point_in_cam1);
             let img_noise = VecF64::<2>::new(rng.gen::<f64>() - 0.5, rng.gen::<f64>() - 0.5);
 
             if spurious_matches && i == 0 {
@@ -107,11 +106,10 @@ impl CamCalibProblem {
                 });
             }
 
-            let true_cam2_from_cam0 = true_world_from_cameras[2]
-                .inverse()
-                .group_mul(&true_world_from_cameras[0]);
-            let true_point_in_cam2 = true_cam2_from_cam0.transform(&true_point_in_cam0);
-            let true_uv_in_img2 = true_intrinsics.cam_proj(&true_point_in_cam2);
+            let true_cam2_from_cam0 =
+                true_world_from_cameras[2].inverse() * true_world_from_cameras[0];
+            let true_point_in_cam2 = true_cam2_from_cam0.transform(true_point_in_cam0);
+            let true_uv_in_img2 = true_intrinsics.cam_proj(true_point_in_cam2);
             let img_noise = VecF64::<2>::new(rng.gen::<f64>() - 0.5, rng.gen::<f64>() - 0.5);
             observations.push(ReprojTermSignature {
                 uv_in_image: true_uv_in_img2 + img_noise,

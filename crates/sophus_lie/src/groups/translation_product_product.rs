@@ -1,3 +1,5 @@
+use core::borrow::Borrow;
+
 use crate::lie_group::LieGroup;
 use crate::prelude::*;
 use crate::traits::HasDisambiguate;
@@ -116,8 +118,11 @@ impl<
     > ParamsImpl<S, PARAMS, BATCH>
     for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, F>
 {
-    fn are_params_valid(params: &S::Vector<PARAMS>) -> S::Mask {
-        F::are_params_valid(&Self::factor_params(params))
+    fn are_params_valid<P>(params: P) -> S::Mask
+    where
+        P: Borrow<S::Vector<PARAMS>>,
+    {
+        F::are_params_valid(Self::factor_params(params.borrow()))
     }
 
     fn params_examples() -> alloc::vec::Vec<S::Vector<PARAMS>> {
@@ -379,7 +384,7 @@ impl<
         )
     }
 
-    fn dx_exp_x_times_point_at_0(point: S::Vector<POINT>) -> S::Matrix<POINT, DOF> {
+    fn dx_exp_x_times_point_at_0(point: &S::Vector<POINT>) -> S::Matrix<POINT, DOF> {
         S::Matrix::block_mat1x2(
             S::Matrix::<POINT, POINT>::identity(),
             Factor::dx_exp_x_times_point_at_0(point),
@@ -523,27 +528,40 @@ impl<
         FactorImpl,
     >;
 
-    fn from_translation_and_factor(
-        translation: &<S as IsScalar<BATCH>>::Vector<POINT>,
-        factor: &LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, FactorImpl>,
-    ) -> Self {
-        let params = Self::Impl::params_from(translation, factor.params());
+    fn from_translation_and_factor<P, F>(translation: P, factor: F) -> Self
+    where
+        P: Borrow<S::Vector<POINT>>,
+        F: Borrow<LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, FactorImpl>>,
+    {
+        let params = Self::Impl::params_from(translation.borrow(), factor.borrow().params());
         Self::from_params(&params)
     }
 
-    fn set_translation(&mut self, translation: &<S as IsScalar<BATCH>>::Vector<POINT>) {
-        self.set_params(&Self::G::params_from(translation, self.factor().params()))
+    fn set_translation<P>(&mut self, translation: P)
+    where
+        P: Borrow<<S as sophus_core::prelude::IsScalar<BATCH>>::Vector<POINT>>,
+    {
+        self.set_params(Self::G::params_from(
+            translation.borrow(),
+            self.factor().params(),
+        ))
     }
 
     fn translation(&self) -> <S as IsScalar<BATCH>>::Vector<POINT> {
         Self::Impl::translation(self.params())
     }
 
-    fn set_factor(&mut self, factor: &LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, FactorImpl>) {
-        self.set_params(&Self::G::params_from(&self.translation(), factor.params()))
+    fn set_factor<F>(&mut self, factor: F)
+    where
+        F: Borrow<LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, FactorImpl>>,
+    {
+        self.set_params(Self::G::params_from(
+            &self.translation(),
+            factor.borrow().params(),
+        ))
     }
 
     fn factor(&self) -> LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, FactorImpl> {
-        LieGroup::from_params(&Self::Impl::factor_params(self.params()))
+        LieGroup::from_params(Self::Impl::factor_params(self.params()))
     }
 }

@@ -32,8 +32,8 @@ pub mod traits;
 
 /// sophus sensor prelude
 pub mod prelude {
-    pub use crate::traits::IsCameraEnum;
-    pub use crate::traits::IsPerspectiveCameraEnum;
+    pub use crate::traits::IsCamera;
+    pub use crate::traits::IsPerspectiveCamera;
     pub use crate::traits::IsProjection;
     pub use sophus_core::prelude::*;
 }

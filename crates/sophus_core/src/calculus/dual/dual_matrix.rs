@@ -8,6 +8,7 @@ use crate::tensor::mut_tensor::MutTensorDDR;
 use crate::tensor::mut_tensor::MutTensorDDRC;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
+use core::borrow::Borrow;
 use core::fmt::Debug;
 use core::ops::Add;
 use core::ops::Mul;
@@ -326,7 +327,11 @@ impl<const ROWS: usize, const COLS: usize> RelativeEq for DualMatrix<ROWS, COLS>
 impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
     for DualMatrix<ROWS, COLS>
 {
-    fn mat_mul<const COLS2: usize>(&self, rhs: DualMatrix<COLS, COLS2>) -> DualMatrix<ROWS, COLS2> {
+    fn mat_mul<const C2: usize, M>(&self, other: M) -> DualMatrix<ROWS, C2>
+    where
+        M: Borrow<DualMatrix<COLS, C2>>,
+    {
+        let rhs = other.borrow();
         DualMatrix {
             real_part: self.real_part * rhs.real_part,
             dij_part: DualMatrix::binary_mm_dij(
@@ -338,23 +343,34 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
         }
     }
 
-    fn from_scalar(val: DualScalar) -> Self {
+    fn from_scalar<S>(val: S) -> Self
+    where
+        S: Borrow<DualScalar>,
+    {
+        let val = val.borrow();
         DualMatrix {
             real_part: MatF64::<ROWS, COLS>::from_scalar(val.real_part),
-            dij_part: val.dij_part.map(|dij_val| {
+            dij_part: val.dij_part.clone().map(|dij_val| {
                 MutTensorDDRC::from_map(&dij_val.view(), |v| MatF64::<ROWS, COLS>::from_scalar(*v))
             }),
         }
     }
 
-    fn from_real_matrix(val: MatF64<ROWS, COLS>) -> Self {
+    fn from_real_matrix<A>(val: A) -> Self
+    where
+        A: Borrow<MatF64<ROWS, COLS>>,
+    {
         Self {
-            real_part: val,
+            real_part: *val.borrow(),
             dij_part: None,
         }
     }
 
-    fn scaled(&self, s: DualScalar) -> Self {
+    fn scaled<Q>(&self, s: Q) -> Self
+    where
+        Q: Borrow<DualScalar>,
+    {
+        let s = s.borrow();
         DualMatrix {
             real_part: self.real_part * s.real_part,
             dij_part: DualMatrix::binary_ms_dij(
@@ -380,7 +396,11 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
         }
     }
 
-    fn from_array2(duals: [[DualScalar; COLS]; ROWS]) -> Self {
+    fn from_array2<A>(duals: A) -> Self
+    where
+        A: Borrow<[[DualScalar; COLS]; ROWS]>,
+    {
+        let duals = duals.borrow();
         let mut shape = None;
         let mut val_mat = MatF64::<ROWS, COLS>::zeros();
         for i in 0..duals.len() {
@@ -529,14 +549,20 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
         }
     }
 
-    fn from_real_scalar_array2(vals: [[f64; COLS]; ROWS]) -> Self {
+    fn from_real_scalar_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[f64; COLS]; ROWS]>,
+    {
         DualMatrix {
             real_part: MatF64::from_real_scalar_array2(vals),
             dij_part: None,
         }
     }
 
-    fn from_f64_array2(vals: [[f64; COLS]; ROWS]) -> Self {
+    fn from_f64_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[f64; COLS]; ROWS]>,
+    {
         DualMatrix {
             real_part: MatF64::from_real_scalar_array2(vals),
             dij_part: None,
@@ -555,15 +581,18 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
         todo!();
     }
 
-    fn to_dual(self) -> <DualScalar as IsScalar<1>>::DualMatrix<ROWS, COLS> {
-        self
+    fn to_dual(&self) -> <DualScalar as IsScalar<1>>::DualMatrix<ROWS, COLS> {
+        self.clone()
     }
 
-    fn select(self, mask: &bool, other: Self) -> Self {
+    fn select<Q>(&self, mask: &bool, other: Q) -> Self
+    where
+        Q: Borrow<Self>,
+    {
         if *mask {
-            self
+            self.clone()
         } else {
-            other
+            other.borrow().clone()
         }
     }
 
@@ -580,7 +609,7 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<DualScalar, ROWS, COLS, 1>
         }
     }
 
-    fn transposed(self) -> <DualScalar as IsScalar<1>>::Matrix<COLS, ROWS> {
+    fn transposed(&self) -> <DualScalar as IsScalar<1>>::Matrix<COLS, ROWS> {
         todo!();
     }
 }
@@ -750,7 +779,7 @@ fn dual_matrix_tests() {
                     fn mat_mul2_fn<S: IsScalar<BATCH>, const BATCH: usize>(
                         x: S::Matrix<4, 4>,
                     ) -> S::Matrix<4, 4> {
-                        x.mat_mul(x.clone())
+                        x.mat_mul(&x)
                     }
 
                     let m_4x4 = <$scalar as IsScalar<$batch>>::Matrix::<4, 4>::from_f64_array2([

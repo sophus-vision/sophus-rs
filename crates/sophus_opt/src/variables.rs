@@ -38,7 +38,7 @@ impl IsVariable for KannalaBrandtCamera<f64, 1> {
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
         let new_params = *self.params() + delta;
-        self.set_params(&new_params);
+        self.set_params(new_params);
     }
 }
 
@@ -47,7 +47,7 @@ impl IsVariable for PinholeCamera<f64, 1> {
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
         let new_params = *self.params() + delta;
-        self.set_params(&new_params);
+        self.set_params(new_params);
     }
 }
 
@@ -56,7 +56,7 @@ impl IsVariable for BrownConradyCamera<f64, 1> {
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
         let new_params = *self.params() + delta;
-        self.set_params(&new_params);
+        self.set_params(new_params);
     }
 }
 
@@ -65,7 +65,7 @@ impl IsVariable for UnifiedCameraF64 {
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
         let new_params = *self.params() + delta;
-        self.set_params(&new_params);
+        self.set_params(new_params);
     }
 }
 
@@ -421,10 +421,7 @@ impl IsVariable for Isometry2F64 {
         for d in 0..<Self as IsVariable>::DOF {
             delta_vec[d] = delta[d];
         }
-        self.set_params(
-            (Isometry2::<f64, 1>::group_mul(&Isometry2::<f64, 1>::exp(&delta_vec), &self.clone()))
-                .params(),
-        );
+        self.set_params((Isometry2::<f64, 1>::exp(delta_vec) * *self).params());
     }
 }
 
@@ -436,10 +433,7 @@ impl IsVariable for Isometry3F64 {
         for d in 0..<Self as IsVariable>::DOF {
             delta_vec[d] = delta[d];
         }
-        self.set_params(
-            (Isometry3::<f64, 1>::group_mul(&Isometry3::<f64, 1>::exp(&delta_vec), &self.clone()))
-                .params(),
-        );
+        self.set_params((Isometry3::<f64, 1>::exp(delta_vec) * *self).params());
     }
 }
 

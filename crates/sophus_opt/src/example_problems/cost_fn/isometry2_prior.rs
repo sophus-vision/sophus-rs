@@ -43,7 +43,7 @@ fn res_fn<Scalar: IsSingleScalar + IsScalar<1>>(
     isometry: Isometry2<Scalar, 1>,
     isometry_prior_mean: Isometry2<Scalar, 1>,
 ) -> Scalar::Vector<3> {
-    Isometry2::<Scalar, 1>::group_mul(&isometry, &isometry_prior_mean.inverse()).log()
+    (isometry * isometry_prior_mean.inverse()).log()
 }
 
 impl IsResidualFn<3, 1, (), Isometry2F64, Isometry2F64> for Isometry2PriorCostFn {
@@ -60,12 +60,10 @@ impl IsResidualFn<3, 1, (), Isometry2F64, Isometry2F64> for Isometry2PriorCostFn
 
         let residual = res_fn(isometry, *isometry_prior_mean);
         let dx_res_fn = |x: DualVector<3>| -> DualVector<3> {
-            let pp = Isometry2::<DualScalar, 1>::exp(&x).group_mul(&isometry.to_dual_c());
+            let pp = Isometry2::<DualScalar, 1>::exp(&x) * isometry.to_dual_c();
             res_fn(
                 pp,
-                Isometry2::from_params(&DualVector::from_real_vector(
-                    *isometry_prior_mean.params(),
-                )),
+                Isometry2::from_params(DualVector::from_real_vector(*isometry_prior_mean.params())),
             )
         };
 

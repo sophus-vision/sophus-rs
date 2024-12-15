@@ -137,16 +137,16 @@ impl OrbitalInteraction {
             let scene_from_camera = self.scene_from_camera;
             let camera_in_scene = scene_from_camera.translation();
             let zoom: f64 = (0.002 * smooth_scroll_delta.y) as f64;
-            let focus_point_in_scene = scene_from_camera.transform(&focus_point_in_camera);
+            let focus_point_in_scene = scene_from_camera.transform(focus_point_in_camera);
             let camera_to_focus_point_vec_in_scene = focus_point_in_scene - camera_in_scene;
 
             let new_camera_in_scene = camera_in_scene + camera_to_focus_point_vec_in_scene * zoom;
             let mut new_scene_from_camera = self.scene_from_camera;
-            new_scene_from_camera.set_translation(&new_camera_in_scene);
+            new_scene_from_camera.set_translation(new_camera_in_scene);
 
             let focus_point_in_camera = new_scene_from_camera
                 .inverse()
-                .transform(&focus_point_in_scene);
+                .transform(focus_point_in_scene);
 
             let z_in_camera = focus_point_in_camera[2];
             let ndc_z = self.clipping_planes.ndc_z_from_metric_z(z_in_camera);
@@ -164,13 +164,12 @@ impl OrbitalInteraction {
         if smooth_scroll_delta.x != 0.0 {
             let delta_z: f64 = (smooth_scroll_delta.x) as f64;
             let delta = 0.002 * VecF64::<6>::new(0.0, 0.0, 0.0, 0.0, 0.0, delta_z);
-            let camera_from_scene_point = Isometry3::from_translation(&focus_point_in_camera);
+            let camera_from_scene_point = Isometry3::from_translation(focus_point_in_camera);
 
-            self.scene_from_camera =
-                self.scene_from_camera
-                    .group_mul(&camera_from_scene_point.group_mul(
-                        &Isometry3::exp(&delta).group_mul(&camera_from_scene_point.inverse()),
-                    ));
+            self.scene_from_camera = self.scene_from_camera
+                * camera_from_scene_point
+                * Isometry3::exp(delta)
+                * camera_from_scene_point.inverse();
         }
     }
 
@@ -244,12 +243,11 @@ impl OrbitalInteraction {
             let delta =
                 0.01 * VecF64::<6>::new(0.0, 0.0, 0.0, -delta_y as f64, delta_x as f64, 0.0);
             let camera_from_scene_point =
-                Isometry3::from_translation(&cam.cam_unproj_with_z(&pixel, depth));
-            self.scene_from_camera =
-                self.scene_from_camera
-                    .group_mul(&camera_from_scene_point.group_mul(
-                        &Isometry3::exp(&delta).group_mul(&camera_from_scene_point.inverse()),
-                    ));
+                Isometry3::from_translation(cam.cam_unproj_with_z(&pixel, depth));
+            self.scene_from_camera = self.scene_from_camera
+                * camera_from_scene_point
+                * Isometry3::exp(delta)
+                * camera_from_scene_point.inverse();
         } else if response.dragged_by(egui::PointerButton::Primary) {
             // translate scene
 
@@ -268,9 +266,8 @@ impl OrbitalInteraction {
             );
             let mut scene_from_camera = self.scene_from_camera;
             let delta = p0 - p1;
-            let translation_update = scene_from_camera.factor().transform(&delta);
-            scene_from_camera
-                .set_translation(&(scene_from_camera.translation() + translation_update));
+            let translation_update = scene_from_camera.factor().transform(delta);
+            scene_from_camera.set_translation(scene_from_camera.translation() + translation_update);
             self.scene_from_camera = scene_from_camera;
 
             if let Some(focus) = &mut self.maybe_scene_focus {

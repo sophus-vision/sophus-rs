@@ -49,10 +49,10 @@ impl Axes3Builder {
         let mut lines = vec![];
 
         for world_from_local in self.world_from_local_axes.iter() {
-            let zero_in_world = world_from_local.transform(&zero_in_local);
-            let axis_x_in_world = world_from_local.transform(&x_axis_local);
-            let axis_y_in_world = world_from_local.transform(&y_axis_local);
-            let axis_z_in_world = world_from_local.transform(&z_axis_local);
+            let zero_in_world = world_from_local.transform(zero_in_local);
+            let axis_x_in_world = world_from_local.transform(x_axis_local);
+            let axis_y_in_world = world_from_local.transform(y_axis_local);
+            let axis_z_in_world = world_from_local.transform(z_axis_local);
 
             lines.push(LineSegment3 {
                 p0: zero_in_world.cast(),

@@ -102,7 +102,7 @@ impl InplaneInteraction {
 
     /// scene_from_camera - always the identity
     pub fn scene_from_camera(&self) -> Isometry3F64 {
-        Isometry3::from_translation(&VecF64::<3>::new(0.0, 0.0, 0.0))
+        Isometry3::from_translation(VecF64::<3>::new(0.0, 0.0, 0.0))
     }
 
     /// zoom

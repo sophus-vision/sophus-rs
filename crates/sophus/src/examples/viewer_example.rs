@@ -37,7 +37,7 @@ pub fn make_distorted_frame() -> ImageFrame {
     let cy = 240.0;
 
     let unified_cam = DynCameraF64::new_unified(
-        &VecF64::from_array([focal_length, focal_length, cx, cy, 0.629, 1.22]),
+        VecF64::from_array([focal_length, focal_length, cx, cy, 0.629, 1.22]),
         image_size,
     );
 
@@ -47,7 +47,7 @@ pub fn make_distorted_frame() -> ImageFrame {
     for v in 0..image_size.height {
         for u in 0..image_size.width {
             let uv = VecF64::<2>::new(u as f64, v as f64);
-            let p_on_z1 = unified_cam.cam_unproj(&uv);
+            let p_on_z1 = unified_cam.cam_unproj(uv);
 
             if p_on_z1[0].abs() < 0.5 {
                 *img.mut_pixel(u, v) = SVec::<u8, 4>::new(255, 0, 0, 255);

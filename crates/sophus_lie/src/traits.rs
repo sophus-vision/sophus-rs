@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use core::borrow::Borrow;
 use core::fmt::Debug;
 use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
@@ -141,7 +142,7 @@ pub trait IsRealLieGroupImpl<
     fn dx_log_x(params: &S::Vector<PARAMS>) -> S::Matrix<DOF, PARAMS>;
 
     /// derivative of exponential map times a point at the identity
-    fn dx_exp_x_times_point_at_0(point: S::Vector<POINT>) -> S::Matrix<POINT, DOF>;
+    fn dx_exp_x_times_point_at_0(point: &S::Vector<POINT>) -> S::Matrix<POINT, DOF>;
 
     /// are there multiple shortest paths to the identity?
     fn has_shortest_path_ambiguity(params: &S::Vector<PARAMS>) -> S::Mask;
@@ -272,15 +273,22 @@ pub trait IsTranslationProductGroup<
     type Impl;
 
     /// Create from translation and factor group element
-    fn from_translation_and_factor(translation: &S::Vector<POINT>, factor: &FactorGroup) -> Self;
+    fn from_translation_and_factor<P, F>(translation: P, factor: F) -> Self
+    where
+        P: Borrow<S::Vector<POINT>>,
+        F: Borrow<FactorGroup>;
 
     /// set translation
-    fn set_translation(&mut self, translation: &S::Vector<POINT>);
+    fn set_translation<P>(&mut self, translation: P)
+    where
+        P: Borrow<S::Vector<POINT>>;
     /// get translation
     fn translation(&self) -> S::Vector<POINT>;
 
     /// set factor group element
-    fn set_factor(&mut self, factor: &FactorGroup);
+    fn set_factor<F>(&mut self, factor: F)
+    where
+        F: Borrow<FactorGroup>;
 
     /// get factor group element
     fn factor(&self) -> FactorGroup;

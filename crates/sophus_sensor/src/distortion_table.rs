@@ -61,16 +61,16 @@ pub fn distort_table(cam: &DynCamera<f64, 1>) -> DistortTable {
     for i in 0..=cam.image_size().width {
         let u = i as f64 - 0.5;
         // top border
-        region.extend(&cam.undistort(&VecF64::<2>::new(u, v_top)));
+        region.extend(&cam.undistort(VecF64::<2>::new(u, v_top)));
         // bottom border
-        region.extend(&cam.undistort(&VecF64::<2>::new(u, v_bottom)));
+        region.extend(&cam.undistort(VecF64::<2>::new(u, v_bottom)));
     }
     for i in 0..=cam.image_size().height {
         let v = i as f64 - 0.5;
         // left border
-        region.extend(&cam.undistort(&VecF64::<2>::new(u_left, v)));
+        region.extend(&cam.undistort(VecF64::<2>::new(u_left, v)));
         // right border
-        region.extend(&cam.undistort(&VecF64::<2>::new(u_right, v)));
+        region.extend(&cam.undistort(VecF64::<2>::new(u_right, v)));
     }
 
     let mid = region.mid();
@@ -91,7 +91,7 @@ pub fn distort_table(cam: &DynCamera<f64, 1>) -> DistortTable {
                 distort_table.offset().x + (u as f64) * distort_table.incr().x,
                 distort_table.offset().y + (v as f64) * distort_table.incr().y,
             );
-            let pixel = cam.distort(&point_proj);
+            let pixel = cam.distort(point_proj);
             *table.mut_pixel(u, v) = SVector::<f32, 2>::new(pixel.cast().x, pixel.cast().y);
         }
     }
@@ -115,7 +115,7 @@ fn camera_distortion_table_tests() {
     {
         let mut cameras: alloc::vec::Vec<DynCameraF64> = alloc::vec![];
         cameras.push(DynCameraF64::new_pinhole(
-            &VecF64::<4>::new(600.0, 600.0, 1.0, 0.5),
+            VecF64::<4>::new(600.0, 600.0, 1.0, 0.5),
             ImageSize {
                 width: 3,
                 height: 2,
@@ -123,7 +123,7 @@ fn camera_distortion_table_tests() {
         ));
 
         cameras.push(DynCamera::new_kannala_brandt(
-            &VecF64::<8>::from_vec(alloc::vec![
+            VecF64::<8>::from_vec(alloc::vec![
                 1000.0, 1000.0, 320.0, 280.0, 0.1, 0.01, 0.001, 0.0001
             ]),
             ImageSize {
@@ -155,20 +155,20 @@ fn camera_distortion_table_tests() {
                 }
 
                 for d in [1.0, 0.1, 0.5, 1.1, 3.0, 15.0] {
-                    let point_in_camera = camera.cam_unproj_with_z(&pixel, d);
+                    let point_in_camera = camera.cam_unproj_with_z(pixel, d);
                     assert_relative_eq!(point_in_camera[2], d, epsilon = EPS_F64);
 
-                    let pixel_in_image2 = camera.cam_proj(&point_in_camera);
+                    let pixel_in_image2 = camera.cam_proj(point_in_camera);
                     assert_relative_eq!(pixel_in_image2, pixel, epsilon = EPS_F64);
                 }
-                let ab_in_z1plane = camera.undistort(&pixel);
+                let ab_in_z1plane = camera.undistort(pixel);
 
-                let pixel_in_image3 = camera.distort(&ab_in_z1plane);
+                let pixel_in_image3 = camera.distort(ab_in_z1plane);
                 assert_relative_eq!(pixel_in_image3, pixel, epsilon = EPS_F64);
 
-                let dx = camera.dx_distort_x(&pixel);
+                let dx = camera.dx_distort_x(pixel);
                 let numeric_dx = VectorValuedMapFromVector::static_sym_diff_quotient(
-                    |x: VecF64<2>| camera.distort(&x),
+                    |x: VecF64<2>| camera.distort(x),
                     pixel,
                     EPS_F64,
                 );
@@ -184,8 +184,8 @@ fn camera_distortion_table_tests() {
                 {
                     continue;
                 }
-                let proj = camera.undistort(&pixel);
-                let analytic_pixel = camera.distort(&proj);
+                let proj = camera.undistort(pixel);
+                let analytic_pixel = camera.distort(proj);
                 let lut_pixel = table.lookup(&proj);
 
                 assert_abs_diff_eq!(analytic_pixel, pixel, epsilon = 1e-3);
