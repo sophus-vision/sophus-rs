@@ -83,6 +83,24 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry3<S, BATCH> {
         Self::from_rotation(Rotation3::rot_x(theta))
     }
 
+    /// Rotate by angle
+    pub fn rot_y<U>(theta: U) -> Self
+    where
+        U: Borrow<S>,
+    {
+        let theta: &S = theta.borrow();
+        Self::from_rotation(Rotation3::rot_y(theta))
+    }
+
+    /// Rotate by angle
+    pub fn rot_z<U>(theta: U) -> Self
+    where
+        U: Borrow<S>,
+    {
+        let theta: &S = theta.borrow();
+        Self::from_rotation(Rotation3::rot_z(theta))
+    }
+
     /// set rotation
     pub fn set_rotation<F>(&mut self, rotation: F)
     where
