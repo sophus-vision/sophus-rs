@@ -27,4 +27,3 @@ jobs:
             rustup default nightly
             rustup component add rustfmt
             cargo fmt
-            cargo doc --no-deps --all-features

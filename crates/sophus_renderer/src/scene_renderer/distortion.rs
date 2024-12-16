@@ -258,8 +258,8 @@ impl DistortionRenderer {
                     compute_pass.set_bind_group(0, &self.uniforms.compute_bind_group, &[]);
 
                     compute_pass.dispatch_workgroups(
-                        (view_port_size.width as u32 + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE,
-                        (view_port_size.height as u32 + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE,
+                        (view_port_size.width as u32).div_ceil(WORKGROUP_SIZE),
+                        (view_port_size.height as u32).div_ceil(WORKGROUP_SIZE),
                         1,
                     );
                 }
@@ -282,8 +282,8 @@ impl DistortionRenderer {
                     compute_pass.set_bind_group(0, &self.uniforms.compute_bind_group, &[]);
 
                     compute_pass.dispatch_workgroups(
-                        (view_port_size.width as u32 + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE,
-                        (view_port_size.height as u32 + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE,
+                        (view_port_size.width as u32).div_ceil(WORKGROUP_SIZE),
+                        (view_port_size.height as u32).div_ceil(WORKGROUP_SIZE),
                         1,
                     );
                 }

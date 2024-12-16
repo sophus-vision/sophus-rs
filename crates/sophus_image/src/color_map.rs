@@ -1,7 +1,6 @@
 use sophus_core::linalg::SVec;
 
 /// blue to white to red to black
-
 pub struct BlueWhiteRedBlackColorMap;
 
 impl BlueWhiteRedBlackColorMap {

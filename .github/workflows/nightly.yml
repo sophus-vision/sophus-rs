@@ -20,21 +20,29 @@ jobs:
         run: ${SCCACHE_PATH} --show-stats
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: nightly-2024-12-01
       - uses: extractions/setup-just@v1
       - name: cargo build
         env:
           SCCACHE_GHA_ENABLED: "true"
           RUSTC_WRAPPER: "sccache"
         run: |
-          rustup default nightly
+          rustup default nightly-2024-12-01
           cargo build --release --all-targets --all-features
       - name: cargo test
         env:
           SCCACHE_GHA_ENABLED: "true"
           RUSTC_WRAPPER: "sccache"
         run: |
+          rustup default nightly-2024-12-01
           just test
+      - name: cargo docs
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
+        run: |
+          rustup default nightly-2024-12-01
+          cargo doc --no-deps --all-features
       - name: Run sccache stat for check after
         shell: bash
         run: ${SCCACHE_PATH} --show-stats

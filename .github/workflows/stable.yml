@@ -35,6 +35,13 @@ jobs:
           RUSTC_WRAPPER: "sccache"
         run: |
           cargo test --release
+      - name: cargo clippy
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
+        run: |
+          rustup component add clippy
+          cargo clippy --all-targets
       - name: Run sccache stat for check after
         shell: bash
         run: ${SCCACHE_PATH} --show-stats
