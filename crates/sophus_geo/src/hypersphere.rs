@@ -1,8 +1,7 @@
-use crate::geometry::ray::Ray;
-use crate::linalg::EPS_F64;
-use crate::prelude::IsScalar;
-use crate::prelude::IsSingleScalar;
-use crate::prelude::IsVector;
+use sophus_core::linalg::EPS_F64;
+use sophus_lie::prelude::*;
+
+use crate::ray::Ray;
 
 /// N-Sphere
 pub struct HyperSphere<S: IsScalar<BATCH_SIZE>, const DIM: usize, const BATCH_SIZE: usize> {

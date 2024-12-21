@@ -30,9 +30,9 @@ sophus = {path = "crates/sophus", version = "0.11.0"}
 sophus_core = {path = "crates/sophus_core", version = "0.11.0"}
 sophus_image = {path = "crates/sophus_image", version = "0.11.0"}
 sophus_lie = {path = "crates/sophus_lie", version = "0.11.0"}
+sophus_geo = {path = "crates/sophus_geo", version = "0.11.0"}
 sophus_opt = {path = "crates/sophus_opt", version = "0.11.0"}
 sophus_sensor = {path = "crates/sophus_sensor", version = "0.11.0"}
-
 sophus_renderer = { path = "crates/sophus_renderer", version = "0.11.0" }
 sophus_sim = { path = "crates/sophus_sim", version = "0.11.0" }
 sophus_viewer = { path = "crates/sophus_viewer", version = "0.11.0" }

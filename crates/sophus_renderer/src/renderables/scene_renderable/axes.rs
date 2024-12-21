@@ -19,6 +19,7 @@ pub struct Axes3Builder {
 }
 
 impl Axes3Builder {
+    // use axes3(..) or axis3(..) for public API
     fn new(world_from_local: &[Isometry3F64]) -> Self {
         Self {
             world_from_local_axes: world_from_local.to_vec(),
