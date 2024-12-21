@@ -12,6 +12,7 @@ version.workspace = true
 
 [dependencies]
 sophus_core.workspace = true
+sophus_geo.workspace = true
 sophus_image.workspace = true
 sophus_lie.workspace = true
 sophus_opt.workspace = true

@@ -5,6 +5,7 @@ set -e # exit on error
 
 cargo publish -p sophus_core
 cargo publish -p sophus_lie
+cargo publish -p sophus_geo
 cargo publish -p sophus_image
 cargo publish -p sophus_sensor
 cargo publish -p sophus_opt

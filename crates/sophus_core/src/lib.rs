@@ -30,8 +30,6 @@ extern crate std;
 pub mod calculus;
 /// floating point
 pub mod floating_point;
-/// geometry
-pub mod geometry;
 /// linear algebra types
 pub mod linalg;
 /// manifolds
