@@ -5,6 +5,8 @@
 #[doc(inline)]
 pub use sophus_core as core;
 #[doc(inline)]
+pub use sophus_geo as geo;
+#[doc(inline)]
 pub use sophus_image as image;
 #[doc(inline)]
 pub use sophus_lie as lie;
