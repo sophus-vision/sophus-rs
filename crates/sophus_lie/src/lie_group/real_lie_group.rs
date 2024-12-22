@@ -119,8 +119,17 @@ where
     /// derivative of matrix representation with respect to the internal parameters
     ///
     /// precondition: column index in [0, AMBIENT-1]
-    pub fn dparams_matrix(&self, col_idx: u8) -> S::Matrix<POINT, PARAMS> {
+    pub fn dparams_matrix(&self, col_idx: usize) -> S::Matrix<POINT, PARAMS> {
         G::dparams_matrix(&self.params, col_idx)
+    }
+
+    /// derivative of matrix representation: (exp(x) * T).col(i) at x=0
+    ///
+    /// precondition: column index in [0, AMBIENT-1]
+    pub fn dx_exp_x_time_matrix_at_0(&self, col_idx: usize) -> S::Matrix<POINT, DOF> {
+        self.dparams_matrix(col_idx)
+            .mat_mul(Self::da_a_mul_b(Self::identity(), self))
+            .mat_mul(&Self::dx_exp_x_at_0())
     }
 }
 
@@ -560,30 +569,45 @@ macro_rules! def_real_group_test_template {
                 let group_examples: alloc::vec::Vec<_> = Self::element_examples();
                 const PARAMS: usize = <$group>::PARAMS;
                 const POINT: usize = <$group>::POINT;
+                const DOF: usize = <$group>::DOF;
                 const AMBIENT: usize = <$group>::AMBIENT;
 
                 for foo_from_bar in &group_examples {
-
                     for i in 0..AMBIENT{
 
-
                         let params =  foo_from_bar.params();
-
                         let  dual_fn = |
                             v: <$dual_scalar as IsScalar<$batch>>::Vector<PARAMS>,
                         | -> <$dual_scalar as IsScalar<$batch>>::Vector<POINT> {
                             let m =  <$dual_group>::from_params(&v).compact();
                             m.get_col_vec(i)
                         };
-
                         let auto_d = VectorValuedMapFromVector::<$dual_scalar, $batch>
                         ::static_fw_autodiff(dual_fn, params.clone());
 
                         approx::assert_relative_eq!(
                             auto_d,
-                            foo_from_bar.dparams_matrix(i as u8),
+                            foo_from_bar.dparams_matrix(i),
                             epsilon = 0.0001,
                         );
+
+                        {
+                            let  dual_fn = |
+                                v: <$dual_scalar as IsScalar<$batch>>::Vector<DOF>,
+                            | -> <$dual_scalar as IsScalar<$batch>>::Vector<POINT> {
+                                let m =   ( <$dual_group>::exp(v)* foo_from_bar.to_dual_c()).compact();
+                                m.get_col_vec(i)
+                            };
+                            let o = <$scalar as IsScalar<$batch>>::Vector::zeros();
+                            let auto_d = VectorValuedMapFromVector::<$dual_scalar, $batch>
+                            ::static_fw_autodiff(dual_fn,o);
+
+                            approx::assert_relative_eq!(
+                                auto_d,
+                                foo_from_bar.dx_exp_x_time_matrix_at_0(i),
+                                epsilon = 0.0001,
+                            );
+                        }
                     }
                 }
 

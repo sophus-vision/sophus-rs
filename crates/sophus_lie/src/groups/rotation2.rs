@@ -198,7 +198,7 @@ impl<S: IsRealScalar<BATCH_SIZE>, const BATCH_SIZE: usize>
             .less_equal(&S::from_f64(EPS_F64))
     }
 
-    fn dparams_matrix(_params: &<S>::Vector<2>, col_idx: u8) -> <S>::Matrix<2, 2> {
+    fn dparams_matrix(_params: &<S>::Vector<2>, col_idx: usize) -> <S>::Matrix<2, 2> {
         match col_idx {
             0 => S::Matrix::identity(),
             1 => S::Matrix::from_f64_array2([[0.0, -1.0], [1.0, 0.0]]),

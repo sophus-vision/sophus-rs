@@ -520,7 +520,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
             .less_equal(&S::from_f64(EPS_F64.sqrt()))
     }
 
-    fn dparams_matrix(params: &<S>::Vector<4>, col_idx: u8) -> <S>::Matrix<3, 4> {
+    fn dparams_matrix(params: &<S>::Vector<4>, col_idx: usize) -> <S>::Matrix<3, 4> {
         let re = params.get_elem(0);
         let i = params.get_elem(1);
         let j = params.get_elem(2);

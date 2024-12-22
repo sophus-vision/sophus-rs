@@ -147,7 +147,7 @@ pub trait IsRealLieGroupImpl<
     /// derivative of matrix representation with respect to the internal parameters
     ///
     /// precondition: column index in [0, AMBIENT-1]
-    fn dparams_matrix(params: &S::Vector<PARAMS>, col_idx: u8) -> S::Matrix<POINT, PARAMS>;
+    fn dparams_matrix(params: &S::Vector<PARAMS>, col_idx: usize) -> S::Matrix<POINT, PARAMS>;
 
     /// are there multiple shortest paths to the identity?
     fn has_shortest_path_ambiguity(params: &S::Vector<PARAMS>) -> S::Mask;
