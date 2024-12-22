@@ -472,6 +472,19 @@ impl<
     fn has_shortest_path_ambiguity(params: &<S>::Vector<PARAMS>) -> <S>::Mask {
         Factor::has_shortest_path_ambiguity(&Self::factor_params(params))
     }
+
+    fn dparams_matrix(params: &<S>::Vector<PARAMS>, col_idx: u8) -> <S>::Matrix<POINT, PARAMS> {
+        let factor_params = &Self::factor_params(params);
+
+        if col_idx < POINT as u8 {
+            S::Matrix::block_mat1x2::<POINT, SPARAMS>(
+                S::Matrix::zeros(),
+                Factor::dparams_matrix(factor_params, col_idx),
+            )
+        } else {
+            S::Matrix::block_mat1x2::<POINT, SPARAMS>(S::Matrix::identity(), S::Matrix::zeros())
+        }
+    }
 }
 
 impl<

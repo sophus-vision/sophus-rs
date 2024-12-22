@@ -519,6 +519,99 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
             .abs()
             .less_equal(&S::from_f64(EPS_F64.sqrt()))
     }
+
+    fn dparams_matrix(params: &<S>::Vector<4>, col_idx: u8) -> <S>::Matrix<3, 4> {
+        let re = params.get_elem(0);
+        let i = params.get_elem(1);
+        let j = params.get_elem(2);
+        let k = params.get_elem(3);
+
+        //  helper lambda:
+        let scaled = |val: S, factor: f64| -> S { val * S::from_f64(factor) };
+
+        match col_idx {
+            // --------------------------------------------------
+            // col_x
+            //
+            // partial wrt re => (0,       2k,    -2j)
+            // partial wrt i  => (0,       2j,     2k)
+            // partial wrt j  => (-4j,     2i,     -2re)
+            // partial wrt k  => (-4k,     2re,    2i)
+            0 => S::Matrix::from_array2([
+                [S::zero(), S::zero(), scaled(j, -4.0), scaled(k, -4.0)],
+                [
+                    scaled(k, 2.0),
+                    scaled(j, 2.0),
+                    scaled(i, 2.0),
+                    scaled(re, 2.0),
+                ],
+                [
+                    scaled(j, -2.0),
+                    scaled(k, 2.0),
+                    scaled(re, -2.0),
+                    scaled(i, 2.0),
+                ],
+            ]),
+
+            // --------------------------------------------------
+            // col_y
+            //
+            // partial wrt re => (-2k,        0,       2i)
+            // partial wrt i  => (2j,        -4i,      2re)
+            // partial wrt j  => (2i,         0,       2k)
+            // partial wrt k  => (-2re,      -4k,      2j)
+            1 => S::Matrix::from_array2([
+                [
+                    scaled(k, -2.0),  // row0, partial wrt re
+                    scaled(j, 2.0),   // row0, partial wrt i
+                    scaled(i, 2.0),   // row0, partial wrt j
+                    scaled(re, -2.0), // row0, partial wrt k
+                ],
+                [
+                    S::zero(),       // row1, partial wrt re
+                    scaled(i, -4.0), // row1, partial wrt i
+                    S::zero(),       // row1, partial wrt j
+                    scaled(k, -4.0), // row1, partial wrt k
+                ],
+                [
+                    scaled(i, 2.0),  // row2, partial wrt re
+                    scaled(re, 2.0), // row2, partial wrt i
+                    scaled(k, 2.0),  // row2, partial wrt j
+                    scaled(j, 2.0),  // row2, partial wrt k
+                ],
+            ]),
+
+            // --------------------------------------------------
+            // col_z
+            //
+            // partial wrt re => ( 2j,      -2i,      0 )
+            // partial wrt i  => ( 2k,      -2re,   -4i )
+            // partial wrt j  => ( 2re,      2k,    -4j )
+            // partial wrt k  => ( 2i,       2j,     0 )
+            2 => S::Matrix::from_array2([
+                [
+                    scaled(j, 2.0),  // row0 wrt re
+                    scaled(k, 2.0),  // row0 wrt i
+                    scaled(re, 2.0), // row0 wrt j
+                    scaled(i, 2.0),  // row0 wrt k
+                ],
+                [
+                    scaled(i, -2.0),  // row1 wrt re
+                    scaled(re, -2.0), // row1 wrt i
+                    scaled(k, 2.0),   // row1 wrt j
+                    scaled(j, 2.0),   // row1 wrt k
+                ],
+                [
+                    S::zero(),       // row2 wrt re
+                    scaled(i, -4.0), // row2 wrt i
+                    scaled(j, -4.0), // row2 wrt j
+                    S::zero(),       // row2 wrt k
+                ],
+            ]),
+
+            _ => panic!("Invalid column index: {}", col_idx),
+        }
+    }
 }
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> crate::traits::IsLieFactorGroupImpl<S, 3, 4, 3, BATCH>
