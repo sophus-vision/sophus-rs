@@ -115,6 +115,13 @@ where
         let b = b.borrow();
         G::db_a_mul_b(a.params(), b.params())
     }
+
+    /// derivative of matrix representation with respect to the internal parameters
+    ///
+    /// precondition: column index in [0, AMBIENT-1]
+    pub fn dparams_matrix(&self, col_idx: u8) -> S::Matrix<POINT, PARAMS> {
+        G::dparams_matrix(&self.params, col_idx)
+    }
 }
 
 impl<
@@ -140,6 +147,7 @@ pub trait RealLieGroupTest {
         Self::exp_log_jacobians_tests();
         Self::hat_jacobians_tests();
         Self::mul_jacobians_tests();
+        Self::matrix_jacobians_tests();
         Self::interpolation_test();
     }
 
@@ -148,6 +156,9 @@ pub trait RealLieGroupTest {
 
     /// Test group multiplication jacobians.
     fn mul_jacobians_tests();
+
+    /// Test matrix jacobians.
+    fn matrix_jacobians_tests();
 
     /// Test adjoint jacobian.
     fn adjoint_jacobian_tests();
@@ -542,6 +553,40 @@ macro_rules! def_real_group_test_template {
                         assert_relative_eq!(analytic_diff, auto_diff, epsilon = 0.001);
                     }
                 }
+            }
+
+            fn matrix_jacobians_tests() {
+                use crate::traits::IsLieGroup;
+                let group_examples: alloc::vec::Vec<_> = Self::element_examples();
+                const PARAMS: usize = <$group>::PARAMS;
+                const POINT: usize = <$group>::POINT;
+                const AMBIENT: usize = <$group>::AMBIENT;
+
+                for foo_from_bar in &group_examples {
+
+                    for i in 0..AMBIENT{
+
+
+                        let params =  foo_from_bar.params();
+
+                        let  dual_fn = |
+                            v: <$dual_scalar as IsScalar<$batch>>::Vector<PARAMS>,
+                        | -> <$dual_scalar as IsScalar<$batch>>::Vector<POINT> {
+                            let m =  <$dual_group>::from_params(&v).compact();
+                            m.get_col_vec(i)
+                        };
+
+                        let auto_d = VectorValuedMapFromVector::<$dual_scalar, $batch>
+                        ::static_fw_autodiff(dual_fn, params.clone());
+
+                        approx::assert_relative_eq!(
+                            auto_d,
+                            foo_from_bar.dparams_matrix(i as u8),
+                            epsilon = 0.0001,
+                        );
+                    }
+                }
+
             }
 
 
