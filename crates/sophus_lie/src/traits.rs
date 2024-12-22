@@ -144,6 +144,11 @@ pub trait IsRealLieGroupImpl<
     /// derivative of exponential map times a point at the identity
     fn dx_exp_x_times_point_at_0(point: &S::Vector<POINT>) -> S::Matrix<POINT, DOF>;
 
+    /// derivative of matrix representation with respect to the internal parameters
+    ///
+    /// precondition: column index in [0, AMBIENT-1]
+    fn dparams_matrix(params: &S::Vector<PARAMS>, col_idx: u8) -> S::Matrix<POINT, PARAMS>;
+
     /// are there multiple shortest paths to the identity?
     fn has_shortest_path_ambiguity(params: &S::Vector<PARAMS>) -> S::Mask;
 }

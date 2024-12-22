@@ -8,12 +8,16 @@ use crate::traits::HasDisambiguate;
 use crate::traits::IsLieGroupImpl;
 use crate::traits::IsRealLieFactorGroupImpl;
 use crate::traits::IsRealLieGroupImpl;
+use crate::Rotation2F64;
 use core::borrow::Borrow;
 use core::f64;
 use core::marker::PhantomData;
 use log::warn;
+use sophus_core::calculus::maps::VectorValuedMapFromMatrix;
+use sophus_core::calculus::maps::VectorValuedMapFromVector;
 use sophus_core::linalg::vector::cross;
 use sophus_core::linalg::MatF64;
+use sophus_core::linalg::VecF64;
 use sophus_core::linalg::EPS_F64;
 use sophus_core::manifold::traits::TangentImpl;
 use sophus_core::params::ParamsImpl;
@@ -519,6 +523,99 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
             .abs()
             .less_equal(&S::from_f64(EPS_F64.sqrt()))
     }
+
+    fn dparams_matrix(params: &<S>::Vector<4>, col_idx: u8) -> <S>::Matrix<3, 4> {
+        let re = params.get_elem(0);
+        let i = params.get_elem(1);
+        let j = params.get_elem(2);
+        let k = params.get_elem(3);
+
+        //  helper lambda:
+        let scaled = |val: S, factor: f64| -> S { val * S::from_f64(factor) };
+
+        match col_idx {
+            // --------------------------------------------------
+            // col_x
+            //
+            // partial wrt re => (0,       2k,    -2j)
+            // partial wrt i  => (0,       2j,     2k)
+            // partial wrt j  => (-4j,     2i,     -2re)
+            // partial wrt k  => (-4k,     2re,    2i)
+            0 => S::Matrix::from_array2([
+                [S::zero(), S::zero(), scaled(j, -4.0), scaled(k, -4.0)],
+                [
+                    scaled(k, 2.0),
+                    scaled(j, 2.0),
+                    scaled(i, 2.0),
+                    scaled(re, 2.0),
+                ],
+                [
+                    scaled(j, -2.0),
+                    scaled(k, 2.0),
+                    scaled(re, -2.0),
+                    scaled(i, 2.0),
+                ],
+            ]),
+
+            // --------------------------------------------------
+            // col_y
+            //
+            // partial wrt re => (-2k,        0,       2i)
+            // partial wrt i  => (2j,        -4i,      2re)
+            // partial wrt j  => (2i,         0,       2k)
+            // partial wrt k  => (-2re,      -4k,      2j)
+            1 => S::Matrix::from_array2([
+                [
+                    scaled(k, -2.0),  // row0, partial wrt re
+                    scaled(j, 2.0),   // row0, partial wrt i
+                    scaled(i, 2.0),   // row0, partial wrt j
+                    scaled(re, -2.0), // row0, partial wrt k
+                ],
+                [
+                    S::zero(),       // row1, partial wrt re
+                    scaled(i, -4.0), // row1, partial wrt i
+                    S::zero(),       // row1, partial wrt j
+                    scaled(k, -4.0), // row1, partial wrt k
+                ],
+                [
+                    scaled(i, 2.0),  // row2, partial wrt re
+                    scaled(re, 2.0), // row2, partial wrt i
+                    scaled(k, 2.0),  // row2, partial wrt j
+                    scaled(j, 2.0),  // row2, partial wrt k
+                ],
+            ]),
+
+            // --------------------------------------------------
+            // col_z
+            //
+            // partial wrt re => ( 2j,      -2i,      0 )
+            // partial wrt i  => ( 2k,      -2re,   -4i )
+            // partial wrt j  => ( 2re,      2k,    -4j )
+            // partial wrt k  => ( 2i,       2j,     0 )
+            2 => S::Matrix::from_array2([
+                [
+                    scaled(j, 2.0),  // row0 wrt re
+                    scaled(k, 2.0),  // row0 wrt i
+                    scaled(re, 2.0), // row0 wrt j
+                    scaled(i, 2.0),  // row0 wrt k
+                ],
+                [
+                    scaled(i, -2.0),  // row1 wrt re
+                    scaled(re, -2.0), // row1 wrt i
+                    scaled(k, 2.0),   // row1 wrt j
+                    scaled(j, 2.0),   // row1 wrt k
+                ],
+                [
+                    S::zero(),       // row2 wrt re
+                    scaled(i, -4.0), // row2 wrt i
+                    scaled(j, -4.0), // row2 wrt j
+                    S::zero(),       // row2 wrt k
+                ],
+            ]),
+
+            _ => panic!("Invalid column index: {}", col_idx),
+        }
+    }
 }
 
 impl<S: IsScalar<BATCH>, const BATCH: usize> crate::traits::IsLieFactorGroupImpl<S, 3, 4, 3, BATCH>
@@ -972,6 +1069,60 @@ fn rotation3_prop_tests() {
     Rotation3::<f64, 1>::run_real_factor_tests();
     #[cfg(feature = "simd")]
     Rotation3::<BatchScalarF64<8>, 8>::run_real_factor_tests();
+
+    let a = Rotation3::<f64, 1>::exp(VecF64::from_array([0.1, 0.2, 0.3]));
+    let params = a.params();
+
+   let o =  a.dparams_matrix(1);
+
+    fn proj_fn<S: IsScalar<BATCH>, const BATCH: usize>(
+        v: S::Vector<4>,
+    ) -> S::Vector<3> {
+        Rotation3::<S,BATCH>::from_params(v).matrix().get_col_vec(1)
+    }
+
+
+
+    // let finite_diff =
+    // VectorValuedMapFromMatrix::<$scalar, $batch>::sym_diff_quotient(
+    //     f::<$scalar, $batch>,
+    //     mat,
+    //     EPS_F64,
+    // );
+let auto_grad = VectorValuedMapFromVector::<DualScalar,1>::static_fw_autodiff(
+    proj_fn::<DualScalar,1>,
+    params.clone(),
+);
+
+panic!("TODO: Add more test {} {}", o, auto_grad);
+    // //       [[ x ]]   [[ x / z ]]
+    // //  proj [[ y ]] = [[       ]]
+    // //       [[ z ]]   [[ y / z ]]
+    // fn proj_fn<S: IsScalar<BATCH>, const BATCH: usize>(v: S::Vector<3>) -> S::Vector<2> {
+    //     let x = IsVector::get_elem(&v, 0);
+    //     let y = IsVector::get_elem(&v, 1);
+    //     let z = IsVector::get_elem(&v, 2);
+    //     S::Vector::<2>::from_array([x / z.clone(), y / z])
+    // }
+
+    // let finite_diff =
+    //     VectorValuedMapFromVector::<$scalar, $batch>::sym_diff_quotient(
+    //         proj_fn::<$scalar, $batch>,
+    //         a,
+    //         EPS_F64,
+    //     );
+    // let auto_grad =
+    //     VectorValuedMapFromVector::<$dual_scalar, $batch>::fw_autodiff(
+    //         proj_fn::<$dual_scalar, $batch>,
+    //         a,
+    //     );
+    // for i in 0..2 {
+    //     approx::assert_abs_diff_eq!(
+    //         finite_diff.get([i]),
+    //         auto_grad.get([i]),
+    //         epsilon = 0.0001
+    //     );
+    // }
 }
 
 impl<S: IsSingleScalar + PartialOrd> HasAverage<S, 3, 4, 3, 3> for Rotation3<S, 1> {
