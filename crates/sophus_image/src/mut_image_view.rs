@@ -1,7 +1,7 @@
 use crate::image_view::GenImageView;
 use crate::prelude::*;
 use crate::ImageSize;
-use sophus_core::tensor::mut_tensor_view::MutTensorView;
+use sophus_tensor::mut_tensor_view::MutTensorView;
 
 /// Mutable image view of a static tensors
 #[derive(Debug, PartialEq)]

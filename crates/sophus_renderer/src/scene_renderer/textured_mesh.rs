@@ -1,10 +1,9 @@
 use crate::pipeline_builder::PipelineBuilder;
 use crate::pipeline_builder::TexturedMeshVertex3;
-use crate::preludes::*;
+use crate::prelude::*;
 use crate::renderables::scene_renderable::TexturedTriangleMesh3;
 use crate::uniform_buffers::VertexShaderUniformBuffers;
 use crate::RenderContext;
-use sophus_core::IsTensorLike;
 use sophus_image::arc_image::ArcImage4U8;
 use sophus_image::image_view::IsImageView;
 use sophus_lie::Isometry3F64;

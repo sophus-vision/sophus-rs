@@ -1,6 +1,6 @@
 use crate::pipeline_builder::LineVertex2;
 use crate::pipeline_builder::PipelineBuilder;
-use crate::preludes::*;
+use crate::prelude::*;
 use crate::renderables::pixel_renderable::LineSegments2;
 use crate::RenderContext;
 use wgpu::util::DeviceExt;

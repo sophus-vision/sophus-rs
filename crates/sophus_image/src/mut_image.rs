@@ -2,9 +2,9 @@ use crate::arc_image::GenArcImage;
 use crate::image_view::GenImageView;
 use crate::prelude::*;
 use crate::ImageSize;
-use sophus_core::linalg::SVec;
-use sophus_core::tensor::MutTensor;
-use sophus_core::tensor::TensorView;
+use sophus_autodiff::linalg::SVec;
+use sophus_tensor::MutTensor;
+use sophus_tensor::TensorView;
 
 extern crate alloc;
 

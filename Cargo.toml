@@ -1,12 +1,15 @@
 [workspace]
 members = [
   "crates/sophus",
-  "crates/sophus_core",
-  "crates/sophus_lie",
+  "crates/sophus_autodiff",
+  "crates/sophus_tensor",
   "crates/sophus_image",
+  "crates/sophus_lie",
   "crates/sophus_geo",
+  "crates/sophus_spline",
   "crates/sophus_sensor",
   "crates/sophus_opt",
+  "crates/sophus_timeseries",
   "crates/sophus_renderer",
   "crates/sophus_viewer",
   "crates/sophus_sim",
@@ -23,12 +26,15 @@ version = "0.11.0"
 
 [workspace.dependencies]
 sophus = { path = "crates/sophus", version = "0.11.0" }
-sophus_core = { path = "crates/sophus_core", version = "0.11.0" }
+sophus_autodiff = { path = "crates/sophus_autodiff", version = "0.11.0" }
+sophus_tensor = { path = "crates/sophus_tensor", version = "0.11.0" }
 sophus_image = { path = "crates/sophus_image", version = "0.11.0" }
 sophus_lie = { path = "crates/sophus_lie", version = "0.11.0" }
 sophus_geo = { path = "crates/sophus_geo", version = "0.11.0" }
-sophus_opt = { path = "crates/sophus_opt", version = "0.11.0" }
+sophus_spline = { path = "crates/sophus_spline", version = "0.11.0" }
 sophus_sensor = { path = "crates/sophus_sensor", version = "0.11.0" }
+sophus_opt = { path = "crates/sophus_opt", version = "0.11.0" }
+sophus_timeseries = { path = "crates/sophus_timeseries", version = "0.11.0" }
 sophus_renderer = { path = "crates/sophus_renderer", version = "0.11.0" }
 sophus_sim = { path = "crates/sophus_sim", version = "0.11.0" }
 sophus_viewer = { path = "crates/sophus_viewer", version = "0.11.0" }

@@ -29,8 +29,8 @@ pub mod uniform_buffers;
 
 pub use crate::render_context::RenderContext;
 
-/// preludes
-pub mod preludes {
+/// prelude
+pub mod prelude {
     pub(crate) use alloc::collections::btree_map::BTreeMap;
     pub(crate) use alloc::format;
     pub(crate) use alloc::string::String;
@@ -38,6 +38,7 @@ pub mod preludes {
     pub(crate) use alloc::sync::Arc;
     pub(crate) use alloc::vec;
     pub(crate) use alloc::vec::Vec;
+    pub use sophus_image::prelude::*;
 
     extern crate alloc;
 }

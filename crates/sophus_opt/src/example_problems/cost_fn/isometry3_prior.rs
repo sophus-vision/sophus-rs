@@ -5,11 +5,11 @@ use crate::robust_kernel;
 use crate::term::MakeTerm;
 use crate::term::Term;
 use crate::variables::VarKind;
-use sophus_core::calculus::dual::DualScalar;
-use sophus_core::calculus::dual::DualVector;
-use sophus_core::calculus::maps::VectorValuedVectorMap;
-use sophus_core::linalg::MatF64;
-use sophus_core::linalg::VecF64;
+use sophus_autodiff::dual::DualScalar;
+use sophus_autodiff::dual::DualVector;
+use sophus_autodiff::linalg::MatF64;
+use sophus_autodiff::linalg::VecF64;
+use sophus_autodiff::maps::VectorValuedVectorMap;
 use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
 

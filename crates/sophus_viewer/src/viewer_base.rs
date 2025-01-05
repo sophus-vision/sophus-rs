@@ -23,7 +23,7 @@ use egui_plot::LineStyle;
 use egui_plot::PlotUi;
 use egui_plot::VLine;
 use linked_hash_map::LinkedHashMap;
-use sophus_core::prelude::HasParams;
+use sophus_autodiff::prelude::HasParams;
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::ImageSize;
 use sophus_lie::prelude::IsTranslationProductGroup;

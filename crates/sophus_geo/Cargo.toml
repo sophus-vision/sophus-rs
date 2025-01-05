@@ -12,8 +12,8 @@ version.workspace = true
 
 [dependencies]
 approx.workspace = true
-sophus_core.workspace = true
+sophus_autodiff.workspace = true
 sophus_lie.workspace = true
 
 [features]
-simd = ["sophus_core/simd"]
+simd = ["sophus_lie/simd"]

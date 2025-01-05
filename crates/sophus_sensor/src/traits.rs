@@ -5,7 +5,7 @@ use crate::prelude::*;
 use crate::BrownConradyCamera;
 use crate::KannalaBrandtCamera;
 use crate::PinholeCamera;
-use sophus_core::params::ParamsImpl;
+use sophus_autodiff::params::IsParamsImpl;
 use sophus_image::ImageSize;
 
 /// Camera distortion implementation trait
@@ -16,7 +16,7 @@ pub trait IsCameraDistortionImpl<
     const BATCH: usize,
     const DM: usize,
     const DN: usize,
->: ParamsImpl<S, PARAMS, BATCH, DM, DN>
+>: IsParamsImpl<S, PARAMS, BATCH, DM, DN>
 {
     /// identity parameters
     fn identity_params() -> S::Vector<PARAMS> {

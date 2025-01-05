@@ -1,5 +1,5 @@
 use num_traits::cast;
-use sophus_core::floating_point::FloatingPointNumber;
+use sophus_autodiff::floating_point::FloatingPointNumber;
 
 /// Clipping planes for the Wgpu renderer
 #[derive(Clone, Copy, Debug)]

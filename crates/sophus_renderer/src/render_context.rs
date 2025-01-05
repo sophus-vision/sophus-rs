@@ -1,4 +1,4 @@
-use crate::preludes::*;
+use crate::prelude::*;
 use crate::types::DOG_MULTISAMPLE_COUNT;
 use eframe::egui_wgpu;
 use eframe::epaint::mutex::RwLock;

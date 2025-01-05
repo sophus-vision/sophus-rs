@@ -3,7 +3,9 @@ use crate::prelude::*;
 use crate::traits::IsLieGroupImpl;
 use core::borrow::Borrow;
 use core::fmt::Debug;
-use sophus_core::params::ParamsImpl;
+use sophus_autodiff::manifold::IsManifold;
+use sophus_autodiff::params::HasParams;
+use sophus_autodiff::params::IsParamsImpl;
 
 extern crate alloc;
 
@@ -36,7 +38,7 @@ impl<
         const DM: usize,
         const DN: usize,
         G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN> + Clone + Debug,
-    > ParamsImpl<S, PARAMS, BATCH, DM, DN>
+    > IsParamsImpl<S, PARAMS, BATCH, DM, DN>
     for LeftGroupManifold<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     fn are_params_valid<P>(params: P) -> S::Mask

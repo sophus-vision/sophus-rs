@@ -1,4 +1,4 @@
-use crate::preludes::*;
+use crate::prelude::*;
 use sophus_renderer::renderables::frame::ImageFrame;
 use sophus_renderer::renderables::pixel_renderable::PixelRenderable;
 use sophus_renderer::renderables::scene_renderable::SceneRenderable;

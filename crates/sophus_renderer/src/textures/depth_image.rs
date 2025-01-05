@@ -1,6 +1,6 @@
 use crate::camera::clipping_planes::ClippingPlanesF32;
 use eframe::egui::mutex::Mutex;
-use sophus_core::linalg::SVec;
+use sophus_autodiff::linalg::SVec;
 use sophus_image::arc_image::ArcImage4U8;
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::color_map::BlueWhiteRedBlackColorMap;

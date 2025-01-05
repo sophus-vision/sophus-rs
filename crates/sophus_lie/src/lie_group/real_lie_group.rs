@@ -11,22 +11,20 @@ use crate::Rotation2F64;
 use crate::Rotation3;
 use crate::Rotation3F64;
 use approx::assert_relative_eq;
-use nalgebra::SVector;
-use sophus_core::calculus::dual::DualScalar;
-use sophus_core::calculus::maps::MatrixValuedVectorMap;
-use sophus_core::calculus::maps::VectorValuedMatrixMap;
-use sophus_core::calculus::maps::VectorValuedVectorMap;
-
-extern crate alloc;
-
-#[cfg(feature = "simd")]
-use sophus_core::calculus::dual::dual_batch_scalar::DualBatchScalar;
-#[cfg(feature = "simd")]
-use sophus_core::linalg::BatchScalarF64;
-
 use core::borrow::Borrow;
 use core::fmt::Display;
 use core::fmt::Formatter;
+use nalgebra::SVector;
+#[cfg(feature = "simd")]
+use sophus_autodiff::dual::dual_batch_scalar::DualBatchScalar;
+use sophus_autodiff::dual::DualScalar;
+#[cfg(feature = "simd")]
+use sophus_autodiff::linalg::BatchScalarF64;
+use sophus_autodiff::maps::MatrixValuedVectorMap;
+use sophus_autodiff::maps::VectorValuedMatrixMap;
+use sophus_autodiff::maps::VectorValuedVectorMap;
+
+extern crate alloc;
 
 impl<
         S: IsRealScalar<BATCH, RealScalar = S>,
@@ -192,7 +190,7 @@ macro_rules! def_real_group_test_template {
             fn adjoint_jacobian_tests() {
                 use crate::traits::IsLieGroup;
                 const DOF: usize = <$group>::DOF;
-                use sophus_core::manifold::traits::TangentImpl;
+                use sophus_autodiff::manifold::IsTangent;
 
                 let tangent_examples: alloc::vec::Vec<<$scalar as IsScalar<$batch,0,0>>::Vector<DOF>>
                     = <$group>::tangent_examples();
@@ -262,8 +260,8 @@ macro_rules! def_real_group_test_template {
                 const POINT: usize = <$group>::POINT;
                 const PARAMS: usize = <$group>::PARAMS;
 
-                use sophus_core::manifold::traits::TangentImpl;
-                use sophus_core::points::example_points;
+                use sophus_autodiff::manifold::IsTangent;
+                use sophus_autodiff::points::example_points;
 
                 for t in <$group>::tangent_examples() {
                     // x == log(exp(x))
@@ -451,7 +449,7 @@ macro_rules! def_real_group_test_template {
 
             fn hat_jacobians_tests() {
                 use crate::traits::IsLieGroup;
-                use sophus_core::manifold::traits::TangentImpl;
+                use sophus_autodiff::manifold::IsTangent;
                 const DOF: usize = <$group>::DOF;
                 const AMBIENT: usize = <$group>::AMBIENT;
 

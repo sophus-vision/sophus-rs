@@ -5,7 +5,7 @@ use crate::mut_image::MutImageR;
 use crate::prelude::DynIntensityMutImage;
 use crate::prelude::*;
 use crate::MutImage;
-use sophus_core::linalg::SVec;
+use sophus_autodiff::linalg::SVec;
 
 /// Trait for "intensity" images (grayscale, grayscale+alpha, RGB, RGBA).
 ///

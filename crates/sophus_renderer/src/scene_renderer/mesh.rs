@@ -1,6 +1,6 @@
 use crate::pipeline_builder::MeshVertex3;
 use crate::pipeline_builder::PipelineBuilder;
-use crate::preludes::*;
+use crate::prelude::*;
 use crate::renderables::scene_renderable::TriangleMesh3;
 use crate::uniform_buffers::VertexShaderUniformBuffers;
 use crate::RenderContext;

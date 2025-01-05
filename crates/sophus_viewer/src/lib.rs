@@ -25,14 +25,15 @@ pub fn recommened_eframe_native_options() -> eframe::NativeOptions {
     }
 }
 
-/// preludes
-pub mod preludes {
+/// prelude
+pub mod prelude {
     pub(crate) use alloc::boxed::Box;
     pub(crate) use alloc::collections::btree_map::BTreeMap;
     pub(crate) use alloc::collections::vec_deque::VecDeque;
     pub(crate) use alloc::string::String;
     pub(crate) use alloc::string::ToString;
     pub(crate) use alloc::vec::Vec;
+    pub use sophus_renderer::prelude::*;
 
     extern crate alloc;
 }

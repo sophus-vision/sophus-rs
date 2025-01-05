@@ -10,8 +10,8 @@ use crate::prelude::*;
 use crate::variables::VarFamily;
 use crate::variables::VarKind;
 use crate::variables::VarPoolBuilder;
-use sophus_core::linalg::MatF64;
-use sophus_core::linalg::VecF64;
+use sophus_autodiff::linalg::MatF64;
+use sophus_autodiff::linalg::VecF64;
 use sophus_lie::Isometry2F64;
 use sophus_lie::Isometry3F64;
 
@@ -43,7 +43,7 @@ impl SimpleIso2PriorProblem {
 
     /// Test the simple 2D isometry prior problem
     pub fn test(&self) {
-        use sophus_core::linalg::EPS_F64;
+        use sophus_autodiff::linalg::EPS_F64;
         let cost_signature = alloc::vec![Isometry2PriorTermSignature {
             isometry_prior_mean: self.true_world_from_robot,
             entity_indices: [0],
@@ -115,7 +115,7 @@ impl SimpleIso3PriorProblem {
 
     /// Test the simple 3D isometry prior problem
     pub fn test(&self) {
-        use sophus_core::linalg::EPS_F64;
+        use sophus_autodiff::linalg::EPS_F64;
 
         let cost_signature = alloc::vec![Isometry3PriorTermSignature {
             isometry_prior: (self.true_world_from_robot, MatF64::<6, 6>::identity()),

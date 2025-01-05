@@ -1,7 +1,7 @@
-use crate::preludes::*;
+use crate::prelude::*;
 use crate::renderables::color::Color;
 use crate::renderables::scene_renderable::LineSegment3;
-use sophus_core::linalg::VecF64;
+use sophus_autodiff::linalg::VecF64;
 use sophus_lie::Isometry3F64;
 
 /// opaque axes builder type.

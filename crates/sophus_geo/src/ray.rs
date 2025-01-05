@@ -1,4 +1,4 @@
-use sophus_core::unit_vector::UnitVector;
+use crate::unit_vector::UnitVector;
 use sophus_lie::prelude::IsScalar;
 use sophus_lie::prelude::IsSingleScalar;
 use sophus_lie::prelude::IsVector;

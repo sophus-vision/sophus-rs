@@ -1,13 +1,12 @@
-use std::borrow::Borrow;
-
-use sophus_core::linalg::MatF64;
-use sophus_core::linalg::VecF64;
-use sophus_core::unit_vector::UnitVector;
+use crate::unit_vector::UnitVector;
+use sophus_autodiff::linalg::MatF64;
+use sophus_autodiff::linalg::VecF64;
 use sophus_lie::prelude::*;
 use sophus_lie::Isometry2;
 use sophus_lie::Isometry2F64;
 use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
+use std::borrow::Borrow;
 
 /// N-dimensional Hyperplane.
 pub struct HyperPlane<
@@ -181,10 +180,10 @@ impl PlaneF64 {
 
 #[test]
 fn plane_test() {
-    use sophus_core::calculus::dual::DualScalar;
-    use sophus_core::calculus::maps::VectorValuedVectorMap;
-    use sophus_core::linalg::VecF64;
-    use sophus_core::linalg::EPS_F64;
+    use sophus_autodiff::dual::DualScalar;
+    use sophus_autodiff::linalg::VecF64;
+    use sophus_autodiff::linalg::EPS_F64;
+    use sophus_autodiff::maps::VectorValuedVectorMap;
     {
         let plane = Plane::<f64, 1, 0, 0>::from_isometry3(Isometry3::rot_y(0.2));
 
@@ -201,11 +200,11 @@ fn plane_test() {
             plane.proj_onto(v)
         }
 
-        let a: sophus_core::nalgebra::Matrix<
+        let a: sophus_autodiff::nalgebra::Matrix<
             f64,
-            sophus_core::nalgebra::Const<3>,
-            sophus_core::nalgebra::Const<1>,
-            sophus_core::nalgebra::ArrayStorage<f64, 3, 1>,
+            sophus_autodiff::nalgebra::Const<3>,
+            sophus_autodiff::nalgebra::Const<1>,
+            sophus_autodiff::nalgebra::ArrayStorage<f64, 3, 1>,
         > = VecF64::<3>::new(1.0, 2.0, 3.0);
         let finite_diff = VectorValuedVectorMap::<f64, 1, 0, 0>::sym_diff_quotient_jacobian(
             proj_x_onto::<f64, 1, 0, 0>,

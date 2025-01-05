@@ -1,4 +1,4 @@
-use crate::preludes::*;
+use crate::prelude::*;
 use sophus_lie::Isometry3F64;
 use sophus_renderer::camera::RenderCamera;
 use sophus_renderer::renderables::scene_renderable::SceneRenderable;

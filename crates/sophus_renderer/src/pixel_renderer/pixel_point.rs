@@ -1,6 +1,6 @@
 use crate::pipeline_builder::PipelineBuilder;
 use crate::pipeline_builder::PointVertex2;
-use crate::preludes::*;
+use crate::prelude::*;
 use crate::renderables::pixel_renderable::PointCloud2;
 use crate::RenderContext;
 use eframe::egui::mutex::Mutex;

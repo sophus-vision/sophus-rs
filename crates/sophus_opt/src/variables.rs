@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use core::fmt::Debug;
 use dyn_clone::DynClone;
-use sophus_core::linalg::VecF64;
+use sophus_autodiff::linalg::VecF64;
 use sophus_lie::Isometry2F64;
 use sophus_lie::Isometry3F64;
 use sophus_sensor::camera_enum::perspective_camera::BrownConradyCameraF64;

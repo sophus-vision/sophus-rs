@@ -18,8 +18,8 @@ nalgebra.workspace = true
 num-traits.workspace = true
 snafu.workspace = true
 
-sophus_core = {workspace = true}
+sophus_autodiff = {workspace = true}
 
 [features]
-simd = ["sophus_core/simd"]
-std = ["sophus_core/std"]
+simd = ["sophus_autodiff/simd"]
+std = ["sophus_autodiff/std"]

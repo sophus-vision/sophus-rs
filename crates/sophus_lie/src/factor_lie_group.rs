@@ -1,20 +1,17 @@
-use core::borrow::Borrow;
-
 use crate::lie_group::LieGroup;
 use crate::prelude::*;
 use crate::traits::IsRealLieFactorGroupImpl;
 use crate::Rotation2;
 use crate::Rotation3;
 use approx::assert_relative_eq;
-use sophus_core::calculus::dual::DualScalar;
-use sophus_core::calculus::maps::MatrixValuedVectorMap;
-use sophus_core::manifold::traits::TangentImpl;
-
+use core::borrow::Borrow;
 #[cfg(feature = "simd")]
-use sophus_core::calculus::dual::DualBatchScalar;
-
+use sophus_autodiff::dual::DualBatchScalar;
+use sophus_autodiff::dual::DualScalar;
 #[cfg(feature = "simd")]
-use sophus_core::linalg::BatchScalarF64;
+use sophus_autodiff::linalg::BatchScalarF64;
+use sophus_autodiff::manifold::IsTangent;
+use sophus_autodiff::maps::MatrixValuedVectorMap;
 
 impl<
         S: IsRealScalar<BATCH, RealScalar = S>,
@@ -88,7 +85,7 @@ macro_rules! def_real_group_test_template {
         impl RealFactorLieGroupTest for $group {
             fn mat_v_test() {
                 use crate::traits::IsLieGroup;
-                use sophus_core::linalg::scalar::IsScalar;
+                use sophus_autodiff::linalg::scalar::IsScalar;
 
                 const POINT: usize = <$group>::POINT;
 
@@ -107,11 +104,11 @@ macro_rules! def_real_group_test_template {
             fn test_mat_v_jacobian() {
                 use crate::traits::IsLieGroup;
                 use log::info;
-                use sophus_core::calculus::maps::vector_valued_maps::VectorValuedVectorMap;
-                use sophus_core::linalg::scalar::IsScalar;
-                use sophus_core::linalg::vector::IsVector;
-                use sophus_core::params::HasParams;
-                use sophus_core::points::example_points;
+                use sophus_autodiff::maps::vector_valued_maps::VectorValuedVectorMap;
+                use sophus_autodiff::linalg::scalar::IsScalar;
+                use sophus_autodiff::linalg::vector::IsVector;
+                use sophus_autodiff::params::HasParams;
+                use sophus_autodiff::points::example_points;
 
                 const DOF: usize = <$group>::DOF;
                 const POINT: usize = <$group>::POINT;

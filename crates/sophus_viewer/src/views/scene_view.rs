@@ -3,7 +3,7 @@ use crate::interactions::InteractionEnum;
 use crate::packets::scene_view_packet::SceneViewCreation;
 use crate::packets::scene_view_packet::SceneViewPacket;
 use crate::packets::scene_view_packet::SceneViewPacketContent;
-use crate::preludes::*;
+use crate::prelude::*;
 use crate::views::View;
 use linked_hash_map::LinkedHashMap;
 use log::warn;

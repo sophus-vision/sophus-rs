@@ -3,7 +3,7 @@
 #![doc = include_str!(concat!("../", std::env!("CARGO_PKG_README")))]
 
 #[doc(inline)]
-pub use sophus_core as core;
+pub use sophus_autodiff as core;
 #[doc(inline)]
 pub use sophus_geo as geo;
 #[doc(inline)]

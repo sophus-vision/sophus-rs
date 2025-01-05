@@ -1,4 +1,4 @@
-use sophus_core::linalg::SVec;
+use sophus_autodiff::linalg::SVec;
 
 /// blue to white to red to black
 pub struct BlueWhiteRedBlackColorMap;

@@ -12,11 +12,12 @@ use core::borrow::Borrow;
 use core::f64;
 use core::marker::PhantomData;
 use log::warn;
-use sophus_core::linalg::vector::cross;
-use sophus_core::linalg::MatF64;
-use sophus_core::linalg::EPS_F64;
-use sophus_core::manifold::traits::TangentImpl;
-use sophus_core::params::ParamsImpl;
+use sophus_autodiff::linalg::vector::cross;
+use sophus_autodiff::linalg::MatF64;
+use sophus_autodiff::linalg::EPS_F64;
+use sophus_autodiff::manifold::IsTangent;
+use sophus_autodiff::params::HasParams;
+use sophus_autodiff::params::IsParamsImpl;
 
 extern crate alloc;
 
@@ -43,7 +44,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 }
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
-    ParamsImpl<S, 4, BATCH, DM, DN> for Rotation3Impl<S, BATCH, DM, DN>
+    IsParamsImpl<S, 4, BATCH, DM, DN> for Rotation3Impl<S, BATCH, DM, DN>
 {
     fn params_examples() -> alloc::vec::Vec<S::Vector<4>> {
         const NEAR_PI: f64 = f64::consts::PI - 1e-6;
@@ -183,7 +184,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 }
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
-    TangentImpl<S, 3, BATCH, DM, DN> for Rotation3Impl<S, BATCH, DM, DN>
+    IsTangent<S, 3, BATCH, DM, DN> for Rotation3Impl<S, BATCH, DM, DN>
 {
     fn tangent_examples() -> alloc::vec::Vec<S::Vector<3>> {
         alloc::vec![
@@ -1041,11 +1042,11 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
 fn rotation3_prop_tests() {
     use crate::factor_lie_group::RealFactorLieGroupTest;
     use crate::lie_group::real_lie_group::RealLieGroupTest;
-    use sophus_core::calculus::dual::dual_scalar::DualScalar;
+    use sophus_autodiff::dual::dual_scalar::DualScalar;
     #[cfg(feature = "simd")]
-    use sophus_core::calculus::dual::DualBatchScalar;
+    use sophus_autodiff::dual::DualBatchScalar;
     #[cfg(feature = "simd")]
-    use sophus_core::linalg::BatchScalarF64;
+    use sophus_autodiff::linalg::BatchScalarF64;
 
     Rotation3F64::test_suite();
     #[cfg(feature = "simd")]

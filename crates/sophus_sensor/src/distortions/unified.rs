@@ -2,10 +2,10 @@ use crate::prelude::*;
 use crate::traits::IsCameraDistortionImpl;
 use core::borrow::Borrow;
 use core::marker::PhantomData;
-use sophus_core::params::ParamsImpl;
-use sophus_core::prelude::IsMatrix;
-use sophus_core::prelude::IsScalar;
-use sophus_core::prelude::IsVector;
+use sophus_autodiff::params::IsParamsImpl;
+use sophus_autodiff::prelude::IsMatrix;
+use sophus_autodiff::prelude::IsScalar;
+use sophus_autodiff::prelude::IsVector;
 
 extern crate alloc;
 
@@ -21,7 +21,7 @@ pub struct UnifiedDistortionImpl<
 }
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
-    ParamsImpl<S, 6, BATCH, DM, DN> for UnifiedDistortionImpl<S, BATCH, DM, DN>
+    IsParamsImpl<S, 6, BATCH, DM, DN> for UnifiedDistortionImpl<S, BATCH, DM, DN>
 {
     fn are_params_valid<P>(_params: P) -> S::Mask
     where

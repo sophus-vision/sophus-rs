@@ -29,5 +29,5 @@ pub mod traits;
 pub mod prelude {
     pub use crate::traits::IsLieGroup;
     pub use crate::traits::IsTranslationProductGroup;
-    pub use sophus_core::prelude::*;
+    pub use sophus_autodiff::prelude::*;
 }

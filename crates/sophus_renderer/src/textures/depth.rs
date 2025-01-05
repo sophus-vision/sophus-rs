@@ -1,9 +1,9 @@
 use crate::camera::clipping_planes::ClippingPlanesF64;
+use crate::prelude::*;
 use crate::textures::depth_image::DepthImage;
 use crate::textures::ndc_z_buffer::NdcZBuffer;
 use crate::textures::visual_depth::VisualDepthTexture;
 use crate::RenderContext;
-use sophus_core::IsTensorLike;
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::image_view::ImageViewF32;
 use sophus_image::prelude::IsImageView;

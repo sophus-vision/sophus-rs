@@ -191,14 +191,13 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 #[test]
 fn dyn_camera_tests() {
     use crate::distortions::affine::AffineDistortionImpl;
-
     use crate::distortions::kannala_brandt::KannalaBrandtDistortionImpl;
     use crate::distortions::unified::UnifiedDistortionImpl;
     use crate::traits::IsCameraDistortionImpl;
     use approx::assert_relative_eq;
-    use sophus_core::calculus::maps::vector_valued_maps::VectorValuedVectorMap;
-    use sophus_core::linalg::VecF64;
-    use sophus_core::linalg::EPS_F64;
+    use sophus_autodiff::linalg::VecF64;
+    use sophus_autodiff::linalg::EPS_F64;
+    use sophus_autodiff::maps::vector_valued_maps::VectorValuedVectorMap;
     use sophus_image::ImageSize;
 
     {
