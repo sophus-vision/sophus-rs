@@ -2,11 +2,10 @@ use super::dual_matrix::DualMatrix;
 use super::dual_vector::DualVector;
 use crate::linalg::scalar::NumberCategory;
 use crate::linalg::MatF64;
+use crate::linalg::SVec;
 use crate::linalg::VecF64;
 use crate::linalg::EPS_F64;
 use crate::prelude::*;
-use crate::tensor::mut_tensor::InnerScalarToVec;
-use crate::tensor::mut_tensor::MutTensorDD;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
 use core::borrow::Borrow;
@@ -14,7 +13,9 @@ use core::fmt::Debug;
 use core::ops::Add;
 use core::ops::AddAssign;
 use core::ops::Div;
+use core::ops::DivAssign;
 use core::ops::Mul;
+use core::ops::MulAssign;
 use core::ops::Neg;
 use core::ops::Sub;
 use core::ops::SubAssign;
@@ -23,57 +24,17 @@ use num_traits::Zero;
 
 extern crate alloc;
 
-/// Trait for dual numbers
-pub trait IsDual {}
-
 /// Dual number - a real number and an infinitesimal number
-#[derive(Clone)]
-pub struct DualScalar {
+#[derive(Clone, Debug, Copy)]
+pub struct DualScalar<const DM: usize, const DN: usize> {
     /// real part
     pub real_part: f64,
 
     /// infinitesimal part - represents derivative
-    pub dij_part: Option<MutTensorDD<f64>>,
+    pub infinitesimal_part: Option<MatF64<DM, DN>>,
 }
 
-impl IsDual for DualScalar {}
-
-/// Trait for scalar dual numbers
-pub trait IsDualScalar<const BATCH: usize>: IsScalar<BATCH, DualScalar = Self> + IsDual {
-    /// Create a new dual scalar from real scalar for auto-differentiation with respect to self
-    ///
-    /// Typically this is not called directly, but through using a curve auto-differentiation call:
-    ///
-    ///  - ScalarValuedCurve::fw_autodiff(...);
-    ///  - VectorValuedCurve::fw_autodiff(...);
-    ///  - MatrixValuedCurve::fw_autodiff(...);
-    fn new_with_dij(val: Self::RealScalar) -> Self;
-
-    /// Create a new dual vector from a real vector for auto-differentiation with respect to self
-    ///
-    /// Typically this is not called directly, but through using a map auto-differentiation call:
-    ///
-    ///  - ScalarValuedMapFromVector::fw_autodiff(...);
-    ///  - VectorValuedMapFromVector::fw_autodiff(...);
-    ///  - MatrixValuedMapFromVector::fw_autodiff(...);
-    fn vector_with_dij<const ROWS: usize>(val: Self::RealVector<ROWS>) -> Self::DualVector<ROWS>;
-
-    /// Create a new dual matrix from a real matrix for auto-differentiation with respect to self
-    ///
-    /// Typically this is not called directly, but through using a map auto-differentiation call:
-    ///
-    ///  - ScalarValuedMapFromMatrix::fw_autodiff(...);
-    ///  - VectorValuedMapFromMatrix::fw_autodiff(...);
-    ///  - MatrixValuedMapFromMatrix::fw_autodiff(...);
-    fn matrix_with_dij<const ROWS: usize, const COLS: usize>(
-        val: Self::RealMatrix<ROWS, COLS>,
-    ) -> Self::DualMatrix<ROWS, COLS>;
-
-    /// Get the derivative
-    fn dij_val(self) -> Option<MutTensorDD<Self::RealScalar>>;
-}
-
-impl AbsDiffEq for DualScalar {
+impl<const DM: usize, const DN: usize> AbsDiffEq for DualScalar<DM, DN> {
     type Epsilon = f64;
 
     fn default_epsilon() -> Self::Epsilon {
@@ -85,7 +46,7 @@ impl AbsDiffEq for DualScalar {
     }
 }
 
-impl RelativeEq for DualScalar {
+impl<const DM: usize, const DN: usize> RelativeEq for DualScalar<DM, DN> {
     fn default_max_relative() -> Self::Epsilon {
         EPS_F64
     }
@@ -101,28 +62,28 @@ impl RelativeEq for DualScalar {
     }
 }
 
-impl IsCoreScalar for DualScalar {
+impl<const DM: usize, const DN: usize> IsCoreScalar for DualScalar<DM, DN> {
     fn number_category() -> NumberCategory {
         NumberCategory::Real
     }
 }
 
-impl SubAssign<DualScalar> for DualScalar {
+impl<const DM: usize, const DN: usize> SubAssign<DualScalar<DM, DN>> for DualScalar<DM, DN> {
     fn sub_assign(&mut self, rhs: Self) {
-        *self = self.clone().sub(&rhs);
+        *self = (*self).sub(&rhs);
     }
 }
 
-impl IsSingleScalar for DualScalar {
-    type SingleVector<const ROWS: usize> = DualVector<ROWS>;
-    type SingleMatrix<const ROWS: usize, const COLS: usize> = DualMatrix<ROWS, COLS>;
+impl<const DM: usize, const DN: usize> IsSingleScalar<DM, DN> for DualScalar<DM, DN> {
+    type SingleVector<const ROWS: usize> = DualVector<ROWS, DM, DN>;
+    type SingleMatrix<const ROWS: usize, const COLS: usize> = DualMatrix<ROWS, COLS, DM, DN>;
 
     fn single_real_scalar(&self) -> f64 {
         self.real_part
     }
 
     fn single_scalar(&self) -> Self {
-        self.clone()
+        *self
     }
 
     fn i64_floor(&self) -> i64 {
@@ -130,152 +91,118 @@ impl IsSingleScalar for DualScalar {
     }
 }
 
-impl AsRef<DualScalar> for DualScalar {
-    fn as_ref(&self) -> &DualScalar {
+impl<const DM: usize, const DN: usize> AsRef<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+    fn as_ref(&self) -> &DualScalar<DM, DN> {
         self
     }
 }
 
-impl One for DualScalar {
+impl<const DM: usize, const DN: usize> One for DualScalar<DM, DN> {
     fn one() -> Self {
-        <DualScalar>::from_f64(1.0)
+        <DualScalar<DM, DN>>::from_f64(1.0)
     }
 }
 
-impl Zero for DualScalar {
+impl<const DM: usize, const DN: usize> Zero for DualScalar<DM, DN> {
     fn zero() -> Self {
-        <DualScalar>::from_f64(0.0)
+        <DualScalar<DM, DN>>::from_f64(0.0)
     }
 
     fn is_zero(&self) -> bool {
-        self.real_part == <DualScalar>::from_f64(0.0).real_part()
+        self.real_part == <DualScalar<DM, DN>>::from_f64(0.0).real_part()
     }
 }
 
-impl IsDualScalar<1> for DualScalar {
-    fn new_with_dij(val: f64) -> Self {
-        let dij_val = <MutTensorDD<f64>>::from_shape_and_val([1, 1], 1.0);
+impl<const DM: usize, const DN: usize> IsDualScalar<1, DM, DN> for DualScalar<DM, DN> {
+    fn var(val: f64) -> Self {
         Self {
             real_part: val,
-            dij_part: Some(dij_val),
+            infinitesimal_part: Some(MatF64::<DM, DN>::from_f64(1.0)),
         }
     }
 
-    fn vector_with_dij<const ROWS: usize>(val: Self::RealVector<ROWS>) -> Self::Vector<ROWS> {
-        DualVector::<ROWS>::new_with_dij(val)
+    fn vector_var<const ROWS: usize>(val: Self::RealVector<ROWS>) -> Self::Vector<ROWS> {
+        DualVector::<ROWS, DM, DN>::var(val)
     }
 
-    fn dij_val(self) -> Option<MutTensorDD<f64>> {
-        self.dij_part
-    }
-
-    fn matrix_with_dij<const ROWS: usize, const COLS: usize>(
+    fn matrix_var<const ROWS: usize, const COLS: usize>(
         val: Self::RealMatrix<ROWS, COLS>,
     ) -> Self::Matrix<ROWS, COLS> {
-        DualMatrix::<ROWS, COLS>::new_with_dij(val)
+        DualMatrix::<ROWS, COLS, DM, DN>::var(val)
+    }
+
+    fn derivative(&self) -> MatF64<DM, DN> {
+        self.infinitesimal_part.unwrap_or(MatF64::<DM, DN>::zeros())
     }
 }
 
-impl DualScalar {
-    /// create a dual number
-    fn binary_dij<F: FnMut(&f64) -> f64, G: FnMut(&f64) -> f64>(
-        lhs_dx: &Option<MutTensorDD<f64>>,
-        rhs_dx: &Option<MutTensorDD<f64>>,
-        mut left_op: F,
-        mut right_op: G,
-    ) -> Option<MutTensorDD<f64>> {
+impl<const DM: usize, const DN: usize> DualScalar<DM, DN> {
+    fn binary_dij(
+        lhs_dx: &Option<MatF64<DM, DN>>,
+        rhs_dx: &Option<MatF64<DM, DN>>,
+        mut left_op: impl FnMut(&MatF64<DM, DN>) -> MatF64<DM, DN>,
+        mut right_op: impl FnMut(&MatF64<DM, DN>) -> MatF64<DM, DN>,
+    ) -> Option<MatF64<DM, DN>> {
         match (lhs_dx, rhs_dx) {
             (None, None) => None,
-            (None, Some(rhs_dij)) => {
-                let out_dij =
-                    <MutTensorDD<f64>>::from_map(&rhs_dij.view(), |r_dij: &f64| right_op(r_dij));
-                Some(out_dij)
-            }
-            (Some(lhs_dij), None) => {
-                let out_dij =
-                    <MutTensorDD<f64>>::from_map(&lhs_dij.view(), |l_dij: &f64| left_op(l_dij));
-                Some(out_dij)
-            }
-            (Some(lhs_dij), Some(rhs_dij)) => {
-                let dyn_mat = <MutTensorDD<f64>>::from_map2(
-                    &lhs_dij.view(),
-                    &rhs_dij.view(),
-                    |l_dij: &f64, r_dij: &f64| left_op(l_dij) + right_op(r_dij),
-                );
-                Some(dyn_mat)
-            }
+            (None, Some(rhs_dij)) => Some(right_op(rhs_dij)),
+            (Some(lhs_dij), None) => Some(left_op(lhs_dij)),
+            (Some(lhs_dij), Some(rhs_dij)) => Some(left_op(lhs_dij) + right_op(rhs_dij)),
         }
     }
 }
 
-impl Neg for DualScalar {
-    type Output = DualScalar;
+impl<const DM: usize, const DN: usize> Neg for DualScalar<DM, DN> {
+    type Output = DualScalar<DM, DN>;
 
     fn neg(self) -> Self {
         Self {
             real_part: -self.real_part,
-            dij_part: match self.dij_part.clone() {
-                Some(dij_val) => {
-                    let dyn_mat = <MutTensorDD<f64>>::from_map(&dij_val.view(), |v: &f64| -(*v));
-
-                    Some(dyn_mat)
-                }
-                None => None,
-            },
+            infinitesimal_part: self.infinitesimal_part.map(|dij_val| -dij_val),
         }
     }
 }
 
-impl PartialEq for DualScalar {
+impl<const DM: usize, const DN: usize> PartialEq for DualScalar<DM, DN> {
     fn eq(&self, other: &Self) -> bool {
         self.real_part == other.real_part
     }
 }
 
-impl PartialOrd for DualScalar {
+impl<const DM: usize, const DN: usize> PartialOrd for DualScalar<DM, DN> {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         self.real_part.partial_cmp(&other.real_part)
     }
 }
 
-impl From<f64> for DualScalar {
+impl<const DM: usize, const DN: usize> From<f64> for DualScalar<DM, DN> {
     fn from(value: f64) -> Self {
         Self::from_real_scalar(value)
     }
 }
 
-impl Debug for DualScalar {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        if self.dij_part.is_some() {
-            f.debug_struct("DualScalar")
-                .field("val", &self.real_part)
-                .field("dij_val", &self.dij_part.as_ref().unwrap().elem_view())
-                .finish()
-        } else {
-            f.debug_struct("DualScalar")
-                .field("val", &self.real_part)
-                .finish()
-        }
-    }
-}
+impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN> {
+    type Scalar = DualScalar<DM, DN>;
+    type Vector<const ROWS: usize> = DualVector<ROWS, DM, DN>;
+    type Matrix<const ROWS: usize, const COLS: usize> = DualMatrix<ROWS, COLS, DM, DN>;
 
-impl IsScalar<1> for DualScalar {
-    type Scalar = DualScalar;
     type RealScalar = f64;
-    type SingleScalar = DualScalar;
-
     type RealMatrix<const ROWS: usize, const COLS: usize> = MatF64<ROWS, COLS>;
     type RealVector<const ROWS: usize> = VecF64<ROWS>;
 
-    type Vector<const ROWS: usize> = DualVector<ROWS>;
-    type Matrix<const ROWS: usize, const COLS: usize> = DualMatrix<ROWS, COLS>;
+    type SingleScalar = DualScalar<DM, DN>;
+
+    type DualScalar<const M: usize, const N: usize> = DualScalar<M, N>;
+    type DualVector<const ROWS: usize, const M: usize, const N: usize> = DualVector<ROWS, M, N>;
+    type DualMatrix<const ROWS: usize, const COLS: usize, const M: usize, const N: usize> =
+        DualMatrix<ROWS, COLS, M, N>;
 
     type Mask = bool;
 
     fn from_real_scalar(val: f64) -> Self {
         Self {
             real_part: val,
-            dij_part: None,
+            infinitesimal_part: None,
         }
     }
 
@@ -287,49 +214,30 @@ impl IsScalar<1> for DualScalar {
         [self.real_part]
     }
 
-    fn cos(&self) -> DualScalar {
+    fn cos(&self) -> DualScalar<DM, DN> {
         Self {
             real_part: self.real_part.cos(),
-            dij_part: match self.dij_part.clone() {
-                Some(dij_val) => {
-                    let dyn_mat = <MutTensorDD<f64>>::from_map(&dij_val.view(), |dij: &f64| {
-                        -(*dij) * self.real_part.sin()
-                    });
-                    Some(dyn_mat)
-                }
-                None => None,
-            },
+            infinitesimal_part: self
+                .infinitesimal_part
+                .map(|dij_val| -dij_val * self.real_part.sin()),
         }
     }
 
-    fn sin(&self) -> DualScalar {
+    fn sin(&self) -> DualScalar<DM, DN> {
         Self {
             real_part: self.real_part.sin(),
-            dij_part: match self.dij_part.clone() {
-                Some(dij_val) => {
-                    let dyn_mat = <MutTensorDD<f64>>::from_map(&dij_val.view(), |dij: &f64| {
-                        *dij * self.real_part.cos()
-                    });
-                    Some(dyn_mat)
-                }
-                None => None,
-            },
+            infinitesimal_part: self
+                .infinitesimal_part
+                .map(|dij_val| dij_val * self.real_part.cos()),
         }
     }
 
     fn abs(&self) -> Self {
         Self {
             real_part: self.real_part.abs(),
-            dij_part: match self.dij_part.clone() {
-                Some(dij_val) => {
-                    let dyn_mat = <MutTensorDD<f64>>::from_map(&dij_val.view(), |dij: &f64| {
-                        *dij * self.real_part.signum()
-                    });
-
-                    Some(dyn_mat)
-                }
-                None => None,
-            },
+            infinitesimal_part: self
+                .infinitesimal_part
+                .map(|dij_val| dij_val * self.real_part.signum()),
         }
     }
 
@@ -342,9 +250,9 @@ impl IsScalar<1> for DualScalar {
             1.0 / (self.real_part * self.real_part + rhs.real_part * rhs.real_part);
         Self {
             real_part: self.real_part.atan2(rhs.real_part),
-            dij_part: Self::binary_dij(
-                &self.dij_part,
-                &rhs.dij_part,
+            infinitesimal_part: Self::binary_dij(
+                &self.infinitesimal_part,
+                &rhs.infinitesimal_part,
                 |l_dij| inv_sq_nrm * ((*l_dij) * rhs.real_part),
                 |r_dij| -inv_sq_nrm * (self.real_part * (*r_dij)),
             ),
@@ -359,42 +267,24 @@ impl IsScalar<1> for DualScalar {
         let sqrt = self.real_part.sqrt();
         Self {
             real_part: sqrt,
-            dij_part: match self.dij_part.clone() {
-                Some(dij) => {
-                    let out_dij = <MutTensorDD<f64>>::from_map(&dij.view(), |dij: &f64| {
-                        (*dij) * 1.0 / (2.0 * sqrt)
-                    });
-                    Some(out_dij)
-                }
-                None => None,
-            },
+            infinitesimal_part: self.infinitesimal_part.map(|dij| dij * 1.0 / (2.0 * sqrt)),
         }
     }
 
-    fn to_vec(&self) -> DualVector<1> {
-        DualVector::<1> {
-            real_part: self.real_part.real_part().to_vec(),
-            dij_part: match self.dij_part.clone() {
-                Some(dij) => {
-                    let tmp = dij.inner_scalar_to_vec();
-                    Some(tmp)
-                }
-                None => None,
-            },
+    fn to_vec(&self) -> DualVector<1, DM, DN> {
+        DualVector::<1, DM, DN> {
+            inner: SVec::<DualScalar<DM, DN>, 1>::from_element(*self),
         }
     }
 
     fn tan(&self) -> Self {
         Self {
             real_part: self.real_part.tan(),
-            dij_part: match self.dij_part.clone() {
+            infinitesimal_part: match self.infinitesimal_part {
                 Some(dij_val) => {
                     let c = self.real_part.cos();
                     let sec_squared = 1.0 / (c * c);
-                    let dyn_mat = <MutTensorDD<f64>>::from_map(&dij_val.view(), |dij: &f64| {
-                        *dij * sec_squared
-                    });
-                    Some(dyn_mat)
+                    Some(dij_val * sec_squared)
                 }
                 None => None,
             },
@@ -404,12 +294,10 @@ impl IsScalar<1> for DualScalar {
     fn acos(&self) -> Self {
         Self {
             real_part: self.real_part.acos(),
-            dij_part: match self.dij_part.clone() {
+            infinitesimal_part: match self.infinitesimal_part {
                 Some(dij_val) => {
                     let dval = -1.0 / (1.0 - self.real_part * self.real_part).sqrt();
-                    let dyn_mat =
-                        <MutTensorDD<f64>>::from_map(&dij_val.view(), |dij: &f64| *dij * dval);
-                    Some(dyn_mat)
+                    Some(dij_val * dval)
                 }
                 None => None,
             },
@@ -419,12 +307,10 @@ impl IsScalar<1> for DualScalar {
     fn asin(&self) -> Self {
         Self {
             real_part: self.real_part.asin(),
-            dij_part: match self.dij_part.clone() {
+            infinitesimal_part: match self.infinitesimal_part {
                 Some(dij_val) => {
                     let dval = 1.0 / (1.0 - self.real_part * self.real_part).sqrt();
-                    let dyn_mat =
-                        <MutTensorDD<f64>>::from_map(&dij_val.view(), |dij: &f64| *dij * dval);
-                    Some(dyn_mat)
+                    Some(dij_val * dval)
                 }
                 None => None,
             },
@@ -434,12 +320,11 @@ impl IsScalar<1> for DualScalar {
     fn atan(&self) -> Self {
         Self {
             real_part: self.real_part.atan(),
-            dij_part: match self.dij_part.clone() {
+            infinitesimal_part: match self.infinitesimal_part {
                 Some(dij_val) => {
                     let dval = 1.0 / (1.0 + self.real_part * self.real_part);
-                    let dyn_mat =
-                        <MutTensorDD<f64>>::from_map(&dij_val.view(), |dij: &f64| *dij * dval);
-                    Some(dyn_mat)
+
+                    Some(dij_val * dval)
                 }
                 None => None,
             },
@@ -449,13 +334,7 @@ impl IsScalar<1> for DualScalar {
     fn fract(&self) -> Self {
         Self {
             real_part: self.real_part.fract(),
-            dij_part: match self.dij_part.clone() {
-                Some(dij_val) => {
-                    let dyn_mat = <MutTensorDD<f64>>::from_map(&dij_val.view(), |dij: &f64| *dij);
-                    Some(dyn_mat)
-                }
-                None => None,
-            },
+            infinitesimal_part: self.infinitesimal_part,
         }
     }
 
@@ -466,7 +345,7 @@ impl IsScalar<1> for DualScalar {
     fn from_f64(val: f64) -> Self {
         Self {
             real_part: val,
-            dij_part: None,
+            infinitesimal_part: None,
         }
     }
 
@@ -475,33 +354,30 @@ impl IsScalar<1> for DualScalar {
     }
 
     fn extract_single(&self, _i: usize) -> Self::SingleScalar {
-        self.clone()
+        *self
     }
 
     fn signum(&self) -> Self {
         Self {
             real_part: self.real_part.signum(),
-            dij_part: None,
+            infinitesimal_part: None,
         }
     }
-
-    type DualScalar = Self;
-
-    type DualVector<const ROWS: usize> = DualVector<ROWS>;
-
-    type DualMatrix<const ROWS: usize, const COLS: usize> = DualMatrix<ROWS, COLS>;
 
     fn less_equal(&self, rhs: &Self) -> Self::Mask {
         self.real_part.less_equal(&rhs.real_part)
     }
 
-    fn to_dual(&self) -> Self::DualScalar {
-        self.clone()
+    fn to_dual_const<const M: usize, const N: usize>(&self) -> Self::DualScalar<M, N> {
+        Self::DualScalar::<M, N> {
+            real_part: self.real_part,
+            infinitesimal_part: None,
+        }
     }
 
     fn select(&self, mask: &Self::Mask, other: Self) -> Self {
         if *mask {
-            self.clone()
+            *self
         } else {
             other
         }
@@ -516,30 +392,44 @@ impl IsScalar<1> for DualScalar {
     }
 }
 
-impl AddAssign<DualScalar> for DualScalar {
+impl<const DM: usize, const DN: usize> AddAssign<DualScalar<DM, DN>> for DualScalar<DM, DN> {
     fn add_assign(&mut self, rhs: Self) {
         // this is a bit inefficient, better to do it in place
-        *self = self.clone().add(&rhs);
+        *self = (*self).add(&rhs);
     }
 }
 
-impl Add<DualScalar> for DualScalar {
-    type Output = DualScalar;
+impl<const DM: usize, const DN: usize> MulAssign<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+    fn mul_assign(&mut self, rhs: Self) {
+        // this is a bit inefficient, better to do it in place
+        *self = (*self).mul(&rhs);
+    }
+}
+
+impl<const DM: usize, const DN: usize> DivAssign<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+    fn div_assign(&mut self, rhs: Self) {
+        // this is a bit inefficient, better to do it in place
+        *self = (*self).div(&rhs);
+    }
+}
+
+impl<const DM: usize, const DN: usize> Add<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+    type Output = DualScalar<DM, DN>;
     fn add(self, rhs: Self) -> Self::Output {
         self.add(&rhs)
     }
 }
 
-impl Add<&DualScalar> for DualScalar {
-    type Output = DualScalar;
+impl<const DM: usize, const DN: usize> Add<&DualScalar<DM, DN>> for DualScalar<DM, DN> {
+    type Output = DualScalar<DM, DN>;
     fn add(self, rhs: &Self) -> Self::Output {
         let r = self.real_part + rhs.real_part;
 
         Self {
             real_part: r,
-            dij_part: Self::binary_dij(
-                &self.dij_part,
-                &rhs.dij_part,
+            infinitesimal_part: Self::binary_dij(
+                &self.infinitesimal_part,
+                &rhs.infinitesimal_part,
                 |l_dij| *l_dij,
                 |r_dij| *r_dij,
             ),
@@ -547,23 +437,23 @@ impl Add<&DualScalar> for DualScalar {
     }
 }
 
-impl Mul<DualScalar> for DualScalar {
-    type Output = DualScalar;
+impl<const DM: usize, const DN: usize> Mul<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+    type Output = DualScalar<DM, DN>;
     fn mul(self, rhs: Self) -> Self::Output {
         self.mul(&rhs)
     }
 }
 
-impl Mul<&DualScalar> for DualScalar {
-    type Output = DualScalar;
+impl<const DM: usize, const DN: usize> Mul<&DualScalar<DM, DN>> for DualScalar<DM, DN> {
+    type Output = DualScalar<DM, DN>;
     fn mul(self, rhs: &Self) -> Self::Output {
         let r = self.real_part * rhs.real_part;
 
         Self {
             real_part: r,
-            dij_part: Self::binary_dij(
-                &self.dij_part,
-                &rhs.dij_part,
+            infinitesimal_part: Self::binary_dij(
+                &self.infinitesimal_part,
+                &rhs.infinitesimal_part,
                 |l_dij| (*l_dij) * rhs.real_part,
                 |r_dij| (*r_dij) * self.real_part,
             ),
@@ -571,22 +461,22 @@ impl Mul<&DualScalar> for DualScalar {
     }
 }
 
-impl Div<DualScalar> for DualScalar {
-    type Output = DualScalar;
+impl<const DM: usize, const DN: usize> Div<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+    type Output = DualScalar<DM, DN>;
     fn div(self, rhs: Self) -> Self::Output {
         self.div(&rhs)
     }
 }
 
-impl Div<&DualScalar> for DualScalar {
-    type Output = DualScalar;
+impl<const DM: usize, const DN: usize> Div<&DualScalar<DM, DN>> for DualScalar<DM, DN> {
+    type Output = DualScalar<DM, DN>;
     fn div(self, rhs: &Self) -> Self::Output {
         let rhs_inv = 1.0 / rhs.real_part;
         Self {
             real_part: self.real_part * rhs_inv,
-            dij_part: Self::binary_dij(
-                &self.dij_part,
-                &rhs.dij_part,
+            infinitesimal_part: Self::binary_dij(
+                &self.infinitesimal_part,
+                &rhs.infinitesimal_part,
                 |l_dij| l_dij * rhs_inv,
                 |r_dij| -self.real_part * r_dij * rhs_inv * rhs_inv,
             ),
@@ -594,188 +484,24 @@ impl Div<&DualScalar> for DualScalar {
     }
 }
 
-impl Sub<DualScalar> for DualScalar {
-    type Output = DualScalar;
+impl<const DM: usize, const DN: usize> Sub<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+    type Output = DualScalar<DM, DN>;
     fn sub(self, rhs: Self) -> Self::Output {
         self.sub(&rhs)
     }
 }
 
-impl Sub<&DualScalar> for DualScalar {
-    type Output = DualScalar;
+impl<const DM: usize, const DN: usize> Sub<&DualScalar<DM, DN>> for DualScalar<DM, DN> {
+    type Output = DualScalar<DM, DN>;
     fn sub(self, rhs: &Self) -> Self::Output {
         Self {
             real_part: self.real_part - rhs.real_part,
-            dij_part: Self::binary_dij(
-                &self.dij_part,
-                &rhs.dij_part,
+            infinitesimal_part: Self::binary_dij(
+                &self.infinitesimal_part,
+                &rhs.infinitesimal_part,
                 |l_dij| *l_dij,
                 |r_dij| -r_dij,
             ),
         }
     }
-}
-#[test]
-fn dual_scalar_tests() {
-    use crate::calculus::maps::curves::ScalarValuedCurve;
-
-    #[cfg(feature = "simd")]
-    use crate::calculus::dual::DualBatchScalar;
-    #[cfg(feature = "simd")]
-    use crate::linalg::BatchScalarF64;
-
-    trait DualScalarTest {
-        fn run_dual_scalar_test();
-    }
-    macro_rules! def_dual_scalar_test_template {
-        ($batch:literal, $scalar: ty, $dual_scalar: ty) => {
-            impl DualScalarTest for $dual_scalar {
-                fn run_dual_scalar_test() {
-                    let b = <$scalar>::from_f64(12.0);
-                    for i in 1..10 {
-                        let a: $scalar = <$scalar>::from_f64(0.1 * (i as f64));
-
-                        // f(x) = x^2
-                        fn square_fn(x: $scalar) -> $scalar {
-                            x.clone() * x
-                        }
-                        fn dual_square_fn(x: $dual_scalar) -> $dual_scalar {
-                            x.clone() * x
-                        }
-                        let finite_diff =
-                            ScalarValuedCurve::sym_diff_quotient(square_fn, a, EPS_F64);
-                        let auto_grad = ScalarValuedCurve::fw_autodiff(dual_square_fn, a);
-                        approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
-
-                        {
-                            fn add_fn(x: $scalar, y: $scalar) -> $scalar {
-                                x + y
-                            }
-                            fn dual_add_fn(x: $dual_scalar, y: $dual_scalar) -> $dual_scalar {
-                                x + y
-                            }
-
-                            let finite_diff =
-                                ScalarValuedCurve::sym_diff_quotient(|x| add_fn(x, b), a, EPS_F64);
-                            let auto_grad = ScalarValuedCurve::fw_autodiff(
-                                |x| dual_add_fn(x, <$dual_scalar>::from_real_scalar(b)),
-                                a,
-                            );
-                            approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
-
-                            let finite_diff =
-                                ScalarValuedCurve::sym_diff_quotient(|x| add_fn(b, x), a, EPS_F64);
-                            let auto_grad = ScalarValuedCurve::fw_autodiff(
-                                |x| dual_add_fn(<$dual_scalar>::from_real_scalar(b), x),
-                                a,
-                            );
-                            approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
-                        }
-
-                        {
-                            fn sub_fn(x: $scalar, y: $scalar) -> $scalar {
-                                x - y
-                            }
-                            fn dual_sub_fn(x: $dual_scalar, y: $dual_scalar) -> $dual_scalar {
-                                x - y
-                            }
-                            let finite_diff =
-                                ScalarValuedCurve::sym_diff_quotient(|x| sub_fn(x, b), a, EPS_F64);
-                            let auto_grad = ScalarValuedCurve::fw_autodiff(
-                                |x| dual_sub_fn(x, <$dual_scalar>::from_real_scalar(b)),
-                                a,
-                            );
-                            approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
-
-                            let finite_diff =
-                                ScalarValuedCurve::sym_diff_quotient(|x| sub_fn(b, x), a, EPS_F64);
-                            let auto_grad = ScalarValuedCurve::fw_autodiff(
-                                |x| dual_sub_fn(<$dual_scalar>::from_real_scalar(b), x),
-                                a,
-                            );
-                            approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
-                        }
-
-                        {
-                            fn mul_fn(x: $scalar, y: $scalar) -> $scalar {
-                                x * y
-                            }
-                            fn dual_mul_fn(x: $dual_scalar, y: $dual_scalar) -> $dual_scalar {
-                                x * y
-                            }
-                            let finite_diff =
-                                ScalarValuedCurve::sym_diff_quotient(|x| mul_fn(x, b), a, EPS_F64);
-                            let auto_grad = ScalarValuedCurve::fw_autodiff(
-                                |x| dual_mul_fn(x, <$dual_scalar>::from_real_scalar(b)),
-                                a,
-                            );
-                            approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
-
-                            let finite_diff =
-                                ScalarValuedCurve::sym_diff_quotient(|x| mul_fn(x, b), a, EPS_F64);
-                            let auto_grad = ScalarValuedCurve::fw_autodiff(
-                                |x| dual_mul_fn(x, <$dual_scalar>::from_real_scalar(b)),
-                                a,
-                            );
-                            approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
-                        }
-
-                        fn div_fn(x: $scalar, y: $scalar) -> $scalar {
-                            x / y
-                        }
-                        fn dual_div_fn(x: $dual_scalar, y: $dual_scalar) -> $dual_scalar {
-                            x / y
-                        }
-                        let finite_diff =
-                            ScalarValuedCurve::sym_diff_quotient(|x| div_fn(x, b), a, EPS_F64);
-                        let auto_grad = ScalarValuedCurve::fw_autodiff(
-                            |x| dual_div_fn(x, <$dual_scalar>::from_real_scalar(b)),
-                            a,
-                        );
-                        approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
-
-                        let finite_diff =
-                            ScalarValuedCurve::sym_diff_quotient(|x| div_fn(x, b), a, EPS_F64);
-                        let auto_grad = ScalarValuedCurve::fw_autodiff(
-                            |x| dual_div_fn(x, <$dual_scalar>::from_real_scalar(b)),
-                            a,
-                        );
-                        approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
-
-                        let finite_diff =
-                            ScalarValuedCurve::sym_diff_quotient(|x| div_fn(b, x), a, EPS_F64);
-                        let auto_grad = ScalarValuedCurve::fw_autodiff(
-                            |x| dual_div_fn(<$dual_scalar>::from_real_scalar(b), x),
-                            a,
-                        );
-                        approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
-
-                        let finite_diff =
-                            ScalarValuedCurve::sym_diff_quotient(|x| div_fn(x, b), a, EPS_F64);
-                        let auto_grad = ScalarValuedCurve::fw_autodiff(
-                            |x| dual_div_fn(x, <$dual_scalar>::from_real_scalar(b)),
-                            a,
-                        );
-                        approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
-                    }
-                }
-            }
-        };
-    }
-
-    def_dual_scalar_test_template!(1, f64, DualScalar);
-    #[cfg(feature = "simd")]
-    def_dual_scalar_test_template!(2, BatchScalarF64<2>, DualBatchScalar<2>);
-    #[cfg(feature = "simd")]
-    def_dual_scalar_test_template!(4, BatchScalarF64<4>, DualBatchScalar<4>);
-    #[cfg(feature = "simd")]
-    def_dual_scalar_test_template!(8, BatchScalarF64<8>, DualBatchScalar<8>);
-
-    DualScalar::run_dual_scalar_test();
-    #[cfg(feature = "simd")]
-    DualBatchScalar::<2>::run_dual_scalar_test();
-    #[cfg(feature = "simd")]
-    DualBatchScalar::<4>::run_dual_scalar_test();
-    #[cfg(feature = "simd")]
-    DualBatchScalar::<8>::run_dual_scalar_test();
 }

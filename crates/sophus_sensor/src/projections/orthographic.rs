@@ -8,12 +8,17 @@ use sophus_core::linalg::vector::IsVector;
 
 /// Orthographic projection implementation
 #[derive(Debug, Clone)]
-pub struct OrthographisProjectionImpl<S: IsScalar<BATCH>, const BATCH: usize> {
+pub struct OrthographisProjectionImpl<
+    S: IsScalar<BATCH, DM, DN>,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     phantom: PhantomData<S>,
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> IsProjection<S, BATCH>
-    for OrthographisProjectionImpl<S, BATCH>
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    IsProjection<S, BATCH, DM, DN> for OrthographisProjectionImpl<S, BATCH, DM, DN>
 {
     fn proj<P>(point_in_camera: P) -> S::Vector<2>
     where
@@ -43,5 +48,13 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsProjection<S, BATCH>
 }
 
 /// Orthographic camera
-pub type OrthographicCamera<S, const BATCH: usize> =
-    Camera<S, 0, 4, BATCH, AffineDistortionImpl<S, BATCH>, OrthographisProjectionImpl<S, BATCH>>;
+pub type OrthographicCamera<S, const BATCH: usize, const DM: usize, const DN: usize> = Camera<
+    S,
+    0,
+    4,
+    BATCH,
+    DM,
+    DN,
+    AffineDistortionImpl<S, BATCH, DM, DN>,
+    OrthographisProjectionImpl<S, BATCH, DM, DN>,
+>;

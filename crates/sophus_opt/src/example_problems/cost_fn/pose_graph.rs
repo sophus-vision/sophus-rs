@@ -9,10 +9,10 @@ use sophus_lie::Isometry2;
 use sophus_lie::Isometry2F64;
 
 /// residual function for a pose-pose constraint
-pub fn res_fn<S: IsSingleScalar>(
-    world_from_pose_a: Isometry2<S, 1>,
-    world_from_pose_b: Isometry2<S, 1>,
-    pose_a_from_pose_b: Isometry2<S, 1>,
+pub fn res_fn<S: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize>(
+    world_from_pose_a: Isometry2<S, 1, DM, DN>,
+    world_from_pose_b: Isometry2<S, 1, DM, DN>,
+    pose_a_from_pose_b: Isometry2<S, 1, DM, DN>,
 ) -> S::Vector<3> {
     (world_from_pose_a.inverse() * world_from_pose_b * pose_a_from_pose_b.inverse()).log()
 }

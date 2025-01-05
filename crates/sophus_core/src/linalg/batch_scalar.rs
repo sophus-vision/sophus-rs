@@ -18,6 +18,7 @@ use core::borrow::Borrow;
 use core::fmt::Debug;
 use core::ops::AddAssign;
 use core::ops::Div;
+use core::ops::DivAssign;
 use core::ops::Mul;
 use core::ops::MulAssign;
 use core::ops::Neg;
@@ -26,20 +27,20 @@ use core::ops::SubAssign;
 use core::simd::cmp::SimdPartialOrd;
 use core::simd::num::SimdFloat;
 use core::simd::LaneCount;
-use core::simd::Mask;
 use core::simd::Simd;
 use core::simd::SimdElement;
 use core::simd::SupportedLaneCount;
 use sleef::Sleef;
 
+use super::batch_mask::BatchMask;
+
 extern crate alloc;
 
-impl<S: SimdElement + IsCoreScalar, const BATCH_SIZE: usize> IsCoreScalar
-    for BatchScalar<S, BATCH_SIZE>
+impl<S: SimdElement + IsCoreScalar, const BATCH: usize> IsCoreScalar for BatchScalar<S, BATCH>
 where
-    LaneCount<BATCH_SIZE>: SupportedLaneCount,
-    Simd<S, BATCH_SIZE>: SimdFloat,
-    BatchScalar<S, BATCH_SIZE>:
+    LaneCount<BATCH>: SupportedLaneCount,
+    Simd<S, BATCH>: SimdFloat,
+    BatchScalar<S, BATCH>:
         Clone + Debug + nalgebra::Scalar + num_traits::Zero + core::ops::AddAssign,
 {
     fn number_category() -> NumberCategory {
@@ -117,6 +118,15 @@ where
     }
 }
 
+impl<const BATCH: usize> DivAssign for BatchScalarF64<BATCH>
+where
+    LaneCount<BATCH>: SupportedLaneCount,
+{
+    fn div_assign(&mut self, rhs: Self) {
+        self.0 /= rhs.0;
+    }
+}
+
 impl<const BATCH: usize> Neg for BatchScalarF64<BATCH>
 where
     LaneCount<BATCH>: SupportedLaneCount,
@@ -174,34 +184,43 @@ impl<const BATCH: usize> IsRealScalar<BATCH> for BatchScalarF64<BATCH> where
 {
 }
 
-impl<const BATCH: usize> IsBatchScalar<BATCH> for BatchScalarF64<BATCH> where
+impl<const BATCH: usize> IsBatchScalar<BATCH, 0, 0> for BatchScalarF64<BATCH> where
     LaneCount<BATCH>: SupportedLaneCount
 {
 }
 
-impl<const BATCH: usize> IsScalar<BATCH> for BatchScalarF64<BATCH>
+impl<const BATCH: usize> IsScalar<BATCH, 0, 0> for BatchScalarF64<BATCH>
 where
     LaneCount<BATCH>: SupportedLaneCount,
 {
     type Scalar = BatchScalarF64<BATCH>;
-    type RealScalar = Self;
-    type SingleScalar = f64;
-    type DualScalar = DualBatchScalar<BATCH>;
-
-    type RealVector<const ROWS: usize> = BatchVecF64<ROWS, BATCH>;
-
     type Vector<const ROWS: usize> = BatchVecF64<ROWS, BATCH>;
     type Matrix<const ROWS: usize, const COLS: usize> = BatchMatF64<ROWS, COLS, BATCH>;
+
+    type SingleScalar = f64;
+
+    type RealScalar = Self;
+    type RealVector<const ROWS: usize> = BatchVecF64<ROWS, BATCH>;
     type RealMatrix<const ROWS: usize, const COLS: usize> = BatchMatF64<ROWS, COLS, BATCH>;
 
-    type Mask = Mask<i64, BATCH>;
+    type DualScalar<const M: usize, const N: usize> = DualBatchScalar<BATCH, M, N>;
+    type DualVector<const ROWS: usize, const M: usize, const N: usize> =
+        DualBatchVector<ROWS, BATCH, M, N>;
+    type DualMatrix<const ROWS: usize, const COLS: usize, const M: usize, const N: usize> =
+        DualBatchMatrix<ROWS, COLS, BATCH, M, N>;
+
+    type Mask = BatchMask<BATCH>;
 
     fn less_equal(&self, rhs: &Self) -> Self::Mask {
-        self.0.simd_le(rhs.0)
+        BatchMask {
+            inner: self.0.simd_le(rhs.0),
+        }
     }
 
     fn greater_equal(&self, rhs: &Self) -> Self::Mask {
-        self.0.simd_ge(rhs.0)
+        BatchMask {
+            inner: self.0.simd_ge(rhs.0),
+        }
     }
 
     fn scalar_examples() -> Vec<BatchScalarF64<BATCH>> {
@@ -318,17 +337,13 @@ where
         BatchScalarF64 { 0: self.0.signum() }
     }
 
-    type DualVector<const ROWS: usize> = DualBatchVector<ROWS, BATCH>;
-
-    type DualMatrix<const ROWS: usize, const COLS: usize> = DualBatchMatrix<ROWS, COLS, BATCH>;
-
-    fn to_dual(&self) -> Self::DualScalar {
-        DualBatchScalar::from_real_scalar(self.clone())
+    fn to_dual_const<const M: usize, const N: usize>(&self) -> Self::DualScalar<M, N> {
+        DualBatchScalar::from_real_scalar(*self)
     }
 
     fn select(&self, mask: &Self::Mask, other: Self) -> Self {
         BatchScalarF64 {
-            0: mask.select(self.0, other.0),
+            0: mask.inner.select(self.0, other.0),
         }
     }
 }

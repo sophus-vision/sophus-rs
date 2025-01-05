@@ -7,7 +7,7 @@ use crate::Rotation2;
 use crate::Rotation3;
 use approx::assert_relative_eq;
 use sophus_core::calculus::dual::DualScalar;
-use sophus_core::calculus::maps::MatrixValuedMapFromVector;
+use sophus_core::calculus::maps::MatrixValuedVectorMap;
 use sophus_core::manifold::traits::TangentImpl;
 
 #[cfg(feature = "simd")]
@@ -17,13 +17,13 @@ use sophus_core::calculus::dual::DualBatchScalar;
 use sophus_core::linalg::BatchScalarF64;
 
 impl<
-        S: IsRealScalar<BATCH_SIZE, RealScalar = S>,
+        S: IsRealScalar<BATCH, RealScalar = S>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
-        const BATCH_SIZE: usize,
-        G: IsRealLieFactorGroupImpl<S, DOF, PARAMS, POINT, BATCH_SIZE>,
-    > LieGroup<S, DOF, PARAMS, POINT, POINT, BATCH_SIZE, G>
+        const BATCH: usize,
+        G: IsRealLieFactorGroupImpl<S, DOF, PARAMS, POINT, BATCH>,
+    > LieGroup<S, DOF, PARAMS, POINT, POINT, BATCH, 0, 0, G>
 {
     /// V matrix - used in the exponential map
     pub fn mat_v<T>(tangent: T) -> S::Matrix<POINT, POINT>
@@ -85,7 +85,6 @@ pub trait RealFactorLieGroupTest {
 macro_rules! def_real_group_test_template {
     ($scalar:ty, $dual_scalar:ty, $group: ty, $dual_group: ty, $batch:literal
 ) => {
-
         impl RealFactorLieGroupTest for $group {
             fn mat_v_test() {
                 use crate::traits::IsLieGroup;
@@ -99,16 +98,16 @@ macro_rules! def_real_group_test_template {
 
                     assert_relative_eq!(
                         mat_v.mat_mul(mat_v_inverse),
-                        <$scalar as IsScalar<$batch>>::Matrix::<POINT, POINT>::identity(),
+                        <$scalar as IsScalar<$batch, 0, 0>>::Matrix::<POINT, POINT>::identity(),
                         epsilon = 0.0001
                     );
                 }
             }
 
             fn test_mat_v_jacobian() {
-                use log::info;
                 use crate::traits::IsLieGroup;
-                use sophus_core::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
+                use log::info;
+                use sophus_core::calculus::maps::vector_valued_maps::VectorValuedVectorMap;
                 use sophus_core::linalg::scalar::IsScalar;
                 use sophus_core::linalg::vector::IsVector;
                 use sophus_core::params::HasParams;
@@ -117,50 +116,62 @@ macro_rules! def_real_group_test_template {
                 const DOF: usize = <$group>::DOF;
                 const POINT: usize = <$group>::POINT;
                 const PARAMS: usize = <$group>::PARAMS;
-                use sophus_core::tensor::tensor_view::IsTensorLike;
 
                 for t in <$group>::tangent_examples() {
                     let mat_v_jacobian = Self::dx_mat_v(&t);
 
-                    let mat_v_x = |t: <$scalar as IsScalar<$batch>>::Vector<DOF>|
-                        -> <$scalar as IsScalar<$batch>>::Matrix<POINT, POINT>
-                    {
-                        Self::mat_v(&t)
-                    };
+                    let mat_v_x = |t: <$scalar as IsScalar<$batch,0,0>>::Vector<DOF>|
+                                -> <$scalar as IsScalar<$batch,0,0>>::Matrix<POINT, POINT>
+                            {
+                                Self::mat_v(&t)
+                            };
 
-                    let num_diff = MatrixValuedMapFromVector::<$scalar, $batch>::sym_diff_quotient(
-                        mat_v_x, t, 0.0001,
-                    );
+                    let num_diff =
+                        MatrixValuedVectorMap::<$scalar, $batch, 0, 0>::sym_diff_quotient(
+                            mat_v_x, t, 0.0001,
+                        );
 
                     for i in 0..DOF {
-                        info!("i: {}", i);
-                        assert_relative_eq!(mat_v_jacobian[i], num_diff.get([i]), epsilon = 0.001);
+                        for r in 0..POINT {
+                            for c in 0..POINT {
+                                info!("i: {}", i);
+                                assert_relative_eq!(
+                                    mat_v_jacobian[i][(r, c)],
+                                    num_diff.out_mat[(r, c)][i],
+                                    epsilon = 0.001
+                                );
+                            }
+                        }
                     }
 
                     let mat_v_inv_jacobian = Self::dx_mat_v_inverse(&t);
 
-                    let mat_v_x_inv = |t: <$scalar as IsScalar<$batch>>::Vector<DOF>|
-                       -> <$scalar as IsScalar<$batch>>::Matrix<POINT, POINT> { Self::mat_v_inverse(&t) };
-                    let num_diff = MatrixValuedMapFromVector::sym_diff_quotient(mat_v_x_inv, t, 0.0001);
+                    let mat_v_x_inv = |t: <$scalar as IsScalar<$batch,0,0>>::Vector<DOF>|
+                       -> <$scalar as IsScalar<$batch,0,0>>::Matrix<POINT, POINT> { Self::mat_v_inverse(&t) };
+                    let num_diff = MatrixValuedVectorMap::sym_diff_quotient(mat_v_x_inv, t, 0.0001);
 
                     for i in 0..DOF {
-                        info!("i: {}", i);
-                        assert_relative_eq!(mat_v_inv_jacobian[i], num_diff.get([i]), epsilon = 0.001);
+                        for r in 0..POINT {
+                            for c in 0..POINT {
+                                info!("i: {}", i);
+                                assert_relative_eq!(mat_v_inv_jacobian[i][(r,c)], num_diff.out_mat[(r,c)][i], epsilon = 0.001);
+                            }
+                        }
                     }
                 }
-                for p in example_points::<$scalar, POINT, $batch>() {
+                for p in example_points::<$scalar, POINT, $batch,0,0>() {
                     for a in Self::element_examples() {
                         let dual_p =
-                            <$dual_scalar as IsScalar<$batch>>::Vector::from_real_vector(p.clone());
+                            <$dual_scalar as IsScalar<$batch,PARAMS,1>>::Vector::from_real_vector(p.clone());
 
-                        let dual_fn = |x: <$dual_scalar as IsScalar<$batch>>::Vector<PARAMS>|
-                            -> <$dual_scalar as IsScalar<$batch>>::Vector<POINT>
+                        let dual_fn = |x: <$dual_scalar as IsScalar<$batch,PARAMS,1>>::Vector<PARAMS>|
+                            -> <$dual_scalar as IsScalar<$batch,PARAMS,1>>::Vector<POINT>
                             {
                                 <$dual_group>::from_params(&x).matrix() * dual_p.clone()
                             };
 
                         let auto_diff =
-                            VectorValuedMapFromVector::<$dual_scalar, $batch>::static_fw_autodiff
+                            VectorValuedVectorMap::<$dual_scalar, $batch,PARAMS,1>::fw_autodiff_jacobian
                             (
                                 dual_fn,
                                 *a.params(),
@@ -174,22 +185,32 @@ macro_rules! def_real_group_test_template {
     };
 }
 
-def_real_group_test_template!(f64, DualScalar, Rotation2<f64, 1>, Rotation2<DualScalar, 1>,  1);
+def_real_group_test_template!(
+    f64,
+    DualScalar<2,1>,
+    Rotation2<f64, 1,0,0>,
+    Rotation2<DualScalar<2,1>, 1,2,1>,
+    1);
 #[cfg(feature = "simd")]
 def_real_group_test_template!(
     BatchScalarF64<8>,
-    DualBatchScalar<8>,
-    Rotation2<BatchScalarF64<8>, 8>,
-    Rotation2<DualBatchScalar<8>, 8>,
+    DualBatchScalar<8, 2, 1>,
+    Rotation2<BatchScalarF64<8>, 8, 0, 0>,
+    Rotation2<DualBatchScalar<8, 2, 1>, 8, 2, 1>,
     8
 );
 
-def_real_group_test_template!(f64, DualScalar, Rotation3<f64, 1>, Rotation3<DualScalar, 1>,  1);
+def_real_group_test_template!(
+    f64,
+    DualScalar<4, 1>,
+    Rotation3<f64, 1, 0, 0>,
+    Rotation3<DualScalar<4, 1>, 1, 4, 1>,
+    1);
 #[cfg(feature = "simd")]
 def_real_group_test_template!(
     BatchScalarF64<8>,
-    DualBatchScalar<8>,
-    Rotation3<BatchScalarF64<8>, 8>,
-    Rotation3<DualBatchScalar<8>, 8>,
+    DualBatchScalar<8, 4, 1>,
+    Rotation3<BatchScalarF64<8>, 8, 0, 0>,
+    Rotation3<DualBatchScalar<8, 4, 1>, 8, 4, 1>,
     8
 );

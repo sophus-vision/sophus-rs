@@ -10,12 +10,17 @@ use sophus_core::prelude::IsSingleScalar;
 ///
 /// Projects a 3D point in the camera frame to a 2D point in the z=1 plane
 #[derive(Debug, Clone, Copy)]
-pub struct PerspectiveProjectionImpl<S: IsScalar<BATCH>, const BATCH: usize> {
+pub struct PerspectiveProjectionImpl<
+    S: IsScalar<BATCH, DM, DN>,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     phantom: core::marker::PhantomData<S>,
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> IsProjection<S, BATCH>
-    for PerspectiveProjectionImpl<S, BATCH>
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    IsProjection<S, BATCH, DM, DN> for PerspectiveProjectionImpl<S, BATCH, DM, DN>
 {
     fn proj<P>(point_in_camera: P) -> S::Vector<2>
     where
@@ -35,8 +40,8 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsProjection<S, BATCH>
         let point_in_camera = point_in_camera.borrow();
 
         S::Vector::<3>::from_array([
-            point_in_camera.get_elem(0) * extension.clone(),
-            point_in_camera.get_elem(1) * extension.clone(),
+            point_in_camera.get_elem(0) * extension,
+            point_in_camera.get_elem(1) * extension,
             extension,
         ])
     }
@@ -65,6 +70,8 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsProjection<S, BATCH>
 }
 
 /// Perspective projection for single scalar
-pub fn perspect_proj<S: IsSingleScalar>(point_in_camera: &S::Vector<3>) -> S::Vector<2> {
-    PerspectiveProjectionImpl::<S, 1>::proj(point_in_camera)
+pub fn perspect_proj<S: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize>(
+    point_in_camera: &S::Vector<3>,
+) -> S::Vector<2> {
+    PerspectiveProjectionImpl::<S, 1, DM, DN>::proj(point_in_camera)
 }

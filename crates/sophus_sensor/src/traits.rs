@@ -10,11 +10,13 @@ use sophus_image::ImageSize;
 
 /// Camera distortion implementation trait
 pub trait IsCameraDistortionImpl<
-    S: IsScalar<BATCH>,
+    S: IsScalar<BATCH, DM, DN>,
     const DISTORT: usize,
     const PARAMS: usize,
     const BATCH: usize,
->: ParamsImpl<S, PARAMS, BATCH>
+    const DM: usize,
+    const DN: usize,
+>: ParamsImpl<S, PARAMS, BATCH, DM, DN>
 {
     /// identity parameters
     fn identity_params() -> S::Vector<PARAMS> {
@@ -53,7 +55,13 @@ pub trait IsCameraDistortionImpl<
 }
 
 /// Camera projection implementation trait
-pub trait IsProjection<S: IsScalar<BATCH>, const BATCH: usize> {
+pub trait IsProjection<
+    S: IsScalar<BATCH, DM, DN>,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+>
+{
     /// Projects a 3D point in the camera frame to a 2D point in the z=1 plane
     fn proj<P>(point_in_camera: P) -> S::Vector<2>
     where
@@ -71,7 +79,8 @@ pub trait IsProjection<S: IsScalar<BATCH>, const BATCH: usize> {
 }
 
 /// Camera trait
-pub trait IsCamera<S: IsScalar<BATCH>, const BATCH: usize> {
+pub trait IsCamera<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+{
     /// Creates a new pinhole camera
     fn new_pinhole<P>(params: P, image_size: ImageSize) -> Self
     where
@@ -114,20 +123,26 @@ pub trait IsCamera<S: IsScalar<BATCH>, const BATCH: usize> {
         P: Borrow<S::Vector<2>>;
 
     /// Returns the brown-conrady camera
-    fn try_get_brown_conrady(self) -> Option<BrownConradyCamera<S, BATCH>>;
+    fn try_get_brown_conrady(self) -> Option<BrownConradyCamera<S, BATCH, DM, DN>>;
 
     /// Returns the kannala-brandt camera
-    fn try_get_kannala_brandt(self) -> Option<KannalaBrandtCamera<S, BATCH>>;
+    fn try_get_kannala_brandt(self) -> Option<KannalaBrandtCamera<S, BATCH, DM, DN>>;
 
     /// Returns the pinhole camera
-    fn try_get_pinhole(self) -> Option<PinholeCamera<S, BATCH>>;
+    fn try_get_pinhole(self) -> Option<PinholeCamera<S, BATCH, DM, DN>>;
 
     /// Returns the unified extended camera
-    fn try_get_unified_extended(self) -> Option<UnifiedCamera<S, BATCH>>;
+    fn try_get_unified_extended(self) -> Option<UnifiedCamera<S, BATCH, DM, DN>>;
 }
 
 /// Dynamic camera trait
-pub trait IsPerspectiveCamera<S: IsScalar<BATCH>, const BATCH: usize> {
+pub trait IsPerspectiveCamera<
+    S: IsScalar<BATCH, DM, DN>,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+>
+{
     /// Return the first four parameters: fx, fy, cx, cy
     fn pinhole_params(&self) -> S::Vector<4>;
 }

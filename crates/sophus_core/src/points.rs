@@ -86,8 +86,13 @@ impl<const D: usize> IsPoint<D> for SVector<i64, D> {
 }
 
 /// Example points
-pub fn example_points<S: IsScalar<BATCH>, const POINT: usize, const BATCH: usize>(
-) -> alloc::vec::Vec<S::Vector<POINT>> {
+pub fn example_points<
+    S: IsScalar<BATCH, DM, DN>,
+    const POINT: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+>() -> alloc::vec::Vec<S::Vector<POINT>> {
     let points4 = alloc::vec![
         S::Vector::<4>::from_f64_array([0.1, 0.0, 0.0, 0.0]),
         S::Vector::<4>::from_f64_array([1.0, 4.0, 1.0, 0.5]),

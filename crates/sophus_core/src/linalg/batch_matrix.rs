@@ -5,11 +5,12 @@ use crate::linalg::BatchVecF64;
 use crate::prelude::*;
 use core::borrow::Borrow;
 use core::simd::LaneCount;
-use core::simd::Mask;
 use core::simd::SupportedLaneCount;
 
+use super::batch_mask::BatchMask;
+
 impl<const ROWS: usize, const COLS: usize, const BATCH: usize>
-    IsMatrix<BatchScalarF64<BATCH>, ROWS, COLS, BATCH> for BatchMatF64<ROWS, COLS, BATCH>
+    IsMatrix<BatchScalarF64<BATCH>, ROWS, COLS, BATCH, 0, 0> for BatchMatF64<ROWS, COLS, BATCH>
 where
     LaneCount<BATCH>: SupportedLaneCount,
 {
@@ -25,11 +26,11 @@ where
     where
         M: Borrow<BatchMatF64<ROWS, COLS, BATCH>>,
     {
-        val.borrow().clone()
+        *val.borrow()
     }
 
-    fn real_matrix(&self) -> &Self {
-        self
+    fn real_matrix(&self) -> Self {
+        *self
     }
 
     fn scaled<S>(&self, v: S) -> Self
@@ -120,7 +121,7 @@ where
     where
         M: Borrow<BatchMatF64<COLS, C2, BATCH>>,
     {
-        *self * other.borrow().clone()
+        self * other.borrow()
     }
 
     fn set_col_vec(&mut self, c: usize, v: BatchVecF64<ROWS, BATCH>) {
@@ -147,11 +148,13 @@ where
         Self::from_element(BatchScalarF64::<BATCH>::from_f64(val))
     }
 
-    fn to_dual(&self) -> <BatchScalarF64<BATCH> as IsScalar<BATCH>>::DualMatrix<ROWS, COLS> {
+    fn to_dual_const<const M: usize, const N: usize>(
+        &self,
+    ) -> DualBatchMatrix<ROWS, COLS, BATCH, M, N> {
         DualBatchMatrix::from_real_matrix(self)
     }
 
-    fn select<Q>(&self, mask: &Mask<i64, BATCH>, other: Q) -> Self
+    fn select<Q>(&self, mask: &BatchMask<BATCH>, other: Q) -> Self
     where
         Q: Borrow<Self>,
     {

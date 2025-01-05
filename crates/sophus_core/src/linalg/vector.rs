@@ -13,8 +13,15 @@ use core::ops::Neg;
 use core::ops::Sub;
 
 /// Vector - either a real (f64) or a dual number vector
-pub trait IsVector<S: IsScalar<BATCH_SIZE>, const ROWS: usize, const BATCH_SIZE: usize>:
+pub trait IsVector<
+    S: IsScalar<BATCH, DM, DN>,
+    const ROWS: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+>:
     Clone
+    + Copy
     + Neg<Output = Self>
     + Add<Output = Self>
     + Sub<Output = Self>
@@ -80,7 +87,7 @@ pub trait IsVector<S: IsScalar<BATCH_SIZE>, const ROWS: usize, const BATCH_SIZE:
         V: Borrow<S::Vector<R2>>;
 
     /// return the real part
-    fn real_vector(&self) -> &S::RealVector<ROWS>;
+    fn real_vector(&self) -> S::RealVector<ROWS>;
 
     /// Returns self if mask is true, otherwise returns other
     ///
@@ -104,9 +111,9 @@ pub trait IsVector<S: IsScalar<BATCH_SIZE>, const ROWS: usize, const BATCH_SIZE:
     ///
     /// If self is a real vector, this will return a dual vector with the infinitesimal part set to
     /// zero: (self, 0ϵ)
-    fn to_dual(
+    fn to_dual_const<const M: usize, const N: usize>(
         &self,
-    ) -> <<S as IsScalar<BATCH_SIZE>>::DualScalar as IsScalar<BATCH_SIZE>>::Vector<ROWS>;
+    ) -> <<S as IsScalar<BATCH, DM, DN>>::DualScalar<M, N> as IsScalar<BATCH, M, N>>::Vector<ROWS>;
 
     /// return the matrix representation - in self as a column vector
     fn to_mat(&self) -> S::Matrix<ROWS, 1>;
@@ -124,27 +131,35 @@ pub trait IsVector<S: IsScalar<BATCH_SIZE>, const ROWS: usize, const BATCH_SIZE:
 
 /// is real vector like
 pub trait IsRealVector<
-    S: IsRealScalar<BATCH_SIZE> + IsScalar<BATCH_SIZE>,
+    S: IsRealScalar<BATCH> + IsScalar<BATCH, 0, 0>,
     const ROWS: usize,
-    const BATCH_SIZE: usize,
+    const BATCH: usize,
 >:
-    IsVector<S, ROWS, BATCH_SIZE> + Index<usize, Output = S> + IndexMut<usize, Output = S> + Copy
+    IsVector<S, ROWS, BATCH, 0, 0> + Index<usize, Output = S> + IndexMut<usize, Output = S> + Copy
 {
 }
 
 /// Batch scalar
-pub trait IsBatchVector<const ROWS: usize, const BATCH_SIZE: usize>: IsScalar<BATCH_SIZE> {
+pub trait IsBatchVector<const ROWS: usize, const BATCH: usize, const DM: usize, const DN: usize>:
+    IsScalar<BATCH, DM, DN>
+{
     /// get item
     fn extract_single(&self, i: usize) -> Self::SingleScalar;
 }
 
 /// is scalar vector
-pub trait IsSingleVector<S: IsSingleScalar, const ROWS: usize>: IsVector<S, ROWS, 1> {
+pub trait IsSingleVector<
+    S: IsSingleScalar<DM, DN>,
+    const ROWS: usize,
+    const DM: usize,
+    const DN: usize,
+>: IsVector<S, ROWS, 1, DM, DN>
+{
     /// set real scalar
     fn set_real_scalar(&mut self, idx: usize, v: f64);
 }
 
-impl<const BATCH: usize> IsSingleVector<f64, BATCH> for VecF64<BATCH> {
+impl<const BATCH: usize> IsSingleVector<f64, BATCH, 0, 0> for VecF64<BATCH> {
     fn set_real_scalar(&mut self, idx: usize, v: f64) {
         self[idx] = v;
     }
@@ -152,7 +167,7 @@ impl<const BATCH: usize> IsSingleVector<f64, BATCH> for VecF64<BATCH> {
 
 impl<const ROWS: usize> IsRealVector<f64, ROWS, 1> for VecF64<ROWS> {}
 
-impl<const ROWS: usize> IsVector<f64, ROWS, 1> for VecF64<ROWS> {
+impl<const ROWS: usize> IsVector<f64, ROWS, 1, 0, 0> for VecF64<ROWS> {
     fn block_vec2<const R0: usize, const R1: usize>(
         top_row: VecF64<R0>,
         bot_row: VecF64<R1>,
@@ -208,8 +223,8 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1> for VecF64<ROWS> {
         self.norm()
     }
 
-    fn real_vector(&self) -> &Self {
-        self
+    fn real_vector(&self) -> Self {
+        *self
     }
 
     fn set_elem(&mut self, idx: usize, v: f64) {
@@ -246,7 +261,9 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1> for VecF64<ROWS> {
         VecF64::<ROWS>::from_element(val)
     }
 
-    fn to_dual(&self) -> <f64 as IsScalar<1>>::DualVector<ROWS> {
+    fn to_dual_const<const M: usize, const N: usize>(
+        &self,
+    ) -> <f64 as IsScalar<1, 0, 0>>::DualVector<ROWS, M, N> {
         DualVector::from_real_vector(*self)
     }
 
@@ -274,7 +291,7 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1> for VecF64<ROWS> {
 }
 
 /// cross product
-pub fn cross<S: IsScalar<BATCH>, const BATCH: usize>(
+pub fn cross<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>(
     lhs: &S::Vector<3>,
     rhs: &S::Vector<3>,
 ) -> S::Vector<3> {
@@ -286,9 +303,5 @@ pub fn cross<S: IsScalar<BATCH>, const BATCH: usize>(
     let r1 = rhs.get_elem(1);
     let r2 = rhs.get_elem(2);
 
-    S::Vector::from_array([
-        l1.clone() * r2.clone() - l2.clone() * r1.clone(),
-        l2 * r0.clone() - l0.clone() * r2,
-        l0 * r1 - l1 * r0,
-    ])
+    S::Vector::from_array([l1 * r2 - l2 * r1, l2 * r0 - l0 * r2, l0 * r1 - l1 * r0])
 }

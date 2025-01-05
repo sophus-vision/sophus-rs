@@ -130,13 +130,13 @@ impl STensorFormat {
         Scalar: IsCoreScalar + 'static,
         const ROWS: usize,
         const COLS: usize,
-        const BATCH_SIZE: usize,
+        const BATCH: usize,
     >() -> Self {
         STensorFormat {
             number_category: Scalar::number_category(),
             num_rows: ROWS,
             num_cols: COLS,
-            batch_size: BATCH_SIZE,
+            batch_size: BATCH,
             num_bytes_per_scalar: core::mem::size_of::<Scalar>(),
         }
     }

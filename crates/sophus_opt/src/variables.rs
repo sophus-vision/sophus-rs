@@ -2,14 +2,12 @@ use crate::prelude::*;
 use core::fmt::Debug;
 use dyn_clone::DynClone;
 use sophus_core::linalg::VecF64;
-use sophus_lie::Isometry2;
 use sophus_lie::Isometry2F64;
-use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
+use sophus_sensor::camera_enum::perspective_camera::BrownConradyCameraF64;
+use sophus_sensor::camera_enum::perspective_camera::KannalaBrandtCameraF64;
+use sophus_sensor::camera_enum::perspective_camera::PinholeCameraF64;
 use sophus_sensor::camera_enum::perspective_camera::UnifiedCameraF64;
-use sophus_sensor::BrownConradyCamera;
-use sophus_sensor::KannalaBrandtCamera;
-use sophus_sensor::PinholeCamera;
 
 extern crate alloc;
 
@@ -33,7 +31,7 @@ pub trait IsVariable: Clone + Debug + Send + Sync + 'static {
     fn update(&mut self, delta: nalgebra::DVectorView<f64>);
 }
 
-impl IsVariable for KannalaBrandtCamera<f64, 1> {
+impl IsVariable for BrownConradyCameraF64 {
     const DOF: usize = 8;
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
@@ -42,7 +40,7 @@ impl IsVariable for KannalaBrandtCamera<f64, 1> {
     }
 }
 
-impl IsVariable for PinholeCamera<f64, 1> {
+impl IsVariable for PinholeCameraF64 {
     const DOF: usize = 4;
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
@@ -51,7 +49,7 @@ impl IsVariable for PinholeCamera<f64, 1> {
     }
 }
 
-impl IsVariable for BrownConradyCamera<f64, 1> {
+impl IsVariable for KannalaBrandtCameraF64 {
     const DOF: usize = 12;
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
@@ -421,7 +419,7 @@ impl IsVariable for Isometry2F64 {
         for d in 0..<Self as IsVariable>::DOF {
             delta_vec[d] = delta[d];
         }
-        self.set_params((Isometry2::<f64, 1>::exp(delta_vec) * *self).params());
+        self.set_params((Isometry2F64::exp(delta_vec) * *self).params());
     }
 }
 
@@ -433,7 +431,7 @@ impl IsVariable for Isometry3F64 {
         for d in 0..<Self as IsVariable>::DOF {
             delta_vec[d] = delta[d];
         }
-        self.set_params((Isometry3::<f64, 1>::exp(delta_vec) * *self).params());
+        self.set_params((Isometry3F64::exp(delta_vec) * *self).params());
     }
 }
 

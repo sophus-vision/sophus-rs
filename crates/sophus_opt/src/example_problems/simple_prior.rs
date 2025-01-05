@@ -12,9 +12,7 @@ use crate::variables::VarKind;
 use crate::variables::VarPoolBuilder;
 use sophus_core::linalg::MatF64;
 use sophus_core::linalg::VecF64;
-use sophus_lie::Isometry2;
 use sophus_lie::Isometry2F64;
-use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
 
 extern crate alloc;
@@ -36,10 +34,10 @@ impl Default for SimpleIso2PriorProblem {
 impl SimpleIso2PriorProblem {
     fn new() -> Self {
         let p = VecF64::<3>::from_f64_array([0.2, 0.0, 1.0]);
-        let true_world_from_robot = Isometry2::<f64, 1>::exp(p);
+        let true_world_from_robot = Isometry2F64::exp(p);
         Self {
             true_world_from_robot,
-            est_world_from_robot: Isometry2::<f64, 1>::identity(),
+            est_world_from_robot: Isometry2F64::identity(),
         }
     }
 
@@ -108,10 +106,10 @@ impl Default for SimpleIso3PriorProblem {
 impl SimpleIso3PriorProblem {
     fn new() -> Self {
         let p = VecF64::<6>::from_real_array([0.2, 0.0, 1.0, 0.2, 0.0, 1.0]);
-        let true_world_from_robot = Isometry3::<f64, 1>::exp(p);
+        let true_world_from_robot = Isometry3F64::exp(p);
         Self {
             true_world_from_robot,
-            est_world_from_robot: Isometry3::<f64, 1>::identity(),
+            est_world_from_robot: Isometry3F64::identity(),
         }
     }
 

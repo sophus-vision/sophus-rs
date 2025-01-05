@@ -7,7 +7,7 @@ use crate::term::Term;
 use crate::variables::VarKind;
 use sophus_core::calculus::dual::DualScalar;
 use sophus_core::calculus::dual::DualVector;
-use sophus_core::calculus::maps::VectorValuedMapFromVector;
+use sophus_core::calculus::maps::VectorValuedVectorMap;
 use sophus_core::linalg::MatF64;
 use sophus_core::linalg::VecF64;
 use sophus_lie::Isometry3;
@@ -40,9 +40,9 @@ impl IsTermSignature<1> for Isometry3PriorTermSignature {
     const DOF_TUPLE: [i64; 1] = [3];
 }
 
-fn res_fn<Scalar: IsScalar<1> + IsSingleScalar>(
-    isometry: Isometry3<Scalar, 1>,
-    isometry_prior_mean: Isometry3<Scalar, 1>,
+fn res_fn<Scalar: IsScalar<1, DM, DN>, const DM: usize, const DN: usize>(
+    isometry: Isometry3<Scalar, 1, DM, DN>,
+    isometry_prior_mean: Isometry3<Scalar, 1, DM, DN>,
 ) -> Scalar::Vector<6> {
     (isometry * isometry_prior_mean.inverse()).log()
 }
@@ -60,8 +60,8 @@ impl IsResidualFn<6, 1, (), Isometry3F64, (Isometry3F64, MatF64<6, 6>)> for Isom
         let isometry: Isometry3F64 = args;
 
         let residual = res_fn(isometry, isometry_prior.0);
-        let dx_res_fn = |x: DualVector<6>| -> DualVector<6> {
-            let pp = Isometry3::<DualScalar, 1>::exp(x) * isometry.to_dual_c();
+        let dx_res_fn = |x: DualVector<6, 6, 1>| -> DualVector<6, 6, 1> {
+            let pp = Isometry3::<DualScalar<6, 1>, 1, 6, 1>::exp(x) * isometry.to_dual_c();
             res_fn(
                 pp,
                 Isometry3::from_params(DualVector::from_real_vector(isometry_prior.0.params())),
@@ -70,7 +70,11 @@ impl IsResidualFn<6, 1, (), Isometry3F64, (Isometry3F64, MatF64<6, 6>)> for Isom
 
         let zeros: VecF64<6> = VecF64::<6>::zeros();
 
-        (|| VectorValuedMapFromVector::<DualScalar, 1>::static_fw_autodiff(dx_res_fn, zeros),)
+        (|| {
+            VectorValuedVectorMap::<DualScalar<6, 1>, 1, 6, 1>::fw_autodiff_jacobian(
+                dx_res_fn, zeros,
+            )
+        },)
             .make_term(
                 idx,
                 var_kinds,

@@ -1,24 +1,21 @@
 #[cfg(feature = "simd")]
 /// Boolean mask - generalization of bool to SIMD
 pub mod batch_mask;
-/// Bool and boolean mask traits
-pub mod bool_mask;
-
 #[cfg(feature = "simd")]
 /// Batch matrix types - require the `simd` feature
 pub mod batch_matrix;
-/// Matrix types
-pub mod matrix;
-
 #[cfg(feature = "simd")]
 /// Batch scalar types - require the `simd` feature
 pub mod batch_scalar;
-/// Scalar types
-pub mod scalar;
-
 #[cfg(feature = "simd")]
 /// Batch vector types - require the `simd` feature
 pub mod batch_vector;
+/// Bool and boolean mask traits
+pub mod bool_mask;
+/// Matrix types
+pub mod matrix;
+/// Scalar types
+pub mod scalar;
 /// Vector types
 pub mod vector;
 
@@ -61,21 +58,21 @@ pub const EPS_F64: f64 = 1e-6;
 #[cfg(feature = "simd")]
 /// Batch of scalar
 #[derive(Clone, Debug, PartialEq, Copy)]
-pub struct BatchScalar<ScalarLike: SimdElement, const BATCH_SIZE: usize>(
-    Simd<ScalarLike, BATCH_SIZE>,
+pub struct BatchScalar<ScalarLike: SimdElement, const BATCH: usize>(
+    pub(crate) Simd<ScalarLike, BATCH>,
 )
 where
-    LaneCount<BATCH_SIZE>: SupportedLaneCount;
+    LaneCount<BATCH>: SupportedLaneCount;
 
 #[cfg(feature = "simd")]
 /// Batch of vectors
-pub type BatchVec<ScalarLike, const ROWS: usize, const BATCH_SIZE: usize> =
-    nalgebra::SVector<BatchScalar<ScalarLike, BATCH_SIZE>, ROWS>;
+pub type BatchVec<ScalarLike, const ROWS: usize, const BATCH: usize> =
+    nalgebra::SVector<BatchScalar<ScalarLike, BATCH>, ROWS>;
 
 #[cfg(feature = "simd")]
 /// Batch of matrices
-pub type BatchMat<ScalarLike, const ROWS: usize, const COLS: usize, const BATCH_SIZE: usize> =
-    nalgebra::SMatrix<BatchScalar<ScalarLike, BATCH_SIZE>, ROWS, COLS>;
+pub type BatchMat<ScalarLike, const ROWS: usize, const COLS: usize, const BATCH: usize> =
+    nalgebra::SMatrix<BatchScalar<ScalarLike, BATCH>, ROWS, COLS>;
 
 #[cfg(feature = "simd")]
 /// batch of f64 scalars
@@ -89,10 +86,10 @@ pub type BatchMatF64<const ROWS: usize, const COLS: usize, const BATCH: usize> =
     BatchMat<f64, ROWS, COLS, BATCH>;
 
 #[cfg(feature = "simd")]
-impl<S: SimdElement + num_traits::Zero, const BATCH_SIZE: usize> Add for BatchScalar<S, BATCH_SIZE>
+impl<S: SimdElement + num_traits::Zero, const BATCH: usize> Add for BatchScalar<S, BATCH>
 where
-    LaneCount<BATCH_SIZE>: SupportedLaneCount,
-    Simd<S, BATCH_SIZE>: Add<Output = Simd<S, BATCH_SIZE>>,
+    LaneCount<BATCH>: SupportedLaneCount,
+    Simd<S, BATCH>: Add<Output = Simd<S, BATCH>>,
 {
     type Output = Self;
 
@@ -102,20 +99,19 @@ where
 }
 
 #[cfg(feature = "simd")]
-impl<S: SimdElement + num_traits::Zero, const BATCH_SIZE: usize> num_traits::Zero
-    for BatchScalar<S, BATCH_SIZE>
+impl<S: SimdElement + num_traits::Zero, const BATCH: usize> num_traits::Zero
+    for BatchScalar<S, BATCH>
 where
-    LaneCount<BATCH_SIZE>: SupportedLaneCount,
-    Simd<S, BATCH_SIZE>: SimdFloat,
-    Simd<S, BATCH_SIZE>:
-        SimdPartialEq<Mask = Mask<S::Mask, BATCH_SIZE>> + Add<Output = Simd<S, BATCH_SIZE>>,
+    LaneCount<BATCH>: SupportedLaneCount,
+    Simd<S, BATCH>: SimdFloat,
+    Simd<S, BATCH>: SimdPartialEq<Mask = Mask<S::Mask, BATCH>> + Add<Output = Simd<S, BATCH>>,
 {
     fn zero() -> Self {
-        Self(Simd::<S, BATCH_SIZE>::splat(S::zero()))
+        Self(Simd::<S, BATCH>::splat(S::zero()))
     }
 
     fn is_zero(&self) -> bool {
-        let b = self.0.simd_eq(Simd::<S, BATCH_SIZE>::splat(S::zero()));
+        let b = self.0.simd_eq(Simd::<S, BATCH>::splat(S::zero()));
         b.all()
     }
 }

@@ -9,12 +9,14 @@ extern crate alloc;
 /// A generic camera model
 #[derive(Debug, Copy, Clone)]
 pub struct Camera<
-    S: IsScalar<BATCH>,
+    S: IsScalar<BATCH, DM, DN>,
     const DISTORT: usize,
     const PARAMS: usize,
     const BATCH: usize,
-    Distort: IsCameraDistortionImpl<S, DISTORT, PARAMS, BATCH>,
-    Proj: IsProjection<S, BATCH>,
+    const DM: usize,
+    const DN: usize,
+    Distort: IsCameraDistortionImpl<S, DISTORT, PARAMS, BATCH, DM, DN>,
+    Proj: IsProjection<S, BATCH, DM, DN>,
 > {
     params: S::Vector<PARAMS>,
     phantom: core::marker::PhantomData<(Distort, Proj)>,
@@ -22,13 +24,15 @@ pub struct Camera<
 }
 
 impl<
-        S: IsScalar<BATCH>,
+        S: IsScalar<BATCH, DM, DN>,
         const DISTORT: usize,
         const PARAMS: usize,
         const BATCH: usize,
-        Distort: IsCameraDistortionImpl<S, DISTORT, PARAMS, BATCH>,
-        Proj: IsProjection<S, BATCH>,
-    > Camera<S, DISTORT, PARAMS, BATCH, Distort, Proj>
+        const DM: usize,
+        const DN: usize,
+        Distort: IsCameraDistortionImpl<S, DISTORT, PARAMS, BATCH, DM, DN>,
+        Proj: IsProjection<S, BATCH, DM, DN>,
+    > Camera<S, DISTORT, PARAMS, BATCH, DM, DN, Distort, Proj>
 {
     /// Creates a new camera
     pub fn new<Q>(params: Q, image_size: ImageSize) -> Self
@@ -50,7 +54,7 @@ impl<
             params
         );
         Self {
-            params: params.clone(),
+            params: *params,
             phantom: core::marker::PhantomData,
             image_size: size,
         }
@@ -66,7 +70,7 @@ impl<
     where
         Q: Borrow<S::Vector<2>>,
     {
-        Distort::distort(&self.params, proj_point_in_camera_z1_plane)
+        Distort::distort(self.params, proj_point_in_camera_z1_plane)
     }
 
     /// Undistortion - maps a distorted pixel to a point in the camera z=1 plane
@@ -74,7 +78,7 @@ impl<
     where
         Q: Borrow<S::Vector<2>>,
     {
-        Distort::undistort(&self.params, pixel)
+        Distort::undistort(self.params, pixel)
     }
 
     /// Derivative of the distortion w.r.t. the point in the camera z=1 plane
@@ -82,7 +86,7 @@ impl<
     where
         Q: Borrow<S::Vector<2>>,
     {
-        Distort::dx_distort_x(&self.params, proj_point_in_camera_z1_plane)
+        Distort::dx_distort_x(self.params, proj_point_in_camera_z1_plane)
     }
 
     /// Derivative of the distortion w.r.t. the parameters
@@ -90,7 +94,7 @@ impl<
     where
         Q: Borrow<S::Vector<2>>,
     {
-        Distort::dx_distort_params(&self.params, proj_point_in_camera_z1_plane)
+        Distort::dx_distort_params(self.params, proj_point_in_camera_z1_plane)
     }
 
     /// Projects a 3D point in the camera frame to a pixel in the image
@@ -122,7 +126,7 @@ impl<
     where
         Q: Borrow<S::Vector<PARAMS>>,
     {
-        self.params = params.borrow().clone();
+        self.params = *params.borrow();
     }
 
     /// Returns the camera parameters
@@ -147,13 +151,15 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH>,
+        S: IsScalar<BATCH, DM, DN>,
         const DISTORT: usize,
         const PARAMS: usize,
         const BATCH: usize,
-        Distort: IsCameraDistortionImpl<S, DISTORT, PARAMS, BATCH>,
-        Proj: IsProjection<S, BATCH>,
-    > Default for Camera<S, DISTORT, PARAMS, BATCH, Distort, Proj>
+        const DM: usize,
+        const DN: usize,
+        Distort: IsCameraDistortionImpl<S, DISTORT, PARAMS, BATCH, DM, DN>,
+        Proj: IsProjection<S, BATCH, DM, DN>,
+    > Default for Camera<S, DISTORT, PARAMS, BATCH, DM, DN, Distort, Proj>
 {
     fn default() -> Self {
         Self::from_params_and_size(Distort::identity_params(), ImageSize::default())

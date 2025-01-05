@@ -9,12 +9,17 @@ extern crate alloc;
 
 /// Kannala-Brandt distortion implementation
 #[derive(Debug, Clone, Copy)]
-pub struct KannalaBrandtDistortionImpl<S: IsScalar<BATCH>, const BATCH: usize> {
+pub struct KannalaBrandtDistortionImpl<
+    S: IsScalar<BATCH, DM, DN>,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     phantom: PhantomData<S>,
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 8, BATCH>
-    for KannalaBrandtDistortionImpl<S, BATCH>
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    ParamsImpl<S, 8, BATCH, DM, DN> for KannalaBrandtDistortionImpl<S, BATCH, DM, DN>
 {
     fn are_params_valid<P>(_params: P) -> S::Mask
     where
@@ -37,8 +42,9 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 8, BATCH>
     }
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 4, 8, BATCH>
-    for KannalaBrandtDistortionImpl<S, BATCH>
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    IsCameraDistortionImpl<S, 4, 8, BATCH, DM, DN>
+    for KannalaBrandtDistortionImpl<S, BATCH, DM, DN>
 {
     fn distort<PA, PO>(params: PA, proj_point_in_camera_z1_plane: PO) -> S::Vector<2>
     where
@@ -58,12 +64,12 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 4, 8, BAT
             + proj_point_in_camera_z1_plane.get_elem(1) * proj_point_in_camera_z1_plane.get_elem(1);
 
         let radius = radius_sq.clone().sqrt();
-        let radius_inverse = S::from_f64(1.0) / radius.clone();
+        let radius_inverse = S::from_f64(1.0) / radius;
         let theta = radius.atan2(S::from_f64(1.0));
-        let theta2 = theta.clone() * theta.clone();
-        let theta4 = theta2.clone() * theta2.clone();
-        let theta6 = theta2.clone() * theta4.clone();
-        let theta8 = theta4.clone() * theta4.clone();
+        let theta2 = theta * theta;
+        let theta4 = theta2 * theta2;
+        let theta6 = theta2 * theta4;
+        let theta8 = theta4 * theta4;
 
         let r_distorted =
             theta * (S::from_f64(1.0) + k0 * theta2 + k1 * theta4 + k2 * theta6 + k3 * theta8);
@@ -74,7 +80,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 4, 8, BAT
         let scaling = S::ones().select(&near_zero, scaling);
 
         S::Vector::<2>::from_array([
-            scaling.clone() * proj_point_in_camera_z1_plane.get_elem(0) * params.get_elem(0)
+            scaling * proj_point_in_camera_z1_plane.get_elem(0) * params.get_elem(0)
                 + params.get_elem(2),
             scaling * proj_point_in_camera_z1_plane.get_elem(1) * params.get_elem(1)
                 + params.get_elem(3),
@@ -100,10 +106,10 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 4, 8, BAT
 
         let un = (distorted_point.get_elem(0) - u0) / fu;
         let vn = (distorted_point.get_elem(1) - v0) / fv;
-        let rth2 = un.clone() * un.clone() + vn.clone() * vn.clone();
+        let rth2 = un * un + vn * vn;
 
         let rth2_near_zero = rth2.less_equal(&S::from_f64(EPS_F64));
-        let point_z1_plane0 = S::Vector::<2>::from_array([un.clone(), vn.clone()]);
+        let point_z1_plane0 = S::Vector::<2>::from_array([un, vn]);
 
         let rth = rth2.sqrt();
 
@@ -111,25 +117,20 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 4, 8, BAT
 
         let mut iters = 0;
         loop {
-            let th2 = th.clone() * th.clone();
-            let th4 = th2.clone() * th2.clone();
-            let th6 = th2.clone() * th4.clone();
-            let th8 = th4.clone() * th4.clone();
+            let th2 = th * th;
+            let th4 = th2 * th2;
+            let th6 = th2 * th4;
+            let th8 = th4 * th4;
 
-            let thd = th.clone()
-                * (S::from_f64(1.0)
-                    + k0.clone() * th2.clone()
-                    + k1.clone() * th4.clone()
-                    + k2.clone() * th6.clone()
-                    + k3.clone() * th8.clone());
+            let thd = th * (S::from_f64(1.0) + k0 * th2 + k1 * th4 + k2 * th6 + k3 * th8);
             let d_thd_wtr_th = S::from_f64(1.0)
-                + S::from_f64(3.0) * k0.clone() * th2
-                + S::from_f64(5.0) * k1.clone() * th4
-                + S::from_f64(7.0) * k2.clone() * th6
-                + S::from_f64(9.0) * k3.clone() * th8;
+                + S::from_f64(3.0) * k0 * th2
+                + S::from_f64(5.0) * k1 * th4
+                + S::from_f64(7.0) * k2 * th6
+                + S::from_f64(9.0) * k3 * th8;
 
-            let step = (thd - rth.clone()) / d_thd_wtr_th;
-            th -= step.clone();
+            let step = (thd - rth) / d_thd_wtr_th;
+            th -= step;
 
             if (step
                 .real_part()
@@ -157,7 +158,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 4, 8, BAT
         point_z1_plane0.select(
             &rth2_near_zero,
             S::Vector::<2>::from_array([
-                sign.clone() * radius_undistorted.clone() * un / rth.clone(),
+                sign * radius_undistorted * un / rth,
                 sign * radius_undistorted * vn / rth,
             ]),
         )
@@ -178,39 +179,34 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 4, 8, BAT
 
         let k = params.get_fixed_subvec::<4>(4);
 
-        let radius_sq = a.clone() * a.clone() + b.clone() * b.clone();
+        let radius_sq = a * a + b * b;
 
         let near_zero = radius_sq.less_equal(&S::from_f64(EPS_F64));
 
-        let dx0 =
-            S::Matrix::<2, 2>::from_array2([[fx.clone(), S::zeros()], [S::zeros(), fy.clone()]]);
+        let dx0 = S::Matrix::<2, 2>::from_array2([[fx, S::zeros()], [S::zeros(), fy]]);
 
-        let c0 = a.clone() * a.clone();
-        let c1 = b.clone() * b.clone();
-        let c2 = c0.clone() + c1.clone();
+        let c0 = a * a;
+        let c1 = b * b;
+        let c2 = c0 + c1;
         let c2_sqrt = c2.clone().sqrt();
-        let c3 =
-            c2_sqrt.clone() * c2_sqrt.clone() * c2_sqrt.clone() * c2_sqrt.clone() * c2_sqrt.clone();
-        let c4 = c2.clone() + S::from_f64(1.0);
+        let c3 = c2_sqrt * c2_sqrt * c2_sqrt * c2_sqrt * c2_sqrt;
+        let c4 = c2 + S::from_f64(1.0);
         let c5 = c2_sqrt.clone().atan();
-        let c6 = c5.clone() * c5.clone(); // c5^2
-        let c7 = c6.clone() * k.get_elem(0);
-        let c8 = c6.clone() * c6.clone(); // c5^4
-        let c9 = c8.clone() * k.get_elem(1);
-        let c10 = c8.clone() * c6.clone(); // c5^6
-        let c11 = c10.clone() * k.get_elem(2);
-        let c12 = c8.clone() * c8.clone() * k.get_elem(3); // c5^8 * k[3]
-        let c13 = S::from_f64(1.0)
-            * c4.clone()
-            * c5
-            * (c11.clone() + c12.clone() + c7.clone() + c9.clone() + S::from_f64(1.0));
-        let c14 = c13.clone() * c3.clone();
-        let c15 = c2_sqrt.clone() * c2_sqrt.clone() * c2_sqrt.clone();
-        let c16 = c13.clone() * c15.clone();
+        let c6 = c5 * c5; // c5^2
+        let c7 = c6 * k.get_elem(0);
+        let c8 = c6 * c6; // c5^4
+        let c9 = c8 * k.get_elem(1);
+        let c10 = c8 * c6; // c5^6
+        let c11 = c10 * k.get_elem(2);
+        let c12 = c8 * c8 * k.get_elem(3); // c5^8 * k[3]
+        let c13 = S::from_f64(1.0) * c4 * c5 * (c11 + c12 + c7 + c9 + S::from_f64(1.0));
+        let c14 = c13 * c3;
+        let c15 = c2_sqrt * c2_sqrt * c2_sqrt;
+        let c16 = c13 * c15;
         let c17 = S::from_f64(1.0) * c11
             + S::from_f64(1.0) * c12
             + S::from_f64(2.0)
-                * c6.clone()
+                * c6
                 * (S::from_f64(4.0) * c10 * k.get_elem(3)
                     + S::from_f64(2.0) * c6 * k.get_elem(1)
                     + S::from_f64(3.0) * c8 * k.get_elem(2)
@@ -218,22 +214,14 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 4, 8, BAT
             + S::from_f64(1.0) * c7
             + S::from_f64(1.0) * c9
             + S::from_f64(1.0);
-        let c18 = c17.clone() * c2.clone() * c2.clone();
+        let c18 = c17 * c2 * c2;
         let c19 = S::from_f64(1.0) / c4;
-        let c20 = c19.clone() / (c2.clone() * c2.clone() * c2.clone());
+        let c20 = c19 / (c2 * c2 * c2);
         let c21 = a * b * c19 * (-c13 * c2 + c15 * c17) / c3;
 
         let dx = S::Matrix::<2, 2>::from_array2([
-            [
-                c20.clone()
-                    * fx.clone()
-                    * (-c0.clone() * c16.clone() + c0 * c18.clone() + c14.clone()),
-                c21.clone() * fx,
-            ],
-            [
-                c21 * fy.clone(),
-                c20 * fy * (-c1.clone() * c16 + c1 * c18 + c14),
-            ],
+            [c20 * fx * (-c0 * c16 + c0 * c18 + c14), c21 * fx],
+            [c21 * fy, c20 * fy * (-c1 * c16 + c1 * c18 + c14)],
         ]);
 
         dx0.select(&near_zero, dx)
@@ -256,53 +244,50 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 4, 8, BAT
         let k2 = params.get_elem(6);
         let k3 = params.get_elem(7);
 
-        let xx = x.clone() * x.clone();
-        let yy = y.clone() * y.clone();
-        let radius_sq = xx.clone() + yy.clone();
+        let xx = x * x;
+        let yy = y * y;
+        let radius_sq = xx + yy;
         let radius = radius_sq.clone().sqrt();
         let theta = radius.clone().atan2(S::from_f64(1.0));
-        let theta2 = theta.clone() * theta.clone();
-        let theta4 = theta2.clone() * theta2.clone();
-        let theta6 = theta2.clone() * theta4.clone();
-        let theta8 = theta4.clone() * theta4.clone();
+        let theta2 = theta * theta;
+        let theta4 = theta2 * theta2;
+        let theta6 = theta2 * theta4;
+        let theta8 = theta4 * theta4;
 
         // alpha = x * atan(r^2) / r^2
         //
         // x==0 and y==0, then
         //
         // alpha = 1
-        let alpha = theta.clone() / radius.clone();
+        let alpha = theta / radius;
         let r_near_zero = radius_sq.clone().abs().less_equal(&S::from_f64(EPS_F64));
         let alpha = S::ones().select(&r_near_zero, alpha);
 
-        let alpha_x = x.clone() * alpha.clone();
-        let alpha_y = y.clone() * alpha.clone();
+        let alpha_x = x * alpha;
+        let alpha_y = y * alpha;
 
-        let scaling_by_theta = S::from_f64(1.0)
-            + k0.clone() * theta2.clone()
-            + k1.clone() * theta4.clone()
-            + k2.clone() * theta6.clone()
-            + k3.clone() * theta8.clone();
+        let scaling_by_theta =
+            S::from_f64(1.0) + k0 * theta2 + k1 * theta4 + k2 * theta6 + k3 * theta8;
 
-        let dx_dfx = alpha_x.clone() * scaling_by_theta.clone();
-        let dy_dfy = alpha_y.clone() * scaling_by_theta.clone();
+        let dx_dfx = alpha_x * scaling_by_theta;
+        let dy_dfy = alpha_y * scaling_by_theta;
         let dx_dcx = S::from_f64(1.0);
         let dy_dcy = S::from_f64(1.0);
 
-        let dr_dk0_by_theta = theta2.clone();
-        let dr_dk1_by_theta = theta4.clone();
-        let dr_dk2_by_theta = theta6.clone();
-        let dr_dk3_by_theta = theta8.clone();
+        let dr_dk0_by_theta = theta2;
+        let dr_dk1_by_theta = theta4;
+        let dr_dk2_by_theta = theta6;
+        let dr_dk3_by_theta = theta8;
 
-        let dx_dk0 = fx.clone() * alpha_x.clone() * dr_dk0_by_theta.clone();
-        let dx_dk1 = fx.clone() * alpha_x.clone() * dr_dk1_by_theta.clone();
-        let dx_dk2 = fx.clone() * alpha_x.clone() * dr_dk2_by_theta.clone();
-        let dx_dk3 = fx.clone() * alpha_x.clone() * dr_dk3_by_theta.clone();
+        let dx_dk0 = fx * alpha_x * dr_dk0_by_theta;
+        let dx_dk1 = fx * alpha_x * dr_dk1_by_theta;
+        let dx_dk2 = fx * alpha_x * dr_dk2_by_theta;
+        let dx_dk3 = fx * alpha_x * dr_dk3_by_theta;
 
-        let dy_dk0 = fy.clone() * alpha_y.clone() * dr_dk0_by_theta.clone();
-        let dy_dk1 = fy.clone() * alpha_y.clone() * dr_dk1_by_theta.clone();
-        let dy_dk2 = fy.clone() * alpha_y.clone() * dr_dk2_by_theta.clone();
-        let dy_dk3 = fy.clone() * alpha_y.clone() * dr_dk3_by_theta.clone();
+        let dy_dk0 = fy * alpha_y * dr_dk0_by_theta;
+        let dy_dk1 = fy * alpha_y * dr_dk1_by_theta;
+        let dy_dk2 = fy * alpha_y * dr_dk2_by_theta;
+        let dy_dk3 = fy * alpha_y * dr_dk3_by_theta;
 
         S::Matrix::<2, 8>::from_array2([
             [

@@ -22,12 +22,17 @@ extern crate alloc;
 
 /// 3d rotation implementation - SO(3)
 #[derive(Debug, Copy, Clone, Default)]
-pub struct Rotation3Impl<S: IsScalar<BATCH>, const BATCH: usize> {
+pub struct Rotation3Impl<
+    S: IsScalar<BATCH, DM, DN>,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     phantom: PhantomData<S>,
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> HasDisambiguate<S, 4, BATCH>
-    for Rotation3Impl<S, BATCH>
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    HasDisambiguate<S, 4, BATCH, DM, DN> for Rotation3Impl<S, BATCH, DM, DN>
 {
     fn disambiguate(params: S::Vector<4>) -> S::Vector<4> {
         // make sure real component is always positive
@@ -37,130 +42,124 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> HasDisambiguate<S, 4, BATCH>
     }
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 4, BATCH> for Rotation3Impl<S, BATCH> {
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    ParamsImpl<S, 4, BATCH, DM, DN> for Rotation3Impl<S, BATCH, DM, DN>
+{
     fn params_examples() -> alloc::vec::Vec<S::Vector<4>> {
         const NEAR_PI: f64 = f64::consts::PI - 1e-6;
         const NEAR_MINUS_PI: f64 = f64::consts::PI - 1e-6;
 
         alloc::vec![
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([0.0, 0.0, 0.0]))
-                .params()
-                .clone(),
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([0.1, 0.5, -0.1]))
-                .params()
-                .clone(),
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([0.1, 2.0, -0.1]))
-                .params()
-                .clone(),
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([0.0, 0.2, 1.0]))
-                .params()
-                .clone(),
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([-0.2, 0.0, 0.8]))
-                .params()
-                .clone(),
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([0.0, 0.0, 0.0]))
+                .params(),
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([0.1, 0.5, -0.1]))
+                .params(),
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([0.1, 2.0, -0.1]))
+                .params(),
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([0.0, 0.2, 1.0]))
+                .params(),
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([-0.2, 0.0, 0.8]))
+                .params(),
             // Test cases around +π and -π
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([NEAR_PI, 0.0, 0.0]))
-                .params()
-                .clone(), // +π rotation about the x-axis
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([NEAR_MINUS_PI, 0.0, 0.0]))
-                .params()
-                .clone(), // -π rotation about the x-axis
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([0.0, NEAR_PI, 0.0]))
-                .params()
-                .clone(), // +π rotation about the y-axis
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([0.0, NEAR_MINUS_PI, 0.0]))
-                .params()
-                .clone(), // -π rotation about the y-axis
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([0.0, 0.0, NEAR_PI]))
-                .params()
-                .clone(), // +π rotation about the z-axis
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([0.0, 0.0, NEAR_MINUS_PI]))
-                .params()
-                .clone(), // -π rotation about the z-axis
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([
+                NEAR_PI, 0.0, 0.0
+            ]))
+            .params(), // +π rotation about the x-axis
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([
+                NEAR_MINUS_PI,
+                0.0,
+                0.0
+            ]))
+            .params(), // -π rotation about the x-axis
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([
+                0.0, NEAR_PI, 0.0
+            ]))
+            .params(), // +π rotation about the y-axis
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([
+                0.0,
+                NEAR_MINUS_PI,
+                0.0
+            ]))
+            .params(), // -π rotation about the y-axis
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([
+                0.0, 0.0, NEAR_PI
+            ]))
+            .params(), // +π rotation about the z-axis
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([
+                0.0,
+                0.0,
+                NEAR_MINUS_PI
+            ]))
+            .params(), // -π rotation about the z-axis
             // Close to +π and -π, but not exactly, to test boundary behavior
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([3.0, 0.0, 0.0]))
-                .params()
-                .clone(),
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([-3.0, 0.0, 0.0]))
-                .params()
-                .clone(),
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([0.0, 3.0, 0.0]))
-                .params()
-                .clone(),
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([0.0, -3.0, 0.0]))
-                .params()
-                .clone(),
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([0.0, 0.0, 3.0]))
-                .params()
-                .clone(),
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([0.0, 0.0, -3.0]))
-                .params()
-                .clone(),
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([3.0, 0.0, 0.0]))
+                .params(),
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([-3.0, 0.0, 0.0]))
+                .params(),
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([0.0, 3.0, 0.0]))
+                .params(),
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([0.0, -3.0, 0.0]))
+                .params(),
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([0.0, 0.0, 3.0]))
+                .params(),
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([0.0, 0.0, -3.0]))
+                .params(),
             // Halfway to π rotations, to cover intermediate rotations
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([
                 f64::consts::FRAC_PI_2,
                 0.0,
                 0.0,
             ]))
-            .params()
-            .clone(), // +π/2 about x-axis
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([
+            .params(), // +π/2 about x-axis
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([
                 0.0,
                 f64::consts::FRAC_PI_2,
                 0.0,
             ]))
-            .params()
-            .clone(), // +π/2 about y-axis
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([
+            .params(), // +π/2 about y-axis
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([
                 0.0,
                 0.0,
                 f64::consts::FRAC_PI_2,
             ]))
-            .params()
-            .clone(), // +π/2 about z-axis
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([
+            .params(), // +π/2 about z-axis
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([
                 -f64::consts::FRAC_PI_2,
                 0.0,
                 0.0,
             ]))
-            .params()
-            .clone(), // -π/2 about x-axis
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([
+            .params(), // -π/2 about x-axis
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([
                 0.0,
                 -f64::consts::FRAC_PI_2,
                 0.0,
             ]))
-            .params()
-            .clone(), // -π/2 about y-axis
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([
+            .params(), // -π/2 about y-axis
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([
                 0.0,
                 0.0,
                 -f64::consts::FRAC_PI_2,
             ]))
-            .params()
-            .clone(), // -π/2 about z-axis
+            .params(), // -π/2 about z-axis
             // Complex combination rotations around the boundary
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([
                 NEAR_PI / 2.0,
                 NEAR_PI / 2.0,
                 0.0,
             ]))
-            .params()
-            .clone(),
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([
+            .params(),
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([
                 NEAR_MINUS_PI / 2.0,
                 0.0,
                 NEAR_PI / 2.0,
             ]))
-            .params()
-            .clone(),
-            Rotation3::<S, BATCH>::exp(S::Vector::<3>::from_f64_array([
+            .params(),
+            *Rotation3::<S, BATCH, DM, DN>::exp(S::Vector::<3>::from_f64_array([
                 0.0,
                 NEAR_PI / 2.0,
                 NEAR_PI / 2.0,
             ]))
-            .params()
-            .clone(),
+            .params(),
         ]
     }
 
@@ -183,7 +182,9 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 4, BATCH> for Rotatio
     }
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> TangentImpl<S, 3, BATCH> for Rotation3Impl<S, BATCH> {
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    TangentImpl<S, 3, BATCH, DM, DN> for Rotation3Impl<S, BATCH, DM, DN>
+{
     fn tangent_examples() -> alloc::vec::Vec<S::Vector<3>> {
         alloc::vec![
             S::Vector::<3>::from_f64_array([0.0, 0.0, 0.0]),
@@ -199,8 +200,8 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> TangentImpl<S, 3, BATCH> for Rotati
     }
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> IsLieGroupImpl<S, 3, 4, 3, 3, BATCH>
-    for Rotation3Impl<S, BATCH>
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    IsLieGroupImpl<S, 3, 4, 3, 3, BATCH, DM, DN> for Rotation3Impl<S, BATCH, DM, DN>
 {
     const IS_ORIGIN_PRESERVING: bool = true;
     const IS_AXIS_DIRECTION_PRESERVING: bool = false;
@@ -221,15 +222,15 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsLieGroupImpl<S, 3, 4, 3, 3, BATCH
         const EPS: f64 = EPS_F64;
         let theta_sq = omega.squared_norm();
 
-        let theta_po4 = theta_sq.clone() * theta_sq.clone();
+        let theta_po4 = theta_sq * theta_sq;
         let theta = theta_sq.clone().sqrt();
-        let half_theta: S = S::from_f64(0.5) * theta.clone();
+        let half_theta: S = S::from_f64(0.5) * theta;
 
         let near_zero = theta_sq.less_equal(&S::from_f64(EPS * EPS));
 
-        let imag_factor = (S::from_f64(0.5) - S::from_f64(1.0 / 48.0) * theta_sq.clone()
-            + S::from_f64(1.0 / 3840.0) * theta_po4.clone())
-        .select(&near_zero, half_theta.clone().sin() / theta);
+        let imag_factor = (S::from_f64(0.5) - S::from_f64(1.0 / 48.0) * theta_sq
+            + S::from_f64(1.0 / 3840.0) * theta_po4)
+            .select(&near_zero, half_theta.clone().sin() / theta);
 
         let real_factor = (S::from_f64(1.0) - S::from_f64(1.0 / 8.0) * theta_sq
             + S::from_f64(1.0 / 384.0) * theta_po4)
@@ -237,8 +238,8 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsLieGroupImpl<S, 3, 4, 3, 3, BATCH
 
         S::Vector::<4>::from_array([
             real_factor,
-            imag_factor.clone() * omega.get_elem(0),
-            imag_factor.clone() * omega.get_elem(1),
+            imag_factor * omega.get_elem(0),
+            imag_factor * omega.get_elem(1),
             imag_factor * omega.get_elem(2),
         ])
     }
@@ -252,14 +253,13 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsLieGroupImpl<S, 3, 4, 3, 3, BATCH
 
         let near_zero = squared_n.less_equal(&S::from_f64(EPS * EPS));
 
-        let w_sq = w.clone() * w.clone();
-        let t0 = S::from_f64(2.0) / w.clone()
-            - S::from_f64(2.0 / 3.0) * squared_n.clone() / (w_sq * w.clone());
+        let w_sq = w * w;
+        let t0 = S::from_f64(2.0) / w - S::from_f64(2.0 / 3.0) * squared_n / (w_sq * w);
 
         let n = squared_n.sqrt();
 
         let sign = S::from_f64(-1.0).select(&w.less_equal(&S::from_f64(0.0)), S::from_f64(1.0));
-        let atan_nbyw = sign.clone() * n.atan2(sign * w);
+        let atan_nbyw = sign * n.atan2(sign * w);
 
         let t = S::from_f64(2.0) * atan_nbyw / n;
 
@@ -274,8 +274,8 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsLieGroupImpl<S, 3, 4, 3, 3, BATCH
         let o2 = omega.get_elem(2);
 
         S::Matrix::from_array2([
-            [S::zero(), -o2.clone(), o1.clone()],
-            [o2, S::zero(), -o0.clone()],
+            [S::zero(), -o2, o1],
+            [o2, S::zero(), -o0],
             [-o1, o0, S::zero()],
         ])
     }
@@ -298,11 +298,11 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsLieGroupImpl<S, 3, 4, 3, 3, BATCH
     }
 
     fn transform(params: &S::Vector<4>, point: &S::Vector<3>) -> S::Vector<3> {
-        Self::matrix(params) * point.clone()
+        Self::matrix(params) * *point
     }
 
     fn to_ambient(point: &S::Vector<3>) -> S::Vector<3> {
-        point.clone()
+        *point
     }
 
     fn compact(params: &S::Vector<4>) -> S::Matrix<3, 3> {
@@ -319,13 +319,13 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsLieGroupImpl<S, 3, 4, 3, 3, BATCH
 
         let two = &S::from_f64(2.0);
 
-        let uv_x: S::Vector<3> = cross::<S, BATCH>(&ivec, &unit_x).scaled(two);
-        let uv_y: S::Vector<3> = cross::<S, BATCH>(&ivec, &unit_y).scaled(two);
-        let uv_z: S::Vector<3> = cross::<S, BATCH>(&ivec, &unit_z).scaled(two);
+        let uv_x: S::Vector<3> = cross::<S, BATCH, DM, DN>(&ivec, &unit_x).scaled(two);
+        let uv_y: S::Vector<3> = cross::<S, BATCH, DM, DN>(&ivec, &unit_y).scaled(two);
+        let uv_z: S::Vector<3> = cross::<S, BATCH, DM, DN>(&ivec, &unit_z).scaled(two);
 
-        let col_x = unit_x + cross::<S, BATCH>(&ivec, &uv_x) + uv_x.scaled(re);
-        let col_y = unit_y + cross::<S, BATCH>(&ivec, &uv_y) + uv_y.scaled(re);
-        let col_z = unit_z + cross::<S, BATCH>(&ivec, &uv_z) + uv_z.scaled(re);
+        let col_x = unit_x + cross::<S, BATCH, DM, DN>(&ivec, &uv_x) + uv_x.scaled(re);
+        let col_y = unit_y + cross::<S, BATCH, DM, DN>(&ivec, &uv_y) + uv_y.scaled(re);
+        let col_z = unit_z + cross::<S, BATCH, DM, DN>(&ivec, &uv_z) + uv_z.scaled(re);
 
         S::Matrix::block_mat1x2::<1, 2>(
             col_x.to_mat(),
@@ -337,9 +337,9 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsLieGroupImpl<S, 3, 4, 3, 3, BATCH
         Self::hat(omega)
     }
 
-    type GenG<S2: IsScalar<BATCH>> = Rotation3Impl<S2, BATCH>;
-    type RealG = Rotation3Impl<S::RealScalar, BATCH>;
-    type DualG = Rotation3Impl<S::DualScalar, BATCH>;
+    type GenG<S2: IsScalar<BATCH, DM, DN>> = Rotation3Impl<S2, BATCH, DM, DN>;
+    type RealG = Rotation3Impl<S::RealScalar, BATCH, 0, 0>;
+    type DualG<const M: usize, const N: usize> = Rotation3Impl<S::DualScalar<M, N>, BATCH, M, N>;
 
     fn group_mul(lhs_params: &S::Vector<4>, rhs_params: &S::Vector<4>) -> S::Vector<4> {
         let lhs_re = lhs_params.get_elem(0);
@@ -348,10 +348,10 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsLieGroupImpl<S, 3, 4, 3, 3, BATCH
         let lhs_ivec = lhs_params.get_fixed_subvec::<3>(1);
         let rhs_ivec = rhs_params.get_fixed_subvec::<3>(1);
 
-        let re = lhs_re.clone() * rhs_re.clone() - lhs_ivec.dot(&rhs_ivec);
+        let re = lhs_re * rhs_re - lhs_ivec.dot(rhs_ivec);
         let ivec = rhs_ivec.scaled(lhs_re)
             + lhs_ivec.scaled(rhs_re)
-            + cross::<S, BATCH>(&lhs_ivec, &rhs_ivec);
+            + cross::<S, BATCH, DM, DN>(&lhs_ivec, &rhs_ivec);
 
         let mut params = S::Vector::block_vec2(re.to_vec(), ivec);
 
@@ -368,7 +368,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsLieGroupImpl<S, 3, 4, 3, 3, BATCH
 }
 
 impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 3, BATCH>
-    for Rotation3Impl<S, BATCH>
+    for Rotation3Impl<S, BATCH, 0, 0>
 {
     fn dx_exp_x_at_0() -> S::Matrix<4, 3> {
         S::Matrix::from_f64_array2([
@@ -417,7 +417,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
         let rhs_re = b.get_elem(0);
         let lhs_ivec = a.get_fixed_subvec::<3>(1);
         let rhs_ivec = b.get_fixed_subvec::<3>(1);
-        let re = lhs_re * rhs_re - lhs_ivec.dot(&rhs_ivec);
+        let re = lhs_re * rhs_re - lhs_ivec.dot(rhs_ivec);
         let is_positive = S::from_f64(0.0).less_equal(&re);
 
         let a_real = a.get_elem(0);
@@ -443,7 +443,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
     }
 
     fn dx_exp_x_times_point_at_0(point: &S::Vector<3>) -> S::Matrix<3, 3> {
-        Self::hat(&-point.clone())
+        Self::hat(&-*point)
     }
 
     fn dx_exp(omega: &S::Vector<3>) -> S::Matrix<4, 3> {
@@ -502,7 +502,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
         let factor =
             S::from_f64(2.0) * w / (squared_n * (squared_n + w * w)) - theta / (squared_n * n);
 
-        let mm = ivec.outer(&ivec).scaled(factor);
+        let mm = ivec.outer(ivec).scaled(factor);
 
         m0.select(
             &near_zero,
@@ -614,17 +614,20 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
     }
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> crate::traits::IsLieFactorGroupImpl<S, 3, 4, 3, BATCH>
-    for Rotation3Impl<S, BATCH>
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    crate::traits::IsLieFactorGroupImpl<S, 3, 4, 3, BATCH, DM, DN>
+    for Rotation3Impl<S, BATCH, DM, DN>
 {
-    type GenFactorG<S2: IsScalar<BATCH>> = Rotation3Impl<S2, BATCH>;
-    type RealFactorG = Rotation3Impl<S::RealScalar, BATCH>;
-    type DualFactorG = Rotation3Impl<S::DualScalar, BATCH>;
+    type GenFactorG<S2: IsScalar<BATCH, M, N>, const M: usize, const N: usize> =
+        Rotation3Impl<S2, BATCH, M, N>;
+    type RealFactorG = Rotation3Impl<S::RealScalar, BATCH, 0, 0>;
+    type DualFactorG<const M: usize, const N: usize> =
+        Rotation3Impl<S::DualScalar<M, N>, BATCH, M, N>;
 
     fn mat_v(omega: &S::Vector<3>) -> S::Matrix<3, 3> {
         let theta_sq = omega.squared_norm();
-        let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH>::hat(omega);
-        let mat_omega_sq = mat_omega.mat_mul(&mat_omega);
+        let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH, DM, DN>::hat(omega);
+        let mat_omega_sq = mat_omega.mat_mul(mat_omega);
 
         let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
 
@@ -632,16 +635,16 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> crate::traits::IsLieFactorGroupImpl
 
         let theta = theta_sq.sqrt();
         let mat_v = S::Matrix::<3, 3>::identity()
-            + mat_omega.scaled((S::from_f64(1.0) - theta.clone().cos()) / theta_sq.clone())
-            + mat_omega_sq.scaled((theta.clone() - theta.clone().sin()) / (theta_sq * theta));
+            + mat_omega.scaled((S::from_f64(1.0) - theta.clone().cos()) / theta_sq)
+            + mat_omega_sq.scaled((theta - theta.clone().sin()) / (theta_sq * theta));
 
         mat_v0.select(&near_zero, mat_v)
     }
 
     fn mat_v_inverse(omega: &S::Vector<3>) -> S::Matrix<3, 3> {
         let theta_sq = omega.dot(omega);
-        let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH>::hat(omega);
-        let mat_omega_sq = mat_omega.mat_mul(&mat_omega);
+        let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH, DM, DN>::hat(omega);
+        let mat_omega_sq = mat_omega.mat_mul(mat_omega);
 
         let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
 
@@ -649,30 +652,30 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> crate::traits::IsLieFactorGroupImpl
             + mat_omega_sq.scaled(S::from_f64(1. / 12.));
 
         let theta = theta_sq.sqrt();
-        let half_theta = S::from_f64(0.5) * theta.clone();
+        let half_theta = S::from_f64(0.5) * theta;
 
         let mat_v_inv = S::Matrix::<3, 3>::identity() - mat_omega.scaled(S::from_f64(0.5))
             + mat_omega_sq.scaled(
                 (S::from_f64(1.0)
-                    - (S::from_f64(0.5) * theta.clone() * half_theta.clone().cos())
-                        / half_theta.sin())
-                    / (theta.clone() * theta),
+                    - (S::from_f64(0.5) * theta * half_theta.clone().cos()) / half_theta.sin())
+                    / (theta * theta),
             );
 
         mat_v_inv0.select(&near_zero, mat_v_inv)
     }
 
     fn adj_of_translation(params: &S::Vector<4>, point: &S::Vector<3>) -> S::Matrix<3, 3> {
-        Rotation3Impl::<S, BATCH>::hat(point).mat_mul(Rotation3Impl::<S, BATCH>::matrix(params))
+        Rotation3Impl::<S, BATCH, DM, DN>::hat(point)
+            .mat_mul(Rotation3Impl::<S, BATCH, DM, DN>::matrix(params))
     }
 
     fn ad_of_translation(point: &S::Vector<3>) -> S::Matrix<3, 3> {
-        Rotation3Impl::<S, BATCH>::hat(point)
+        Rotation3Impl::<S, BATCH, DM, DN>::hat(point)
     }
 }
 
 impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 4, 3, BATCH>
-    for Rotation3Impl<S, BATCH>
+    for Rotation3Impl<S, BATCH, 0, 0>
 {
     fn dx_mat_v(omega: &S::Vector<3>) -> [S::Matrix<3, 3>; 3] {
         let theta_sq = omega.squared_norm();
@@ -682,8 +685,8 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
 
         let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
 
-        let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH>::hat(omega);
-        let mat_omega_sq = mat_omega.mat_mul(&mat_omega);
+        let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH, 0, 0>::hat(omega);
+        let mat_omega_sq = mat_omega.mat_mul(mat_omega);
 
         let omega_x = omega.get_elem(0);
         let omega_y = omega.get_elem(1);
@@ -784,8 +787,8 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
         let theta_sq = omega.squared_norm();
         let theta = theta_sq.sqrt();
         let half_theta = S::from_f64(0.5) * theta;
-        let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH>::hat(omega);
-        let mat_omega_sq = mat_omega.mat_mul(&mat_omega);
+        let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH, 0, 0>::hat(omega);
+        let mat_omega_sq = mat_omega.mat_mul(mat_omega);
 
         let dt_mat_omega_pos_idx = [[2, 1], [0, 2], [1, 0]];
         let dt_mat_omega_neg_idx = [[1, 2], [2, 0], [0, 1]];
@@ -848,23 +851,22 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
 }
 
 /// 3d rotation group - SO(3)
-pub type Rotation3<S, const BATCH: usize> = LieGroup<S, 3, 4, 3, 3, BATCH, Rotation3Impl<S, BATCH>>;
+pub type Rotation3<S, const BATCH: usize, const DM: usize, const DN: usize> =
+    LieGroup<S, 3, 4, 3, 3, BATCH, DM, DN, Rotation3Impl<S, BATCH, DM, DN>>;
 
 /// 3d rotation group - SO(3) with f64 scalar type
-pub type Rotation3F64 = Rotation3<f64, 1>;
+pub type Rotation3F64 = Rotation3<f64, 1, 0, 0>;
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> Rotation3<S, BATCH> {
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    Rotation3<S, BATCH, DM, DN>
+{
     /// Rotation around the x-axis.
     pub fn rot_x<U>(theta: U) -> Self
     where
         U: Borrow<S>,
     {
         let theta: &S = theta.borrow();
-        Rotation3::exp(S::Vector::<3>::from_array([
-            theta.clone(),
-            S::zero(),
-            S::zero(),
-        ]))
+        Rotation3::exp(S::Vector::<3>::from_array([*theta, S::zero(), S::zero()]))
     }
 
     /// Rotation around the y-axis.
@@ -873,11 +875,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Rotation3<S, BATCH> {
         U: Borrow<S>,
     {
         let theta: &S = theta.borrow();
-        Rotation3::exp(S::Vector::<3>::from_array([
-            S::zero(),
-            theta.clone(),
-            S::zero(),
-        ]))
+        Rotation3::exp(S::Vector::<3>::from_array([S::zero(), *theta, S::zero()]))
     }
 
     /// Rotation around the z-axis.
@@ -886,15 +884,13 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Rotation3<S, BATCH> {
         U: Borrow<S>,
     {
         let theta: &S = theta.borrow();
-        Rotation3::exp(S::Vector::<3>::from_array([
-            S::zero(),
-            S::zero(),
-            theta.clone(),
-        ]))
+        Rotation3::exp(S::Vector::<3>::from_array([S::zero(), S::zero(), *theta]))
     }
 }
 
-impl<S: IsSingleScalar + PartialOrd> Rotation3<S, 1> {
+impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
+    Rotation3<S, 1, DM, DN>
+{
     /// Is orthogonal with determinant 1.
     pub fn is_orthogonal_with_positive_det(mat: &MatF64<3, 3>, thr: f64) -> bool {
         // We expect: R * R^T = I   and   det(R) > 0
@@ -906,7 +902,7 @@ impl<S: IsSingleScalar + PartialOrd> Rotation3<S, 1> {
 
     /// From a 3x3 rotation matrix. The matrix must be a valid rotation matrix,
     /// i.e., it must be orthogonal with determinant 1, otherwise None is returned.
-    pub fn try_from_mat<M>(mat_r: M) -> Option<Rotation3<S, 1>>
+    pub fn try_from_mat<M>(mat_r: M) -> Option<Rotation3<S, 1, DM, DN>>
     where
         M: Borrow<S::SingleMatrix<3, 3>>,
     {
@@ -938,7 +934,7 @@ impl<S: IsSingleScalar + PartialOrd> Rotation3<S, 1> {
             // (Note: We are in the tr>0 case, "tr + 1" is always positive,
             //        hence we can safely take the square root, and |w| > 0.5.)
             let sqrt_trace_plus_one = (S::from_f64(1.0) + trace).sqrt();
-            let w = S::from_f64(0.5) * sqrt_trace_plus_one.clone();
+            let w = S::from_f64(0.5) * sqrt_trace_plus_one;
 
             // Now x:
             //
@@ -963,8 +959,8 @@ impl<S: IsSingleScalar + PartialOrd> Rotation3<S, 1> {
 
             S::Vector::<4>::from_array([
                 w,
-                factor.clone() * (mat_r.get_elem([2, 1]) - mat_r.get_elem([1, 2])),
-                factor.clone() * (mat_r.get_elem([0, 2]) - mat_r.get_elem([2, 0])),
+                factor * (mat_r.get_elem([2, 1]) - mat_r.get_elem([1, 2])),
+                factor * (mat_r.get_elem([0, 2]) - mat_r.get_elem([2, 0])),
                 factor * (mat_r.get_elem([1, 0]) - mat_r.get_elem([0, 1])),
             ])
         } else {
@@ -997,7 +993,7 @@ impl<S: IsSingleScalar + PartialOrd> Rotation3<S, 1> {
                 + S::from_f64(1.0))
             .sqrt();
             let mut q = S::Vector::<4>::zeros();
-            q.set_elem(i + 1, S::from_f64(0.5) * sqrt.clone());
+            q.set_elem(i + 1, S::from_f64(0.5) * sqrt);
 
             // For w:
             //
@@ -1009,10 +1005,10 @@ impl<S: IsSingleScalar + PartialOrd> Rotation3<S, 1> {
             // w = (R21 - R12) / 4*x
             //   = (R21 - R12) / (2*sqrt(R00 - R11 - R22 + 1))
 
-            let one_over_two_s = S::from_f64(0.5) / sqrt.clone();
+            let one_over_two_s = S::from_f64(0.5) / sqrt;
             q.set_elem(
                 0,
-                (mat_r.get_elem([k, j]) - mat_r.get_elem([j, k])) * one_over_two_s.clone(),
+                (mat_r.get_elem([k, j]) - mat_r.get_elem([j, k])) * one_over_two_s,
             );
 
             // For y:
@@ -1026,7 +1022,7 @@ impl<S: IsSingleScalar + PartialOrd> Rotation3<S, 1> {
             //   = (R01 + R10) / (2*sqrt(R00 - R11 - R22 + 1))
             q.set_elem(
                 j + 1,
-                (mat_r.get_elem([j, i]) + mat_r.get_elem([i, j])) * one_over_two_s.clone(),
+                (mat_r.get_elem([j, i]) + mat_r.get_elem([i, j])) * one_over_two_s,
             );
 
             // For z ...
@@ -1037,7 +1033,7 @@ impl<S: IsSingleScalar + PartialOrd> Rotation3<S, 1> {
             q
         };
 
-        Some(Rotation3::from_params(&q_params))
+        Some(Rotation3::from_params(q_params))
     }
 }
 
@@ -1051,24 +1047,28 @@ fn rotation3_prop_tests() {
     #[cfg(feature = "simd")]
     use sophus_core::linalg::BatchScalarF64;
 
-    Rotation3::<f64, 1>::test_suite();
+    Rotation3F64::test_suite();
     #[cfg(feature = "simd")]
-    Rotation3::<BatchScalarF64<8>, 8>::test_suite();
-    Rotation3::<DualScalar, 1>::test_suite();
+    Rotation3::<BatchScalarF64<8>, 8, 0, 0>::test_suite();
+    Rotation3::<DualScalar<3, 1>, 1, 3, 1>::test_suite();
     #[cfg(feature = "simd")]
-    Rotation3::<DualBatchScalar<8>, 8>::test_suite();
+    Rotation3::<DualBatchScalar<8, 1, 1>, 8, 1, 1>::test_suite();
 
-    Rotation3::<f64, 1>::run_real_tests();
+    Rotation3F64::run_real_tests();
     #[cfg(feature = "simd")]
-    Rotation3::<BatchScalarF64<8>, 8>::run_real_tests();
+    Rotation3::<BatchScalarF64<8>, 8, 0, 0>::run_real_tests();
 
-    Rotation3::<f64, 1>::run_real_factor_tests();
+    Rotation3F64::run_real_factor_tests();
     #[cfg(feature = "simd")]
-    Rotation3::<BatchScalarF64<8>, 8>::run_real_factor_tests();
+    Rotation3::<BatchScalarF64<8>, 8, 0, 0>::run_real_factor_tests();
 }
 
-impl<S: IsSingleScalar + PartialOrd> HasAverage<S, 3, 4, 3, 3> for Rotation3<S, 1> {
-    fn average(parent_from_body_transforms: &[Rotation3<S, 1>]) -> Result<Self, EmptySliceError> {
+impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
+    HasAverage<S, 3, 4, 3, 3, DM, DN> for Rotation3<S, 1, DM, DN>
+{
+    fn average(
+        parent_from_body_transforms: &[Rotation3<S, 1, DM, DN>],
+    ) -> Result<Self, EmptySliceError> {
         // todo: Implement close form solution.
 
         match iterative_average(parent_from_body_transforms, 50) {
@@ -1095,11 +1095,11 @@ fn from_matrix_test() {
     use approx::assert_relative_eq;
     use log::info;
 
-    for q in Rotation3::<f64, 1>::element_examples() {
+    for q in Rotation3F64::element_examples() {
         let mat: MatF64<3, 3> = q.matrix();
 
         info!("mat = {:?}", mat);
-        let q2: Rotation3<f64, 1> = Rotation3::try_from_mat(mat).unwrap();
+        let q2: Rotation3F64 = Rotation3::try_from_mat(mat).unwrap();
         let mat2 = q2.matrix();
 
         info!("mat2 = {:?}", mat2);
@@ -1107,10 +1107,10 @@ fn from_matrix_test() {
     }
 
     // Iterate over all tangent too, just to get more examples.
-    for t in Rotation3::<f64, 1>::tangent_examples() {
-        let mat: MatF64<3, 3> = Rotation3::<f64, 1>::exp(t).matrix();
+    for t in Rotation3F64::tangent_examples() {
+        let mat: MatF64<3, 3> = Rotation3F64::exp(t).matrix();
         info!("mat = {:?}", mat);
-        let t2: Rotation3<f64, 1> = Rotation3::try_from_mat(mat).unwrap();
+        let t2: Rotation3F64 = Rotation3::try_from_mat(mat).unwrap();
         let mat2 = t2.matrix();
         info!("mat2 = {:?}", mat2);
         assert_relative_eq!(mat, mat2, epsilon = EPS_F64);

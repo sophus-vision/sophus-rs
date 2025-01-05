@@ -20,28 +20,32 @@ pub mod real_lie_group;
 /// Lie group
 #[derive(Debug, Copy, Clone, Default)]
 pub struct LieGroup<
-    S: IsScalar<BATCH_SIZE>,
+    S: IsScalar<BATCH, DM, DN>,
     const DOF: usize,
     const PARAMS: usize,
     const POINT: usize,
     const AMBIENT: usize,
-    const BATCH_SIZE: usize,
-    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
 > {
     pub(crate) params: S::Vector<PARAMS>,
     phantom: core::marker::PhantomData<G>,
 }
 
 impl<
-        S: IsScalar<BATCH_SIZE>,
+        S: IsScalar<BATCH, DM, DN>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
-        const BATCH_SIZE: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
-    > ParamsImpl<S, PARAMS, BATCH_SIZE>
-    for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
+        const BATCH: usize,
+        const DM: usize,
+        const DN: usize,
+        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
+    > ParamsImpl<S, PARAMS, BATCH, DM, DN>
+    for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     fn are_params_valid<P>(params: P) -> S::Mask
     where
@@ -60,14 +64,17 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH_SIZE>,
+        S: IsScalar<BATCH, DM, DN>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
-        const BATCH_SIZE: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
-    > HasParams<S, PARAMS, BATCH_SIZE> for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
+        const BATCH: usize,
+        const DM: usize,
+        const DN: usize,
+        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
+    > HasParams<S, PARAMS, BATCH, DM, DN>
+    for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     fn from_params<P>(params: P) -> Self
     where
@@ -81,7 +88,7 @@ impl<
             params.real_vector()
         );
         Self {
-            params: G::disambiguate(params.clone()),
+            params: G::disambiguate(*params),
             phantom: core::marker::PhantomData,
         }
     }
@@ -91,7 +98,7 @@ impl<
         P: for<'a> Borrow<S::Vector<PARAMS>>,
     {
         let params = params.borrow();
-        self.params = G::disambiguate(params.clone());
+        self.params = G::disambiguate(*params);
     }
 
     fn params(&self) -> &S::Vector<PARAMS> {
@@ -100,42 +107,47 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH_SIZE>,
+        S: IsScalar<BATCH, DM, DN>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
-        const BATCH_SIZE: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
-    > TangentImpl<S, DOF, BATCH_SIZE> for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
+        const BATCH: usize,
+        const DM: usize,
+        const DN: usize,
+        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
+    > TangentImpl<S, DOF, BATCH, DM, DN>
+    for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
-    fn tangent_examples() -> alloc::vec::Vec<<S as IsScalar<BATCH_SIZE>>::Vector<DOF>> {
+    fn tangent_examples() -> alloc::vec::Vec<<S as IsScalar<BATCH, DM, DN>>::Vector<DOF>> {
         G::tangent_examples()
     }
 }
 
 impl<
-        S: IsScalar<BATCH_SIZE>,
+        S: IsScalar<BATCH, DM, DN>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
-        const BATCH_SIZE: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
-    > IsLieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>
-    for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
+        const BATCH: usize,
+        const DM: usize,
+        const DN: usize,
+        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
+    > IsLieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>
+    for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     type G = G;
-    type GenG<S2: IsScalar<BATCH_SIZE>> = G::GenG<S2>;
+    type GenG<S2: IsScalar<BATCH, DM, DN>> = G::GenG<S2>;
     type RealG = G::RealG;
-    type DualG = G::DualG;
+    type DualG<const M: usize, const N: usize> = G::DualG<M, N>;
 
     type GenGroup<
-        S2: IsScalar<BATCH_SIZE>,
-        G2: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
-    > = LieGroup<S2, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G2>;
-    type RealGroup = Self::GenGroup<S::RealScalar, G::RealG>;
-    type DualGroup = Self::GenGroup<S::DualScalar, G::DualG>;
+        S2: IsScalar<BATCH, DM, DN>,
+        G2: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
+    > = LieGroup<S2, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G2>;
+    // type RealGroup = Self::GenGroup<S::RealScalar, G::RealG>;
+    // type DualGroup<const M: usize, const N: usize> = Self::GenGroup<S::DualScalar<M, N>, G::DualG<M,N>>;
 
     const DOF: usize = DOF;
 
@@ -147,14 +159,16 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH_SIZE>,
+        S: IsScalar<BATCH, DM, DN>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
         const AMBIENT: usize,
-        const BATCH_SIZE: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE>,
-    > LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH_SIZE, G>
+        const BATCH: usize,
+        const DM: usize,
+        const DN: usize,
+        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
+    > LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     /// group adjoint
     pub fn adj(&self) -> S::Matrix<DOF, DOF> {
@@ -251,7 +265,7 @@ impl<
     pub fn element_examples() -> alloc::vec::Vec<Self> {
         let mut elements = alloc::vec![];
         for params in Self::params_examples() {
-            elements.push(Self::from_params(&params));
+            elements.push(Self::from_params(params));
         }
         elements
     }
@@ -262,7 +276,7 @@ impl<
                 let o = S::Vector::<POINT>::zeros();
 
                 approx::assert_abs_diff_eq!(
-                    g.transform(&o).real_vector(),
+                    g.transform(o).real_vector(),
                     o.real_vector(),
                     epsilon = 0.0001
                 );
@@ -294,7 +308,7 @@ impl<
             let mat_adj = g.adj();
 
             for x in &tangent_examples {
-                let mat_adj_x = mat_adj.clone() * x.clone();
+                let mat_adj_x = mat_adj * *x;
 
                 let inv_mat: S::Matrix<AMBIENT, AMBIENT> = g.inverse().matrix();
                 let mat_adj_x2 = Self::vee(mat.mat_mul(Self::hat(x).mat_mul(inv_mat)));
@@ -308,11 +322,11 @@ impl<
         for a in &tangent_examples {
             for b in &tangent_examples {
                 let ad_a = Self::ad(a);
-                let ad_a_b = ad_a * b.clone();
+                let ad_a_b = ad_a * *b;
                 let hat_ab = Self::hat(a).mat_mul(Self::hat(b));
                 let hat_ba = Self::hat(b).mat_mul(Self::hat(a));
 
-                let lie_bracket_a_b = Self::vee(&(hat_ab - hat_ba));
+                let lie_bracket_a_b = Self::vee(hat_ab - hat_ba);
                 assert_relative_eq!(
                     ad_a_b.real_vector(),
                     lie_bracket_a_b.real_vector(),
@@ -327,20 +341,20 @@ impl<
         let tangent_examples: alloc::vec::Vec<S::Vector<DOF>> = G::tangent_examples();
 
         for g in &group_examples {
-            let matrix_before = *g.compact().real_matrix();
-            let matrix_after = *Self::exp(g.log()).compact().real_matrix();
+            let matrix_before = g.compact().real_matrix();
+            let matrix_after = Self::exp(g.log()).compact().real_matrix();
 
             assert_relative_eq!(matrix_before, matrix_after, epsilon = 0.0001);
 
-            let t = *g.clone().inverse().log().real_vector();
-            let t2 = -(*g.log().real_vector());
+            let t = g.clone().inverse().log().real_vector();
+            let t2 = -(g.log().real_vector());
             assert_relative_eq!(t, t2, epsilon = 0.0001);
         }
         for omega in &tangent_examples {
             let exp_inverse = Self::exp(omega).inverse();
-            let neg_omega = -omega.clone();
+            let neg_omega = -*omega;
 
-            let exp_neg_omega = Self::exp(&neg_omega);
+            let exp_neg_omega = Self::exp(neg_omega);
             assert_relative_eq!(
                 exp_inverse.compact(),
                 exp_neg_omega.compact(),

@@ -9,14 +9,21 @@ use log::debug;
 extern crate alloc;
 
 /// Cubic B-Spline implementation
-pub struct CubicBSplineImpl<S: IsSingleScalar, const DIMS: usize> {
+pub struct CubicBSplineImpl<
+    S: IsSingleScalar<DM, DN>,
+    const DIMS: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     /// Control points
     pub control_points: alloc::vec::Vec<S::SingleVector<DIMS>>,
     /// delta between control points
     pub delta_t: S,
 }
 
-impl<S: IsSingleScalar, const DIMS: usize> CubicBSplineImpl<S, DIMS> {
+impl<S: IsSingleScalar<DM, DN>, const DIMS: usize, const DM: usize, const DN: usize>
+    CubicBSplineImpl<S, DIMS, DM, DN>
+{
     /// indices involved
     pub fn idx_involved(&self, segment_idx: usize) -> alloc::vec::Vec<usize> {
         let num = self.num_segments();
@@ -46,13 +53,13 @@ impl<S: IsSingleScalar, const DIMS: usize> CubicBSplineImpl<S, DIMS> {
         let idx_0 = segment_idx;
         let idx_1 = segment_idx + 1;
         let idx_2 = (segment_idx + 2).min(self.control_points.len() - 1);
-        CubicBSplineSegment::<S, DIMS> {
+        CubicBSplineSegment::<S, DIMS, DM, DN> {
             case,
             control_points: [
-                self.control_points[idx_prev].clone(),
-                self.control_points[idx_0].clone(),
-                self.control_points[idx_1].clone(),
-                self.control_points[idx_2].clone(),
+                self.control_points[idx_prev],
+                self.control_points[idx_0],
+                self.control_points[idx_1],
+                self.control_points[idx_2],
             ],
         }
         .interpolate(u)
@@ -85,25 +92,25 @@ impl<S: IsSingleScalar, const DIMS: usize> CubicBSplineImpl<S, DIMS> {
         let idx_0 = segment_idx;
         let idx_1 = segment_idx + 1;
         let idx_2 = (segment_idx + 2).min(self.control_points.len() - 1);
-        let spline_segment = CubicBSplineSegment::<S, DIMS> {
+        let spline_segment = CubicBSplineSegment::<S, DIMS, DM, DN> {
             case,
             control_points: [
-                self.control_points[idx_prev].clone(),
-                self.control_points[idx_0].clone(),
-                self.control_points[idx_1].clone(),
-                self.control_points[idx_2].clone(),
+                self.control_points[idx_prev],
+                self.control_points[idx_0],
+                self.control_points[idx_1],
+                self.control_points[idx_2],
             ],
         };
 
         let mut dxi: S::SingleMatrix<DIMS, DIMS> = S::SingleMatrix::<DIMS, DIMS>::zeros();
         if idx_prev == control_point_idx {
-            dxi = dxi + spline_segment.dxi_interpolate(u.clone(), 0);
+            dxi = dxi + spline_segment.dxi_interpolate(u, 0);
         }
         if idx_0 == control_point_idx {
-            dxi = dxi + spline_segment.dxi_interpolate(u.clone(), 1);
+            dxi = dxi + spline_segment.dxi_interpolate(u, 1);
         }
         if idx_1 == control_point_idx {
-            dxi = dxi + spline_segment.dxi_interpolate(u.clone(), 2);
+            dxi = dxi + spline_segment.dxi_interpolate(u, 2);
         }
         if idx_2 == control_point_idx {
             dxi = dxi + spline_segment.dxi_interpolate(u, 3);
@@ -114,7 +121,7 @@ impl<S: IsSingleScalar, const DIMS: usize> CubicBSplineImpl<S, DIMS> {
 
 /// Index and u
 #[derive(Clone, Debug, Copy)]
-pub struct IndexAndU<S: IsSingleScalar> {
+pub struct IndexAndU<S: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize> {
     /// segment index
     pub segment_idx: usize,
     /// u
@@ -122,27 +129,35 @@ pub struct IndexAndU<S: IsSingleScalar> {
 }
 
 /// Cubic B-Spline
-pub struct CubicBSpline<S: IsSingleScalar, const DIMS: usize> {
+pub struct CubicBSpline<
+    S: IsSingleScalar<DM, DN>,
+    const DIMS: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     /// Cubic B-Spline implementation
-    pub spline_impl: CubicBSplineImpl<S, DIMS>,
+    pub spline_impl: CubicBSplineImpl<S, DIMS, DM, DN>,
     /// start time t0
     pub t0: S,
 }
 
 /// Cubic B-Spline parameters
 #[derive(Clone, Debug, Copy)]
-pub struct CubicBSplineParams<S: IsSingleScalar + 'static> {
+pub struct CubicBSplineParams<S: IsSingleScalar<DM, DN> + 'static, const DM: usize, const DN: usize>
+{
     /// delta between control points
     pub delta_t: S,
     /// start time t0
     pub t0: S,
 }
 
-impl<S: IsSingleScalar + 'static, const DIMS: usize> CubicBSpline<S, DIMS> {
+impl<S: IsSingleScalar<DM, DN> + 'static, const DIMS: usize, const DM: usize, const DN: usize>
+    CubicBSpline<S, DIMS, DM, DN>
+{
     /// create a new cubic B-Spline
     pub fn new(
         control_points: alloc::vec::Vec<S::SingleVector<DIMS>>,
-        params: CubicBSplineParams<S>,
+        params: CubicBSplineParams<S, DM, DN>,
     ) -> Self {
         Self {
             spline_impl: CubicBSplineImpl {
@@ -174,13 +189,13 @@ impl<S: IsSingleScalar + 'static, const DIMS: usize> CubicBSpline<S, DIMS> {
     }
 
     /// index and u
-    pub fn index_and_u(&self, t: S) -> IndexAndU<S> {
+    pub fn index_and_u(&self, t: S) -> IndexAndU<S, DM, DN> {
         assert!(t.greater_equal(&self.t0).all());
         assert!(t.less_equal(&self.t_max()).all());
 
-        let normalized_t: S = self.normalized_t(t.clone());
+        let normalized_t: S = self.normalized_t(t);
 
-        let mut idx_and_u = IndexAndU::<S> {
+        let mut idx_and_u = IndexAndU::<S, DM, DN> {
             segment_idx: normalized_t.i64_floor() as usize,
             u: normalized_t.clone().fract(),
         };
@@ -209,7 +224,7 @@ impl<S: IsSingleScalar + 'static, const DIMS: usize> CubicBSpline<S, DIMS> {
 
     /// normalized between [0, N]
     pub fn normalized_t(&self, t: S) -> S {
-        (t - self.t0.clone()) / self.spline_impl.delta_t.clone()
+        (t - self.t0) / self.spline_impl.delta_t
     }
 
     /// number of segments
@@ -219,7 +234,7 @@ impl<S: IsSingleScalar + 'static, const DIMS: usize> CubicBSpline<S, DIMS> {
 
     /// t_max
     pub fn t_max(&self) -> S {
-        self.t0.clone() + S::from_f64(self.num_segments() as f64) * self.spline_impl.delta_t.clone()
+        self.t0 + S::from_f64(self.num_segments() as f64) * self.spline_impl.delta_t
     }
 }
 
@@ -232,7 +247,7 @@ mod test {
         use crate::points::example_points;
         use log::info;
 
-        let points = example_points::<f64, 2, 1>();
+        let points = example_points::<f64, 2, 1, 0, 0>();
         for (t0, delta_t) in [(0.0, 1.0)] {
             let params = CubicBSplineParams { delta_t, t0 };
 

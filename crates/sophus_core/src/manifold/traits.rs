@@ -4,18 +4,27 @@ use crate::prelude::*;
 extern crate alloc;
 
 /// A tangent implementation.
-pub trait TangentImpl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const BATCH_SIZE: usize> {
+pub trait TangentImpl<
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+>
+{
     /// Examples of tangent vectors.
     fn tangent_examples() -> alloc::vec::Vec<S::Vector<DOF>>;
 }
 
 /// A manifold implementation.
 pub trait ManifoldImpl<
-    S: IsScalar<BATCH_SIZE>,
+    S: IsScalar<BATCH, DM, DN>,
     const DOF: usize,
     const PARAMS: usize,
-    const BATCH_SIZE: usize,
->: ParamsImpl<S, PARAMS, BATCH_SIZE> + TangentImpl<S, DOF, BATCH_SIZE>
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+>: ParamsImpl<S, PARAMS, BATCH, DM, DN> + TangentImpl<S, DOF, BATCH, DM, DN>
 {
     /// o-plus operation.
     fn oplus(params: &S::Vector<PARAMS>, tangent: &S::Vector<DOF>) -> S::Vector<PARAMS>;
@@ -25,11 +34,13 @@ pub trait ManifoldImpl<
 
 /// A manifold.
 pub trait IsManifold<
-    S: IsScalar<BATCH_SIZE>,
+    S: IsScalar<BATCH, DM, DN>,
     const PARAMS: usize,
     const DOF: usize,
-    const BATCH_SIZE: usize,
->: HasParams<S, PARAMS, BATCH_SIZE> + core::fmt::Debug + Clone
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+>: HasParams<S, PARAMS, BATCH, DM, DN> + core::fmt::Debug + Clone
 {
     /// o-plus operation
     fn oplus(&self, tangent: &S::Vector<DOF>) -> Self;
@@ -37,7 +48,7 @@ pub trait IsManifold<
     fn ominus(&self, rhs: &Self) -> S::Vector<DOF>;
 }
 
-impl<const N: usize> IsManifold<f64, N, N, 1> for VecF64<N> {
+impl<const N: usize> IsManifold<f64, N, N, 1, 0, 0> for VecF64<N> {
     fn oplus(&self, tangent: &VecF64<N>) -> Self {
         self + tangent
     }

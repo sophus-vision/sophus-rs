@@ -15,16 +15,24 @@ extern crate alloc;
 
 #[derive(Clone, Debug, Copy)]
 struct UnitVectorImpl<
-    S: IsScalar<BATCH_SIZE>,
+    S: IsScalar<BATCH, DM, DN>,
     const DOF: usize,
     const DIM: usize,
-    const BATCH_SIZE: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
 > {
     phanton: PhantomData<S>,
 }
 
-impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SIZE: usize>
-    UnitVectorImpl<S, DOF, DIM, BATCH_SIZE>
+impl<
+        S: IsScalar<BATCH, DM, DN>,
+        const DOF: usize,
+        const DIM: usize,
+        const BATCH: usize,
+        const DM: usize,
+        const DN: usize,
+    > UnitVectorImpl<S, DOF, DIM, BATCH, DM, DN>
 {
     fn unit(i: usize) -> S::Vector<DIM> {
         assert!(i < DIM, "{} < {}", i, DIM);
@@ -44,11 +52,11 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
         let unit_x = Self::unit(0);
         let eps = S::from_f64(-1e6);
 
-        let v = param.clone() - unit_x;
+        let v = *param - unit_x;
         let near_zero = (v).squared_norm().less_equal(&eps);
         let rx = S::Matrix::<DIM, DIM>::identity()
             - v.clone()
-                .outer(v.clone())
+                .outer(v)
                 .scaled(S::from_f64(2.0) / v.squared_norm());
 
         S::Matrix::<DIM, DIM>::identity().select(&near_zero, rx)
@@ -58,8 +66,7 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
         let eps = S::from_f64(-1e6);
         let near_zero = x.clone().abs().less_equal(&eps);
 
-        (S::from_f64(1.0) - S::from_f64(1.0 / 6.0) * x.clone() * x.clone())
-            .select(&near_zero, x.clone().sin() / x)
+        (S::from_f64(1.0) - S::from_f64(1.0 / 6.0) * x * x).select(&near_zero, x.clone().sin() / x)
     }
 
     fn exp(tangent: &S::Vector<DOF>) -> S::Vector<DIM> {
@@ -81,21 +88,33 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
         let near_zero = theta.clone().abs().less_equal(&eps);
 
         unit_x
-            .scaled(S::from_f64(0.0).atan2(&x))
+            .scaled(S::from_f64(0.0).atan2(x))
             .select(&near_zero, tail.scaled(theta.clone().atan2(x) / theta))
     }
 }
 
-impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SIZE: usize>
-    TangentImpl<S, DOF, BATCH_SIZE> for UnitVectorImpl<S, DOF, DIM, BATCH_SIZE>
+impl<
+        S: IsScalar<BATCH, DM, DN>,
+        const DOF: usize,
+        const DIM: usize,
+        const BATCH: usize,
+        const DM: usize,
+        const DN: usize,
+    > TangentImpl<S, DOF, BATCH, DM, DN> for UnitVectorImpl<S, DOF, DIM, BATCH, DM, DN>
 {
     fn tangent_examples() -> alloc::vec::Vec<S::Vector<DOF>> {
         todo!()
     }
 }
 
-impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SIZE: usize>
-    ParamsImpl<S, DIM, BATCH_SIZE> for UnitVectorImpl<S, DOF, DIM, BATCH_SIZE>
+impl<
+        S: IsScalar<BATCH, DM, DN>,
+        const DOF: usize,
+        const DIM: usize,
+        const BATCH: usize,
+        const DM: usize,
+        const DN: usize,
+    > ParamsImpl<S, DIM, BATCH, DM, DN> for UnitVectorImpl<S, DOF, DIM, BATCH, DM, DN>
 {
     fn are_params_valid<P>(params: P) -> S::Mask
     where
@@ -116,31 +135,45 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
     }
 }
 
-impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SIZE: usize>
-    ManifoldImpl<S, DOF, DIM, BATCH_SIZE> for UnitVectorImpl<S, DOF, DIM, BATCH_SIZE>
+impl<
+        S: IsScalar<BATCH, DM, DN>,
+        const DOF: usize,
+        const DIM: usize,
+        const BATCH: usize,
+        const DM: usize,
+        const DN: usize,
+    > ManifoldImpl<S, DOF, DIM, BATCH, DM, DN> for UnitVectorImpl<S, DOF, DIM, BATCH, DM, DN>
 {
     fn oplus(params: &S::Vector<DIM>, tangent: &S::Vector<DOF>) -> S::Vector<DIM> {
         Self::mat_rx(params) * Self::exp(tangent)
     }
 
     fn ominus(lhs_params: &S::Vector<DIM>, rhs_params: &S::Vector<DIM>) -> S::Vector<DOF> {
-        Self::log(&(Self::mat_rx(lhs_params).transposed() * rhs_params.clone()))
+        Self::log(&(Self::mat_rx(lhs_params).transposed() * *rhs_params))
     }
 }
 
 /// Unit vector
 #[derive(Clone, Debug)]
 pub struct UnitVector<
-    S: IsScalar<BATCH_SIZE>,
+    S: IsScalar<BATCH, DM, DN>,
     const DOF: usize,
     const DIM: usize,
-    const BATCH_SIZE: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
 > {
     params: S::Vector<DIM>,
 }
 
-impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SIZE: usize> Neg
-    for UnitVector<S, DOF, DIM, BATCH_SIZE>
+impl<
+        S: IsScalar<BATCH, DM, DN>,
+        const DOF: usize,
+        const DIM: usize,
+        const BATCH: usize,
+        const DM: usize,
+        const DN: usize,
+    > Neg for UnitVector<S, DOF, DIM, BATCH, DM, DN>
 {
     type Output = Self;
 
@@ -151,37 +184,40 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
     }
 }
 
-impl<S: IsSingleScalar + PartialOrd, const DOF: usize, const DIM: usize>
-    UnitVector<S, DOF, DIM, 1>
+impl<
+        S: IsSingleScalar<DM, DN> + PartialOrd,
+        const DOF: usize,
+        const DIM: usize,
+        const DM: usize,
+        const DN: usize,
+    > UnitVector<S, DOF, DIM, 1, DM, DN>
 {
     /// Function to calculate the refracted direction.
     pub fn refract(
         &self,
-        surface_normal: UnitVector<S, DOF, DIM, 1>,
+        surface_normal: UnitVector<S, DOF, DIM, 1, DM, DN>,
         refraction_ratio: S,
-    ) -> Option<UnitVector<S, DOF, DIM, 1>> {
+    ) -> Option<UnitVector<S, DOF, DIM, 1, DM, DN>> {
         let d = self.vector();
         let mut n = surface_normal.vector();
 
         // Compute the dot product between d and n
-        let mut d_dot_n = d.clone().dot(n.clone());
+        let mut d_dot_n = d.clone().dot(n);
 
         if d_dot_n > S::from_f64(0.0) {
             n = -n;
-            d_dot_n = d.clone().dot(n.clone());
+            d_dot_n = d.clone().dot(n);
         }
 
         // Compute the perpendicular component of d
-        let d_perp = d.clone() - n.scaled(d_dot_n.clone());
+        let d_perp = d - n.scaled(d_dot_n);
 
         //  Calculate the component of the refracted vector parallel to the surface
-        let d_perp_refracted = d_perp.scaled(refraction_ratio.clone());
+        let d_perp_refracted = d_perp.scaled(refraction_ratio);
 
         // Calculate the magnitude of the parallel component of the refracted vector
         let sqrt_term = S::from_f64(1.0)
-            - refraction_ratio.clone()
-                * refraction_ratio
-                * (S::from_f64(1.0) - d_dot_n.clone() * d_dot_n);
+            - refraction_ratio * refraction_ratio * (S::from_f64(1.0) - d_dot_n * d_dot_n);
 
         // If sqrt_term is negative, total internal reflection occurs, return None
         if sqrt_term < S::from_f64(0.0) {
@@ -199,9 +235,11 @@ impl<S: IsSingleScalar + PartialOrd, const DOF: usize, const DIM: usize>
 }
 
 /// 2d unit vector
-pub type UnitVector2<S, const B: usize> = UnitVector<S, 1, 2, B>;
+pub type UnitVector2<S, const B: usize, const DM: usize, const DN: usize> =
+    UnitVector<S, 1, 2, B, DM, DN>;
 /// 3d unit vector
-pub type UnitVector3<S, const B: usize> = UnitVector<S, 2, 3, B>;
+pub type UnitVector3<S, const B: usize, const DM: usize, const DN: usize> =
+    UnitVector<S, 2, 3, B, DM, DN>;
 
 /// Vector is near zero.
 #[derive(Clone, Debug)]
@@ -214,8 +252,14 @@ impl core::fmt::Display for NearZeroUnitVector {
     }
 }
 
-impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SIZE: usize>
-    UnitVector<S, DOF, DIM, BATCH_SIZE>
+impl<
+        S: IsScalar<BATCH, DM, DN>,
+        const DOF: usize,
+        const DIM: usize,
+        const BATCH: usize,
+        const DM: usize,
+        const DN: usize,
+    > UnitVector<S, DOF, DIM, BATCH, DM, DN>
 {
     /// Tries to create new unit vector from vector.
     ///
@@ -224,9 +268,7 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
         if Self::are_params_valid(vector).all() {
             return None;
         }
-        Some(Self {
-            params: vector.clone(),
-        })
+        Some(Self { params: *vector })
     }
 
     /// Creates unit vector from non-zero vector by normalizing it.
@@ -251,7 +293,7 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
 
     /// Returns self as vector
     pub fn vector(&self) -> S::Vector<DIM> {
-        self.params.clone()
+        self.params
     }
 
     /// angle vector
@@ -260,27 +302,39 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
     }
 }
 
-impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SIZE: usize>
-    ParamsImpl<S, DIM, BATCH_SIZE> for UnitVector<S, DOF, DIM, BATCH_SIZE>
+impl<
+        S: IsScalar<BATCH, DM, DN>,
+        const DOF: usize,
+        const DIM: usize,
+        const BATCH: usize,
+        const DM: usize,
+        const DN: usize,
+    > ParamsImpl<S, DIM, BATCH, DM, DN> for UnitVector<S, DOF, DIM, BATCH, DM, DN>
 {
     fn are_params_valid<P>(params: P) -> S::Mask
     where
         P: Borrow<S::Vector<DIM>>,
     {
-        UnitVectorImpl::<S, DOF, DIM, BATCH_SIZE>::are_params_valid(params)
+        UnitVectorImpl::<S, DOF, DIM, BATCH, DM, DN>::are_params_valid(params)
     }
 
     fn params_examples() -> alloc::vec::Vec<S::Vector<DIM>> {
-        UnitVectorImpl::<S, DOF, DIM, BATCH_SIZE>::params_examples()
+        UnitVectorImpl::<S, DOF, DIM, BATCH, DM, DN>::params_examples()
     }
 
     fn invalid_params_examples() -> alloc::vec::Vec<S::Vector<DIM>> {
-        UnitVectorImpl::<S, DOF, DIM, BATCH_SIZE>::invalid_params_examples()
+        UnitVectorImpl::<S, DOF, DIM, BATCH, DM, DN>::invalid_params_examples()
     }
 }
 
-impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SIZE: usize>
-    HasParams<S, DIM, BATCH_SIZE> for UnitVector<S, DOF, DIM, BATCH_SIZE>
+impl<
+        S: IsScalar<BATCH, DM, DN>,
+        const DOF: usize,
+        const DIM: usize,
+        const BATCH: usize,
+        const DM: usize,
+        const DN: usize,
+    > HasParams<S, DIM, BATCH, DM, DN> for UnitVector<S, DOF, DIM, BATCH, DM, DN>
 {
     fn from_params<P>(params: P) -> Self
     where
@@ -293,7 +347,7 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
     where
         P: Borrow<S::Vector<DIM>>,
     {
-        self.params = Self::from_params(params).params().clone();
+        self.params = *Self::from_params(params).params();
     }
 
     fn params(&self) -> &S::Vector<DIM> {
@@ -301,15 +355,21 @@ impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SI
     }
 }
 
-impl<S: IsScalar<BATCH_SIZE>, const DOF: usize, const DIM: usize, const BATCH_SIZE: usize>
-    IsManifold<S, DIM, DOF, BATCH_SIZE> for UnitVector<S, DOF, DIM, BATCH_SIZE>
+impl<
+        S: IsScalar<BATCH, DM, DN>,
+        const DOF: usize,
+        const DIM: usize,
+        const BATCH: usize,
+        const DM: usize,
+        const DN: usize,
+    > IsManifold<S, DIM, DOF, BATCH, DM, DN> for UnitVector<S, DOF, DIM, BATCH, DM, DN>
 {
     fn oplus(&self, tangent: &S::Vector<DOF>) -> Self {
-        let params = UnitVectorImpl::<S, DOF, DIM, BATCH_SIZE>::oplus(&self.params, tangent);
-        Self::from_params(&params)
+        let params = UnitVectorImpl::<S, DOF, DIM, BATCH, DM, DN>::oplus(&self.params, tangent);
+        Self::from_params(params)
     }
 
     fn ominus(&self, rhs: &Self) -> S::Vector<DOF> {
-        UnitVectorImpl::<S, DOF, DIM, BATCH_SIZE>::ominus(&self.params, &rhs.params)
+        UnitVectorImpl::<S, DOF, DIM, BATCH, DM, DN>::ominus(&self.params, &rhs.params)
     }
 }

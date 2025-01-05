@@ -1,8 +1,7 @@
+use crate::calculus::dual::vector::HasJacobian;
+use crate::calculus::dual::vector::VectorValuedDerivative;
 use crate::linalg::SVec;
 use crate::prelude::*;
-use crate::tensor::mut_tensor::MutTensorDDR;
-use crate::tensor::mut_tensor::MutTensorDR;
-use core::marker::PhantomData;
 
 /// Vector-valued map on a vector space.
 ///
@@ -12,29 +11,35 @@ use core::marker::PhantomData;
 ///
 /// These functions are also called vector fields (on vector space).
 ///
-pub struct VectorValuedMapFromVector<S: IsScalar<BATCH>, const BATCH: usize> {
+pub struct VectorValuedVectorMap<
+    S: IsScalar<BATCH, DM, DN>,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     phantom: core::marker::PhantomData<S>,
 }
 
 impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize>
-    VectorValuedMapFromVector<S, BATCH>
+    VectorValuedVectorMap<S, BATCH, 0, 0>
 {
     /// Finite difference quotient of the vector-valued map.
     ///
     /// The derivative is a matrix or rank-2 tensor with shape (Rₒ x Rᵢ).
     ///
-    /// For efficiency reasons, we return the transpose Rᵢ x (Rₒ)
-    ///
-    pub fn sym_diff_quotient<TFn, const OUTROWS: usize, const INROWS: usize>(
+    pub fn sym_diff_quotient_jacobian<TFn, const OUTROWS: usize, const INROWS: usize>(
         vector_valued: TFn,
         a: S::RealVector<INROWS>,
         eps: f64,
-    ) -> MutTensorDR<S, OUTROWS>
+    ) -> S::RealMatrix<OUTROWS, INROWS>
     where
         TFn: Fn(S::RealVector<INROWS>) -> SVec<S, OUTROWS>,
-        SVec<S, OUTROWS>: IsVector<S, OUTROWS, BATCH>,
+        SVec<S, OUTROWS>: IsVector<S, OUTROWS, BATCH, 0, 0>,
     {
-        let mut out = MutTensorDR::<S, OUTROWS>::from_shape([INROWS]);
+        //let jac = Self::sym_diff_quotient(vector_valued, a, eps);
+        let mut sjac = S::RealMatrix::<OUTROWS, INROWS>::zeros();
+
+        //  let mut out = MutTensorDR::<S, OUTROWS>::from_shape([INROWS]);
         let eps_v = S::RealScalar::from_f64(eps);
 
         for r in 0..INROWS {
@@ -46,82 +51,82 @@ impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize>
             let d = (vector_valued(a_plus) - vector_valued(a_minus))
                 .scaled(S::from_f64(1.0 / (2.0 * eps)));
 
-            out.get_mut([r]).copy_from(&d);
+            for c in 0..OUTROWS {
+                sjac[(c, r)] = d[(c, 0)];
+            }
         }
-        out
+        sjac
     }
 
     /// Finite difference quotient of the vector-valued map.
     ///
     /// The derivative is a matrix or rank-2 tensor with shape (Rₒ x Rᵢ).
     ///
-    pub fn static_sym_diff_quotient<TFn, const OUTROWS: usize, const INROWS: usize>(
+    pub fn sym_diff_quotient<TFn, const OUTROWS: usize, const INROWS: usize>(
         vector_valued: TFn,
         a: S::RealVector<INROWS>,
         eps: f64,
-    ) -> S::RealMatrix<OUTROWS, INROWS>
+    ) -> VectorValuedDerivative<S, OUTROWS, BATCH, INROWS, 1>
     where
         TFn: Fn(S::RealVector<INROWS>) -> SVec<S, OUTROWS>,
-        SVec<S, OUTROWS>: IsVector<S, OUTROWS, BATCH>,
+        SVec<S, OUTROWS>: IsVector<S, OUTROWS, BATCH, 0, 0>,
     {
-        let jac = Self::sym_diff_quotient(vector_valued, a, eps);
-        let mut sjac = S::RealMatrix::<OUTROWS, INROWS>::zeros();
+        //let jac = Self::sym_diff_quotient(vector_valued, a, eps);
+        let mut sjac = VectorValuedDerivative::<S, OUTROWS, BATCH, INROWS, 1>::zeros();
+
+        //  let mut out = MutTensorDR::<S, OUTROWS>::from_shape([INROWS]);
+        let eps_v = S::RealScalar::from_f64(eps);
 
         for r in 0..INROWS {
-            let v = jac.get([r]);
+            let mut a_plus = a;
+            a_plus[r] += eps_v;
+
+            let mut a_minus = a;
+            a_minus[r] -= eps_v;
+            let d = (vector_valued(a_plus) - vector_valued(a_minus))
+                .scaled(S::from_f64(1.0 / (2.0 * eps)));
+
             for c in 0..OUTROWS {
-                sjac[(c, r)] = v[c];
+                sjac.out_vec[c][r] = d[(c, 0)];
             }
         }
-
         sjac
 
-        // todo!()
+        //  todo!()
     }
 }
 
-impl<D: IsDualScalar<BATCH, DualScalar = D>, const BATCH: usize>
-    VectorValuedMapFromVector<D, BATCH>
+impl<D: IsDualScalar<BATCH, INROWS, 1>, const BATCH: usize, const INROWS: usize>
+    VectorValuedVectorMap<D, BATCH, INROWS, 1>
 {
     /// Auto differentiation of the vector-valued map.
-    pub fn fw_autodiff<TFn, const OUTROWS: usize, const INROWS: usize>(
-        vector_valued: TFn,
-        a: D::RealVector<INROWS>,
-    ) -> MutTensorDR<D::RealScalar, OUTROWS>
-    where
-        TFn: Fn(D::DualVector<INROWS>) -> D::DualVector<OUTROWS>,
-    {
-        let v = vector_valued(D::vector_with_dij(a));
-        let d = v.dij_val();
-        if d.is_none() {
-            return MutTensorDR::from_shape([INROWS]);
-        }
-
-        MutTensorDR {
-            mut_array: d.unwrap().mut_array.into_shape([INROWS]).unwrap(),
-            phantom: PhantomData,
-        }
-    }
-
-    /// Auto differentiation of the vector-valued map.
-    pub fn static_fw_autodiff<TFn, const OUTROWS: usize, const INROWS: usize>(
+    pub fn fw_autodiff_jacobian<TFn, const OUTROWS: usize>(
         vector_valued: TFn,
         a: D::RealVector<INROWS>,
     ) -> D::RealMatrix<OUTROWS, INROWS>
     where
-        TFn: Fn(D::DualVector<INROWS>) -> D::DualVector<OUTROWS>,
+        TFn: Fn(D::DualVector<INROWS, INROWS, 1>) -> D::DualVector<OUTROWS, INROWS, 1>,
+        D::DualVector<OUTROWS, INROWS, 1>: HasJacobian<D, OUTROWS, BATCH, INROWS>,
     {
-        let jac = Self::fw_autodiff(vector_valued, a);
-        let mut sjac = D::RealMatrix::<OUTROWS, INROWS>::zeros();
+        vector_valued(D::vector_var(a)).jacobian()
+    }
+}
 
-        for r in 0..INROWS {
-            let v = jac.get([r]);
-            for c in 0..OUTROWS {
-                sjac[(c, r)] = v[c];
-            }
-        }
-
-        sjac
+impl<
+        D: IsDualScalar<BATCH, INROWS, 1, DualScalar<INROWS, 1> = D>,
+        const BATCH: usize,
+        const INROWS: usize,
+    > VectorValuedVectorMap<D, BATCH, INROWS, 1>
+{
+    /// Auto differentiation of the vector-valued map.
+    pub fn fw_autodiff<TFn, const OUTROWS: usize>(
+        vector_valued: TFn,
+        a: D::RealVector<INROWS>,
+    ) -> VectorValuedDerivative<D::RealScalar, OUTROWS, BATCH, INROWS, 1>
+    where
+        TFn: Fn(D::DualVector<INROWS, INROWS, 1>) -> D::DualVector<OUTROWS, INROWS, 1>,
+    {
+        vector_valued(D::vector_var(a)).derivative()
     }
 }
 
@@ -133,11 +138,18 @@ impl<D: IsDualScalar<BATCH, DualScalar = D>, const BATCH: usize>
 ///
 /// This type of function is also called a vector field (on product spaces).
 ///
-pub struct VectorValuedMapFromMatrix<S: IsScalar<BATCH>, const BATCH: usize> {
+pub struct VectorValuedMatrixMap<
+    S: IsScalar<BATCH, DM, DN>,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     phantom: core::marker::PhantomData<S>,
 }
 
-impl<S: IsRealScalar<BATCH>, const BATCH: usize> VectorValuedMapFromMatrix<S, BATCH> {
+impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize>
+    VectorValuedMatrixMap<S, BATCH, 0, 0>
+{
     /// Finite difference quotient of the vector-valued map.
     ///
     /// The derivative is a matrix or rank-3 tensor with shape (Rₒ x Rᵢ x Cᵢ).
@@ -148,12 +160,12 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> VectorValuedMapFromMatrix<S, BA
         vector_valued: TFn,
         a: S::RealMatrix<INROWS, INCOLS>,
         eps: f64,
-    ) -> MutTensorDDR<S, OUTROWS>
+    ) -> VectorValuedDerivative<S, OUTROWS, BATCH, INROWS, INCOLS>
     where
         TFn: Fn(S::RealMatrix<INROWS, INCOLS>) -> SVec<S, OUTROWS>,
-        SVec<S, OUTROWS>: IsVector<S, OUTROWS, BATCH>,
+        SVec<S, OUTROWS>: IsVector<S, OUTROWS, BATCH, 0, 0>,
     {
-        let mut out = MutTensorDDR::<S, OUTROWS>::from_shape([INROWS, INCOLS]);
+        let mut out = VectorValuedDerivative::zeros();
         let eps_b = S::RealScalar::from_f64(eps);
 
         for c in 0..INCOLS {
@@ -168,36 +180,43 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> VectorValuedMapFromMatrix<S, BA
 
                 let vv = (vector_valued(a_plus) - vector_valued(a_minus))
                     .scaled(S::from_f64(1.0 / (2.0 * eps)));
-                *out.mut_view().get_mut([r, c]) = vv;
+                for or in 0..OUTROWS {
+                    out.out_vec[or][(r, c)] = vv[or];
+                }
             }
         }
         out
     }
 }
 
-impl<D: IsDualScalar<BATCH, DualScalar = D>, const BATCH: usize>
-    VectorValuedMapFromMatrix<D, BATCH>
+impl<
+        D: IsDualScalar<BATCH, INROWS, INCOLS, DualScalar<INROWS, INCOLS> = D>,
+        const BATCH: usize,
+        const INROWS: usize,
+        const INCOLS: usize,
+    > VectorValuedMatrixMap<D, BATCH, INROWS, INCOLS>
 {
     /// Auto differentiation of the vector-valued map.
-    pub fn fw_autodiff<TFn, const OUTROWS: usize, const INROWS: usize, const INCOLS: usize>(
+    pub fn fw_autodiff<TFn, const OUTROWS: usize>(
         vector_valued: TFn,
         a: D::RealMatrix<INROWS, INCOLS>,
-    ) -> MutTensorDDR<D::RealScalar, OUTROWS>
+    ) -> VectorValuedDerivative<D::RealScalar, OUTROWS, BATCH, INROWS, INCOLS>
     where
-        TFn: Fn(D::DualMatrix<INROWS, INCOLS>) -> D::DualVector<OUTROWS>,
+        TFn: Fn(
+            D::DualMatrix<INROWS, INCOLS, INROWS, INCOLS>,
+        ) -> D::DualVector<OUTROWS, INROWS, INCOLS>,
     {
-        vector_valued(D::matrix_with_dij(a)).dij_val().unwrap()
+        vector_valued(D::matrix_var(a)).derivative()
     }
 }
 
 #[test]
 fn vector_valued_map_from_vector_tests() {
     use crate::calculus::dual::dual_scalar::DualScalar;
-    use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromMatrix;
-    use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
+    use crate::calculus::maps::vector_valued_maps::VectorValuedMatrixMap;
+    use crate::calculus::maps::vector_valued_maps::VectorValuedVectorMap;
     use crate::linalg::vector::IsVector;
     use crate::linalg::EPS_F64;
-    use crate::tensor::tensor_view::IsTensorLike;
 
     #[cfg(feature = "simd")]
     use crate::calculus::dual::DualBatchScalar;
@@ -210,13 +229,13 @@ fn vector_valued_map_from_vector_tests() {
     }
 
     macro_rules! def_test_template {
-        ( $scalar:ty, $dual_scalar: ty, $batch:literal
+        ( $scalar:ty, $dual_scalar: ty,$dual_scalar2: ty, $batch:literal
     ) => {
             #[cfg(test)]
             impl Test for $scalar {
                 fn run() {
                     {
-                        let a = <$scalar as IsScalar<$batch>>::RealVector::<3>::new(
+                        let a = <$scalar as IsScalar<$batch, 0, 0>>::RealVector::<3>::new(
                             <$scalar>::from_f64(0.6),
                             <$scalar>::from_f64(2.2),
                             <$scalar>::from_f64(1.1),
@@ -225,7 +244,12 @@ fn vector_valued_map_from_vector_tests() {
                         //       [[ x ]]   [[ x / z ]]
                         //  proj [[ y ]] = [[       ]]
                         //       [[ z ]]   [[ y / z ]]
-                        fn proj_fn<S: IsScalar<BATCH>, const BATCH: usize>(
+                        fn proj_fn<
+                            S: IsScalar<BATCH, DM, DN>,
+                            const BATCH: usize,
+                            const DM: usize,
+                            const DN: usize,
+                        >(
                             v: S::Vector<3>,
                         ) -> S::Vector<2> {
                             let x = IsVector::get_elem(&v, 0);
@@ -234,40 +258,51 @@ fn vector_valued_map_from_vector_tests() {
                             S::Vector::<2>::from_array([x / z.clone(), y / z])
                         }
 
-                        let finite_diff =
-                            VectorValuedMapFromVector::<$scalar, $batch>::sym_diff_quotient(
-                                proj_fn::<$scalar, $batch>,
+                        let sfinite_diff =
+                            VectorValuedVectorMap::<$scalar, $batch, 0, 0>::sym_diff_quotient(
+                                proj_fn::<$scalar, $batch, 0, 0>,
                                 a,
                                 EPS_F64,
                             );
-                        let auto_grad =
-                            VectorValuedMapFromVector::<$dual_scalar, $batch>::fw_autodiff(
-                                proj_fn::<$dual_scalar, $batch>,
+                        let sauto_grad =
+                            VectorValuedVectorMap::<$dual_scalar, $batch, 3, 1>::fw_autodiff(
+                                proj_fn::<$dual_scalar, $batch, 3, 1>,
                                 a,
                             );
                         for i in 0..2 {
                             approx::assert_abs_diff_eq!(
-                                finite_diff.get([i]),
-                                auto_grad.get([i]),
+                                sfinite_diff.out_vec[i],
+                                sauto_grad.out_vec[i],
                                 epsilon = 0.0001
                             );
                         }
 
                         let sfinite_diff =
-                            VectorValuedMapFromVector::<$scalar, $batch>::static_sym_diff_quotient(
-                                proj_fn::<$scalar, $batch>,
-                                a,
-                                EPS_F64,
-                            );
+                        VectorValuedVectorMap::<$scalar, $batch, 0, 0>::sym_diff_quotient_jacobian(
+                            proj_fn::<$scalar, $batch, 0, 0>,
+                            a,
+                            EPS_F64,
+                        );
                         let sauto_grad =
-                            VectorValuedMapFromVector::<$dual_scalar, $batch>::static_fw_autodiff(
-                                proj_fn::<$dual_scalar, $batch>,
+                            VectorValuedVectorMap::<$dual_scalar, $batch, 3, 1>::fw_autodiff_jacobian(
+                                proj_fn::<$dual_scalar, $batch, 3, 1>,
                                 a,
                             );
-                        approx::assert_abs_diff_eq!(sfinite_diff, sauto_grad, epsilon = 0.0001);
+
+                        approx::assert_abs_diff_eq!(
+                            sfinite_diff,
+                            sauto_grad,
+                            epsilon = 0.0001
+                        );
+
                     }
 
-                    fn f<S: IsScalar<BATCH>, const BATCH: usize>(
+                    fn f<
+                        S: IsScalar<BATCH, DM, DN>,
+                        const BATCH: usize,
+                        const DM: usize,
+                        const DN: usize,
+                    >(
                         x: S::Matrix<3, 2>,
                     ) -> S::Vector<4> {
                         let a = x.get_elem([0, 0]);
@@ -280,7 +315,7 @@ fn vector_valued_map_from_vector_tests() {
                         S::Vector::<4>::from_array([a + b, c + d, e + f, S::from_f64(1.0)])
                     }
 
-                    let mut mat = <$scalar as IsScalar<$batch>>::RealMatrix::<3, 2>::zeros();
+                    let mut mat = <$scalar as IsScalar<$batch,0,0>>::RealMatrix::<3, 2>::zeros();
                     mat[(0, 0)] = <$scalar>::from_f64(-4.6);
                     mat[(0, 1)] = <$scalar>::from_f64(-1.6);
                     mat[(1, 0)] = <$scalar>::from_f64(0.6);
@@ -289,30 +324,44 @@ fn vector_valued_map_from_vector_tests() {
                     mat[(2, 1)] = <$scalar>::from_f64(0.2);
 
                     let finite_diff =
-                        VectorValuedMapFromMatrix::<$scalar, $batch>::sym_diff_quotient(
-                            f::<$scalar, $batch>,
+                        VectorValuedMatrixMap::<$scalar, $batch,0,0>::sym_diff_quotient(
+                            f::<$scalar, $batch,0,0>,
                             mat,
                             EPS_F64,
                         );
-                    let auto_grad = VectorValuedMapFromMatrix::<$dual_scalar, $batch>::fw_autodiff(
-                        f::<$dual_scalar, $batch>,
+                    let auto_grad = VectorValuedMatrixMap::<$dual_scalar2, $batch,3,2>::fw_autodiff(
+                        f::<$dual_scalar2, $batch,3,2>,
                         mat,
                     );
-                    approx::assert_abs_diff_eq!(
-                        finite_diff.elem_view(),
-                        auto_grad.elem_view(),
-                        epsilon = 0.0001
-                    );
+                    for i in 0..3 {
+                        approx::assert_abs_diff_eq!(
+                            finite_diff.out_vec[(i,0)],
+                            auto_grad.out_vec[(i,0)],
+                            epsilon = 0.0001
+                        );
+                    }
                 }
             }
         };
     }
 
-    def_test_template!(f64, DualScalar, 1);
+    def_test_template!(
+        f64,
+        DualScalar<3, 1>,
+        DualScalar<3, 2>,
+        1);
     #[cfg(feature = "simd")]
-    def_test_template!(BatchScalarF64<2>, DualBatchScalar<2>, 2);
+    def_test_template!(
+        BatchScalarF64<2>,
+        DualBatchScalar<2, 3, 1>,
+        DualBatchScalar<2, 3, 2>,
+        2);
     #[cfg(feature = "simd")]
-    def_test_template!(BatchScalarF64<4>, DualBatchScalar<4>, 4);
+    def_test_template!(
+        BatchScalarF64<4>,
+        DualBatchScalar<4, 3, 1>,
+        DualBatchScalar<4, 3, 2>,
+        4);
 
     f64::run();
     #[cfg(feature = "simd")]

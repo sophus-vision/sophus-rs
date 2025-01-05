@@ -10,12 +10,17 @@ extern crate alloc;
 ///
 /// This is not a distortion in the traditional sense, but rather a simple affine transformation.
 #[derive(Debug, Clone, Copy)]
-pub struct AffineDistortionImpl<S: IsScalar<BATCH>, const BATCH: usize> {
+pub struct AffineDistortionImpl<
+    S: IsScalar<BATCH, DM, DN>,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     phantom: PhantomData<S>,
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 4, BATCH>
-    for AffineDistortionImpl<S, BATCH>
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    ParamsImpl<S, 4, BATCH, DM, DN> for AffineDistortionImpl<S, BATCH, DM, DN>
 {
     fn are_params_valid<P>(_params: P) -> S::Mask
     where
@@ -36,8 +41,8 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 4, BATCH>
     }
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 0, 4, BATCH>
-    for AffineDistortionImpl<S, BATCH>
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    IsCameraDistortionImpl<S, 0, 4, BATCH, DM, DN> for AffineDistortionImpl<S, BATCH, DM, DN>
 {
     fn distort<PA, PO>(params: PA, proj_point_in_camera_z1_plane: PO) -> S::Vector<2>
     where

@@ -11,12 +11,17 @@ extern crate alloc;
 
 /// Kannala-Brandt distortion implementation
 #[derive(Debug, Clone, Copy)]
-pub struct BrownConradyDistortionImpl<S: IsScalar<BATCH>, const BATCH: usize> {
+pub struct BrownConradyDistortionImpl<
+    S: IsScalar<BATCH, DM, DN>,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     phantom: PhantomData<S>,
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 12, BATCH>
-    for BrownConradyDistortionImpl<S, BATCH>
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    ParamsImpl<S, 12, BATCH, DM, DN> for BrownConradyDistortionImpl<S, BATCH, DM, DN>
 {
     fn are_params_valid<P>(_params: P) -> S::Mask
     where
@@ -47,7 +52,9 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> ParamsImpl<S, 12, BATCH>
     }
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> BrownConradyDistortionImpl<S, BATCH> {
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    BrownConradyDistortionImpl<S, BATCH, DM, DN>
+{
     fn distortion_impl(
         params: &S::Vector<8>,
         proj_point_in_camera_z1_plane: &S::Vector<2>,
@@ -70,14 +77,14 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> BrownConradyDistortionImpl<S, BATCH
         let two = S::from_f64(2.0);
 
         let r2 = proj_point_in_camera_z1_plane.squared_norm();
-        let r4 = r2.clone() * r2.clone();
-        let r6 = r4.clone() * r2.clone();
-        let a1 = two.clone() * x.clone() * y.clone();
-        let a2 = r2.clone() + two.clone() * x.clone() * x.clone();
-        let a3 = r2.clone() + two.clone() * y.clone() * y.clone();
-        let cdist = one.clone() + d0 * r2.clone() + d1 * r4.clone() + d4 * r6.clone();
-        let icdist2 = one.clone() / (one + d5 * r2 + d6 * r4 + d7 * r6);
-        let xd0 = x * cdist.clone() * icdist2.clone() + d2.clone() * a1.clone() + k3.clone() * a2;
+        let r4 = r2 * r2;
+        let r6 = r4 * r2;
+        let a1 = two * x * y;
+        let a2 = r2 + two * x * x;
+        let a3 = r2 + two * y * y;
+        let cdist = one + d0 * r2 + d1 * r4 + d4 * r6;
+        let icdist2 = one / (one + d5 * r2 + d6 * r4 + d7 * r6);
+        let xd0 = x * cdist * icdist2 + d2 * a1 + k3 * a2;
         let yd0 = y * cdist * icdist2 + d2 * a3 + k3 * a1;
 
         S::Vector::<2>::from_array([xd0, yd0])
@@ -110,7 +117,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> BrownConradyDistortionImpl<S, BATCH
         // need to solve a less computational heavy newton iteration...
 
         // initial guess
-        let mut xy = distorted_point.clone();
+        let mut xy = *distorted_point;
 
         let d0 = distortion_params.get_elem(0);
         let d1 = distortion_params.get_elem(1);
@@ -125,8 +132,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> BrownConradyDistortionImpl<S, BATCH
             let x = xy.get_elem(0);
             let y = xy.get_elem(1);
 
-            let f_xy =
-                Self::distortion_impl(distortion_params, &xy.clone()) - distorted_point.clone();
+            let f_xy = Self::distortion_impl(distortion_params, &xy.clone()) - *distorted_point;
 
             let du_dx;
             let du_dy;
@@ -138,49 +144,39 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> BrownConradyDistortionImpl<S, BATCH
                 let a = x;
                 let b = y;
 
-                let c0 = a.clone() * a.clone(); // pow(a, 2);
-                let c1 = b.clone() * b.clone(); // pow(b, 2);
-                let c2 = c0.clone() + c1.clone();
-                let c3 = c2.clone() * c2.clone(); // pow(c2, 2);
-                let c4 = c3.clone() * c2.clone(); // pow(c2, 3);
-                let c5 = c2.clone() * d5.clone()
-                    + c3.clone() * d6.clone()
-                    + c4.clone() * d7.clone()
-                    + S::from_f64(1.0);
-                let c6 = c5.clone() * c5.clone(); // pow(c5, 2);
-                let c7 = S::from_f64(1.0) / c6.clone();
-                let c8 = a.clone() * k3.clone();
-                let c9 = S::from_f64(2.0) * d2.clone();
-                let c10 = S::from_f64(2.0) * c2.clone();
-                let c11 = S::from_f64(3.0) * c3.clone();
-                let c12 = c2.clone() * d0.clone();
-                let c13 = c3.clone() * d1.clone();
-                let c14 = c4.clone() * d4.clone();
+                let c0 = a * a; // pow(a, 2);
+                let c1 = b * b; // pow(b, 2);
+                let c2 = c0 + c1;
+                let c3 = c2 * c2; // pow(c2, 2);
+                let c4 = c3 * c2; // pow(c2, 3);
+                let c5 = c2 * d5 + c3 * d6 + c4 * d7 + S::from_f64(1.0);
+                let c6 = c5 * c5; // pow(c5, 2);
+                let c7 = S::from_f64(1.0) / c6;
+                let c8 = a * k3;
+                let c9 = S::from_f64(2.0) * d2;
+                let c10 = S::from_f64(2.0) * c2;
+                let c11 = S::from_f64(3.0) * c3;
+                let c12 = c2 * d0;
+                let c13 = c3 * d1;
+                let c14 = c4 * d4;
                 let c15 = S::from_f64(2.0)
-                    * (c10.clone() * d6.clone() + c11.clone() * d7.clone() + d5.clone())
-                    * (c12.clone() + c13.clone() + c14.clone() + S::from_f64(1.0));
-                let c16 = S::from_f64(2.0) * c10 * d1.clone()
-                    + S::from_f64(2.0) * c11 * d4.clone()
-                    + S::from_f64(2.0) * d0.clone();
+                    * (c10 * d6 + c11 * d7 + d5)
+                    * (c12 + c13 + c14 + S::from_f64(1.0));
+                let c16 = S::from_f64(2.0) * c10 * d1
+                    + S::from_f64(2.0) * c11 * d4
+                    + S::from_f64(2.0) * d0;
                 let c17 = c12 + c13 + c14 + S::from_f64(1.0);
-                let c18 = b.clone() * k3.clone();
-                let c19 = a.clone() * b.clone();
-                let c20 = -c15.clone() * c19.clone() + c16.clone() * c19 * c5.clone();
-                du_dx = c7.clone()
-                    * (-c0.clone() * c15.clone()
-                        + c5.clone() * (c0 * c16.clone() + c17.clone())
-                        + c6.clone() * (b.clone() * c9.clone() + S::from_f64(6.0) * c8.clone()));
-                du_dy = c7.clone()
-                    * (c20.clone()
-                        + c6.clone() * (a.clone() * c9.clone() + S::from_f64(2.0) * c18.clone()));
-                dv_dx = c7.clone()
-                    * (c20
-                        + c6.clone()
-                            * (S::from_f64(2.0) * a.clone() * d2.clone() + S::from_f64(2.0) * c18));
+                let c18 = b * k3;
+                let c19 = a * b;
+                let c20 = -c15 * c19 + c16 * c19 * c5;
+                du_dx = c7
+                    * (-c0 * c15 + c5 * (c0 * c16 + c17) + c6 * (b * c9 + S::from_f64(6.0) * c8));
+                du_dy = c7 * (c20 + c6 * (a * c9 + S::from_f64(2.0) * c18));
+                dv_dx = c7 * (c20 + c6 * (S::from_f64(2.0) * a * d2 + S::from_f64(2.0) * c18));
                 dv_dy = c7
-                    * (-c1.clone() * c15
+                    * (-c1 * c15
                         + c5 * (c1 * c16 + c17)
-                        + c6 * (S::from_f64(6.0) * b.clone() * d2.clone() + S::from_f64(2.0) * c8));
+                        + c6 * (S::from_f64(6.0) * b * d2 + S::from_f64(2.0) * c8));
             }
 
             //     | du_dx  du_dy |      | a  b |
@@ -196,8 +192,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> BrownConradyDistortionImpl<S, BATCH
             // |      |     =  ----- |        |
             // | c  d |        ad-bc | -c   a |
 
-            let m: S::Matrix<2, 2> =
-                S::Matrix::from_array2([[d.clone(), -b.clone()], [-c.clone(), a.clone()]]);
+            let m: S::Matrix<2, 2> = S::Matrix::from_array2([[d, -b], [-c, a]]);
 
             let j_inv: S::Matrix<2, 2> = m.scaled(S::from_f64(1.0) / (a * d - b * c));
             let step: S::Vector<2> = j_inv * f_xy;
@@ -215,7 +210,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> BrownConradyDistortionImpl<S, BATCH
             xy.set_elem(1, xy.get_elem(1) - step.get_elem(1));
         }
 
-        let f_xy = Self::distortion_impl(distortion_params, &xy.clone()) - distorted_point.clone();
+        let f_xy = Self::distortion_impl(distortion_params, &xy.clone()) - *distorted_point;
         if !f_xy
             .norm()
             .real_part()
@@ -227,12 +222,13 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> BrownConradyDistortionImpl<S, BATCH
                 f_xy, dbg_info_distorted_point
             );
         }
-        xy.clone()
+        xy
     }
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 8, 12, BATCH>
-    for BrownConradyDistortionImpl<S, BATCH>
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    IsCameraDistortionImpl<S, 8, 12, BATCH, DM, DN>
+    for BrownConradyDistortionImpl<S, BATCH, DM, DN>
 {
     fn distort<PA, PO>(params: PA, proj_point_in_camera_z1_plane: PO) -> S::Vector<2>
     where
@@ -245,7 +241,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 8, 12, BA
         let distorted_point_in_camera_z1_plane =
             Self::distortion_impl(&params.get_fixed_subvec(4), proj_point_in_camera_z1_plane);
 
-        AffineDistortionImpl::<S, BATCH>::distort(
+        AffineDistortionImpl::<S, BATCH, DM, DN>::distort(
             params.get_fixed_subvec(0),
             distorted_point_in_camera_z1_plane,
         )
@@ -258,10 +254,11 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 8, 12, BA
     {
         let params = params.borrow();
         let distorted_point = distorted_point.borrow();
-        let undistorted_point_in_camera_z1_plane = AffineDistortionImpl::<S, BATCH>::undistort(
-            params.get_fixed_subvec(0),
-            distorted_point,
-        );
+        let undistorted_point_in_camera_z1_plane =
+            AffineDistortionImpl::<S, BATCH, DM, DN>::undistort(
+                params.get_fixed_subvec(0),
+                distorted_point,
+            );
 
         Self::undistort_impl(
             &params.get_fixed_subvec(4),
@@ -298,50 +295,37 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCameraDistortionImpl<S, 8, 12, BA
         let b = proj_point_in_camera_z1_plane.get_elem(1);
 
         // Generated by brown_conrady_camera.py
-        let c0 = a.clone() * d3.clone();
-        let c1 = two.clone() * d2.clone();
-        let c2 = a.clone() * a.clone(); // pow(a, 2);
-        let c3 = b.clone() * b.clone(); // pow(b, 2);
-        let c4 = c2.clone() + c3.clone();
-        let c5 = c4.clone() * c4.clone(); // pow(c4, 2);
-        let c6 = c5.clone() * c4.clone(); // pow(c4, 3);
-        let c7 = c4.clone() * d5.clone()
-            + c5.clone() * d6.clone()
-            + c6.clone() * d7.clone()
-            + one.clone();
-        let c8 = c7.clone() * c7.clone(); // pow(c7, 2);
-        let c9 = two.clone() * c4.clone();
-        let c10 = S::from_f64(3.0) * c5.clone();
-        let c11 = c4.clone() * d0.clone();
-        let c12 = c5.clone() * d1.clone();
-        let c13 = c6.clone() * d4.clone();
-        let c14 = two.clone()
-            * (c10.clone() * d7.clone() + c9.clone() * d6.clone() + d5.clone())
-            * (c11.clone() + c12.clone() + c13.clone() + one.clone());
-        let c15 = two.clone() * c10.clone() * d4.clone()
-            + two.clone() * c9.clone() * d1.clone()
-            + two.clone() * d0.clone();
-        let c16 = one.clone() * c11 + c12 + c13 + one.clone();
-        let c17 = one.clone() / c8.clone();
-        let c18 = c17.clone() * fx;
-        let c19 = b.clone() * d3.clone();
-        let c20 = a.clone() * b.clone();
-        let c21 = -c14.clone() * c20.clone() + c15.clone() * c20.clone() * c7.clone();
-        let c22 = c17.clone() * fy;
+        let c0 = a * d3;
+        let c1 = two * d2;
+        let c2 = a * a; // pow(a, 2);
+        let c3 = b * b; // pow(b, 2);
+        let c4 = c2 + c3;
+        let c5 = c4 * c4; // pow(c4, 2);
+        let c6 = c5 * c4; // pow(c4, 3);
+        let c7 = c4 * d5 + c5 * d6 + c6 * d7 + one;
+        let c8 = c7 * c7; // pow(c7, 2);
+        let c9 = two * c4;
+        let c10 = S::from_f64(3.0) * c5;
+        let c11 = c4 * d0;
+        let c12 = c5 * d1;
+        let c13 = c6 * d4;
+        let c14 = two * (c10 * d7 + c9 * d6 + d5) * (c11 + c12 + c13 + one);
+        let c15 = two * c10 * d4 + two * c9 * d1 + two * d0;
+        let c16 = one * c11 + c12 + c13 + one;
+        let c17 = one / c8;
+        let c18 = c17 * fx;
+        let c19 = b * d3;
+        let c20 = a * b;
+        let c21 = -c14 * c20 + c15 * c20 * c7;
+        let c22 = c17 * fy;
 
-        let dfx_dfx = c18.clone()
-            * (-c14.clone() * c2.clone()
-                + c7.clone() * (c15.clone() * c2.clone() + c16.clone())
-                + c8.clone() * (b.clone() * c1.clone() + S::from_f64(6.0) * c0.clone()));
-        let dfy_dfx = c22.clone()
-            * (c21.clone()
-                + c8.clone() * (two.clone() * a.clone() * d2.clone() + two.clone() * c19.clone()));
+        let dfx_dfx =
+            c18 * (-c14 * c2 + c7 * (c15 * c2 + c16) + c8 * (b * c1 + S::from_f64(6.0) * c0));
+        let dfy_dfx = c22 * (c21 + c8 * (two * a * d2 + two * c19));
 
-        let dfx_dfy = c18 * (c21 + c8.clone() * (a * c1 + two.clone() * c19));
-        let dfy_dfy = c22
-            * (-c14 * c3.clone()
-                + c7 * (c15 * c3 + c16)
-                + c8 * (S::from_f64(6.0) * b * d2.clone() + two.clone() * c0));
+        let dfx_dfy = c18 * (c21 + c8 * (a * c1 + two * c19));
+        let dfy_dfy =
+            c22 * (-c14 * c3 + c7 * (c15 * c3 + c16) + c8 * (S::from_f64(6.0) * b * d2 + two * c0));
 
         S::Matrix::from_array2([[dfx_dfx, dfx_dfy], [dfy_dfx, dfy_dfy]])
     }

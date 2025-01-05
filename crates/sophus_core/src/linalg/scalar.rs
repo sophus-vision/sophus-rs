@@ -13,7 +13,9 @@ use core::fmt::Debug;
 use core::ops::Add;
 use core::ops::AddAssign;
 use core::ops::Div;
+use core::ops::DivAssign;
 use core::ops::Mul;
+use core::ops::MulAssign;
 use core::ops::Neg;
 use core::ops::Sub;
 use core::ops::SubAssign;
@@ -64,16 +66,19 @@ def_is_tensor_scalar_single!(f64, NumberCategory::Real);
 ///
 ///  - either a real (f64) or a dual number
 ///  - either a single scalar or a batch scalar
-pub trait IsScalar<const BATCH_SIZE: usize>:
+pub trait IsScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     PartialEq
     + Debug
     + Clone
+    + Copy
     + core::ops::Div<Output = Self>
     + Add<Output = Self>
     + Mul<Output = Self>
     + Sub<Output = Self>
     + AddAssign
     + SubAssign
+    + MulAssign
+    + DivAssign
     + Sized
     + Neg<Output = Self>
     + AbsDiffEq<Epsilon = f64>
@@ -81,47 +86,47 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
     + IsCoreScalar
 {
     /// Scalar type
-    type Scalar: IsScalar<BATCH_SIZE>;
+    type Scalar: IsScalar<BATCH, DM, DN>;
+    /// Vector type
+    type Vector<const ROWS: usize>: IsVector<Self, ROWS, BATCH, DM, DN>;
+    /// Matrix type
+    type Matrix<const ROWS: usize, const COLS: usize>: IsMatrix<Self, ROWS, COLS, BATCH, DM, DN>;
 
     /// Single scalar type
-    type SingleScalar: IsSingleScalar;
+    type SingleScalar: IsSingleScalar<DM, DN>;
 
     /// Real scalar type
-    type RealScalar: IsRealScalar<BATCH_SIZE>;
-
-    /// Dual scalar type
-    type DualScalar: IsDualScalar<BATCH_SIZE>;
-
-    /// Mask type
-    type Mask: IsBoolMask;
-
+    type RealScalar: IsRealScalar<BATCH>;
+    /// Real vector type
+    type RealVector<const ROWS: usize>: IsRealVector<Self::RealScalar, ROWS, BATCH>;
     /// Vector type
     type RealMatrix<const ROWS: usize, const COLS: usize>: IsRealMatrix<
         Self::RealScalar,
         ROWS,
         COLS,
-        BATCH_SIZE,
+        BATCH,
     >;
 
-    /// Vector type
-    type Vector<const ROWS: usize>: IsVector<Self, ROWS, BATCH_SIZE>;
-
-    /// Real vector type
-    type RealVector<const ROWS: usize>: IsRealVector<Self::RealScalar, ROWS, BATCH_SIZE>;
-
+    /// Dual scalar type
+    type DualScalar<const M: usize, const N: usize>: IsDualScalar<BATCH, M, N>;
     /// Dual vector type
-    type DualVector<const ROWS: usize>: IsDualVector<Self::DualScalar, ROWS, BATCH_SIZE>;
-
-    /// Matrix type
-    type Matrix<const ROWS: usize, const COLS: usize>: IsMatrix<Self, ROWS, COLS, BATCH_SIZE>;
-
+    type DualVector<const ROWS: usize, const M: usize, const N: usize>: IsDualVector<
+        Self::DualScalar<M, N>,
+        ROWS,
+        BATCH,
+        M,
+        N,
+    >;
     /// Dual matrix type
-    type DualMatrix<const ROWS: usize, const COLS: usize>: IsDualMatrix<
-        Self::DualScalar,
+    type DualMatrix<const ROWS: usize, const COLS: usize,const M: usize, const N: usize>: IsDualMatrix<
+        Self::DualScalar<M,N>,
         ROWS,
         COLS,
-        BATCH_SIZE,
+        BATCH,M,N
     >;
+
+    /// Mask type
+    type Mask: IsBoolMask;
 
     /// absolute value
     fn abs(&self) -> Self;
@@ -163,9 +168,9 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
     /// Creates a scalar from an array of real values
     ///
     ///  - If self is a single scalar, the array must have one element
-    ///  - If self is a batch scalar, the array must have BATCH_SIZE elements
+    ///  - If self is a batch scalar, the array must have BATCH elements
     ///  - If self is a dual number, the infinitesimal part is set to zero
-    fn from_real_array(arr: [f64; BATCH_SIZE]) -> Self;
+    fn from_real_array(arr: [f64; BATCH]) -> Self;
 
     /// creates scalar from real scalar
     ///
@@ -207,15 +212,15 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
     /// square root
     fn sqrt(&self) -> Self;
 
-    /// Returns dual number representation
+    /// Returns constant dual number representation
     ///
-    /// If self is a real number, the infinitesimal part is zero: (self, 0ϵ)
-    fn to_dual(&self) -> Self::DualScalar;
+    /// The infinitesimal part will be zero.
+    fn to_dual_const<const M: usize, const N: usize>(&self) -> Self::DualScalar<M, N>;
 
     /// Return as a real array
     ///
     /// If self is a dual number, the infinitesimal part is omitted
-    fn to_real_array(&self) -> [f64; BATCH_SIZE];
+    fn to_real_array(&self) -> [f64; BATCH];
 
     /// tangent
     fn tan(&self) -> Self;
@@ -234,10 +239,10 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
         for a in &examples {
             let sin_a = a.clone().sin();
             let cos_a = a.clone().cos();
-            let val = sin_a.clone() * sin_a + cos_a.clone() * cos_a;
+            let val = sin_a * sin_a + cos_a * cos_a;
             let one = Self::ones();
 
-            for i in 0..BATCH_SIZE {
+            for i in 0..BATCH {
                 assert_abs_diff_eq!(val.extract_single(i), one.extract_single(i));
             }
         }
@@ -245,15 +250,23 @@ pub trait IsScalar<const BATCH_SIZE: usize>:
 }
 
 /// Real scalar
-pub trait IsRealScalar<const BATCH_SIZE: usize>: IsScalar<BATCH_SIZE> + Copy {}
+pub trait IsRealScalar<const BATCH: usize>: IsScalar<BATCH, 0, 0> + Copy {}
 
 /// Scalar
-pub trait IsSingleScalar: IsScalar<1> + PartialEq + Div<Output = Self> {
+pub trait IsSingleScalar<const DM: usize, const DN: usize>:
+    IsScalar<1, DM, DN> + PartialEq + Div<Output = Self>
+{
     /// Scalar vector type
-    type SingleVector<const ROWS: usize>: IsSingleVector<Self, ROWS>;
+    type SingleVector<const ROWS: usize>: IsSingleVector<Self, ROWS, DM, DN>;
 
     /// Matrix type
-    type SingleMatrix<const ROWS: usize, const COLS: usize>: IsSingleMatrix<Self, ROWS, COLS>;
+    type SingleMatrix<const ROWS: usize, const COLS: usize>: IsSingleMatrix<
+        Self,
+        ROWS,
+        COLS,
+        DM,
+        DN,
+    >;
 
     /// returns single real scalar
     fn single_real_scalar(&self) -> f64;
@@ -266,19 +279,28 @@ pub trait IsSingleScalar: IsScalar<1> + PartialEq + Div<Output = Self> {
 }
 
 /// Batch scalar
-pub trait IsBatchScalar<const BATCH_SIZE: usize>: IsScalar<BATCH_SIZE> {}
+pub trait IsBatchScalar<const BATCH: usize, const DM: usize, const DN: usize>:
+    IsScalar<BATCH, DM, DN>
+{
+}
 
 impl IsRealScalar<1> for f64 {}
 
-impl IsScalar<1> for f64 {
+impl IsScalar<1, 0, 0> for f64 {
     type Scalar = f64;
-    type RealScalar = f64;
-    type SingleScalar = f64;
-    type DualScalar = DualScalar;
     type Vector<const ROWS: usize> = VecF64<ROWS>;
     type Matrix<const ROWS: usize, const COLS: usize> = MatF64<ROWS, COLS>;
+
+    type SingleScalar = f64;
+
+    type RealScalar = f64;
     type RealVector<const ROWS: usize> = VecF64<ROWS>;
     type RealMatrix<const ROWS: usize, const COLS: usize> = MatF64<ROWS, COLS>;
+
+    type DualScalar<const M: usize, const N: usize> = DualScalar<M, N>;
+    type DualVector<const ROWS: usize, const M: usize, const N: usize> = DualVector<ROWS, M, N>;
+    type DualMatrix<const ROWS: usize, const COLS: usize, const M: usize, const N: usize> =
+        DualMatrix<ROWS, COLS, M, N>;
 
     type Mask = bool;
 
@@ -377,11 +399,7 @@ impl IsScalar<1> for f64 {
         f64::signum(*self)
     }
 
-    type DualVector<const ROWS: usize> = DualVector<ROWS>;
-
-    type DualMatrix<const ROWS: usize, const COLS: usize> = DualMatrix<ROWS, COLS>;
-
-    fn to_dual(&self) -> Self::DualScalar {
+    fn to_dual_const<const DM: usize, const DN: usize>(&self) -> Self::DualScalar<DM, DN> {
         DualScalar::from_f64(*self)
     }
 
@@ -416,7 +434,7 @@ impl IsScalar<1> for f64 {
     }
 }
 
-impl IsSingleScalar for f64 {
+impl IsSingleScalar<0, 0> for f64 {
     type SingleMatrix<const ROWS: usize, const COLS: usize> = MatF64<ROWS, COLS>;
 
     type SingleVector<const ROWS: usize> = VecF64<ROWS>;
