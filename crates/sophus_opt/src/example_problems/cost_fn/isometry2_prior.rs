@@ -7,7 +7,7 @@ use crate::term::Term;
 use crate::variables::VarKind;
 use sophus_core::calculus::dual::DualScalar;
 use sophus_core::calculus::dual::DualVector;
-use sophus_core::calculus::maps::VectorValuedMapFromVector;
+use sophus_core::calculus::maps::VectorValuedVectorMap;
 use sophus_core::linalg::VecF64;
 use sophus_lie::Isometry2;
 use sophus_lie::Isometry2F64;
@@ -39,9 +39,9 @@ impl IsTermSignature<1> for Isometry2PriorTermSignature {
     const DOF_TUPLE: [i64; 1] = [3];
 }
 
-fn res_fn<Scalar: IsSingleScalar + IsScalar<1>>(
-    isometry: Isometry2<Scalar, 1>,
-    isometry_prior_mean: Isometry2<Scalar, 1>,
+fn res_fn<Scalar: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize>(
+    isometry: Isometry2<Scalar, 1, DM, DN>,
+    isometry_prior_mean: Isometry2<Scalar, 1, DM, DN>,
 ) -> Scalar::Vector<3> {
     (isometry * isometry_prior_mean.inverse()).log()
 }
@@ -59,8 +59,8 @@ impl IsResidualFn<3, 1, (), Isometry2F64, Isometry2F64> for Isometry2PriorCostFn
         let isometry: Isometry2F64 = args;
 
         let residual = res_fn(isometry, *isometry_prior_mean);
-        let dx_res_fn = |x: DualVector<3>| -> DualVector<3> {
-            let pp = Isometry2::<DualScalar, 1>::exp(&x) * isometry.to_dual_c();
+        let dx_res_fn = |x: DualVector<3, 3, 1>| -> DualVector<3, 3, 1> {
+            let pp = Isometry2::<DualScalar<3, 1>, 1, 3, 1>::exp(x) * isometry.to_dual_c();
             res_fn(
                 pp,
                 Isometry2::from_params(DualVector::from_real_vector(*isometry_prior_mean.params())),
@@ -69,7 +69,11 @@ impl IsResidualFn<3, 1, (), Isometry2F64, Isometry2F64> for Isometry2PriorCostFn
 
         let zeros: VecF64<3> = VecF64::<3>::zeros();
 
-        (|| VectorValuedMapFromVector::<DualScalar, 1>::static_fw_autodiff(dx_res_fn, zeros),)
+        (|| {
+            VectorValuedVectorMap::<DualScalar<3, 1>, 1, 3, 1>::fw_autodiff_jacobian(
+                dx_res_fn, zeros,
+            )
+        },)
             .make_term(idx, var_kinds, residual, robust_kernel, None)
     }
 }

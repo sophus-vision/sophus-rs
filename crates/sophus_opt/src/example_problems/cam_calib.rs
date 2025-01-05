@@ -17,7 +17,7 @@ use sophus_image::ImageSize;
 use sophus_lie::Isometry3;
 use sophus_lie::Isometry3F64;
 use sophus_lie::Rotation3;
-use sophus_sensor::PinholeCamera;
+use sophus_sensor::camera_enum::perspective_camera::PinholeCameraF64;
 
 extern crate alloc;
 
@@ -25,7 +25,7 @@ extern crate alloc;
 #[derive(Clone)]
 pub struct CamCalibProblem {
     /// intrinsics
-    pub intrinsics: PinholeCamera<f64, 1>,
+    pub intrinsics: PinholeCameraF64,
     /// world from camera isometries
     pub world_from_cameras: alloc::vec::Vec<Isometry3F64>,
     /// points in world
@@ -34,7 +34,7 @@ pub struct CamCalibProblem {
     pub observations: alloc::vec::Vec<ReprojTermSignature>,
 
     /// true intrinsics
-    pub true_intrinsics: PinholeCamera<f64, 1>,
+    pub true_intrinsics: PinholeCameraF64,
     /// true world from camera isometries
     pub true_world_from_cameras: alloc::vec::Vec<Isometry3F64>,
     /// true points in world
@@ -63,7 +63,7 @@ impl CamCalibProblem {
             height: 480,
         };
 
-        let true_intrinsics = PinholeCamera::<f64, 1>::from_params_and_size(
+        let true_intrinsics = PinholeCameraF64::from_params_and_size(
             VecF64::<4>::new(600.0, 600.0, 320.0, 240.0),
             image_size,
         );
@@ -119,7 +119,7 @@ impl CamCalibProblem {
 
         Self {
             world_from_cameras: alloc::vec![
-                Isometry3::<f64, 1>::identity(),
+                Isometry3F64::identity(),
                 true_world_from_cameras[1],
                 true_world_from_cameras[1],
             ],
@@ -140,7 +140,7 @@ impl CamCalibProblem {
             self.observations.clone(),
         );
 
-        let cam_family: VarFamily<PinholeCamera<f64, 1>> =
+        let cam_family: VarFamily<PinholeCameraF64> =
             VarFamily::new(intrinsics_var_kind, alloc::vec![self.intrinsics]);
 
         let mut id = alloc::collections::BTreeMap::new();
@@ -217,7 +217,7 @@ impl CamCalibProblem {
             self.observations.clone(),
         );
 
-        let cam_family: VarFamily<PinholeCamera<f64, 1>> =
+        let cam_family: VarFamily<PinholeCameraF64> =
             VarFamily::new(VarKind::Conditioned, alloc::vec![self.intrinsics]);
 
         let pose_family: VarFamily<Isometry3F64> =

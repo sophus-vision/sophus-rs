@@ -1,7 +1,3 @@
-use core::borrow::Borrow;
-
-use log::warn;
-
 use super::rotation3::Rotation3Impl;
 use super::translation_product_product::TranslationProductGroupImpl;
 use crate::lie_group::average::iterative_average;
@@ -11,22 +7,39 @@ use crate::prelude::*;
 use crate::traits::EmptySliceError;
 use crate::traits::HasAverage;
 use crate::Rotation3;
+use core::borrow::Borrow;
+use log::warn;
 
 /// 3D isometry group implementation struct - SE(3)
-pub type Isometry3Impl<S, const BATCH: usize> =
-    TranslationProductGroupImpl<S, 6, 7, 3, 4, 3, 4, BATCH, Rotation3Impl<S, BATCH>>;
+pub type Isometry3Impl<S, const BATCH: usize, const DM: usize, const DN: usize> =
+    TranslationProductGroupImpl<
+        S,
+        6,
+        7,
+        3,
+        4,
+        3,
+        4,
+        BATCH,
+        DM,
+        DN,
+        Rotation3Impl<S, BATCH, DM, DN>,
+    >;
 /// 3d isometry group - SE(3)
-pub type Isometry3<S, const BATCH: usize> = LieGroup<S, 6, 7, 3, 4, BATCH, Isometry3Impl<S, BATCH>>;
+pub type Isometry3<S, const BATCH: usize, const DM: usize, const DN: usize> =
+    LieGroup<S, 6, 7, 3, 4, BATCH, DM, DN, Isometry3Impl<S, BATCH, DM, DN>>;
 
 /// 3D isometry group with f64 scalar type
-pub type Isometry3F64 = Isometry3<f64, 1>;
+pub type Isometry3F64 = Isometry3<f64, 1, 0, 0>;
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry3<S, BATCH> {
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    Isometry3<S, BATCH, DM, DN>
+{
     /// create isometry from translation and rotation
     pub fn from_translation_and_rotation<P, F>(translation: P, rotation: F) -> Self
     where
         P: Borrow<S::Vector<3>>,
-        F: Borrow<Rotation3<S, BATCH>>,
+        F: Borrow<Rotation3<S, BATCH, DM, DN>>,
     {
         Self::from_translation_and_factor(translation, rotation)
     }
@@ -42,7 +55,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry3<S, BATCH> {
     /// create isometry from rotation
     pub fn from_rotation<F>(rotation: F) -> Self
     where
-        F: Borrow<Rotation3<S, BATCH>>,
+        F: Borrow<Rotation3<S, BATCH, DM, DN>>,
     {
         Self::from_translation_and_factor(S::Vector::<3>::zeros(), rotation)
     }
@@ -53,7 +66,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry3<S, BATCH> {
         U: Borrow<S>,
     {
         let x: &S = x.borrow();
-        Self::from_translation(S::Vector::from_array([x.clone(), S::zero(), S::zero()]))
+        Self::from_translation(S::Vector::from_array([*x, S::zero(), S::zero()]))
     }
 
     /// translate along y axis
@@ -62,7 +75,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry3<S, BATCH> {
         U: Borrow<S>,
     {
         let y: &S = y.borrow();
-        Self::from_translation(S::Vector::from_array([S::zero(), y.clone(), S::zero()]))
+        Self::from_translation(S::Vector::from_array([S::zero(), *y, S::zero()]))
     }
 
     /// translate along z axis
@@ -71,7 +84,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry3<S, BATCH> {
         U: Borrow<S>,
     {
         let z: &S = z.borrow();
-        Self::from_translation(S::Vector::from_array([S::zero(), S::zero(), z.clone()]))
+        Self::from_translation(S::Vector::from_array([S::zero(), S::zero(), *z]))
     }
 
     /// Rotate by angle
@@ -104,18 +117,20 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry3<S, BATCH> {
     /// set rotation
     pub fn set_rotation<F>(&mut self, rotation: F)
     where
-        F: Borrow<Rotation3<S, BATCH>>,
+        F: Borrow<Rotation3<S, BATCH, DM, DN>>,
     {
         self.set_factor(rotation)
     }
 
     /// get rotation
-    pub fn rotation(&self) -> Rotation3<S, BATCH> {
+    pub fn rotation(&self) -> Rotation3<S, BATCH, DM, DN> {
         self.factor()
     }
 }
 
-impl<S: IsSingleScalar + PartialOrd> HasAverage<S, 6, 7, 3, 4> for Isometry3<S, 1> {
+impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
+    HasAverage<S, 6, 7, 3, 4, DM, DN> for Isometry3<S, 1, DM, DN>
+{
     /// Average Isometry3 poses [parent_from_body0, ..., ].
     ///
     /// Note: This function can be used when there is no well-defined body center, since
@@ -124,7 +139,9 @@ impl<S: IsSingleScalar + PartialOrd> HasAverage<S, 6, 7, 3, 4> for Isometry3<S, 
     ///       If there is a well defined body center for the purpose of averaging, it is likely
     ///       better to average body center positions - using "1/n sum_i pos_i" - and rotations
     ///       independently.
-    fn average(parent_from_body_transforms: &[Isometry3<S, 1>]) -> Result<Self, EmptySliceError> {
+    fn average(
+        parent_from_body_transforms: &[Isometry3<S, 1, DM, DN>],
+    ) -> Result<Self, EmptySliceError> {
         match iterative_average(parent_from_body_transforms, 50) {
             Ok(parent_from_body_average) => Ok(parent_from_body_average),
             Err(err) => match err {
@@ -156,12 +173,12 @@ fn isometry3_prop_tests() {
 
     Isometry3F64::test_suite();
     #[cfg(feature = "simd")]
-    Isometry3::<BatchScalarF64<8>, 8>::test_suite();
-    Isometry3::<DualScalar, 1>::test_suite();
+    Isometry3::<BatchScalarF64<8>, 8, 0, 0>::test_suite();
+    Isometry3::<DualScalar<1, 1>, 1, 1, 1>::test_suite();
     #[cfg(feature = "simd")]
-    Isometry3::<DualBatchScalar<8>, 8>::test_suite();
+    Isometry3::<DualBatchScalar<8, 1, 1>, 8, 1, 1>::test_suite();
 
     Isometry3F64::run_real_tests();
     #[cfg(feature = "simd")]
-    Isometry3::<BatchScalarF64<8>, 8>::run_real_tests();
+    Isometry3::<BatchScalarF64<8>, 8, 0, 0>::run_real_tests();
 }

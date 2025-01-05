@@ -17,13 +17,16 @@ use core::ops::Sub;
 ///  - either a real (f64) or a dual number matrix
 ///  - either a single matrix or a batch matrix
 pub trait IsMatrix<
-    S: IsScalar<BATCH_SIZE>,
+    S: IsScalar<BATCH, DM, DN>,
     const ROWS: usize,
     const COLS: usize,
-    const BATCH_SIZE: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
 >:
     Debug
     + Clone
+    + Copy
     + Sized
     + Mul<S::Vector<COLS>, Output = S::Vector<ROWS>>
     + Neg<Output = Self>
@@ -116,7 +119,7 @@ pub trait IsMatrix<
     }
 
     /// Return a real matrix
-    fn real_matrix(&self) -> &S::RealMatrix<ROWS, COLS>;
+    fn real_matrix(&self) -> S::RealMatrix<ROWS, COLS>;
 
     /// return scaled matrix
     fn scaled<Q>(&self, v: Q) -> Self
@@ -143,7 +146,7 @@ pub trait IsMatrix<
     ///
     /// If self is a real matrix, this will return a dual matrix with the infinitesimal part set to
     /// zero: (self, 0ϵ)
-    fn to_dual(&self) -> S::DualMatrix<ROWS, COLS>;
+    fn to_dual_const<const M: usize, const N: usize>(&self) -> S::DualMatrix<ROWS, COLS, M, N>;
 
     /// zeros
     fn zeros() -> Self {
@@ -153,12 +156,12 @@ pub trait IsMatrix<
 
 /// Is real matrix?
 pub trait IsRealMatrix<
-    S: IsRealScalar<BATCH_SIZE> + IsScalar<BATCH_SIZE>,
+    S: IsRealScalar<BATCH> + IsScalar<BATCH, 0, 0>,
     const ROWS: usize,
     const COLS: usize,
-    const BATCH_SIZE: usize,
+    const BATCH: usize,
 >:
-    IsMatrix<S, ROWS, COLS, BATCH_SIZE>
+    IsMatrix<S, ROWS, COLS, BATCH, 0, 0>
     + Index<(usize, usize), Output = S>
     + IndexMut<(usize, usize), Output = S>
     + Copy
@@ -166,8 +169,14 @@ pub trait IsRealMatrix<
 }
 
 /// Is single matrix? (not batch)
-pub trait IsSingleMatrix<S: IsSingleScalar, const ROWS: usize, const COLS: usize>:
-    IsMatrix<S, ROWS, COLS, 1> + Mul<S::SingleVector<COLS>, Output = S::SingleVector<ROWS>>
+pub trait IsSingleMatrix<
+    S: IsSingleScalar<DM, DN>,
+    const ROWS: usize,
+    const COLS: usize,
+    const DM: usize,
+    const DN: usize,
+>:
+    IsMatrix<S, ROWS, COLS, 1, DM, DN> + Mul<S::SingleVector<COLS>, Output = S::SingleVector<ROWS>>
 {
     /// returns single real matrix
     fn single_real_matrix(&self) -> MatF64<ROWS, COLS>;
@@ -175,13 +184,17 @@ pub trait IsSingleMatrix<S: IsSingleScalar, const ROWS: usize, const COLS: usize
 
 impl<const ROWS: usize, const COLS: usize> IsRealMatrix<f64, ROWS, COLS, 1> for MatF64<ROWS, COLS> {}
 
-impl<const ROWS: usize, const COLS: usize> IsSingleMatrix<f64, ROWS, COLS> for MatF64<ROWS, COLS> {
+impl<const ROWS: usize, const COLS: usize> IsSingleMatrix<f64, ROWS, COLS, 0, 0>
+    for MatF64<ROWS, COLS>
+{
     fn single_real_matrix(&self) -> MatF64<ROWS, COLS> {
         *self
     }
 }
 
-impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF64<ROWS, COLS> {
+impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1, 0, 0>
+    for MatF64<ROWS, COLS>
+{
     fn from_real_matrix<A>(val: A) -> Self
     where
         A: Borrow<MatF64<ROWS, COLS>>,
@@ -233,8 +246,8 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF
         Self::identity()
     }
 
-    fn real_matrix(&self) -> &Self {
-        self
+    fn real_matrix(&self) -> Self {
+        *self
     }
 
     fn mat_mul<const C2: usize, M>(&self, other: M) -> MatF64<ROWS, C2>
@@ -330,7 +343,9 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1> for MatF
         self.fixed_columns_mut::<1>(c).copy_from(&v);
     }
 
-    fn to_dual(&self) -> <f64 as IsScalar<1>>::DualMatrix<ROWS, COLS> {
+    fn to_dual_const<const M: usize, const N: usize>(
+        &self,
+    ) -> <f64 as IsScalar<1, 0, 0>>::DualMatrix<ROWS, COLS, M, N> {
         DualMatrix::from_real_matrix(self)
     }
 

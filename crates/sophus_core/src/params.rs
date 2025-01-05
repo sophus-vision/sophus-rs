@@ -9,7 +9,14 @@ use alloc::vec::Vec;
 extern crate alloc;
 
 /// Parameter implementation.
-pub trait ParamsImpl<S: IsScalar<BATCH_SIZE>, const PARAMS: usize, const BATCH_SIZE: usize> {
+pub trait ParamsImpl<
+    S: IsScalar<BATCH, DM, DN>,
+    const PARAMS: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+>
+{
     /// Is the parameter vector valid?
     fn are_params_valid<P>(params: P) -> S::Mask
     where
@@ -21,8 +28,13 @@ pub trait ParamsImpl<S: IsScalar<BATCH_SIZE>, const PARAMS: usize, const BATCH_S
 }
 
 /// A trait for linalg that have parameters.
-pub trait HasParams<S: IsScalar<BATCH_SIZE>, const PARAMS: usize, const BATCH_SIZE: usize>:
-    ParamsImpl<S, PARAMS, BATCH_SIZE>
+pub trait HasParams<
+    S: IsScalar<BATCH, DM, DN>,
+    const PARAMS: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+>: ParamsImpl<S, PARAMS, BATCH, DM, DN>
 {
     /// Create from parameters.
     fn from_params<P>(params: P) -> Self
@@ -36,7 +48,7 @@ pub trait HasParams<S: IsScalar<BATCH_SIZE>, const PARAMS: usize, const BATCH_SI
     fn params(&self) -> &S::Vector<PARAMS>;
 }
 
-impl<const N: usize> ParamsImpl<f64, N, 1> for VecF64<N> {
+impl<const N: usize> ParamsImpl<f64, N, 1, 0, 0> for VecF64<N> {
     fn are_params_valid<P>(_params: P) -> bool
     where
         P: Borrow<VecF64<N>>,
@@ -45,7 +57,7 @@ impl<const N: usize> ParamsImpl<f64, N, 1> for VecF64<N> {
     }
 
     fn params_examples() -> Vec<VecF64<N>> {
-        example_points::<f64, N, 1>()
+        example_points::<f64, N, 1, 0, 0>()
     }
 
     fn invalid_params_examples() -> Vec<VecF64<N>> {
@@ -53,7 +65,7 @@ impl<const N: usize> ParamsImpl<f64, N, 1> for VecF64<N> {
     }
 }
 
-impl<const N: usize> HasParams<f64, N, 1> for VecF64<N> {
+impl<const N: usize> HasParams<f64, N, 1, 0, 0> for VecF64<N> {
     fn from_params<P>(params: P) -> Self
     where
         P: Borrow<VecF64<N>>,

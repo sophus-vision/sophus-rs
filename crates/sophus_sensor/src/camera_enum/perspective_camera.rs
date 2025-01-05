@@ -10,54 +10,79 @@ use crate::Camera;
 use sophus_image::ImageSize;
 
 /// Pinhole camera
-pub type PinholeCamera<S, const BATCH: usize> =
-    Camera<S, 0, 4, BATCH, AffineDistortionImpl<S, BATCH>, PerspectiveProjectionImpl<S, BATCH>>;
+pub type PinholeCamera<S, const BATCH: usize, const DM: usize, const DN: usize> = Camera<
+    S,
+    0,
+    4,
+    BATCH,
+    DM,
+    DN,
+    AffineDistortionImpl<S, BATCH, DM, DN>,
+    PerspectiveProjectionImpl<S, BATCH, DM, DN>,
+>;
 /// Kannala-Brandt camera
-pub type KannalaBrandtCamera<S, const BATCH: usize> = Camera<
+pub type KannalaBrandtCamera<S, const BATCH: usize, const DM: usize, const DN: usize> = Camera<
     S,
     4,
     8,
     BATCH,
-    KannalaBrandtDistortionImpl<S, BATCH>,
-    PerspectiveProjectionImpl<S, BATCH>,
+    DM,
+    DN,
+    KannalaBrandtDistortionImpl<S, BATCH, DM, DN>,
+    PerspectiveProjectionImpl<S, BATCH, DM, DN>,
 >;
 /// Brown-Conrady camera
-pub type BrownConradyCamera<S, const BATCH: usize> = Camera<
+pub type BrownConradyCamera<S, const BATCH: usize, const DM: usize, const DN: usize> = Camera<
     S,
     8,
     12,
     BATCH,
-    BrownConradyDistortionImpl<S, BATCH>,
-    PerspectiveProjectionImpl<S, BATCH>,
+    DM,
+    DN,
+    BrownConradyDistortionImpl<S, BATCH, DM, DN>,
+    PerspectiveProjectionImpl<S, BATCH, DM, DN>,
 >;
 /// unified camera
-pub type UnifiedCamera<S, const BATCH: usize> =
-    Camera<S, 2, 6, BATCH, UnifiedDistortionImpl<S, BATCH>, PerspectiveProjectionImpl<S, BATCH>>;
+pub type UnifiedCamera<S, const BATCH: usize, const DM: usize, const DN: usize> = Camera<
+    S,
+    2,
+    6,
+    BATCH,
+    DM,
+    DN,
+    UnifiedDistortionImpl<S, BATCH, DM, DN>,
+    PerspectiveProjectionImpl<S, BATCH, DM, DN>,
+>;
 
 /// Pinhole camera with f64 scalar type
-pub type PinholeCameraF64 = PinholeCamera<f64, 1>;
+pub type PinholeCameraF64 = PinholeCamera<f64, 1, 0, 0>;
 /// Kannala-Brandt camera with f64 scalar type
-pub type KannalaBrandtCameraF64 = KannalaBrandtCamera<f64, 1>;
+pub type KannalaBrandtCameraF64 = KannalaBrandtCamera<f64, 1, 0, 0>;
 /// Brown-Conrady camera with f64 scalar type
-pub type BrownConradyCameraF64 = BrownConradyCamera<f64, 1>;
+pub type BrownConradyCameraF64 = BrownConradyCamera<f64, 1, 0, 0>;
 /// Unified camera with f64 scalar type
-pub type UnifiedCameraF64 = UnifiedCamera<f64, 1>;
+pub type UnifiedCameraF64 = UnifiedCamera<f64, 1, 0, 0>;
 
 /// Perspective camera enum
 #[derive(Debug, Clone)]
-pub enum PerspectiveCameraEnum<S: IsScalar<BATCH>, const BATCH: usize> {
+pub enum PerspectiveCameraEnum<
+    S: IsScalar<BATCH, DM, DN>,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     /// Pinhole camera
-    Pinhole(PinholeCamera<S, BATCH>),
+    Pinhole(PinholeCamera<S, BATCH, DM, DN>),
     /// Kannala-Brandt camera
-    KannalaBrandt(KannalaBrandtCamera<S, BATCH>),
+    KannalaBrandt(KannalaBrandtCamera<S, BATCH, DM, DN>),
     /// Brown-Conrady camera
-    BrownConrady(BrownConradyCamera<S, BATCH>),
+    BrownConrady(BrownConradyCamera<S, BATCH, DM, DN>),
     /// Unified Extended camera
-    UnifiedExtended(UnifiedCamera<S, BATCH>),
+    UnifiedExtended(UnifiedCamera<S, BATCH, DM, DN>),
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> IsCamera<S, BATCH>
-    for PerspectiveCameraEnum<S, BATCH>
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    IsCamera<S, BATCH, DM, DN> for PerspectiveCameraEnum<S, BATCH, DM, DN>
 {
     fn new_pinhole<P>(params: P, image_size: ImageSize) -> Self
     where
@@ -180,7 +205,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCamera<S, BATCH>
         }
     }
 
-    fn try_get_brown_conrady(self) -> Option<BrownConradyCamera<S, BATCH>> {
+    fn try_get_brown_conrady(self) -> Option<BrownConradyCamera<S, BATCH, DM, DN>> {
         if let PerspectiveCameraEnum::BrownConrady(camera) = self {
             Some(camera)
         } else {
@@ -188,7 +213,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCamera<S, BATCH>
         }
     }
 
-    fn try_get_kannala_brandt(self) -> Option<KannalaBrandtCamera<S, BATCH>> {
+    fn try_get_kannala_brandt(self) -> Option<KannalaBrandtCamera<S, BATCH, DM, DN>> {
         if let PerspectiveCameraEnum::KannalaBrandt(camera) = self {
             Some(camera)
         } else {
@@ -196,7 +221,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCamera<S, BATCH>
         }
     }
 
-    fn try_get_pinhole(self) -> Option<PinholeCamera<S, BATCH>> {
+    fn try_get_pinhole(self) -> Option<PinholeCamera<S, BATCH, DM, DN>> {
         if let PerspectiveCameraEnum::Pinhole(camera) = self {
             Some(camera)
         } else {
@@ -204,7 +229,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCamera<S, BATCH>
         }
     }
 
-    fn try_get_unified_extended(self) -> Option<UnifiedCamera<S, BATCH>> {
+    fn try_get_unified_extended(self) -> Option<UnifiedCamera<S, BATCH, DM, DN>> {
         if let PerspectiveCameraEnum::UnifiedExtended(camera) = self {
             Some(camera)
         } else {
@@ -213,12 +238,12 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCamera<S, BATCH>
     }
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> IsPerspectiveCamera<S, BATCH>
-    for PerspectiveCameraEnum<S, BATCH>
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    IsPerspectiveCamera<S, BATCH, DM, DN> for PerspectiveCameraEnum<S, BATCH, DM, DN>
 {
     fn pinhole_params(&self) -> S::Vector<4> {
         match self {
-            PerspectiveCameraEnum::Pinhole(camera) => camera.params().clone(),
+            PerspectiveCameraEnum::Pinhole(camera) => *camera.params(),
             PerspectiveCameraEnum::KannalaBrandt(camera) => {
                 camera.params().clone().get_fixed_subvec(0)
             }

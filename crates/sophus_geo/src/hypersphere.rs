@@ -4,7 +4,13 @@ use sophus_lie::prelude::*;
 use crate::ray::Ray;
 
 /// N-Sphere
-pub struct HyperSphere<S: IsScalar<BATCH_SIZE>, const DIM: usize, const BATCH_SIZE: usize> {
+pub struct HyperSphere<
+    S: IsScalar<BATCH, DM, DN>,
+    const DIM: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     /// center
     pub center: S::Vector<DIM>,
     /// radius
@@ -12,40 +18,41 @@ pub struct HyperSphere<S: IsScalar<BATCH_SIZE>, const DIM: usize, const BATCH_SI
 }
 
 /// Circle
-pub type Circle<S, const B: usize> = HyperSphere<S, 2, B>;
+pub type Circle<S, const B: usize, const DM: usize, const DN: usize> = HyperSphere<S, 2, B, DM, DN>;
 
 /// Circle
-pub type CircleF64 = Circle<f64, 1>;
+pub type CircleF64 = Circle<f64, 1, 0, 0>;
 
-impl<S: IsSingleScalar + PartialOrd> Circle<S, 1> {
+impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
+    Circle<S, 1, DM, DN>
+{
     /// circle-circle intersection
-    pub fn intersect_circle(&self, other: &Circle<S, 1>) -> Option<[S::Vector<2>; 2]> {
-        let dir = other.center.clone() - self.center.clone();
+    pub fn intersect_circle(&self, other: &Circle<S, 1, DM, DN>) -> Option<[S::Vector<2>; 2]> {
+        let dir = other.center - self.center;
         let d = dir.norm();
 
-        let r1 = self.radius.clone();
-        let r2 = other.radius.clone();
+        let r1 = self.radius;
+        let r2 = other.radius;
 
         // No intersection
-        if d > r1.clone() + r2.clone() || d < (r1.clone() - r2.clone()).abs() {
+        if d > r1 + r2 || d < (r1 - r2).abs() {
             return None;
         }
 
         // Distance from the center of the first circle to the midpoint of the intersection line
-        let a = (r1.clone() * r1.clone() - r2.clone() * r2.clone() + d.clone() * d.clone())
-            / (S::from_f64(2.0) * d.clone());
+        let a = (r1 * r1 - r2 * r2 + d * d) / (S::from_f64(2.0) * d);
 
         // Height from the midpoint to the intersection points
-        let h = (r1.clone() * r1 - a.clone() * a.clone()).sqrt();
+        let h = (r1 * r1 - a * a).sqrt();
 
         // Midpoint coordinates
-        let m = self.center.clone() + dir.scaled(a.clone() / d.clone());
+        let m = self.center + dir.scaled(a / d);
 
         let ortho_dir = S::Vector::from_array([dir.get_elem(1), dir.get_elem(0)]);
 
         let up = ortho_dir.scaled(h / d);
 
-        Some([m.clone() + up.clone(), m.clone() - up])
+        Some([m + up, m - up])
     }
 }
 
@@ -53,7 +60,12 @@ impl<S: IsSingleScalar + PartialOrd> Circle<S, 1> {
 pub struct HypersphereRayIntersection {}
 
 /// Line-hypersphere intersection
-pub enum LineHypersphereIntersection<S: IsSingleScalar, const DIM: usize> {
+pub enum LineHypersphereIntersection<
+    S: IsSingleScalar<DM, DN>,
+    const DIM: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     /// point pair
     Points([S::Vector<DIM>; 2]),
     /// tangent point
@@ -61,11 +73,19 @@ pub enum LineHypersphereIntersection<S: IsSingleScalar, const DIM: usize> {
 }
 
 /// 2d line circle intersection
-pub type LineCircleIntersection<S> = LineHypersphereIntersection<S, 2>;
+pub type LineCircleIntersection<S, const DM: usize, const DN: usize> =
+    LineHypersphereIntersection<S, 2, DM, DN>;
 /// 3d line circle intersection
-pub type LineSphereIntersection<S> = LineHypersphereIntersection<S, 3>;
+pub type LineSphereIntersection<S, const DM: usize, const DN: usize> =
+    LineHypersphereIntersection<S, 3, DM, DN>;
 
-impl<S: IsSingleScalar + PartialOrd, const DIM: usize> HyperSphere<S, DIM, 1> {
+impl<
+        S: IsSingleScalar<DM, DN> + PartialOrd,
+        const DIM: usize,
+        const DM: usize,
+        const DN: usize,
+    > HyperSphere<S, DIM, 1, DM, DN>
+{
     /// Function to calculate the intersection between a line: l: o + t*d,
     /// and a hypersphere.
     ///
@@ -73,15 +93,15 @@ impl<S: IsSingleScalar + PartialOrd, const DIM: usize> HyperSphere<S, DIM, 1> {
     /// intersect the sphere.
     pub fn line_intersect_parameters<const DOF: usize>(
         &self,
-        ray: &Ray<S, DOF, DIM, 1>,
+        ray: &Ray<S, DOF, DIM, 1, DM, DN>,
     ) -> Option<[S; 2]> {
-        let oc = ray.origin.clone() - self.center.clone();
+        let oc = ray.origin - self.center;
         let a = ray.dir.vector().dot(ray.dir.vector());
         let b = S::from_f64(2.0) * oc.clone().dot(ray.dir.vector());
-        let c = oc.clone().dot(oc) - self.radius.clone() * self.radius.clone();
+        let c = oc.clone().dot(oc) - self.radius * self.radius;
 
         // Compute the discriminant
-        let discriminant = b.clone() * b.clone() - S::from_f64(4.0) * a.clone() * c;
+        let discriminant = b * b - S::from_f64(4.0) * a * c;
 
         if discriminant < S::from_f64(0.0) {
             return None; // No intersection
@@ -90,7 +110,7 @@ impl<S: IsSingleScalar + PartialOrd, const DIM: usize> HyperSphere<S, DIM, 1> {
         let sqrt_discriminant = discriminant.sqrt();
 
         // Compute both possible solutions (t1 and t2)
-        let t1 = (-b.clone() - sqrt_discriminant.clone()) / (S::from_f64(2.0) * a.clone());
+        let t1 = (-b - sqrt_discriminant) / (S::from_f64(2.0) * a);
         let t2 = (-b + sqrt_discriminant) / (S::from_f64(2.0) * a);
 
         Some([t1, t2])
@@ -103,7 +123,7 @@ impl<S: IsSingleScalar + PartialOrd, const DIM: usize> HyperSphere<S, DIM, 1> {
     /// use Self::line_intersect_parameters directly.
     pub fn ray_intersect_with_eps<const DOF: usize>(
         &self,
-        ray: &Ray<S, DOF, DIM, 1>,
+        ray: &Ray<S, DOF, DIM, 1, DM, DN>,
         eps: f64,
     ) -> Option<S::Vector<DIM>> {
         let t = self.line_intersect_parameters(ray)?;
@@ -116,13 +136,13 @@ impl<S: IsSingleScalar + PartialOrd, const DIM: usize> HyperSphere<S, DIM, 1> {
         let t: Option<S> = match (t0_pos, t1_pos) {
             (true, true) => {
                 if t0 < t1 {
-                    Some(t0.clone())
+                    Some(*t0)
                 } else {
-                    Some(t1.clone())
+                    Some(*t1)
                 }
             }
-            (true, false) => Some(t0.clone()),
-            (false, true) => Some(t1.clone()),
+            (true, false) => Some(*t0),
+            (false, true) => Some(*t1),
             (false, false) => None,
         };
 
@@ -132,7 +152,7 @@ impl<S: IsSingleScalar + PartialOrd, const DIM: usize> HyperSphere<S, DIM, 1> {
     /// Self::ray_intersect_with_eps with default eps.
     pub fn ray_intersect<const DOF: usize>(
         &self,
-        ray: &Ray<S, DOF, DIM, 1>,
+        ray: &Ray<S, DOF, DIM, 1, DM, DN>,
     ) -> Option<S::Vector<DIM>> {
         self.ray_intersect_with_eps(ray, EPS_F64)
     }
@@ -140,23 +160,23 @@ impl<S: IsSingleScalar + PartialOrd, const DIM: usize> HyperSphere<S, DIM, 1> {
     /// calculates line intersection
     pub fn line_intersect<const DOF: usize>(
         &self,
-        ray: &Ray<S, DOF, DIM, 1>,
-    ) -> Option<LineHypersphereIntersection<S, DIM>> {
+        ray: &Ray<S, DOF, DIM, 1, DM, DN>,
+    ) -> Option<LineHypersphereIntersection<S, DIM, DM, DN>> {
         self.line_intersect_with_eps(ray, EPS_F64)
     }
 
     /// calculates line intersection
     pub fn line_intersect_with_eps<const DOF: usize>(
         &self,
-        ray: &Ray<S, DOF, DIM, 1>,
+        ray: &Ray<S, DOF, DIM, 1, DM, DN>,
         eps: f64,
-    ) -> Option<LineHypersphereIntersection<S, DIM>> {
+    ) -> Option<LineHypersphereIntersection<S, DIM, DM, DN>> {
         let t = self.line_intersect_parameters(ray)?;
-        let t0 = t[0].clone();
-        let t1 = t[1].clone();
-        if (t0.clone() - t1.clone()).abs().single_real_scalar() < eps {
+        let t0 = t[0];
+        let t1 = t[1];
+        if (t0 - t1).abs().single_real_scalar() < eps {
             return Some(LineHypersphereIntersection::TangentPoint(
-                ray.clone().at(t0.clone()),
+                ray.clone().at(t0),
             ));
         }
         Some(LineHypersphereIntersection::Points([

@@ -1,5 +1,5 @@
+use crate::dyn_camera::DynCameraF64;
 use crate::prelude::*;
-use crate::DynCamera;
 use nalgebra::SVector;
 use sophus_core::calculus::Region;
 use sophus_core::linalg::VecF64;
@@ -46,7 +46,7 @@ impl DistortTable {
 }
 
 /// Returns the distortion lookup table
-pub fn distort_table(cam: &DynCamera<f64, 1>) -> DistortTable {
+pub fn distort_table(cam: &DynCameraF64) -> DistortTable {
     // First we find min and max values in the proj plane.
     // Just test the 4 corners might not be enough, so we will test the image boundary.
 
@@ -105,12 +105,10 @@ fn camera_distortion_table_tests() {
     use crate::distortion_table::DistortTable;
     use approx::assert_abs_diff_eq;
     use approx::assert_relative_eq;
-    use sophus_core::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
+    use sophus_core::calculus::maps::vector_valued_maps::VectorValuedVectorMap;
     use sophus_core::linalg::VecF64;
     use sophus_core::linalg::EPS_F64;
     use sophus_image::ImageSize;
-
-    type DynCameraF64 = DynCamera<f64, 1>;
 
     {
         let mut cameras: alloc::vec::Vec<DynCameraF64> = alloc::vec![];
@@ -122,7 +120,7 @@ fn camera_distortion_table_tests() {
             },
         ));
 
-        cameras.push(DynCamera::new_kannala_brandt(
+        cameras.push(DynCameraF64::new_kannala_brandt(
             VecF64::<8>::from_vec(alloc::vec![
                 1000.0, 1000.0, 320.0, 280.0, 0.1, 0.01, 0.001, 0.0001
             ]),
@@ -167,7 +165,7 @@ fn camera_distortion_table_tests() {
                 assert_relative_eq!(pixel_in_image3, pixel, epsilon = EPS_F64);
 
                 let dx = camera.dx_distort_x(pixel);
-                let numeric_dx = VectorValuedMapFromVector::static_sym_diff_quotient(
+                let numeric_dx = VectorValuedVectorMap::sym_diff_quotient_jacobian(
                     |x: VecF64<2>| camera.distort(x),
                     pixel,
                     EPS_F64,

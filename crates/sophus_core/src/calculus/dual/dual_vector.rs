@@ -1,10 +1,12 @@
 use super::dual_matrix::DualMatrix;
 use super::dual_scalar::DualScalar;
+use super::vector::HasJacobian;
+use super::vector::VectorValuedDerivative;
+use crate::linalg::MatF64;
+use crate::linalg::SMat;
+use crate::linalg::SVec;
 use crate::linalg::VecF64;
 use crate::prelude::*;
-use crate::tensor::mut_tensor::InnerVecToMat;
-use crate::tensor::mut_tensor::MutTensorDD;
-use crate::tensor::mut_tensor::MutTensorDDR;
 use approx::AbsDiffEq;
 use approx::RelativeEq;
 use core::borrow::Borrow;
@@ -14,242 +16,109 @@ use core::ops::Neg;
 use core::ops::Sub;
 
 /// Dual vector
-#[derive(Clone)]
-pub struct DualVector<const ROWS: usize> {
-    /// real part
-    pub real_part: VecF64<ROWS>,
-    /// infinitesimal part - represents derivative
-    pub dij_part: Option<MutTensorDDR<f64, ROWS>>,
+#[derive(Clone, Debug, Copy)]
+pub struct DualVector<const ROWS: usize, const DM: usize, const DN: usize> {
+    pub(crate) inner: SVec<DualScalar<DM, DN>, ROWS>,
 }
 
-/// Trait for scalar dual numbers
-pub trait IsDualVector<S: IsDualScalar<BATCH>, const ROWS: usize, const BATCH: usize>:
-    IsVector<S, ROWS, BATCH> + IsDual
+impl<const ROWS: usize, const DM: usize, const DN: usize>
+    IsDualVector<DualScalar<DM, DN>, ROWS, 1, DM, DN> for DualVector<ROWS, DM, DN>
 {
-    /// Create a new dual vector from a real vector for auto-differentiation with respect to self
-    ///
-    /// Typically this is not called directly, but through using a map auto-differentiation call:
-    ///
-    ///  - ScalarValuedMapFromVector::fw_autodiff(...);
-    ///  - VectorValuedMapFromVector::fw_autodiff(...);
-    ///  - MatrixValuedMapFromVector::fw_autodiff(...);
-    fn new_with_dij(val: S::RealVector<ROWS>) -> Self;
-
-    /// Get the derivative
-    fn dij_val(self) -> Option<MutTensorDDR<S::RealScalar, ROWS>>;
-}
-
-impl<const ROWS: usize> IsDual for DualVector<ROWS> {}
-
-impl<const ROWS: usize> IsDualVector<DualScalar, ROWS, 1> for DualVector<ROWS> {
-    fn new_with_dij(val: VecF64<ROWS>) -> Self {
-        let mut dij_val = MutTensorDDR::<f64, ROWS>::from_shape([ROWS, 1]);
+    fn var(val: VecF64<ROWS>) -> Self {
+        let mut dij_val: SVec<DualScalar<DM, DN>, ROWS> = SVec::zeros();
         for i in 0..ROWS {
-            dij_val.mut_view().get_mut([i, 0])[(i, 0)] = 1.0;
+            dij_val[(i, 0)].real_part = val[i];
+            let mut v = SMat::<f64, DM, DN>::zeros();
+            v[(i, 0)] = 1.0;
+            dij_val[(i, 0)].infinitesimal_part = Some(v);
         }
 
-        Self {
-            real_part: val,
-            dij_part: Some(dij_val),
-        }
+        Self { inner: dij_val }
     }
 
-    fn dij_val(self) -> Option<MutTensorDDR<f64, ROWS>> {
-        self.dij_part
+    fn derivative(&self) -> VectorValuedDerivative<f64, ROWS, 1, DM, DN> {
+        let mut v = SVec::<SMat<f64, DM, DN>, ROWS>::zeros();
+        for i in 0..ROWS {
+            v[i] = self.inner[i].derivative();
+        }
+        VectorValuedDerivative { out_vec: v }
     }
 }
 
-impl<const ROWS: usize> num_traits::Zero for DualVector<ROWS> {
+impl<const ROWS: usize, const DM: usize> HasJacobian<DualScalar<DM, 1>, ROWS, 1, DM>
+    for DualVector<ROWS, DM, 1>
+{
+    fn jacobian(&self) -> MatF64<ROWS, DM> {
+        let mut v = SMat::<f64, ROWS, DM>::zeros();
+        for i in 0..ROWS {
+            let d = self.inner[i].derivative();
+            for j in 0..DM {
+                v[(i, j)] = d[j];
+            }
+        }
+        v
+    }
+}
+
+impl<const ROWS: usize, const DM: usize, const DN: usize> num_traits::Zero
+    for DualVector<ROWS, DM, DN>
+{
     fn zero() -> Self {
         DualVector {
-            real_part: VecF64::zeros(),
-            dij_part: None,
+            inner: SVec::zeros(),
         }
     }
 
     fn is_zero(&self) -> bool {
-        self.real_part == VecF64::<ROWS>::zeros()
+        self.inner == Self::zero().inner
     }
 }
 
-impl<const ROWS: usize> IsSingleVector<DualScalar, ROWS> for DualVector<ROWS>
+impl<const ROWS: usize, const DM: usize, const DN: usize>
+    IsSingleVector<DualScalar<DM, DN>, ROWS, DM, DN> for DualVector<ROWS, DM, DN>
 where
-    DualVector<ROWS>: IsVector<DualScalar, ROWS, 1>,
+    DualVector<ROWS, DM, DN>: IsVector<DualScalar<DM, DN>, ROWS, 1, DM, DN>,
 {
     fn set_real_scalar(&mut self, idx: usize, v: f64) {
-        self.real_part[idx] = v;
+        self.inner[idx].real_part = v;
     }
 }
 
-pub(crate) struct DijPair<S: IsCoreScalar, const R0: usize, const R1: usize> {
-    pub(crate) lhs: MutTensorDDR<S, R0>,
-    pub(crate) rhs: MutTensorDDR<S, R1>,
-}
-
-impl<S: IsCoreScalar, const R0: usize, const R1: usize> DijPair<S, R0, R1> {
-    pub(crate) fn shape(&self) -> [usize; 2] {
-        self.lhs.dims()
-    }
-}
-
-impl<const ROWS: usize> DualVector<ROWS> {
-    fn binary_dij<
-        const R0: usize,
-        const R1: usize,
-        F: FnMut(&VecF64<R0>) -> VecF64<ROWS>,
-        G: FnMut(&VecF64<R1>) -> VecF64<ROWS>,
-    >(
-        lhs_dx: &Option<MutTensorDDR<f64, R0>>,
-        rhs_dx: &Option<MutTensorDDR<f64, R1>>,
-        mut left_op: F,
-        mut right_op: G,
-    ) -> Option<MutTensorDDR<f64, ROWS>> {
-        match (lhs_dx, rhs_dx) {
-            (None, None) => None,
-            (None, Some(rhs_dij)) => {
-                let out_dij = MutTensorDDR::from_map(&rhs_dij.view(), |r_dij| right_op(r_dij));
-                Some(out_dij)
-            }
-            (Some(lhs_dij), None) => {
-                let out_dij = MutTensorDDR::from_map(&lhs_dij.view(), |l_dij| left_op(l_dij));
-                Some(out_dij)
-            }
-            (Some(lhs_dij), Some(rhs_dij)) => {
-                let dyn_mat =
-                    MutTensorDDR::from_map2(&lhs_dij.view(), &rhs_dij.view(), |l_dij, r_dij| {
-                        left_op(l_dij) + right_op(r_dij)
-                    });
-                Some(dyn_mat)
-            }
-        }
-    }
-
-    fn binary_vs_dij<
-        const R0: usize,
-        F: FnMut(&VecF64<R0>) -> VecF64<ROWS>,
-        G: FnMut(&f64) -> VecF64<ROWS>,
-    >(
-        lhs_dx: &Option<MutTensorDDR<f64, R0>>,
-        rhs_dx: &Option<MutTensorDD<f64>>,
-        mut left_op: F,
-        mut right_op: G,
-    ) -> Option<MutTensorDDR<f64, ROWS>> {
-        match (lhs_dx, rhs_dx) {
-            (None, None) => None,
-            (None, Some(rhs_dij)) => {
-                let out_dij = MutTensorDDR::from_map(&rhs_dij.view(), |r_dij| right_op(r_dij));
-                Some(out_dij)
-            }
-            (Some(lhs_dij), None) => {
-                let out_dij = MutTensorDDR::from_map(&lhs_dij.view(), |l_dij| left_op(l_dij));
-                Some(out_dij)
-            }
-            (Some(lhs_dij), Some(rhs_dij)) => {
-                let dyn_mat =
-                    MutTensorDDR::from_map2(&lhs_dij.view(), &rhs_dij.view(), |l_dij, r_dij| {
-                        left_op(l_dij) + right_op(r_dij)
-                    });
-                Some(dyn_mat)
-            }
-        }
-    }
-
-    fn two_dx<const R0: usize, const R1: usize>(
-        mut lhs_dx: Option<MutTensorDDR<f64, R0>>,
-        mut rhs_dx: Option<MutTensorDDR<f64, R1>>,
-    ) -> Option<DijPair<f64, R0, R1>> {
-        if lhs_dx.is_none() && rhs_dx.is_none() {
-            return None;
-        }
-
-        if lhs_dx.is_some() && rhs_dx.is_some() {
-            assert_eq!(
-                lhs_dx.clone().unwrap().dims(),
-                rhs_dx.clone().unwrap().dims()
-            );
-        }
-
-        if lhs_dx.is_none() {
-            lhs_dx = Some(MutTensorDDR::from_shape(rhs_dx.clone().unwrap().dims()))
-        } else if rhs_dx.is_none() {
-            rhs_dx = Some(MutTensorDDR::from_shape(lhs_dx.clone().unwrap().dims()))
-        }
-
-        Some(DijPair {
-            lhs: lhs_dx.unwrap(),
-            rhs: rhs_dx.unwrap(),
-        })
-    }
-}
-
-impl<const ROWS: usize> Neg for DualVector<ROWS> {
-    type Output = DualVector<ROWS>;
+impl<const ROWS: usize, const DM: usize, const DN: usize> Neg for DualVector<ROWS, DM, DN> {
+    type Output = DualVector<ROWS, DM, DN>;
 
     fn neg(self) -> Self::Output {
-        DualVector {
-            real_part: -self.real_part,
-            dij_part: self
-                .dij_part
-                .clone()
-                .map(|dij_val| MutTensorDDR::from_map(&dij_val.view(), |v| -v)),
-        }
+        DualVector { inner: -self.inner }
     }
 }
 
-impl<const ROWS: usize> Sub for DualVector<ROWS> {
-    type Output = DualVector<ROWS>;
+impl<const ROWS: usize, const DM: usize, const DN: usize> Sub for DualVector<ROWS, DM, DN> {
+    type Output = DualVector<ROWS, DM, DN>;
 
     fn sub(self, rhs: Self) -> Self::Output {
         DualVector {
-            real_part: self.real_part - rhs.real_part,
-            dij_part: Self::binary_dij(
-                &self.dij_part,
-                &rhs.dij_part,
-                |l_dij| *l_dij,
-                |r_dij| -r_dij,
-            ),
+            inner: self.inner - rhs.inner,
         }
     }
 }
 
-impl<const ROWS: usize> Add for DualVector<ROWS> {
-    type Output = DualVector<ROWS>;
+impl<const ROWS: usize, const DM: usize, const DN: usize> Add for DualVector<ROWS, DM, DN> {
+    type Output = DualVector<ROWS, DM, DN>;
 
     fn add(self, rhs: Self) -> Self::Output {
         DualVector {
-            real_part: self.real_part + rhs.real_part,
-            dij_part: Self::binary_dij(
-                &self.dij_part,
-                &rhs.dij_part,
-                |l_dij| *l_dij,
-                |r_dij| *r_dij,
-            ),
+            inner: self.inner + rhs.inner,
         }
     }
 }
 
-impl<const ROWS: usize> Debug for DualVector<ROWS> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        if self.dij_part.is_some() {
-            f.debug_struct("DualScalarLike")
-                .field("val", &self.real_part)
-                .field("dij_val", &self.dij_part.as_ref().unwrap().elem_view())
-                .finish()
-        } else {
-            f.debug_struct("DualScalarLike")
-                .field("val", &self.real_part)
-                .finish()
-        }
-    }
-}
-
-impl<const ROWS: usize> PartialEq for DualVector<ROWS> {
+impl<const ROWS: usize, const DM: usize, const DN: usize> PartialEq for DualVector<ROWS, DM, DN> {
     fn eq(&self, other: &Self) -> bool {
-        self.real_part == other.real_part && self.dij_part == other.dij_part
+        self.inner == other.inner
     }
 }
 
-impl<const ROWS: usize> AbsDiffEq for DualVector<ROWS> {
+impl<const ROWS: usize, const DM: usize, const DN: usize> AbsDiffEq for DualVector<ROWS, DM, DN> {
     type Epsilon = f64;
 
     fn default_epsilon() -> Self::Epsilon {
@@ -257,11 +126,11 @@ impl<const ROWS: usize> AbsDiffEq for DualVector<ROWS> {
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        self.real_part.abs_diff_eq(&other.real_part, epsilon)
+        self.inner.abs_diff_eq(&other.inner, epsilon)
     }
 }
 
-impl<const ROWS: usize> RelativeEq for DualVector<ROWS> {
+impl<const ROWS: usize, const DM: usize, const DN: usize> RelativeEq for DualVector<ROWS, DM, DN> {
     fn default_max_relative() -> Self::Epsilon {
         f64::default_max_relative()
     }
@@ -272,77 +141,37 @@ impl<const ROWS: usize> RelativeEq for DualVector<ROWS> {
         epsilon: Self::Epsilon,
         max_relative: Self::Epsilon,
     ) -> bool {
-        self.real_part
-            .relative_eq(&other.real_part, epsilon, max_relative)
+        self.inner.relative_eq(&other.inner, epsilon, max_relative)
     }
 }
 
-impl<const ROWS: usize> IsVector<DualScalar, ROWS, 1> for DualVector<ROWS> {
+impl<const ROWS: usize, const DM: usize, const DN: usize>
+    IsVector<DualScalar<DM, DN>, ROWS, 1, DM, DN> for DualVector<ROWS, DM, DN>
+{
     fn from_f64(val: f64) -> Self {
         DualVector {
-            real_part: VecF64::<ROWS>::from_scalar(val),
-            dij_part: None,
+            inner: SVec::<DualScalar<DM, DN>, ROWS>::from_element(DualScalar::from_f64(val)),
         }
     }
 
-    fn norm(&self) -> DualScalar {
-        self.clone().dot(self.clone()).sqrt()
+    fn norm(&self) -> DualScalar<DM, DN> {
+        self.clone().dot(*self).sqrt()
     }
 
-    fn squared_norm(&self) -> DualScalar {
-        self.clone().dot(self.clone())
+    fn squared_norm(&self) -> DualScalar<DM, DN> {
+        self.clone().dot(*self)
     }
 
-    fn get_elem(&self, idx: usize) -> DualScalar {
-        DualScalar {
-            real_part: self.real_part[idx],
-            dij_part: self
-                .dij_part
-                .clone()
-                .map(|dij_val| MutTensorDD::from_map(&dij_val.view(), |v| v[idx])),
-        }
+    fn get_elem(&self, idx: usize) -> DualScalar<DM, DN> {
+        self.inner[idx]
     }
 
     fn from_array<A>(duals: A) -> Self
     where
-        A: Borrow<[DualScalar; ROWS]>,
+        A: Borrow<[DualScalar<DM, DN>; ROWS]>,
     {
-        let duals = duals.borrow();
-        let mut shape = None;
-        let mut val_v = VecF64::<ROWS>::zeros();
-        for i in 0..duals.len() {
-            let d = duals.clone()[i].clone();
-
-            val_v[i] = d.real_part;
-            if d.dij_part.is_some() {
-                shape = Some(d.dij_part.clone().unwrap().dims());
-            }
-        }
-
-        if shape.is_none() {
-            return DualVector {
-                real_part: val_v,
-                dij_part: None,
-            };
-        }
-        let shape = shape.unwrap();
-
-        let mut r = MutTensorDDR::<f64, ROWS>::from_shape(shape);
-
-        for i in 0..duals.len() {
-            let d = duals.clone()[i].clone();
-            if d.dij_part.is_some() {
-                for d0 in 0..shape[0] {
-                    for d1 in 0..shape[1] {
-                        r.mut_view().get_mut([d0, d1])[(i, 0)] =
-                            d.dij_part.clone().unwrap().get([d0, d1]);
-                    }
-                }
-            }
-        }
         DualVector {
-            real_part: val_v,
-            dij_part: Some(r),
+            inner: SVec::<DualScalar<DM, DN>, ROWS>::from_row_slice(&duals.borrow()[..]),
         }
     }
 
@@ -350,81 +179,72 @@ impl<const ROWS: usize> IsVector<DualScalar, ROWS, 1> for DualVector<ROWS> {
     where
         A: Borrow<[f64; ROWS]>,
     {
-        DualVector {
-            real_part: VecF64::from_real_array(vals),
-            dij_part: None,
+        let vals = vals.borrow();
+
+        let mut out = Self::zeros();
+        for i in 0..ROWS {
+            out.inner[i].real_part = vals[i];
         }
+        out
     }
 
     fn from_real_vector<A>(val: A) -> Self
     where
         A: Borrow<VecF64<ROWS>>,
     {
-        Self {
-            real_part: *val.borrow(),
-            dij_part: None,
+        let vals = val.borrow();
+
+        let mut out = Self::zeros();
+        for i in 0..ROWS {
+            out.inner[i].real_part = vals[i];
         }
+        out
     }
 
-    fn real_vector(&self) -> &VecF64<ROWS> {
-        &self.real_part
+    fn real_vector(&self) -> VecF64<ROWS> {
+        let mut r = VecF64::<ROWS>::zeros();
+        for i in 0..ROWS {
+            r[i] = self.get_elem(i).real_part;
+        }
+        r
     }
 
-    fn to_mat(&self) -> DualMatrix<ROWS, 1> {
-        DualMatrix {
-            real_part: self.real_part,
-            dij_part: self.dij_part.clone().map(|dij| dij.inner_vec_to_mat()),
-        }
+    fn to_mat(&self) -> DualMatrix<ROWS, 1, DM, DN> {
+        DualMatrix { inner: self.inner }
     }
 
     fn block_vec2<const R0: usize, const R1: usize>(
-        top_row: DualVector<R0>,
-        bot_row: DualVector<R1>,
+        top_row: DualVector<R0, DM, DN>,
+        bot_row: DualVector<R1, DM, DN>,
     ) -> Self {
         assert_eq!(R0 + R1, ROWS);
 
-        let maybe_dij = Self::two_dx(top_row.dij_part, bot_row.dij_part);
-        Self {
-            real_part: VecF64::<ROWS>::block_vec2(top_row.real_part, bot_row.real_part),
-            dij_part: match maybe_dij {
-                Some(dij_val) => {
-                    let mut r = MutTensorDDR::<f64, ROWS>::from_shape(dij_val.shape());
-                    for d0 in 0..dij_val.shape()[0] {
-                        for d1 in 0..dij_val.shape()[1] {
-                            *r.mut_view().get_mut([d0, d1]) = VecF64::<ROWS>::block_vec2(
-                                dij_val.lhs.get([d0, d1]),
-                                dij_val.rhs.get([d0, d1]),
-                            );
-                        }
-                    }
-                    Some(r)
-                }
-                None => None,
-            },
-        }
+        assert_eq!(ROWS, R0 + R1);
+        let mut m = Self::zeros();
+
+        m.inner
+            .fixed_view_mut::<R0, 1>(0, 0)
+            .copy_from(&top_row.inner);
+        m.inner
+            .fixed_view_mut::<R1, 1>(R0, 0)
+            .copy_from(&bot_row.inner);
+        m
     }
 
     fn scaled<U>(&self, s: U) -> Self
     where
-        U: Borrow<DualScalar>,
+        U: Borrow<DualScalar<DM, DN>>,
     {
-        let s = s.borrow();
-        DualVector {
-            real_part: self.real_part * s.real_part,
-            dij_part: Self::binary_vs_dij(
-                &self.dij_part,
-                &s.dij_part,
-                |l_dij| l_dij * s.real_part,
-                |r_dij| self.real_part * *r_dij,
-            ),
+        Self {
+            inner: self.inner * *s.borrow(),
         }
     }
 
-    fn dot<V>(&self, rhs: V) -> DualScalar
+    fn dot<V>(&self, rhs: V) -> DualScalar<DM, DN>
     where
         V: Borrow<Self>,
     {
-        let mut sum = <DualScalar>::from_f64(0.0);
+        let mut sum = <DualScalar<DM, DN>>::from_f64(0.0);
 
         for i in 0..ROWS {
             sum += self.get_elem(i) * rhs.borrow().get_elem(i);
@@ -435,83 +255,49 @@ impl<const ROWS: usize> IsVector<DualScalar, ROWS, 1> for DualVector<ROWS> {
 
     fn normalized(&self) -> Self {
         self.clone()
-            .scaled(<DualScalar>::from_f64(1.0) / self.norm())
+            .scaled(<DualScalar<DM, DN>>::from_f64(1.0) / self.norm())
     }
 
     fn from_f64_array<A>(vals: A) -> Self
     where
         A: Borrow<[f64; ROWS]>,
     {
-        DualVector {
-            real_part: VecF64::from_f64_array(vals),
-            dij_part: None,
+        let vals = vals.borrow();
+
+        let mut out = Self::zeros();
+        for i in 0..ROWS {
+            out.inner[i].real_part = vals[i];
         }
+        out
     }
 
     fn from_scalar_array<A>(vals: A) -> Self
     where
-        A: Borrow<[DualScalar; ROWS]>,
+        A: Borrow<[DualScalar<DM, DN>; ROWS]>,
     {
-        let vals = vals.borrow();
-        let mut shape = None;
-        let mut val_v = VecF64::<ROWS>::zeros();
-        for i in 0..vals.len() {
-            let d = vals.clone()[i].clone();
-
-            val_v[i] = d.real_part;
-            if d.dij_part.is_some() {
-                shape = Some(d.dij_part.clone().unwrap().dims());
-            }
-        }
-
-        if shape.is_none() {
-            return DualVector {
-                real_part: val_v,
-                dij_part: None,
-            };
-        }
-        let shape = shape.unwrap();
-
-        let mut r = MutTensorDDR::<f64, ROWS>::from_shape(shape);
-
-        for i in 0..vals.len() {
-            let d = vals.clone()[i].clone();
-            if d.dij_part.is_some() {
-                for d0 in 0..shape[0] {
-                    for d1 in 0..shape[1] {
-                        r.mut_view().get_mut([d0, d1])[(i, 0)] =
-                            d.dij_part.clone().unwrap().get([d0, d1]);
-                    }
-                }
-            }
-        }
         DualVector {
-            real_part: val_v,
-            dij_part: Some(r),
+            inner: SVec::<DualScalar<DM, DN>, ROWS>::from_row_slice(&vals.borrow()[..]),
         }
     }
 
-    fn set_elem(&mut self, idx: usize, v: DualScalar) {
-        self.real_part[idx] = v.real_part;
-        if self.dij_part.is_some() {
-            let dij = &mut self.dij_part.as_mut().unwrap();
-            for i in 0..dij.dims()[0] {
-                for j in 0..dij.dims()[1] {
-                    dij.mut_view().get_mut([i, j])[idx] = v.dij_part.clone().unwrap().get([i, j]);
-                }
-            }
-        }
+    fn set_elem(&mut self, idx: usize, v: DualScalar<DM, DN>) {
+        self.inner[idx] = v;
     }
 
-    fn to_dual(&self) -> <DualScalar as IsScalar<1>>::DualVector<ROWS> {
-        self.clone()
+    fn to_dual_const<const M: usize, const N: usize>(
+        &self,
+    ) -> <DualScalar<DM, DN> as IsScalar<1, DM, DN>>::DualVector<ROWS, M, N> {
+        DualVector::<ROWS, M, N>::from_real_vector(self.real_vector())
     }
 
-    fn outer<const R2: usize, V>(&self, rhs: V) -> <DualScalar as IsScalar<1>>::Matrix<ROWS, R2>
+    fn outer<const R2: usize, V>(
+        &self,
+        rhs: V,
+    ) -> <DualScalar<DM, DN> as IsScalar<1, DM, DN>>::Matrix<ROWS, R2>
     where
-        V: Borrow<DualVector<R2>>,
+        V: Borrow<DualVector<R2, DM, DN>>,
     {
-        let mut out = DualMatrix::<ROWS, R2>::zeros();
+        let mut out = DualMatrix::<ROWS, R2, DM, DN>::zeros();
         for i in 0..ROWS {
             for j in 0..R2 {
                 out.set_elem([i, j], self.get_elem(i) * rhs.borrow().get_elem(j));
@@ -525,138 +311,15 @@ impl<const ROWS: usize> IsVector<DualScalar, ROWS, 1> for DualVector<ROWS> {
         Q: Borrow<Self>,
     {
         if *mask {
-            self.clone()
+            *self
         } else {
-            other.borrow().clone()
+            *other.borrow()
         }
     }
 
-    fn get_fixed_subvec<const R: usize>(&self, start_r: usize) -> DualVector<R> {
+    fn get_fixed_subvec<const R: usize>(&self, start_r: usize) -> DualVector<R, DM, DN> {
         DualVector {
-            real_part: self.real_part.fixed_rows::<R>(start_r).into(),
-            dij_part: self.dij_part.clone().map(|dij_val| {
-                MutTensorDDR::from_map(&dij_val.view(), |v| v.fixed_rows::<R>(start_r).into())
-            }),
+            inner: self.inner.fixed_rows::<R>(start_r).into(),
         }
     }
-}
-
-#[test]
-fn dual_vector_tests() {
-    use crate::calculus::dual::dual_scalar::DualScalar;
-    use crate::calculus::maps::scalar_valued_maps::ScalarValuedMapFromVector;
-    use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
-    use crate::linalg::vector::IsVector;
-    use crate::linalg::EPS_F64;
-    use crate::points::example_points;
-
-    #[cfg(feature = "simd")]
-    use crate::calculus::dual::DualBatchScalar;
-    #[cfg(feature = "simd")]
-    use crate::linalg::BatchScalarF64;
-
-    #[cfg(test)]
-    trait Test {
-        fn run();
-    }
-
-    macro_rules! def_test_template {
-        ( $scalar:ty, $dual_scalar: ty, $batch:literal
-    ) => {
-            #[cfg(test)]
-            impl Test for $scalar {
-                fn run() {
-                    let points = example_points::<$scalar, 4, $batch>();
-
-                    for p in points.clone() {
-                        for p1 in points.clone() {
-                            {
-                                fn dot_fn<S: IsScalar<BATCH>, const BATCH: usize>(
-                                    x: S::Vector<4>,
-                                    y: S::Vector<4>,
-                                ) -> S {
-                                    x.dot(y)
-                                }
-                                let finite_diff =
-                                    ScalarValuedMapFromVector::<$scalar, $batch>::sym_diff_quotient(
-                                        |x| dot_fn(x, p1),
-                                        p,
-                                        EPS_F64,
-                                    );
-                                let auto_grad =
-                                    ScalarValuedMapFromVector::<$dual_scalar, $batch>::fw_autodiff(
-                                        |x| {
-                                            dot_fn(
-                                                x,
-                                                <$dual_scalar as IsScalar<$batch>>::Vector::<4>::from_real_vector(p1),
-                                            )
-                                        },
-                                        p,
-                                    );
-                                approx::assert_abs_diff_eq!(
-                                    finite_diff,
-                                    auto_grad,
-                                    epsilon = 0.0001
-                                );
-                            }
-
-                            fn dot_fn<S: IsScalar<BATCH>, const BATCH: usize>(x: S::Vector<4>, s: S) -> S::Vector<4> {
-                                x.scaled(s)
-                            }
-                            let finite_diff = VectorValuedMapFromVector::<$scalar, $batch>::sym_diff_quotient(
-                                |x| dot_fn::<$scalar, $batch>(x, <$scalar>::from_f64(0.99)),
-                                p,
-                                EPS_F64,
-                            );
-                            let auto_grad = VectorValuedMapFromVector::<$dual_scalar, $batch>::fw_autodiff(
-                                |x| dot_fn::<$dual_scalar, $batch>(x, <$dual_scalar>::from_f64(0.99)),
-                                p,
-                            );
-                            for i in 0..finite_diff.dims()[0] {
-                                approx::assert_abs_diff_eq!(
-                                    finite_diff.get([i]),
-                                    auto_grad.get([i]),
-                                    epsilon = 0.0001
-                                );
-                            }
-
-                            let finite_diff = VectorValuedMapFromVector::<$scalar, $batch>::sym_diff_quotient(
-                                |x| dot_fn::<$scalar, $batch>(p1, x[0]),
-                                p,
-                                EPS_F64,
-                            );
-                            let auto_grad = VectorValuedMapFromVector::<$dual_scalar, $batch>::fw_autodiff(
-                                |x| {
-                                    dot_fn::<$dual_scalar, $batch>(
-                                        <$dual_scalar as IsScalar<$batch>>::Vector::from_real_vector(p1),
-                                        x.get_elem(0),
-                                    )
-                                },
-                                p,
-                            );
-                            for i in 0..finite_diff.dims()[0] {
-                                approx::assert_abs_diff_eq!(
-                                    finite_diff.get([i]),
-                                    auto_grad.get([i]),
-                                    epsilon = 0.0001
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        };
-    }
-
-    def_test_template!(f64, DualScalar, 1);
-    #[cfg(feature = "simd")]
-    def_test_template!(BatchScalarF64<2>, DualBatchScalar<2>, 2);
-    #[cfg(feature = "simd")]
-    def_test_template!(BatchScalarF64<4>, DualBatchScalar<4>, 4);
-
-    f64::run();
-    #[cfg(feature = "simd")]
-    BatchScalarF64::<2>::run();
-    #[cfg(feature = "simd")]
-    BatchScalarF64::<4>::run();
 }

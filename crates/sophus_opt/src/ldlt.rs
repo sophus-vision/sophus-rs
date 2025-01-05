@@ -76,7 +76,8 @@ impl SparseLdltPerm {
     ) -> faer::sparse::SparseColMat<usize, f64> {
         let dim = upper_ccs.ncols();
         let nnz = upper_ccs.compute_nnz();
-        let perm_ref = unsafe { faer::perm::PermRef::new_unchecked(&self.perm, &self.perm_inv) };
+        let perm_ref =
+            unsafe { faer::perm::PermRef::new_unchecked(&self.perm, &self.perm_inv, dim) };
 
         let mut ccs_perm_col_ptrs = alloc::vec::Vec::new();
         let mut ccs_perm_row_indices = alloc::vec::Vec::new();
@@ -214,6 +215,7 @@ impl SparseLdlt {
             faer::perm::PermRef::new_unchecked(
                 &symbolic_perm.permutation.perm,
                 &symbolic_perm.permutation.perm_inv,
+                dim,
             )
         };
         let symbolic = &symbolic_perm.symbolic;
@@ -245,7 +247,7 @@ impl SparseLdlt {
 
         let mut x = b.clone();
         let x_mut_slice = x.as_mut_slice();
-        let mut x_ref = faer::mat::from_column_major_slice_mut::<f64>(x_mut_slice, dim, 1);
+        let mut x_ref = faer::mat::from_column_major_slice_mut(x_mut_slice, dim, 1);
         faer::perm::permute_rows_in_place(
             faer::reborrow::ReborrowMut::rb_mut(&mut x_ref),
             perm_ref,

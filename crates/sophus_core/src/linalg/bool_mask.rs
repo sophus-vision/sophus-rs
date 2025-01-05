@@ -1,5 +1,7 @@
+use core::fmt::Debug;
+
 /// Boolean mask - generalization of boolean comparison to SIMDs
-pub trait IsBoolMask {
+pub trait IsBoolMask: Debug {
     /// Mask with all lanes set to true
     fn all_true() -> Self;
 

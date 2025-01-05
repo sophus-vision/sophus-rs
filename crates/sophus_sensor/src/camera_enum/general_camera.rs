@@ -11,21 +11,30 @@ use sophus_image::ImageSize;
 
 /// Generalized camera enum
 #[derive(Debug, Clone)]
-pub enum GeneralCameraEnum<S: IsScalar<BATCH>, const BATCH: usize> {
+pub enum GeneralCameraEnum<
+    S: IsScalar<BATCH, DM, DN>,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     /// Perspective camera enum
-    Perspective(PerspectiveCameraEnum<S, BATCH>),
+    Perspective(PerspectiveCameraEnum<S, BATCH, DM, DN>),
     /// Orthographic camera
-    Orthographic(OrthographicCamera<S, BATCH>),
+    Orthographic(OrthographicCamera<S, BATCH, DM, DN>),
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> GeneralCameraEnum<S, BATCH> {
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    GeneralCameraEnum<S, BATCH, DM, DN>
+{
     /// Create a new perspective camera instance
-    pub fn new_perspective(model: PerspectiveCameraEnum<S, BATCH>) -> Self {
+    pub fn new_perspective(model: PerspectiveCameraEnum<S, BATCH, DM, DN>) -> Self {
         Self::Perspective(model)
     }
 }
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> IsCamera<S, BATCH> for GeneralCameraEnum<S, BATCH> {
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    IsCamera<S, BATCH, DM, DN> for GeneralCameraEnum<S, BATCH, DM, DN>
+{
     fn new_pinhole<P>(params: P, image_size: ImageSize) -> Self
     where
         P: Borrow<S::Vector<4>>,
@@ -124,7 +133,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCamera<S, BATCH> for GeneralCamer
         }
     }
 
-    fn try_get_brown_conrady(self) -> Option<BrownConradyCamera<S, BATCH>> {
+    fn try_get_brown_conrady(self) -> Option<BrownConradyCamera<S, BATCH, DM, DN>> {
         if let GeneralCameraEnum::Perspective(camera) = self {
             camera.try_get_brown_conrady()
         } else {
@@ -132,7 +141,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCamera<S, BATCH> for GeneralCamer
         }
     }
 
-    fn try_get_kannala_brandt(self) -> Option<KannalaBrandtCamera<S, BATCH>> {
+    fn try_get_kannala_brandt(self) -> Option<KannalaBrandtCamera<S, BATCH, DM, DN>> {
         if let GeneralCameraEnum::Perspective(camera) = self {
             camera.try_get_kannala_brandt()
         } else {
@@ -140,7 +149,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCamera<S, BATCH> for GeneralCamer
         }
     }
 
-    fn try_get_pinhole(self) -> Option<PinholeCamera<S, BATCH>> {
+    fn try_get_pinhole(self) -> Option<PinholeCamera<S, BATCH, DM, DN>> {
         if let GeneralCameraEnum::Perspective(camera) = self {
             camera.try_get_pinhole()
         } else {
@@ -148,7 +157,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> IsCamera<S, BATCH> for GeneralCamer
         }
     }
 
-    fn try_get_unified_extended(self) -> Option<UnifiedCamera<S, BATCH>> {
+    fn try_get_unified_extended(self) -> Option<UnifiedCamera<S, BATCH, DM, DN>> {
         if let GeneralCameraEnum::Perspective(camera) = self {
             camera.try_get_unified_extended()
         } else {

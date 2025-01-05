@@ -13,21 +13,36 @@ use crate::Rotation2;
 use log::warn;
 
 /// 2D isometry group implementation struct - SE(2)
-pub type Isometry2Impl<S, const BATCH: usize> =
-    TranslationProductGroupImpl<S, 3, 4, 2, 3, 1, 2, BATCH, Rotation2Impl<S, BATCH>>;
+pub type Isometry2Impl<S, const BATCH: usize, const DM: usize, const DN: usize> =
+    TranslationProductGroupImpl<
+        S,
+        3,
+        4,
+        2,
+        3,
+        1,
+        2,
+        BATCH,
+        DM,
+        DN,
+        Rotation2Impl<S, BATCH, DM, DN>,
+    >;
 
 /// 2D isometry group - SE(2)
-pub type Isometry2<S, const BATCH: usize> = LieGroup<S, 3, 4, 2, 3, BATCH, Isometry2Impl<S, BATCH>>;
+pub type Isometry2<S, const BATCH: usize, const DM: usize, const DN: usize> =
+    LieGroup<S, 3, 4, 2, 3, BATCH, DM, DN, Isometry2Impl<S, BATCH, DM, DN>>;
 
 /// 2D isometry group with f64 scalar type
-pub type Isometry2F64 = Isometry2<f64, 1>;
+pub type Isometry2F64 = Isometry2<f64, 1, 0, 0>;
 
-impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry2<S, BATCH> {
+impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+    Isometry2<S, BATCH, DM, DN>
+{
     /// create isometry from translation and rotation
     pub fn from_translation_and_rotation<P, F>(translation: P, rotation: F) -> Self
     where
         P: Borrow<S::Vector<2>>,
-        F: Borrow<Rotation2<S, BATCH>>,
+        F: Borrow<Rotation2<S, BATCH, DM, DN>>,
     {
         Self::from_translation_and_factor(translation, rotation)
     }
@@ -43,7 +58,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry2<S, BATCH> {
     /// create isometry from rotation
     pub fn from_rotation<F>(rotation: F) -> Self
     where
-        F: Borrow<Rotation2<S, BATCH>>,
+        F: Borrow<Rotation2<S, BATCH, DM, DN>>,
     {
         Self::from_translation_and_factor(S::Vector::<2>::zeros(), rotation)
     }
@@ -54,7 +69,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry2<S, BATCH> {
         U: Borrow<S>,
     {
         let x: &S = x.borrow();
-        Self::from_translation(S::Vector::from_array([x.clone(), S::zero()]))
+        Self::from_translation(S::Vector::from_array([*x, S::zero()]))
     }
 
     /// translate along y axis
@@ -63,7 +78,7 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry2<S, BATCH> {
         U: Borrow<S>,
     {
         let y: &S = y.borrow();
-        Self::from_translation(S::Vector::from_array([S::zero(), y.clone()]))
+        Self::from_translation(S::Vector::from_array([S::zero(), *y]))
     }
 
     /// Rotate by angle
@@ -78,18 +93,20 @@ impl<S: IsScalar<BATCH>, const BATCH: usize> Isometry2<S, BATCH> {
     /// set rotation
     pub fn set_rotation<F>(&mut self, rotation: F)
     where
-        F: Borrow<Rotation2<S, BATCH>>,
+        F: Borrow<Rotation2<S, BATCH, DM, DN>>,
     {
         self.set_factor(rotation)
     }
 
     /// get rotation
-    pub fn rotation(&self) -> Rotation2<S, BATCH> {
+    pub fn rotation(&self) -> Rotation2<S, BATCH, DM, DN> {
         self.factor()
     }
 }
 
-impl<S: IsSingleScalar + PartialOrd> HasAverage<S, 3, 4, 2, 3> for Isometry2<S, 1> {
+impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
+    HasAverage<S, 3, 4, 2, 3, DM, DN> for Isometry2<S, 1, DM, DN>
+{
     /// Average Isometry2 poses [parent_from_body0, ..., ].
     ///
     /// Note: This function can be used when there is no well-defined body center, since
@@ -98,7 +115,9 @@ impl<S: IsSingleScalar + PartialOrd> HasAverage<S, 3, 4, 2, 3> for Isometry2<S, 
     ///       If there is a well defined body center for the purpose of averaging, it is likely
     ///       better to average body center positions - using "1/n sum_i pos_i" - and rotations
     ///       independently.
-    fn average(parent_from_body_transforms: &[Isometry2<S, 1>]) -> Result<Self, EmptySliceError> {
+    fn average(
+        parent_from_body_transforms: &[Isometry2<S, 1, DM, DN>],
+    ) -> Result<Self, EmptySliceError> {
         // todo: Implement close form solution from
         //       ftp://ftp-sop.inria.fr/epidaure/Publications/Arsigny/arsigny_rr_biinvariant_average.pdf.
         match iterative_average(parent_from_body_transforms, 50) {
@@ -130,14 +149,14 @@ fn isometry2_prop_tests() {
     #[cfg(feature = "simd")]
     use sophus_core::linalg::BatchScalarF64;
 
-    Isometry2::<f64, 1>::test_suite();
+    Isometry2F64::test_suite();
     #[cfg(feature = "simd")]
-    Isometry2::<BatchScalarF64<8>, 8>::test_suite();
-    Isometry2::<DualScalar, 1>::test_suite();
+    Isometry2::<BatchScalarF64<8>, 8, 0, 0>::test_suite();
+    Isometry2::<DualScalar<1, 1>, 1, 1, 1>::test_suite();
     #[cfg(feature = "simd")]
-    Isometry2::<DualBatchScalar<8>, 8>::test_suite();
+    Isometry2::<DualBatchScalar<8, 1, 1>, 8, 1, 1>::test_suite();
 
-    Isometry2::<f64, 1>::run_real_tests();
+    Isometry2F64::run_real_tests();
     #[cfg(feature = "simd")]
-    Isometry2::<BatchScalarF64<8>, 8>::run_real_tests();
+    Isometry2::<BatchScalarF64<8>, 8, 0, 0>::run_real_tests();
 }

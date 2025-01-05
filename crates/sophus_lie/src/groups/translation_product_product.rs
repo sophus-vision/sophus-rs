@@ -18,7 +18,7 @@ extern crate alloc;
 /// It is a semi-direct product of the commutative translation group (Euclidean vector space) and a factor group.
 #[derive(Debug, Copy, Clone, Default)]
 pub struct TranslationProductGroupImpl<
-    S: IsScalar<BATCH>,
+    S: IsScalar<BATCH, DM, DN>,
     const DOF: usize,
     const PARAMS: usize,
     const POINT: usize,
@@ -26,13 +26,15 @@ pub struct TranslationProductGroupImpl<
     const SDOF: usize,
     const SPARAMS: usize,
     const BATCH: usize,
-    F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH>,
+    const DM: usize,
+    const DN: usize,
+    F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
 > {
     phantom: core::marker::PhantomData<(S, F)>,
 }
 
 impl<
-        S: IsScalar<BATCH>,
+        S: IsScalar<BATCH, DM, DN>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
@@ -40,8 +42,10 @@ impl<
         const SDOF: usize,
         const SPARAMS: usize,
         const BATCH: usize,
-        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH>,
-    > TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, F>
+        const DM: usize,
+        const DN: usize,
+        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
+    > TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
     /// translation part of the group parameters
     pub fn translation(params: &S::Vector<PARAMS>) -> S::Vector<POINT> {
@@ -58,7 +62,7 @@ impl<
         translation: &S::Vector<POINT>,
         factor_params: &S::Vector<SPARAMS>,
     ) -> S::Vector<PARAMS> {
-        S::Vector::block_vec2(translation.clone(), factor_params.clone())
+        S::Vector::block_vec2(*translation, *factor_params)
     }
 
     /// translation part of the tangent vector
@@ -76,16 +80,16 @@ impl<
         translation: &S::Vector<POINT>,
         factor_tangent: &S::Vector<SDOF>,
     ) -> S::Vector<DOF> {
-        S::Vector::block_vec2(translation.clone(), factor_tangent.clone())
+        S::Vector::block_vec2(*translation, *factor_tangent)
     }
 
     fn translation_examples() -> alloc::vec::Vec<S::Vector<POINT>> {
-        example_points::<S, POINT, BATCH>()
+        example_points::<S, POINT, BATCH, DM, DN>()
     }
 }
 
 impl<
-        S: IsScalar<BATCH>,
+        S: IsScalar<BATCH, DM, DN>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
@@ -93,9 +97,11 @@ impl<
         const SDOF: usize,
         const SPARAMS: usize,
         const BATCH: usize,
-        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH>,
-    > HasDisambiguate<S, PARAMS, BATCH>
-    for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, F>
+        const DM: usize,
+        const DN: usize,
+        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
+    > HasDisambiguate<S, PARAMS, BATCH, DM, DN>
+    for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
     fn disambiguate(params: S::Vector<PARAMS>) -> S::Vector<PARAMS> {
         Self::params_from(
@@ -106,7 +112,7 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH>,
+        S: IsScalar<BATCH, DM, DN>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
@@ -114,9 +120,11 @@ impl<
         const SDOF: usize,
         const SPARAMS: usize,
         const BATCH: usize,
-        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH>,
-    > ParamsImpl<S, PARAMS, BATCH>
-    for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, F>
+        const DM: usize,
+        const DN: usize,
+        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
+    > ParamsImpl<S, PARAMS, BATCH, DM, DN>
+    for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
     fn are_params_valid<P>(params: P) -> S::Mask
     where
@@ -153,7 +161,7 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH>,
+        S: IsScalar<BATCH, DM, DN>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
@@ -161,9 +169,11 @@ impl<
         const SDOF: usize,
         const SPARAMS: usize,
         const BATCH: usize,
-        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH>,
-    > TangentImpl<S, DOF, BATCH>
-    for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, F>
+        const DM: usize,
+        const DN: usize,
+        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
+    > TangentImpl<S, DOF, BATCH, DM, DN>
+    for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
     fn tangent_examples() -> alloc::vec::Vec<S::Vector<DOF>> {
         let mut examples = alloc::vec![];
@@ -185,7 +195,7 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH>,
+        S: IsScalar<BATCH, DM, DN>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
@@ -193,9 +203,23 @@ impl<
         const SDOF: usize,
         const SPARAMS: usize,
         const BATCH: usize,
-        Factor: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH>,
-    > IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH>
-    for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, Factor>
+        const DM: usize,
+        const DN: usize,
+        Factor: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
+    > IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>
+    for TranslationProductGroupImpl<
+        S,
+        DOF,
+        PARAMS,
+        POINT,
+        AMBIENT,
+        SDOF,
+        SPARAMS,
+        BATCH,
+        DM,
+        DN,
+        Factor,
+    >
 {
     const IS_ORIGIN_PRESERVING: bool = false;
     const IS_AXIS_DIRECTION_PRESERVING: bool = Factor::IS_AXIS_DIRECTION_PRESERVING;
@@ -287,7 +311,7 @@ impl<
     }
 
     fn to_ambient(params: &S::Vector<POINT>) -> S::Vector<AMBIENT> {
-        S::Vector::block_vec2(params.clone(), S::Vector::<1>::zeros())
+        S::Vector::block_vec2(*params, S::Vector::<1>::zeros())
     }
 
     fn compact(params: &S::Vector<PARAMS>) -> S::Matrix<POINT, AMBIENT> {
@@ -321,7 +345,7 @@ impl<
         )
     }
 
-    type GenG<S2: IsScalar<BATCH>> = TranslationProductGroupImpl<
+    type GenG<S2: IsScalar<BATCH, DM, DN>> = TranslationProductGroupImpl<
         S2,
         DOF,
         PARAMS,
@@ -330,7 +354,9 @@ impl<
         SDOF,
         SPARAMS,
         BATCH,
-        Factor::GenFactorG<S2>,
+        DM,
+        DN,
+        Factor::GenFactorG<S2, DM, DN>,
     >;
 
     type RealG = TranslationProductGroupImpl<
@@ -342,11 +368,13 @@ impl<
         SDOF,
         SPARAMS,
         BATCH,
-        Factor::GenFactorG<S::RealScalar>,
+        0,
+        0,
+        Factor::GenFactorG<S::RealScalar, 0, 0>,
     >;
 
-    type DualG = TranslationProductGroupImpl<
-        S::DualScalar,
+    type DualG<const M: usize, const N: usize> = TranslationProductGroupImpl<
+        S::DualScalar<M, N>,
         DOF,
         PARAMS,
         POINT,
@@ -354,7 +382,9 @@ impl<
         SDOF,
         SPARAMS,
         BATCH,
-        Factor::GenFactorG<S::DualScalar>,
+        M,
+        N,
+        Factor::GenFactorG<S::DualScalar<M, N>, M, N>,
     >;
 }
 
@@ -369,7 +399,19 @@ impl<
         const BATCH: usize,
         Factor: IsRealLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH>,
     > IsRealLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH>
-    for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, Factor>
+    for TranslationProductGroupImpl<
+        S,
+        DOF,
+        PARAMS,
+        POINT,
+        AMBIENT,
+        SDOF,
+        SPARAMS,
+        BATCH,
+        0,
+        0,
+        Factor,
+    >
 {
     fn dx_exp_x_at_0() -> S::Matrix<PARAMS, DOF> {
         S::Matrix::block_mat2x2::<POINT, SPARAMS, POINT, SDOF>(
@@ -399,7 +441,7 @@ impl<
         let mut dx_mat_v_tangent = S::Matrix::<POINT, SDOF>::zeros();
 
         for i in 0..SDOF {
-            dx_mat_v_tangent.set_col_vec(i, dx_mat_v[i].clone() * trans_tangent.clone());
+            dx_mat_v_tangent.set_col_vec(i, dx_mat_v[i] * *trans_tangent);
         }
 
         S::Matrix::block_mat2x2::<POINT, SPARAMS, POINT, SDOF>(
@@ -422,7 +464,7 @@ impl<
         let mut dx_mat_v_inv_tangent = S::Matrix::<POINT, SPARAMS>::zeros();
 
         for i in 0..SDOF {
-            let v: S::Vector<POINT> = dx_mat_v_inverse[i].clone() * trans.clone();
+            let v: S::Vector<POINT> = dx_mat_v_inverse[i] * *trans;
             let r: S::Vector<SPARAMS> = dx_log_x.get_row_vec(i);
 
             let m = v.outer(r);
@@ -488,7 +530,7 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH>,
+        S: IsScalar<BATCH, DM, DN>,
         const DOF: usize,
         const PARAMS: usize,
         const POINT: usize,
@@ -496,7 +538,9 @@ impl<
         const SDOF: usize,
         const SPARAMS: usize,
         const BATCH: usize,
-        FactorImpl: crate::traits::IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH>,
+        const DM: usize,
+        const DN: usize,
+        FactorImpl: crate::traits::IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
     >
     IsTranslationProductGroup<
         S,
@@ -507,7 +551,9 @@ impl<
         SDOF,
         SPARAMS,
         BATCH,
-        LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, FactorImpl>,
+        DM,
+        DN,
+        LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, DM, DN, FactorImpl>,
     >
     for crate::lie_group::LieGroup<
         S,
@@ -516,6 +562,8 @@ impl<
         POINT,
         AMBIENT,
         BATCH,
+        DM,
+        DN,
         TranslationProductGroupImpl<
             S,
             DOF,
@@ -525,6 +573,8 @@ impl<
             SDOF,
             SPARAMS,
             BATCH,
+            DM,
+            DN,
             FactorImpl,
         >,
     >
@@ -538,21 +588,23 @@ impl<
         SDOF,
         SPARAMS,
         BATCH,
+        DM,
+        DN,
         FactorImpl,
     >;
 
     fn from_translation_and_factor<P, F>(translation: P, factor: F) -> Self
     where
         P: Borrow<S::Vector<POINT>>,
-        F: Borrow<LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, FactorImpl>>,
+        F: Borrow<LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, DM, DN, FactorImpl>>,
     {
         let params = Self::Impl::params_from(translation.borrow(), factor.borrow().params());
-        Self::from_params(&params)
+        Self::from_params(params)
     }
 
     fn set_translation<P>(&mut self, translation: P)
     where
-        P: Borrow<<S as sophus_core::prelude::IsScalar<BATCH>>::Vector<POINT>>,
+        P: Borrow<<S as sophus_core::prelude::IsScalar<BATCH, DM, DN>>::Vector<POINT>>,
     {
         self.set_params(Self::G::params_from(
             translation.borrow(),
@@ -560,13 +612,13 @@ impl<
         ))
     }
 
-    fn translation(&self) -> <S as IsScalar<BATCH>>::Vector<POINT> {
+    fn translation(&self) -> <S as IsScalar<BATCH, DM, DN>>::Vector<POINT> {
         Self::Impl::translation(self.params())
     }
 
     fn set_factor<F>(&mut self, factor: F)
     where
-        F: Borrow<LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, FactorImpl>>,
+        F: Borrow<LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, DM, DN, FactorImpl>>,
     {
         self.set_params(Self::G::params_from(
             &self.translation(),
@@ -574,7 +626,7 @@ impl<
         ))
     }
 
-    fn factor(&self) -> LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, FactorImpl> {
+    fn factor(&self) -> LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, DM, DN, FactorImpl> {
         LieGroup::from_params(Self::Impl::factor_params(self.params()))
     }
 }

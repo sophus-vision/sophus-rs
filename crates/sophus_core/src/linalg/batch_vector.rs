@@ -5,10 +5,11 @@ use crate::linalg::BatchVecF64;
 use crate::prelude::*;
 use core::borrow::Borrow;
 use core::simd::LaneCount;
-use core::simd::Mask;
 use core::simd::SupportedLaneCount;
 
-impl<const ROWS: usize, const BATCH: usize> IsVector<BatchScalarF64<BATCH>, ROWS, BATCH>
+use super::batch_mask::BatchMask;
+
+impl<const ROWS: usize, const BATCH: usize> IsVector<BatchScalarF64<BATCH>, ROWS, BATCH, 0, 0>
     for BatchVecF64<ROWS, BATCH>
 where
     LaneCount<BATCH>: SupportedLaneCount,
@@ -29,7 +30,7 @@ where
     where
         V: Borrow<Self>,
     {
-        (self.transpose() * rhs.borrow().clone())[0]
+        (self.transpose() * rhs.borrow())[0]
     }
 
     fn from_array<A>(vals: A) -> Self
@@ -68,7 +69,7 @@ where
     where
         A: Borrow<BatchVecF64<ROWS, BATCH>>,
     {
-        val.borrow().clone()
+        *val.borrow()
     }
 
     fn get_elem(&self, idx: usize) -> BatchScalarF64<BATCH> {
@@ -81,22 +82,22 @@ where
 
     fn normalized(&self) -> Self {
         let norm = self.norm();
-        if norm == <BatchScalarF64<BATCH> as IsScalar<BATCH>>::zeros() {
+        if norm == <BatchScalarF64<BATCH> as IsScalar<BATCH, 0, 0>>::zeros() {
             return *self;
         }
         let factor = BatchScalarF64::<BATCH>::ones() / norm;
         self * factor
     }
 
-    fn real_vector(&self) -> &BatchVecF64<ROWS, BATCH> {
-        self
+    fn real_vector(&self) -> BatchVecF64<ROWS, BATCH> {
+        *self
     }
 
     fn scaled<S>(&self, v: S) -> Self
     where
         S: Borrow<BatchScalarF64<BATCH>>,
     {
-        self * v.borrow().clone()
+        self * *v.borrow()
     }
 
     fn set_elem(&mut self, idx: usize, v: BatchScalarF64<BATCH>) {
@@ -104,7 +105,7 @@ where
     }
 
     fn squared_norm(&self) -> BatchScalarF64<BATCH> {
-        let mut squared_norm = <BatchScalarF64<BATCH> as IsScalar<BATCH>>::zeros();
+        let mut squared_norm = <BatchScalarF64<BATCH> as IsScalar<BATCH, 0, 0>>::zeros();
         for i in 0..ROWS {
             let val = IsVector::get_elem(self, i);
             squared_norm += val * val;
@@ -113,14 +114,16 @@ where
     }
 
     fn to_mat(&self) -> BatchMatF64<ROWS, 1, BATCH> {
-        self.clone()
+        *self
     }
 
     fn from_f64(val: f64) -> Self {
         Self::from_element(BatchScalarF64::<BATCH>::from_f64(val))
     }
 
-    fn to_dual(&self) -> <BatchScalarF64<BATCH> as IsScalar<BATCH>>::DualVector<ROWS> {
+    fn to_dual_const<const M: usize, const N: usize>(
+        &self,
+    ) -> <BatchScalarF64<BATCH> as IsScalar<BATCH, 0, 0>>::DualVector<ROWS, M, N> {
         DualBatchVector::from_real_vector(self)
     }
 
@@ -131,7 +134,7 @@ where
         self * rhs.borrow().transpose()
     }
 
-    fn select<Q>(&self, mask: &Mask<i64, BATCH>, other: Q) -> Self
+    fn select<Q>(&self, mask: &BatchMask<BATCH>, other: Q) -> Self
     where
         Q: Borrow<Self>,
     {

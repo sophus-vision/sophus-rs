@@ -57,10 +57,9 @@ pub use crate::tensor::tensor_view::*;
 
 /// sophus_core prelude
 pub mod prelude {
-    pub use crate::calculus::dual::dual_matrix::IsDualMatrix;
-    pub use crate::calculus::dual::dual_scalar::IsDual;
-    pub use crate::calculus::dual::dual_scalar::IsDualScalar;
-    pub use crate::calculus::dual::dual_vector::IsDualVector;
+    pub use crate::calculus::dual::matrix::IsDualMatrix;
+    pub use crate::calculus::dual::scalar::IsDualScalar;
+    pub use crate::calculus::dual::vector::IsDualVector;
     pub use crate::calculus::region::IsRegion;
     pub use crate::linalg::bool_mask::IsBoolMask;
     pub use crate::linalg::matrix::IsMatrix;

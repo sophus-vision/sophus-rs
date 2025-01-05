@@ -2,11 +2,11 @@ use crate::prelude::*;
 use core::marker::PhantomData;
 
 /// cubic basis function
-pub struct CubicBasisFunction<S> {
+pub struct CubicBasisFunction<S, const DM: usize, const DN: usize> {
     phantom: PhantomData<S>,
 }
 
-impl<S: IsSingleScalar> CubicBasisFunction<S> {
+impl<S: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize> CubicBasisFunction<S, DM, DN> {
     /// C matrix
     pub fn c() -> S::SingleMatrix<3, 4> {
         S::SingleMatrix::<3, 4>::from_f64_array2([
@@ -18,17 +18,16 @@ impl<S: IsSingleScalar> CubicBasisFunction<S> {
 
     /// B(u) matrix
     pub fn b(u: S) -> S::SingleVector<3> {
-        let u_sq = u.clone() * u.clone();
+        let u_sq = u * u;
         let m34 = Self::c();
-        let v4 =
-            S::SingleVector::<4>::from_array([S::from_f64(1.0), u.clone(), u_sq.clone(), u_sq * u]);
+        let v4 = S::SingleVector::<4>::from_array([S::from_f64(1.0), u, u_sq, u_sq * u]);
 
         m34 * v4
     }
 
     /// derivative of B(u) matrix with respect to u
     pub fn du_b(u: S, delta_t: S) -> S::SingleVector<3> {
-        let u_sq = u.clone() * u.clone();
+        let u_sq = u * u;
         Self::c().scaled(S::from_f64(1.0) / delta_t)
             * S::SingleVector::<4>::from_array([
                 S::from_f64(0.0),
@@ -40,7 +39,7 @@ impl<S: IsSingleScalar> CubicBasisFunction<S> {
 
     /// second derivative of B(u) matrix with respect to u
     pub fn du2_b(u: S, delta_t: S) -> S::SingleVector<3> {
-        Self::c().scaled(S::from_f64(1.0) / (delta_t.clone() * delta_t))
+        Self::c().scaled(S::from_f64(1.0) / (delta_t * delta_t))
             * S::SingleVector::<4>::from_array([
                 S::from_f64(0.0),
                 S::from_f64(0.0),
@@ -51,17 +50,24 @@ impl<S: IsSingleScalar> CubicBasisFunction<S> {
 }
 
 /// cubic B-spline function
-pub struct CubicBSplineFn<S: IsSingleScalar, const DIMS: usize> {
+pub struct CubicBSplineFn<
+    S: IsSingleScalar<DM, DN>,
+    const DIMS: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     phantom: PhantomData<S>,
 }
 
-impl<S: IsSingleScalar, const DIMS: usize> CubicBSplineFn<S, DIMS> {
+impl<S: IsSingleScalar<DM, DN>, const DIMS: usize, const DM: usize, const DN: usize>
+    CubicBSplineFn<S, DIMS, DM, DN>
+{
     fn interpolate(
         control_point: S::SingleVector<DIMS>,
         control_points: [S::SingleVector<DIMS>; 3],
         u: S,
     ) -> S::SingleVector<DIMS> {
-        let b = CubicBasisFunction::<S>::b(u);
+        let b = CubicBasisFunction::<S, DM, DN>::b(u);
         control_point
             + control_points[0].scaled(b.get_elem(0))
             + control_points[1].scaled(b.get_elem(1))
@@ -69,7 +75,7 @@ impl<S: IsSingleScalar, const DIMS: usize> CubicBSplineFn<S, DIMS> {
     }
 
     fn dxi_interpolate(u: S, quadruple_idx: usize) -> S::SingleMatrix<DIMS, DIMS> {
-        let b = CubicBasisFunction::<S>::b(u.clone());
+        let b = CubicBasisFunction::<S, DM, DN>::b(u);
         if quadruple_idx == 0 {
             S::SingleMatrix::<DIMS, DIMS>::identity()
         } else {
@@ -91,38 +97,45 @@ pub enum SegmentCase {
 
 /// Cubic B-spline segment
 #[derive(Clone, Debug)]
-pub struct CubicBSplineSegment<S: IsSingleScalar, const DIMS: usize> {
+pub struct CubicBSplineSegment<
+    S: IsSingleScalar<DM, DN>,
+    const DIMS: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     pub(crate) case: SegmentCase,
     pub(crate) control_points: [S::SingleVector<DIMS>; 4],
 }
 
-impl<S: IsSingleScalar, const DIMS: usize> CubicBSplineSegment<S, DIMS> {
+impl<S: IsSingleScalar<DM, DN>, const DIMS: usize, const DM: usize, const DN: usize>
+    CubicBSplineSegment<S, DIMS, DM, DN>
+{
     /// Interpolate
     pub fn interpolate(&self, u: S) -> S::SingleVector<DIMS> {
         match self.case {
             SegmentCase::First => CubicBSplineFn::interpolate(
-                self.control_points[1].clone(),
+                self.control_points[1],
                 [
                     S::SingleVector::<DIMS>::zeros(),
-                    self.control_points[2].clone() - self.control_points[1].clone(),
-                    self.control_points[3].clone() - self.control_points[2].clone(),
+                    self.control_points[2] - self.control_points[1],
+                    self.control_points[3] - self.control_points[2],
                 ],
                 u,
             ),
             SegmentCase::Normal => CubicBSplineFn::interpolate(
-                self.control_points[0].clone(),
+                self.control_points[0],
                 [
-                    self.control_points[1].clone() - self.control_points[0].clone(),
-                    self.control_points[2].clone() - self.control_points[1].clone(),
-                    self.control_points[3].clone() - self.control_points[2].clone(),
+                    self.control_points[1] - self.control_points[0],
+                    self.control_points[2] - self.control_points[1],
+                    self.control_points[3] - self.control_points[2],
                 ],
                 u,
             ),
             SegmentCase::Last => CubicBSplineFn::interpolate(
-                self.control_points[0].clone(),
+                self.control_points[0],
                 [
-                    self.control_points[1].clone() - self.control_points[0].clone(),
-                    self.control_points[2].clone() - self.control_points[1].clone(),
+                    self.control_points[1] - self.control_points[0],
+                    self.control_points[2] - self.control_points[1],
                     S::SingleVector::<DIMS>::zeros(),
                 ],
                 u,
@@ -137,38 +150,31 @@ impl<S: IsSingleScalar, const DIMS: usize> CubicBSplineSegment<S, DIMS> {
                 if quadruple_idx == 0 {
                     S::SingleMatrix::<DIMS, DIMS>::zeros()
                 } else if quadruple_idx == 1 {
-                    CubicBSplineFn::dxi_interpolate(u.clone(), 0)
-                        - CubicBSplineFn::dxi_interpolate(u.clone(), 2)
+                    CubicBSplineFn::dxi_interpolate(u, 0) - CubicBSplineFn::dxi_interpolate(u, 2)
                 } else if quadruple_idx == 2 {
-                    CubicBSplineFn::dxi_interpolate(u.clone(), 2)
-                        - CubicBSplineFn::dxi_interpolate(u.clone(), 3)
+                    CubicBSplineFn::dxi_interpolate(u, 2) - CubicBSplineFn::dxi_interpolate(u, 3)
                 } else {
-                    CubicBSplineFn::dxi_interpolate(u.clone(), 3)
+                    CubicBSplineFn::dxi_interpolate(u, 3)
                 }
             }
             SegmentCase::Normal => {
                 if quadruple_idx == 0 {
-                    CubicBSplineFn::dxi_interpolate(u.clone(), 0)
-                        - CubicBSplineFn::dxi_interpolate(u.clone(), 1)
+                    CubicBSplineFn::dxi_interpolate(u, 0) - CubicBSplineFn::dxi_interpolate(u, 1)
                 } else if quadruple_idx == 1 {
-                    CubicBSplineFn::dxi_interpolate(u.clone(), 1)
-                        - CubicBSplineFn::dxi_interpolate(u.clone(), 2)
+                    CubicBSplineFn::dxi_interpolate(u, 1) - CubicBSplineFn::dxi_interpolate(u, 2)
                 } else if quadruple_idx == 2 {
-                    CubicBSplineFn::dxi_interpolate(u.clone(), 2)
-                        - CubicBSplineFn::dxi_interpolate(u.clone(), 3)
+                    CubicBSplineFn::dxi_interpolate(u, 2) - CubicBSplineFn::dxi_interpolate(u, 3)
                 } else {
-                    CubicBSplineFn::dxi_interpolate(u.clone(), 3)
+                    CubicBSplineFn::dxi_interpolate(u, 3)
                 }
             }
             SegmentCase::Last => {
                 if quadruple_idx == 0 {
-                    CubicBSplineFn::dxi_interpolate(u.clone(), 0)
-                        - CubicBSplineFn::dxi_interpolate(u.clone(), 1)
+                    CubicBSplineFn::dxi_interpolate(u, 0) - CubicBSplineFn::dxi_interpolate(u, 1)
                 } else if quadruple_idx == 1 {
-                    CubicBSplineFn::dxi_interpolate(u.clone(), 1)
-                        - CubicBSplineFn::dxi_interpolate(u.clone(), 2)
+                    CubicBSplineFn::dxi_interpolate(u, 1) - CubicBSplineFn::dxi_interpolate(u, 2)
                 } else if quadruple_idx == 2 {
-                    CubicBSplineFn::dxi_interpolate(u.clone(), 2)
+                    CubicBSplineFn::dxi_interpolate(u, 2)
                 } else {
                     S::SingleMatrix::<DIMS, DIMS>::zeros()
                 }
@@ -183,7 +189,7 @@ mod test {
     fn test_spline_basis_fn() {
         use crate::calculus::dual::dual_scalar::DualScalar;
         use crate::calculus::dual::dual_vector::DualVector;
-        use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
+        use crate::calculus::maps::vector_valued_maps::VectorValuedVectorMap;
         use crate::calculus::spline::spline_segment::CubicBSplineFn;
         use crate::linalg::scalar::IsScalar;
         use crate::linalg::vector::IsVector;
@@ -191,7 +197,7 @@ mod test {
         use crate::points::example_points;
         use num_traits::Zero;
 
-        let points = &example_points::<f64, 3, 1>();
+        let points = &example_points::<f64, 3, 1, 0, 0>();
         assert!(points.len() >= 8);
 
         let mut u = 0.0;
@@ -205,9 +211,9 @@ mod test {
                 let first_control_point_dual = DualVector::from_real_vector(points[p_idx]);
                 let mut segment_control_points = [VecF64::<3>::zeros(); 3];
                 let mut segment_control_points_dual = [
-                    DualVector::<3>::zero(),
-                    DualVector::<3>::zero(),
-                    DualVector::<3>::zero(),
+                    DualVector::<3, 3, 1>::zero(),
+                    DualVector::<3, 3, 1>::zero(),
+                    DualVector::<3, 3, 1>::zero(),
                 ];
                 for i in 0..3 {
                     segment_control_points[i] = points[p_idx + 1];
@@ -215,35 +221,37 @@ mod test {
                         DualVector::from_real_vector(segment_control_points[i]);
                 }
 
-                let f0 = |x| -> DualVector<3> {
-                    CubicBSplineFn::<DualScalar, 3>::interpolate(
+                let f0 = |x| -> DualVector<3, 3, 1> {
+                    CubicBSplineFn::<DualScalar<3, 1>, 3, 3, 1>::interpolate(
                         x,
-                        segment_control_points_dual.clone(),
+                        segment_control_points_dual,
                         DualScalar::from_real_scalar(u),
                     )
                 };
-                let auto_dx0 = VectorValuedMapFromVector::<DualScalar, 1>::static_fw_autodiff(
-                    f0,
-                    first_control_point,
-                );
-                let analytic_dx0 = CubicBSplineFn::<f64, 3>::dxi_interpolate(u, 0);
+                let auto_dx0 =
+                    VectorValuedVectorMap::<DualScalar<3, 1>, 1, 3, 1>::fw_autodiff_jacobian(
+                        f0,
+                        first_control_point,
+                    );
+                let analytic_dx0 = CubicBSplineFn::<f64, 3, 0, 0>::dxi_interpolate(u, 0);
                 approx::assert_abs_diff_eq!(auto_dx0, analytic_dx0, epsilon = 0.0001);
 
                 for i in 0..3 {
-                    let fi = |x| -> DualVector<3> {
-                        let mut seg = segment_control_points_dual.clone();
+                    let fi = |x| -> DualVector<3, 3, 1> {
+                        let mut seg = segment_control_points_dual;
                         seg[i] = x;
-                        CubicBSplineFn::<DualScalar, 3>::interpolate(
-                            first_control_point_dual.clone(),
+                        CubicBSplineFn::<DualScalar<3, 1>, 3, 3, 1>::interpolate(
+                            first_control_point_dual,
                             seg,
                             DualScalar::from_real_scalar(u),
                         )
                     };
-                    let auto_dxi = VectorValuedMapFromVector::<DualScalar, 1>::static_fw_autodiff(
-                        fi,
-                        segment_control_points[i],
-                    );
-                    let analytic_dxi = CubicBSplineFn::<f64, 3>::dxi_interpolate(u, i + 1);
+                    let auto_dxi =
+                        VectorValuedVectorMap::<DualScalar<3, 1>, 1, 3, 1>::fw_autodiff_jacobian(
+                            fi,
+                            segment_control_points[i],
+                        );
+                    let analytic_dxi = CubicBSplineFn::<f64, 3, 0, 0>::dxi_interpolate(u, i + 1);
                     approx::assert_abs_diff_eq!(auto_dxi, analytic_dxi, epsilon = 0.0001);
                 }
             }
@@ -255,7 +263,7 @@ mod test {
     fn test_spline_segment() {
         use crate::calculus::dual::dual_scalar::DualScalar;
         use crate::calculus::dual::dual_vector::DualVector;
-        use crate::calculus::maps::vector_valued_maps::VectorValuedMapFromVector;
+        use crate::calculus::maps::vector_valued_maps::VectorValuedVectorMap;
         use crate::calculus::spline::spline_segment::CubicBSplineSegment;
         use crate::calculus::spline::spline_segment::SegmentCase;
         use crate::linalg::scalar::IsScalar;
@@ -264,16 +272,16 @@ mod test {
         use crate::points::example_points;
         use num_traits::Zero;
 
-        let points = &example_points::<f64, 3, 1>();
+        let points = &example_points::<f64, 3, 1, 0, 0>();
         assert!(points.len() >= 8);
 
         for p_idx in 0..points.len() - 4 {
             let mut segment_control_points = [VecF64::<3>::zeros(); 4];
             let mut segment_control_points_dual = [
-                DualVector::<3>::zero(),
-                DualVector::<3>::zero(),
-                DualVector::<3>::zero(),
-                DualVector::<3>::zero(),
+                DualVector::<3, 3, 1>::zero(),
+                DualVector::<3, 3, 1>::zero(),
+                DualVector::<3, 3, 1>::zero(),
+                DualVector::<3, 3, 1>::zero(),
             ];
 
             for i in 0..4 {
@@ -283,7 +291,7 @@ mod test {
             }
 
             for case in [SegmentCase::First, SegmentCase::Normal, SegmentCase::Last] {
-                let base = CubicBSplineSegment::<f64, 3> {
+                let base = CubicBSplineSegment::<f64, 3, 0, 0> {
                     case,
                     control_points: segment_control_points,
                 };
@@ -301,25 +309,23 @@ mod test {
                             base_copy.interpolate(u)
                         };
 
-                        let num_dx = VectorValuedMapFromVector::static_sym_diff_quotient(
-                            f, points[0], 0.0001,
-                        );
+                        let num_dx =
+                            VectorValuedVectorMap::sym_diff_quotient_jacobian(f, points[0], 0.0001);
 
-                        let f = |v: DualVector<3>| {
-                            let mut base_dual = CubicBSplineSegment::<DualScalar, 3> {
+                        let f = |v: DualVector<3, 3, 1>| {
+                            let mut base_dual = CubicBSplineSegment::<DualScalar<3, 1>, 3, 3, 1> {
                                 case,
-                                control_points: segment_control_points_dual.clone(),
+                                control_points: segment_control_points_dual,
                             };
 
                             base_dual.control_points[i] = v;
                             base_dual.interpolate(DualScalar::from_real_scalar(u))
                         };
 
-                        let auto_dx =
-                            VectorValuedMapFromVector::<DualScalar, 1>::static_fw_autodiff(
-                                f,
-                                segment_control_points[i],
-                            );
+                        let auto_dx = VectorValuedVectorMap::<DualScalar<3,1>, 1,3,1>::fw_autodiff_jacobian(
+                            f,
+                            segment_control_points[i],
+                        );
 
                         approx::assert_abs_diff_eq!(analytic_dx, num_dx, epsilon = 0.0001);
                         approx::assert_abs_diff_eq!(analytic_dx, auto_dx, epsilon = 0.0001);

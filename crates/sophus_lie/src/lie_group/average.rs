@@ -1,8 +1,8 @@
-use crate::groups::isometry2::Isometry2F64;
-use crate::groups::isometry3::Isometry3F64;
 use crate::groups::rotation2::Rotation2F64;
 use crate::groups::rotation3::Rotation3F64;
 use crate::traits::IsLieGroupImpl;
+use crate::Isometry2F64;
+use crate::Isometry3F64;
 use crate::LieGroup;
 use snafu::prelude::*;
 use sophus_core::linalg::EPS_F64;
@@ -27,18 +27,20 @@ pub enum IterativeAverageError<Group> {
 
 /// iterative Lie group average
 pub fn iterative_average<
-    S: IsSingleScalar + PartialOrd,
+    S: IsSingleScalar<DM, DN> + PartialOrd,
     const DOF: usize,
     const PARAMS: usize,
     const POINT: usize,
     const AMBIENT: usize,
-    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, 1>,
+    const DM: usize,
+    const DN: usize,
+    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, 1, DM, DN>,
 >(
-    parent_from_body_transforms: &[LieGroup<S, DOF, PARAMS, POINT, AMBIENT, 1, G>],
+    parent_from_body_transforms: &[LieGroup<S, DOF, PARAMS, POINT, AMBIENT, 1, DM, DN, G>],
     max_iteration_count: u32,
 ) -> Result<
-    LieGroup<S, DOF, PARAMS, POINT, AMBIENT, 1, G>,
-    IterativeAverageError<LieGroup<S, DOF, PARAMS, POINT, AMBIENT, 1, G>>,
+    LieGroup<S, DOF, PARAMS, POINT, AMBIENT, 1, DM, DN, G>,
+    IterativeAverageError<LieGroup<S, DOF, PARAMS, POINT, AMBIENT, 1, DM, DN, G>>,
 > {
     if parent_from_body_transforms.is_empty() {
         return Err(IterativeAverageError::EmptySlice);
@@ -55,10 +57,10 @@ pub fn iterative_average<
             average_tangent = average_tangent
                 + (parent_from_body_average.inverse() * parent_from_body)
                     .log()
-                    .scaled(w.clone());
+                    .scaled(w);
         }
         let refined_parent_from_body_average =
-            parent_from_body_average.clone() * LieGroup::exp(&average_tangent);
+            parent_from_body_average.clone() * LieGroup::exp(average_tangent);
         let step = (refined_parent_from_body_average.inverse() * parent_from_body_average).log();
         if step.squared_norm() < S::from_f64(EPS_F64) {
             return Ok(refined_parent_from_body_average);

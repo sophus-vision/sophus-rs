@@ -1,11 +1,10 @@
-use sophus_image::arc_image::ArcImage4U8;
-use sophus_image::image_view::IsImageView;
-use sophus_image::ImageSize;
-use sophus_sensor::DynCamera;
-
 use crate::camera::clipping_planes::ClippingPlanes;
 use crate::camera::intrinsics::RenderIntrinsics;
 use crate::camera::properties::RenderCameraProperties;
+use sophus_image::arc_image::ArcImage4U8;
+use sophus_image::image_view::IsImageView;
+use sophus_image::ImageSize;
+use sophus_sensor::dyn_camera::DynCameraF64;
 
 /// Frame to hold content
 ///
@@ -57,7 +56,7 @@ impl ImageFrame {
     /// Create a new frame from intrinsics
     ///
     /// Precondition: The image size must be non-zero.
-    pub fn from_intrinsics(intrinsics: &DynCamera<f64, 1>) -> ImageFrame {
+    pub fn from_intrinsics(intrinsics: &DynCameraF64) -> ImageFrame {
         assert!(intrinsics.image_size().area() > 0);
         ImageFrame {
             image: None,
