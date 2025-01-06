@@ -16,9 +16,12 @@ sophus_geo.workspace = true
 sophus_image.workspace = true
 sophus_lie.workspace = true
 sophus_opt.workspace = true
+sophus_tensor.workspace = true
 sophus_sensor.workspace = true
 sophus_renderer.workspace = true
 sophus_sim.workspace = true
+sophus_spline.workspace = true
+sophus_timeseries.workspace = true
 sophus_viewer.workspace = true
 
 nalgebra.workspace = true
@@ -50,6 +53,7 @@ std = [
   "sophus_opt/std",
   "sophus_sensor/std",
 ]
+default = ["std"]
 
 [[example]]
 name = "camera_sim"

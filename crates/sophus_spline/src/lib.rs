@@ -1,3 +1,8 @@
+#![deny(missing_docs)]
+#![allow(clippy::needless_range_loop)]
+#![no_std]
+//! # Spline module
+
 /// Cubic B-Spline details
 pub mod spline_segment;
 

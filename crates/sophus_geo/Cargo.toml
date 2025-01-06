@@ -11,9 +11,12 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
-approx.workspace = true
 sophus_autodiff.workspace = true
 sophus_lie.workspace = true
 
+approx.workspace = true
+
 [features]
 simd = ["sophus_lie/simd"]
+std = ["sophus_autodiff/std", "sophus_lie/std"]
+default = ["std"]

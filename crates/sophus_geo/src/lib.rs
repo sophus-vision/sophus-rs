@@ -13,4 +13,5 @@ pub mod unit_vector;
 pub mod prelude {
     pub use crate::region::IsRegion;
     pub use sophus_autodiff::prelude::*;
+    pub use sophus_lie::prelude::*;
 }

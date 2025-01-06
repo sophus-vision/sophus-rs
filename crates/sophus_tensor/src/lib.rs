@@ -1,4 +1,5 @@
 #![deny(missing_docs)]
+#![allow(clippy::needless_range_loop)]
 //! # Tensor module
 
 /// Arc tensor

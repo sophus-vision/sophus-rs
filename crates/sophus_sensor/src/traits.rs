@@ -1,4 +1,5 @@
 use core::borrow::Borrow;
+use core::fmt::Debug;
 
 use crate::camera_enum::perspective_camera::UnifiedCamera;
 use crate::prelude::*;
@@ -16,7 +17,7 @@ pub trait IsCameraDistortionImpl<
     const BATCH: usize,
     const DM: usize,
     const DN: usize,
->: IsParamsImpl<S, PARAMS, BATCH, DM, DN>
+>: IsParamsImpl<S, PARAMS, BATCH, DM, DN> + Debug + Clone + Send + Sync + 'static
 {
     /// identity parameters
     fn identity_params() -> S::Vector<PARAMS> {
@@ -60,7 +61,7 @@ pub trait IsProjection<
     const BATCH: usize,
     const DM: usize,
     const DN: usize,
->
+>: Debug + Clone + Send + Sync + 'static
 {
     /// Projects a 3D point in the camera frame to a 2D point in the z=1 plane
     fn proj<P>(point_in_camera: P) -> S::Vector<2>
@@ -79,7 +80,12 @@ pub trait IsProjection<
 }
 
 /// Camera trait
-pub trait IsCamera<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
+pub trait IsCamera<
+    S: IsScalar<BATCH, DM, DN> + 'static + Send + Sync,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+>
 {
     /// Creates a new pinhole camera
     fn new_pinhole<P>(params: P, image_size: ImageSize) -> Self

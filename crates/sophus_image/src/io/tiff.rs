@@ -109,12 +109,12 @@ pub fn load_tiff(path: impl ToString) -> std::io::Result<DynIntensityMutImage> {
                 ));
             }
             // num_channels == 4
-            return Ok(DynIntensityMutImage::RgbaU8(
+            Ok(DynIntensityMutImage::RgbaU8(
                 MutImage4U8::make_copy_from_size_and_slice(
                     image_size,
                     bytemuck::cast_slice(&u8_img),
                 ),
-            ));
+            ))
         }
         DecodingResult::U16(u16_img) => {
             if num_channels == 1 {
@@ -139,12 +139,12 @@ pub fn load_tiff(path: impl ToString) -> std::io::Result<DynIntensityMutImage> {
                 ));
             }
             // num_channels == 4
-            return Ok(DynIntensityMutImage::RgbaU16(
+            Ok(DynIntensityMutImage::RgbaU16(
                 MutImage4U16::make_copy_from_size_and_slice(
                     image_size,
                     bytemuck::cast_slice(&u16_img),
                 ),
-            ));
+            ))
         }
         DecodingResult::F32(f32_img) => {
             if num_channels == 1 {
@@ -169,12 +169,12 @@ pub fn load_tiff(path: impl ToString) -> std::io::Result<DynIntensityMutImage> {
                 ));
             }
             // num_channels == 4
-            return Ok(DynIntensityMutImage::RgbaF32(
+            Ok(DynIntensityMutImage::RgbaF32(
                 MutImage4F32::make_copy_from_size_and_slice(
                     image_size,
                     bytemuck::cast_slice(&f32_img),
                 ),
-            ));
+            ))
         }
         _ => Err(std::io::Error::other(format!(
             "unsupported decoding: {:?}",

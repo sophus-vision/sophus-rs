@@ -29,13 +29,14 @@ rayon = "1.10"
 [features]
 simd = [
   "sophus_autodiff/simd",
+  "sophus_image/simd",
   "sophus_lie/simd",
   "sophus_sensor/simd",
-  "sophus_image/simd",
 ]
 std = [
   "sophus_autodiff/std",
+  "sophus_image/std",
   "sophus_lie/std",
   "sophus_sensor/std",
-  "sophus_image/std",
 ]
+default = ["std"]

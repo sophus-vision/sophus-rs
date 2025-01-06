@@ -6,7 +6,9 @@ use crate::distortions::kannala_brandt::KannalaBrandtDistortionImpl;
 use crate::distortions::unified::UnifiedDistortionImpl;
 use crate::prelude::*;
 use crate::projections::perspective::PerspectiveProjectionImpl;
+use crate::traits::IsCameraDistortionImpl;
 use crate::Camera;
+use sophus_autodiff::manifold::IsVariable;
 use sophus_image::ImageSize;
 
 /// Pinhole camera
@@ -62,6 +64,21 @@ pub type KannalaBrandtCameraF64 = KannalaBrandtCamera<f64, 1, 0, 0>;
 pub type BrownConradyCameraF64 = BrownConradyCamera<f64, 1, 0, 0>;
 /// Unified camera with f64 scalar type
 pub type UnifiedCameraF64 = UnifiedCamera<f64, 1, 0, 0>;
+
+impl<
+        const DISTORT: usize,
+        const PARAMS: usize,
+        Distort: IsCameraDistortionImpl<f64, DISTORT, PARAMS, 1, 0, 0>,
+        Proj: IsProjection<f64, 1, 0, 0>,
+    > IsVariable for Camera<f64, DISTORT, PARAMS, 1, 0, 0, Distort, Proj>
+{
+    const DOF: usize = PARAMS;
+
+    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
+        let new_params = *self.params() + delta;
+        self.set_params(new_params);
+    }
+}
 
 /// Perspective camera enum
 #[derive(Debug, Clone)]

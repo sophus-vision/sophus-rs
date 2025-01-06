@@ -84,6 +84,9 @@ pub trait IsScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     + AbsDiffEq<Epsilon = f64>
     + RelativeEq<Epsilon = f64>
     + IsCoreScalar
+    + 'static
+    + Send
+    + Sync
 {
     /// Scalar type
     type Scalar: IsScalar<BATCH, DM, DN>;

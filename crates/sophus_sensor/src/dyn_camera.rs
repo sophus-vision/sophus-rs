@@ -35,7 +35,7 @@ pub type DynCamera<S, const BATCH: usize, const DM: usize, const DN: usize> =
 pub type DynCameraF64 = DynCamera<f64, 1, 0, 0>;
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
+        S: IsScalar<BATCH, DM, DN> + 'static + Send + Sync,
         const BATCH: usize,
         const DM: usize,
         const DN: usize,
@@ -179,8 +179,12 @@ impl<
     }
 }
 
-impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
-    DynCamera<S, BATCH, DM, DN>
+impl<
+        S: IsScalar<BATCH, DM, DN> + 'static + Send + Sync,
+        const BATCH: usize,
+        const DM: usize,
+        const DN: usize,
+    > DynCamera<S, BATCH, DM, DN>
 {
     /// Returns the pinhole parameters
     pub fn pinhole_params(&self) -> S::Vector<4> {

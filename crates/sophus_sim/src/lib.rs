@@ -6,3 +6,11 @@
 
 /// camera simulator - camera image renderer
 pub mod camera_simulator;
+
+/// sophus sim prelude
+pub mod prelude {
+    pub use sophus_autodiff::prelude::*;
+    pub use sophus_image::prelude::*;
+    pub use sophus_lie::prelude::*;
+    pub use sophus_opt::prelude::*;
+}

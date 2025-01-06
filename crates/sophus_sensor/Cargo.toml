@@ -25,5 +25,7 @@ num-traits.workspace = true
 simd = ["sophus_autodiff/simd", "sophus_image/simd"]
 std = [
   "sophus_autodiff/std",
+  "sophus_geo/std",
   "sophus_image/std",
 ]
+default = ["std"]
