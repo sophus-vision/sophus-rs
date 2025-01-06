@@ -5,9 +5,9 @@ use crate::Isometry2F64;
 use crate::Isometry3F64;
 use crate::LieGroup;
 use snafu::prelude::*;
-use sophus_core::linalg::EPS_F64;
-use sophus_core::prelude::IsSingleScalar;
-use sophus_core::prelude::IsVector;
+use sophus_autodiff::linalg::EPS_F64;
+use sophus_autodiff::prelude::IsSingleScalar;
+use sophus_autodiff::prelude::IsVector;
 
 /// error of iterative_average
 #[derive(Snafu, Debug)]
@@ -88,7 +88,7 @@ macro_rules! def_average_test_template {
             fn run_average_tests() {
                 use crate::traits::HasAverage;
                 use approx::assert_relative_eq;
-                use sophus_core::linalg::VecF64;
+                use sophus_autodiff::linalg::VecF64;
 
                 // test: empty slice
                 assert!(Self::average(&[]).is_err());

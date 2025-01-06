@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::traits::IsCameraDistortionImpl;
 use core::borrow::Borrow;
 use core::marker::PhantomData;
-use sophus_core::params::ParamsImpl;
+use sophus_autodiff::params::IsParamsImpl;
 
 extern crate alloc;
 
@@ -20,7 +20,7 @@ pub struct AffineDistortionImpl<
 }
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
-    ParamsImpl<S, 4, BATCH, DM, DN> for AffineDistortionImpl<S, BATCH, DM, DN>
+    IsParamsImpl<S, 4, BATCH, DM, DN> for AffineDistortionImpl<S, BATCH, DM, DN>
 {
     fn are_params_valid<P>(_params: P) -> S::Mask
     where

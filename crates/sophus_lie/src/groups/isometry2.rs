@@ -1,5 +1,3 @@
-use core::borrow::Borrow;
-
 use crate::groups::rotation2::Rotation2Impl;
 use crate::groups::translation_product_product::TranslationProductGroupImpl;
 use crate::lie_group::average::iterative_average;
@@ -9,6 +7,7 @@ use crate::prelude::*;
 use crate::traits::EmptySliceError;
 use crate::traits::HasAverage;
 use crate::Rotation2;
+use core::borrow::Borrow;
 
 use log::warn;
 
@@ -142,12 +141,11 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
 #[test]
 fn isometry2_prop_tests() {
     use crate::lie_group::real_lie_group::RealLieGroupTest;
-    use sophus_core::calculus::dual::dual_scalar::DualScalar;
-
     #[cfg(feature = "simd")]
-    use sophus_core::calculus::dual::dual_batch_scalar::DualBatchScalar;
+    use sophus_autodiff::dual::dual_batch_scalar::DualBatchScalar;
+    use sophus_autodiff::dual::dual_scalar::DualScalar;
     #[cfg(feature = "simd")]
-    use sophus_core::linalg::BatchScalarF64;
+    use sophus_autodiff::linalg::BatchScalarF64;
 
     Isometry2F64::test_suite();
     #[cfg(feature = "simd")]

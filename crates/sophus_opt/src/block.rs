@@ -1,6 +1,6 @@
 use nalgebra::Const;
-use sophus_core::linalg::MatF64;
-use sophus_core::linalg::VecF64;
+use sophus_autodiff::linalg::MatF64;
+use sophus_autodiff::linalg::VecF64;
 
 /// Range of a block
 #[derive(Clone, Debug, Copy, Default)]

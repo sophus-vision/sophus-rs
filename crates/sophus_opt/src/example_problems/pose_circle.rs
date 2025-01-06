@@ -9,7 +9,7 @@ use crate::variables::VarFamily;
 use crate::variables::VarKind;
 use crate::variables::VarPool;
 use crate::variables::VarPoolBuilder;
-use sophus_core::linalg::VecF64;
+use sophus_autodiff::linalg::VecF64;
 use sophus_lie::Isometry2;
 use sophus_lie::Isometry2F64;
 

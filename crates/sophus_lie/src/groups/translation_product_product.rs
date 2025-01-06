@@ -7,9 +7,9 @@ use crate::traits::IsLieFactorGroupImpl;
 use crate::traits::IsLieGroupImpl;
 use crate::traits::IsRealLieFactorGroupImpl;
 use crate::traits::IsRealLieGroupImpl;
-use sophus_core::manifold::traits::TangentImpl;
-use sophus_core::params::ParamsImpl;
-use sophus_core::points::example_points;
+use sophus_autodiff::manifold::IsTangent;
+use sophus_autodiff::params::IsParamsImpl;
+use sophus_autodiff::points::example_points;
 
 extern crate alloc;
 
@@ -123,7 +123,7 @@ impl<
         const DM: usize,
         const DN: usize,
         F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
-    > ParamsImpl<S, PARAMS, BATCH, DM, DN>
+    > IsParamsImpl<S, PARAMS, BATCH, DM, DN>
     for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
     fn are_params_valid<P>(params: P) -> S::Mask
@@ -172,7 +172,7 @@ impl<
         const DM: usize,
         const DN: usize,
         F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
-    > TangentImpl<S, DOF, BATCH, DM, DN>
+    > IsTangent<S, DOF, BATCH, DM, DN>
     for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
     fn tangent_examples() -> alloc::vec::Vec<S::Vector<DOF>> {
@@ -604,7 +604,7 @@ impl<
 
     fn set_translation<P>(&mut self, translation: P)
     where
-        P: Borrow<<S as sophus_core::prelude::IsScalar<BATCH, DM, DN>>::Vector<POINT>>,
+        P: Borrow<<S as sophus_autodiff::prelude::IsScalar<BATCH, DM, DN>>::Vector<POINT>>,
     {
         self.set_params(Self::G::params_from(
             translation.borrow(),

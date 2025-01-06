@@ -3,8 +3,9 @@ use crate::prelude::*;
 use approx::assert_relative_eq;
 use core::borrow::Borrow;
 use core::fmt::Debug;
-use sophus_core::manifold::traits::TangentImpl;
-use sophus_core::params::ParamsImpl;
+use sophus_autodiff::manifold::IsTangent;
+use sophus_autodiff::params::HasParams;
+use sophus_autodiff::params::IsParamsImpl;
 
 extern crate alloc;
 
@@ -44,7 +45,7 @@ impl<
         const DM: usize,
         const DN: usize,
         G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
-    > ParamsImpl<S, PARAMS, BATCH, DM, DN>
+    > IsParamsImpl<S, PARAMS, BATCH, DM, DN>
     for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     fn are_params_valid<P>(params: P) -> S::Mask
@@ -116,7 +117,7 @@ impl<
         const DM: usize,
         const DN: usize,
         G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
-    > TangentImpl<S, DOF, BATCH, DM, DN>
+    > IsTangent<S, DOF, BATCH, DM, DN>
     for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     fn tangent_examples() -> alloc::vec::Vec<<S as IsScalar<BATCH, DM, DN>>::Vector<DOF>> {

@@ -5,10 +5,10 @@ pub mod orbit_interaction;
 
 use crate::interactions::inplane_interaction::InplaneInteraction;
 use crate::interactions::orbit_interaction::OrbitalInteraction;
-use crate::preludes::*;
+use crate::prelude::*;
 use crate::views::ViewportSize;
 use eframe::egui;
-use sophus_core::linalg::VecF64;
+use sophus_autodiff::linalg::VecF64;
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;

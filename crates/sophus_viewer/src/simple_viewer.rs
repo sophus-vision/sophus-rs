@@ -1,5 +1,5 @@
 use crate::packets::Packet;
-use crate::preludes::*;
+use crate::prelude::*;
 use crate::viewer_base::ViewerBase;
 use crate::viewer_base::ViewerBaseConfig;
 use eframe::egui;

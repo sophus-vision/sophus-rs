@@ -1,8 +1,9 @@
 use crate::prelude::*;
 use core::borrow::Borrow;
 use core::fmt::Debug;
-use sophus_core::manifold::traits::TangentImpl;
-use sophus_core::params::ParamsImpl;
+use sophus_autodiff::manifold::IsTangent;
+use sophus_autodiff::params::HasParams;
+use sophus_autodiff::params::IsParamsImpl;
 
 /// Disambiguate the parameters.
 pub trait HasDisambiguate<
@@ -51,8 +52,8 @@ pub trait IsLieGroupImpl<
     const DM: usize,
     const DN: usize,
 >:
-    ParamsImpl<S, PARAMS, BATCH, DM, DN>
-    + TangentImpl<S, DOF, BATCH, DM, DN>
+    IsParamsImpl<S, PARAMS, BATCH, DM, DN>
+    + IsTangent<S, DOF, BATCH, DM, DN>
     + HasDisambiguate<S, PARAMS, BATCH, DM, DN>
     + Clone
     + Debug
@@ -265,7 +266,7 @@ pub trait IsLieGroup<
     const BATCH: usize,
     const DM: usize,
     const DN: usize,
->: TangentImpl<S, DOF, BATCH, DM, DN> + HasParams<S, PARAMS, BATCH, DM, DN>
+>: IsTangent<S, DOF, BATCH, DM, DN> + HasParams<S, PARAMS, BATCH, DM, DN>
 {
     /// This is the actual Lie Group implementation
     type G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>;

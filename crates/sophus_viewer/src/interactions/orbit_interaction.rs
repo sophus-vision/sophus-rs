@@ -1,9 +1,8 @@
 use crate::interactions::SceneFocus;
 use crate::interactions::ViewportScale;
-use crate::preludes::*;
+use crate::prelude::*;
 use eframe::egui;
-use sophus_core::linalg::VecF64;
-use sophus_core::IsTensorLike;
+use sophus_autodiff::linalg::VecF64;
 use sophus_image::arc_image::ArcImageF32;
 use sophus_image::image_view::IsImageView;
 use sophus_image::ImageSize;

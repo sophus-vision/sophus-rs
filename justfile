@@ -17,7 +17,7 @@ test-simd:
     cargo +nightly test --release --features simd
 
 test:
-    cargo test --release
+    cargo test --release --features std
 
 format:
     pre-commit run -a

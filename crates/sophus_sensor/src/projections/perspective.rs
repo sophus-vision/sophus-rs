@@ -1,10 +1,10 @@
 use core::borrow::Borrow;
 
 use crate::traits::IsProjection;
-use sophus_core::linalg::matrix::IsMatrix;
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_core::linalg::vector::IsVector;
-use sophus_core::prelude::IsSingleScalar;
+use sophus_autodiff::linalg::matrix::IsMatrix;
+use sophus_autodiff::linalg::scalar::IsScalar;
+use sophus_autodiff::linalg::vector::IsVector;
+use sophus_autodiff::prelude::IsSingleScalar;
 
 /// Perspective camera projection - using z=1 plane
 ///

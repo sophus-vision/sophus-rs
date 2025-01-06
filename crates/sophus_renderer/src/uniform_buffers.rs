@@ -1,5 +1,5 @@
 use crate::camera::properties::RenderCameraProperties;
-use crate::preludes::*;
+use crate::prelude::*;
 use crate::types::TranslationAndScaling;
 use crate::types::Zoom2dPod;
 use crate::RenderContext;

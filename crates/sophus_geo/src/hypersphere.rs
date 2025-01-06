@@ -1,4 +1,4 @@
-use sophus_core::linalg::EPS_F64;
+use sophus_autodiff::linalg::EPS_F64;
 use sophus_lie::prelude::*;
 
 use crate::ray::Ray;

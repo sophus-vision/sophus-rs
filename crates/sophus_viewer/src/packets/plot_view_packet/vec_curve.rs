@@ -1,7 +1,7 @@
 use crate::packets::plot_view_packet::ClearCondition;
 use crate::packets::plot_view_packet::CurveTrait;
 use crate::packets::plot_view_packet::LineType;
-use crate::preludes::*;
+use crate::prelude::*;
 use sophus_renderer::renderables::color::Color;
 
 /// Vector of curves

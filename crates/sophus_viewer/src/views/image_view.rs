@@ -1,7 +1,7 @@
 use crate::interactions::inplane_interaction::InplaneInteraction;
 use crate::interactions::InteractionEnum;
 use crate::packets::image_view_packet::ImageViewPacket;
-use crate::preludes::*;
+use crate::prelude::*;
 use crate::views::View;
 use linked_hash_map::LinkedHashMap;
 use sophus_renderer::aspect_ratio::HasAspectRatio;

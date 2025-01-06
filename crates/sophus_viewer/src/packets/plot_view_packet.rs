@@ -10,7 +10,7 @@ use crate::packets::plot_view_packet::scalar_curve::ScalarCurveStyle;
 use crate::packets::plot_view_packet::vec_curve::CurveVec;
 use crate::packets::plot_view_packet::vec_curve::CurveVecStyle;
 use crate::packets::plot_view_packet::vec_curve::NamedCurveVec;
-use crate::preludes::*;
+use crate::prelude::*;
 
 /// vec curve with confidence interval
 pub mod curve_vec_with_conf;

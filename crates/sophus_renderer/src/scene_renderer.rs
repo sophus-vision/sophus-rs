@@ -11,7 +11,7 @@ pub mod textured_mesh;
 
 use crate::pipeline_builder::PipelineBuilder;
 use crate::pipeline_builder::TargetTexture;
-use crate::preludes::*;
+use crate::prelude::*;
 use crate::scene_renderer::mesh::MeshRenderer;
 use crate::scene_renderer::point::ScenePointRenderer;
 use crate::textures::depth::DepthTextures;

@@ -2,8 +2,8 @@ use crate::prelude::*;
 use crate::traits::IsCameraDistortionImpl;
 use core::borrow::Borrow;
 use core::marker::PhantomData;
-use sophus_core::linalg::EPS_F64;
-use sophus_core::params::ParamsImpl;
+use sophus_autodiff::linalg::EPS_F64;
+use sophus_autodiff::params::IsParamsImpl;
 
 extern crate alloc;
 
@@ -19,7 +19,7 @@ pub struct KannalaBrandtDistortionImpl<
 }
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
-    ParamsImpl<S, 8, BATCH, DM, DN> for KannalaBrandtDistortionImpl<S, BATCH, DM, DN>
+    IsParamsImpl<S, 8, BATCH, DM, DN> for KannalaBrandtDistortionImpl<S, BATCH, DM, DN>
 {
     fn are_params_valid<P>(_params: P) -> S::Mask
     where

@@ -7,7 +7,7 @@ use crate::intensity_image::intensity_pixel::IntensityPixel;
 use crate::intensity_image::intensity_scalar::IsIntensityScalar;
 use crate::prelude::*;
 use crate::ArcImage;
-use sophus_core::linalg::SVec;
+use sophus_autodiff::linalg::SVec;
 
 /// Trait for "intensity" images (grayscale, grayscale+alpha, RGB, RGBA).
 ///

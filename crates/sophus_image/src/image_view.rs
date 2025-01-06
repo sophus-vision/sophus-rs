@@ -1,8 +1,8 @@
 use crate::prelude::*;
 use crate::ImageSize;
 use ndarray::ShapeBuilder;
-use sophus_core::linalg::SVec;
-use sophus_core::tensor::tensor_view::TensorView;
+use sophus_autodiff::linalg::SVec;
+use sophus_tensor::tensor_view::TensorView;
 
 /// Image view of static tensors
 #[derive(Debug, Clone, PartialEq)]

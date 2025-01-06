@@ -3,8 +3,8 @@ use crate::block::BlockVector;
 use crate::prelude::*;
 use crate::robust_kernel;
 use crate::variables::VarKind;
-use sophus_core::linalg::MatF64;
-use sophus_core::linalg::VecF64;
+use sophus_autodiff::linalg::MatF64;
+use sophus_autodiff::linalg::VecF64;
 
 extern crate alloc;
 

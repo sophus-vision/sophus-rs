@@ -1,8 +1,8 @@
 use crate::dyn_camera::DynCameraF64;
 use crate::prelude::*;
 use nalgebra::SVector;
-use sophus_core::calculus::Region;
-use sophus_core::linalg::VecF64;
+use sophus_autodiff::linalg::VecF64;
+use sophus_geo::region::Region;
 use sophus_image::arc_image::ArcImage2F32;
 use sophus_image::image_view::IsImageView;
 use sophus_image::interpolation::interpolate;
@@ -105,9 +105,9 @@ fn camera_distortion_table_tests() {
     use crate::distortion_table::DistortTable;
     use approx::assert_abs_diff_eq;
     use approx::assert_relative_eq;
-    use sophus_core::calculus::maps::vector_valued_maps::VectorValuedVectorMap;
-    use sophus_core::linalg::VecF64;
-    use sophus_core::linalg::EPS_F64;
+    use sophus_autodiff::linalg::VecF64;
+    use sophus_autodiff::linalg::EPS_F64;
+    use sophus_autodiff::maps::vector_valued_maps::VectorValuedVectorMap;
     use sophus_image::ImageSize;
 
     {

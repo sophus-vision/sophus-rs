@@ -9,9 +9,10 @@ use crate::traits::IsRealLieFactorGroupImpl;
 use crate::traits::IsRealLieGroupImpl;
 use core::borrow::Borrow;
 use core::marker::PhantomData;
-use sophus_core::linalg::EPS_F64;
-use sophus_core::manifold::traits::TangentImpl;
-use sophus_core::params::ParamsImpl;
+use sophus_autodiff::linalg::EPS_F64;
+use sophus_autodiff::manifold::IsTangent;
+use sophus_autodiff::params::HasParams;
+use sophus_autodiff::params::IsParamsImpl;
 
 extern crate alloc;
 
@@ -37,7 +38,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 }
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
-    ParamsImpl<S, 2, BATCH, DM, DN> for Rotation2Impl<S, BATCH, DM, DN>
+    IsParamsImpl<S, 2, BATCH, DM, DN> for Rotation2Impl<S, BATCH, DM, DN>
 {
     fn params_examples() -> alloc::vec::Vec<S::Vector<2>> {
         let mut params = alloc::vec![];
@@ -70,7 +71,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 }
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
-    TangentImpl<S, 1, BATCH, DM, DN> for Rotation2Impl<S, BATCH, DM, DN>
+    IsTangent<S, 1, BATCH, DM, DN> for Rotation2Impl<S, BATCH, DM, DN>
 {
     fn tangent_examples() -> alloc::vec::Vec<S::Vector<1>> {
         alloc::vec![
@@ -366,13 +367,11 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
 fn rotation2_prop_tests() {
     use crate::factor_lie_group::RealFactorLieGroupTest;
     use crate::lie_group::real_lie_group::RealLieGroupTest;
-    use sophus_core::calculus::dual::dual_scalar::DualScalar;
-
+    use sophus_autodiff::dual::dual_scalar::DualScalar;
     #[cfg(feature = "simd")]
-    use sophus_core::calculus::dual::DualBatchScalar;
-
+    use sophus_autodiff::dual::DualBatchScalar;
     #[cfg(feature = "simd")]
-    use sophus_core::linalg::BatchScalarF64;
+    use sophus_autodiff::linalg::BatchScalarF64;
 
     Rotation2F64::test_suite();
     #[cfg(feature = "simd")]

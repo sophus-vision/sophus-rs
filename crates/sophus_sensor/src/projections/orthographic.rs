@@ -3,8 +3,8 @@ use crate::distortions::affine::AffineDistortionImpl;
 use crate::traits::IsProjection;
 use core::borrow::Borrow;
 use core::marker::PhantomData;
-use sophus_core::linalg::scalar::IsScalar;
-use sophus_core::linalg::vector::IsVector;
+use sophus_autodiff::linalg::scalar::IsScalar;
+use sophus_autodiff::linalg::vector::IsVector;
 
 /// Orthographic projection implementation
 #[derive(Debug, Clone)]

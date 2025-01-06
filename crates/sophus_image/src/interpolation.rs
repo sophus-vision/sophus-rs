@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use sophus_core::linalg::SVec;
+use sophus_autodiff::linalg::SVec;
 
 /// Bilinear interpolated image lookup
 pub fn interpolate_impl<'a, I: IsImageView<'a, 2, 0, f32, f32, 1, 1>>(

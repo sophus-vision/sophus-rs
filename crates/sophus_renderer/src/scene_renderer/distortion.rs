@@ -1,4 +1,4 @@
-use crate::preludes::*;
+use crate::prelude::*;
 use crate::textures::depth::DepthTextures;
 use crate::textures::rgba::RgbdTexture;
 use crate::uniform_buffers::VertexShaderUniformBuffers;

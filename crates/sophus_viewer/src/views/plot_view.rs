@@ -6,7 +6,7 @@ use crate::packets::plot_view_packet::scalar_curve::ScalarCurve;
 use crate::packets::plot_view_packet::vec_curve::CurveVec;
 use crate::packets::plot_view_packet::CurveTrait;
 use crate::packets::plot_view_packet::PlotViewPacket;
-use crate::preludes::*;
+use crate::prelude::*;
 use crate::views::View;
 use linked_hash_map::LinkedHashMap;
 use sophus_renderer::aspect_ratio::HasAspectRatio;

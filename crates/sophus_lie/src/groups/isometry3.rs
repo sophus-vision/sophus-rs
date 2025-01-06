@@ -164,12 +164,11 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
 #[test]
 fn isometry3_prop_tests() {
     use crate::lie_group::real_lie_group::RealLieGroupTest;
-    use sophus_core::calculus::dual::dual_scalar::DualScalar;
-
+    use sophus_autodiff::dual::dual_scalar::DualScalar;
     #[cfg(feature = "simd")]
-    use sophus_core::calculus::dual::DualBatchScalar;
+    use sophus_autodiff::dual::DualBatchScalar;
     #[cfg(feature = "simd")]
-    use sophus_core::linalg::BatchScalarF64;
+    use sophus_autodiff::linalg::BatchScalarF64;
 
     Isometry3F64::test_suite();
     #[cfg(feature = "simd")]

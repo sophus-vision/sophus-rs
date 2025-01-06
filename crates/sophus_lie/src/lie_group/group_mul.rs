@@ -1,7 +1,7 @@
 use crate::lie_group::LieGroup;
 use crate::traits::IsLieGroupImpl;
 use core::ops::Mul;
-use sophus_core::prelude::IsScalar;
+use sophus_autodiff::prelude::IsScalar;
 
 // a * b
 impl<

@@ -1,6 +1,6 @@
-use sophus_core::linalg::SVec;
-use sophus_core::linalg::VecF64;
-use sophus_core::prelude::IsVector;
+use sophus_autodiff::linalg::SVec;
+use sophus_autodiff::linalg::VecF64;
+use sophus_autodiff::prelude::IsVector;
 use sophus_image::arc_image::ArcImage4U8;
 use sophus_image::mut_image::MutImage4U8;
 use sophus_image::mut_image_view::IsMutImageView;

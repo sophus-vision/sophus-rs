@@ -8,7 +8,7 @@ use crate::pipeline_builder::PointVertex2;
 use crate::pipeline_builder::TargetTexture;
 use crate::pixel_renderer::pixel_line::PixelLineRenderer;
 use crate::pixel_renderer::pixel_point::PixelPointRenderer;
-use crate::preludes::*;
+use crate::prelude::*;
 use crate::types::SceneFocusMarker;
 use crate::uniform_buffers::VertexShaderUniformBuffers;
 use crate::RenderContext;
