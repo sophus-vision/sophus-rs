@@ -3,7 +3,7 @@
 #![doc = include_str!(concat!("../", std::env!("CARGO_PKG_README")))]
 
 #[doc(inline)]
-pub use sophus_autodiff as core;
+pub use sophus_autodiff as autodiff;
 #[doc(inline)]
 pub use sophus_geo as geo;
 #[doc(inline)]
@@ -19,6 +19,12 @@ pub use sophus_sensor as sensor;
 #[doc(inline)]
 pub use sophus_sim as sim;
 #[doc(inline)]
+pub use sophus_spline as spline;
+#[doc(inline)]
+pub use sophus_tensor as tensor;
+#[doc(inline)]
+pub use sophus_timeseries as timeseries;
+#[doc(inline)]
 pub use sophus_viewer as viewer;
 
 pub mod examples;
@@ -29,7 +35,7 @@ pub use nalgebra;
 pub use ndarray;
 
 pub mod prelude {
-    pub use crate::core::prelude::*;
+    pub use crate::autodiff::prelude::*;
     pub use crate::image::prelude::*;
     pub use crate::lie::prelude::*;
     pub use crate::opt::prelude::*;

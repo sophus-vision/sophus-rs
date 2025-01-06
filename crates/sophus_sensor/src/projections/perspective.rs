@@ -70,7 +70,11 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 }
 
 /// Perspective projection for single scalar
-pub fn perspect_proj<S: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize>(
+pub fn perspect_proj<
+    S: IsSingleScalar<DM, DN> + 'static + Send + Sync,
+    const DM: usize,
+    const DN: usize,
+>(
     point_in_camera: &S::Vector<3>,
 ) -> S::Vector<2> {
     PerspectiveProjectionImpl::<S, 1, DM, DN>::proj(point_in_camera)

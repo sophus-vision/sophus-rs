@@ -24,3 +24,4 @@ sleef = {version = "0.3", optional = true}
 [features]
 simd = ["sleef"]
 std = []
+default = ["std"]

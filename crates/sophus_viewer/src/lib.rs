@@ -33,7 +33,11 @@ pub mod prelude {
     pub(crate) use alloc::string::String;
     pub(crate) use alloc::string::ToString;
     pub(crate) use alloc::vec::Vec;
-    pub use sophus_renderer::prelude::*;
+
+    pub use sophus_autodiff::prelude::*;
+    pub use sophus_image::prelude::*;
+    pub use sophus_lie::prelude::*;
+    pub use sophus_opt::prelude::*;
 
     extern crate alloc;
 }

@@ -38,7 +38,11 @@ pub mod prelude {
     pub(crate) use alloc::sync::Arc;
     pub(crate) use alloc::vec;
     pub(crate) use alloc::vec::Vec;
+
+    pub use sophus_autodiff::prelude::*;
     pub use sophus_image::prelude::*;
+    pub use sophus_lie::prelude::*;
+    pub use sophus_opt::prelude::*;
 
     extern crate alloc;
 }

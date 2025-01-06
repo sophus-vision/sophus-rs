@@ -2,6 +2,7 @@ use crate::linalg::VecF64;
 use crate::params::HasParams;
 use crate::prelude::IsScalar;
 extern crate alloc;
+use core::fmt::Debug;
 
 /// A tangent implementation.
 pub trait IsTangent<
@@ -14,6 +15,15 @@ pub trait IsTangent<
 {
     /// Examples of tangent vectors.
     fn tangent_examples() -> alloc::vec::Vec<S::Vector<DOF>>;
+}
+
+/// A decision variables
+pub trait IsVariable: Clone + Debug + Send + Sync + 'static {
+    /// number of degrees of freedom
+    const DOF: usize;
+
+    /// update the variable in-place.
+    fn update(&mut self, delta: nalgebra::DVectorView<f64>);
 }
 
 /// A manifold.
@@ -39,5 +49,15 @@ impl<const N: usize> IsManifold<f64, N, N, 1, 0, 0> for VecF64<N> {
 
     fn ominus(&self, rhs: &Self) -> VecF64<N> {
         self - rhs
+    }
+}
+impl<const N: usize> IsVariable for VecF64<N> {
+    const DOF: usize = N;
+
+    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
+        assert_eq!(delta.len(), Self::DOF);
+        for d in 0..Self::DOF {
+            self[d] += delta[d];
+        }
     }
 }

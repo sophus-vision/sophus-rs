@@ -31,6 +31,7 @@ pub mod variables;
 /// Sophus optimization prelude
 pub mod prelude {
     pub use crate::robust_kernel::IsRobustKernel;
+    pub use sophus_autodiff::prelude::*;
     pub use sophus_image::prelude::*;
     pub use sophus_lie::prelude::*;
     pub use sophus_sensor::prelude::*;

@@ -25,3 +25,4 @@ concat-arrays.workspace = true
 [features]
 simd = ["sophus_autodiff/simd"]
 std = ["sophus_autodiff/std"]
+default = ["std"]

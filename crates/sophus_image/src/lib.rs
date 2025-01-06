@@ -88,5 +88,6 @@ pub mod prelude {
     pub use crate::image_view::IsImageView;
     pub use crate::intensity_image::dyn_intensity_image::DynIntensityMutImage;
     pub use crate::mut_image_view::IsMutImageView;
+    pub use sophus_autodiff::prelude::*;
     pub use sophus_tensor::prelude::*;
 }

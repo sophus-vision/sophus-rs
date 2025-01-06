@@ -1,10 +1,10 @@
 #![cfg(feature = "std")]
 
 use core::f64::consts::TAU;
-use sophus::core::linalg::VecF64;
+use sophus::autodiff::linalg::VecF64;
 use sophus::examples::viewer_example::make_distorted_frame;
-use sophus::lie::prelude::IsVector;
 use sophus::lie::Isometry3;
+use sophus::prelude::*;
 use sophus::sensor::dyn_camera::DynCameraF64;
 use sophus_image::intensity_image::intensity_arc_image::IsIntensityArcImage;
 use sophus_image::mut_image::MutImageF32;
@@ -101,11 +101,11 @@ fn create_tiny_image_view_packet() -> Packet {
 
 fn create_scene(pinhole: bool) -> Vec<Packet> {
     let unified_cam = DynCameraF64::new_unified(
-        &VecF64::from_array([500.0, 500.0, 320.0, 240.0, 0.629, 1.02]),
+        VecF64::from_array([500.0, 500.0, 320.0, 240.0, 0.629, 1.02]),
         ImageSize::new(639, 479),
     );
     let pinhole_cam = DynCameraF64::new_pinhole(
-        &VecF64::from_array([500.0, 500.0, 320.0, 240.0]),
+        VecF64::from_array([500.0, 500.0, 320.0, 240.0]),
         ImageSize::new(639, 479),
     );
 

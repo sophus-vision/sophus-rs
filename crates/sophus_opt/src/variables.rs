@@ -1,13 +1,6 @@
-use crate::prelude::*;
 use core::fmt::Debug;
 use dyn_clone::DynClone;
-use sophus_autodiff::linalg::VecF64;
-use sophus_lie::Isometry2F64;
-use sophus_lie::Isometry3F64;
-use sophus_sensor::camera_enum::perspective_camera::BrownConradyCameraF64;
-use sophus_sensor::camera_enum::perspective_camera::KannalaBrandtCameraF64;
-use sophus_sensor::camera_enum::perspective_camera::PinholeCameraF64;
-use sophus_sensor::camera_enum::perspective_camera::UnifiedCameraF64;
+use sophus_autodiff::manifold::IsVariable;
 
 extern crate alloc;
 
@@ -20,51 +13,6 @@ pub enum VarKind {
     Conditioned,
     /// marginalized variable (will be updated during using the Schur complement trick)
     Marginalized,
-}
-
-///A decision variables
-pub trait IsVariable: Clone + Debug + Send + Sync + 'static {
-    /// number of degrees of freedom
-    const DOF: usize;
-
-    /// update the variable in-place (called during optimization)
-    fn update(&mut self, delta: nalgebra::DVectorView<f64>);
-}
-
-impl IsVariable for BrownConradyCameraF64 {
-    const DOF: usize = 8;
-
-    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
-        let new_params = *self.params() + delta;
-        self.set_params(new_params);
-    }
-}
-
-impl IsVariable for PinholeCameraF64 {
-    const DOF: usize = 4;
-
-    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
-        let new_params = *self.params() + delta;
-        self.set_params(new_params);
-    }
-}
-
-impl IsVariable for KannalaBrandtCameraF64 {
-    const DOF: usize = 12;
-
-    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
-        let new_params = *self.params() + delta;
-        self.set_params(new_params);
-    }
-}
-
-impl IsVariable for UnifiedCameraF64 {
-    const DOF: usize = 6;
-
-    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
-        let new_params = *self.params() + delta;
-        self.set_params(new_params);
-    }
 }
 
 /// Tuple of variables (one for each argument of the cost function)
@@ -398,40 +346,6 @@ impl<
             family_tuple.5.members[ids[5]].clone(),
             family_tuple.6.members[ids[6]].clone(),
         )
-    }
-}
-
-impl<const N: usize> IsVariable for VecF64<N> {
-    const DOF: usize = N;
-
-    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
-        for d in 0..Self::DOF {
-            self[d] += delta[d];
-        }
-    }
-}
-
-impl IsVariable for Isometry2F64 {
-    const DOF: usize = 3;
-
-    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
-        let mut delta_vec = VecF64::<3>::zeros();
-        for d in 0..<Self as IsVariable>::DOF {
-            delta_vec[d] = delta[d];
-        }
-        self.set_params((Isometry2F64::exp(delta_vec) * *self).params());
-    }
-}
-
-impl IsVariable for Isometry3F64 {
-    const DOF: usize = 6;
-
-    fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
-        let mut delta_vec = VecF64::<6>::zeros();
-        for d in 0..<Self as IsVariable>::DOF {
-            delta_vec[d] = delta[d];
-        }
-        self.set_params((Isometry3F64::exp(delta_vec) * *self).params());
     }
 }
 
