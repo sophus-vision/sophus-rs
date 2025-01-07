@@ -1,12 +1,12 @@
-use crate::cost_fn::CostFn;
-use crate::cost_fn::CostSignature;
 use crate::example_problems::cost_fn::isometry2_prior::Isometry2PriorCostFn;
-use crate::example_problems::cost_fn::isometry2_prior::Isometry2PriorTermSignature;
+use crate::example_problems::cost_fn::isometry2_prior::Isometry2PriorTerm;
 use crate::example_problems::cost_fn::isometry3_prior::Isometry3PriorCostFn;
-use crate::example_problems::cost_fn::isometry3_prior::Isometry3PriorTermSignature;
+use crate::example_problems::cost_fn::isometry3_prior::Isometry3PriorTerm;
 use crate::nlls::optimize;
 use crate::nlls::OptParams;
 use crate::prelude::*;
+use crate::quadratic_cost::cost_fn::CostFn;
+use crate::quadratic_cost::term::Terms;
 use crate::variables::VarFamily;
 use crate::variables::VarKind;
 use crate::variables::VarPoolBuilder;
@@ -44,16 +44,13 @@ impl SimpleIso2PriorProblem {
     /// Test the simple 2D isometry prior problem
     pub fn test(&self) {
         use sophus_autodiff::linalg::EPS_F64;
-        let cost_signature = alloc::vec![Isometry2PriorTermSignature {
+        let cost_term = alloc::vec![Isometry2PriorTerm {
             isometry_prior_mean: self.true_world_from_robot,
             entity_indices: [0],
         }];
 
-        let obs_pose_a_from_pose_b_poses = CostSignature::<
-            1,
-            Isometry2F64,
-            Isometry2PriorTermSignature,
-        >::new(["poses".into()], cost_signature);
+        let obs_pose_a_from_pose_b_poses =
+            Terms::<1, Isometry2F64, Isometry2PriorTerm>::new(["poses".into()], cost_term);
 
         let family: VarFamily<Isometry2F64> =
             VarFamily::new(VarKind::Free, alloc::vec![self.est_world_from_robot]);
@@ -77,8 +74,10 @@ impl SimpleIso2PriorProblem {
                 num_iter: 1,            // should converge in single iteration
                 initial_lm_nu: EPS_F64, // if lm prior param is tiny
                 parallelize: true,
+                ..Default::default()
             },
-        );
+        )
+        .unwrap();
         let refined_world_from_robot = up_families.get_members::<Isometry2F64>("poses".into());
 
         approx::assert_abs_diff_eq!(
@@ -117,16 +116,16 @@ impl SimpleIso3PriorProblem {
     pub fn test(&self) {
         use sophus_autodiff::linalg::EPS_F64;
 
-        let cost_signature = alloc::vec![Isometry3PriorTermSignature {
+        let cost_term = alloc::vec![Isometry3PriorTerm {
             isometry_prior: (self.true_world_from_robot, MatF64::<6, 6>::identity()),
             entity_indices: [0],
         }];
 
-        let obs_pose_a_from_pose_b_poses = CostSignature::<
+        let obs_pose_a_from_pose_b_poses = Terms::<
             1,
             (Isometry3F64, MatF64<6, 6>),
-            Isometry3PriorTermSignature,
-        >::new(["poses".into()], cost_signature);
+            Isometry3PriorTerm,
+        >::new(["poses".into()], cost_term);
 
         let family: VarFamily<Isometry3F64> =
             VarFamily::new(VarKind::Free, alloc::vec![self.est_world_from_robot]);
@@ -150,8 +149,10 @@ impl SimpleIso3PriorProblem {
                 num_iter: 1,            // should converge in single iteration
                 initial_lm_nu: EPS_F64, // if lm prior param is tiny
                 parallelize: true,
+                linear_solver: crate::nlls::LinearSolverType::NalgebraDenseFullPiVLu,
             },
-        );
+        )
+        .unwrap();
         let refined_world_from_robot = up_families.get_members::<Isometry3F64>("poses".into());
 
         approx::assert_abs_diff_eq!(

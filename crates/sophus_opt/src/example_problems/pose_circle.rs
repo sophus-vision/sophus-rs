@@ -1,10 +1,10 @@
 use super::cost_fn::pose_graph::PoseGraphCostFn;
-use crate::cost_fn::CostFn;
-use crate::cost_fn::CostSignature;
-use crate::example_problems::cost_fn::pose_graph::PoseGraphCostTermSignature;
+use crate::example_problems::cost_fn::pose_graph::PoseGraphCostTerm;
 use crate::nlls::optimize;
 use crate::nlls::OptParams;
 use crate::prelude::*;
+use crate::quadratic_cost::cost_fn::CostFn;
+use crate::quadratic_cost::term::Terms;
 use crate::variables::VarFamily;
 use crate::variables::VarKind;
 use crate::variables::VarPool;
@@ -23,7 +23,7 @@ pub struct PoseCircleProblem {
     /// estimated poses
     pub est_world_from_robot: alloc::vec::Vec<Isometry2F64>,
     /// pose-pose constraints
-    pub obs_pose_a_from_pose_b_poses: CostSignature<2, Isometry2F64, PoseGraphCostTermSignature>,
+    pub obs_pose_a_from_pose_b_poses: Terms<2, Isometry2F64, PoseGraphCostTerm>,
 }
 
 impl Default for PoseCircleProblem {
@@ -37,11 +37,10 @@ impl PoseCircleProblem {
     pub fn new(len: usize) -> Self {
         let mut true_world_from_robot_poses = alloc::vec![];
         let mut est_world_from_robot_poses = alloc::vec![];
-        let mut obs_pose_a_from_pose_b_poses =
-            CostSignature::<2, Isometry2F64, PoseGraphCostTermSignature>::new(
-                ["poses".into(), "poses".into()],
-                alloc::vec![],
-            );
+        let mut obs_pose_a_from_pose_b_poses = Terms::<2, Isometry2F64, PoseGraphCostTerm>::new(
+            ["poses".into(), "poses".into()],
+            alloc::vec![],
+        );
 
         let radius = 10.0;
 
@@ -65,8 +64,8 @@ impl PoseCircleProblem {
                 Isometry2::exp(p) * true_world_from_pose_a.inverse() * true_world_from_pose_b;
 
             obs_pose_a_from_pose_b_poses
-                .terms
-                .push(PoseGraphCostTermSignature {
+                .collection
+                .push(PoseGraphCostTerm {
                     pose_a_from_pose_b,
                     entity_indices: [a_idx, b_idx],
                 });
@@ -77,7 +76,7 @@ impl PoseCircleProblem {
         for i in 1..len {
             let a_idx = i - 1;
             let b_idx = i;
-            let obs = obs_pose_a_from_pose_b_poses.terms[a_idx].clone();
+            let obs = obs_pose_a_from_pose_b_poses.collection[a_idx].clone();
             assert_eq!(obs.entity_indices[0], a_idx);
             assert_eq!(obs.entity_indices[1], b_idx);
 
@@ -104,7 +103,7 @@ impl PoseCircleProblem {
     /// Calculate the error of the current estimate
     pub fn calc_error(&self, est_world_from_robot: &[Isometry2F64]) -> f64 {
         let mut res_err = 0.0;
-        for obs in self.obs_pose_a_from_pose_b_poses.terms.clone() {
+        for obs in self.obs_pose_a_from_pose_b_poses.collection.clone() {
             let residual = super::cost_fn::pose_graph::res_fn(
                 est_world_from_robot[obs.entity_indices[0]],
                 est_world_from_robot[obs.entity_indices[1]],
@@ -112,7 +111,7 @@ impl PoseCircleProblem {
             );
             res_err += residual.dot(&residual);
         }
-        res_err /= self.obs_pose_a_from_pose_b_poses.terms.len() as f64;
+        res_err /= self.obs_pose_a_from_pose_b_poses.collection.len() as f64;
         res_err
     }
 
@@ -140,8 +139,10 @@ impl PoseCircleProblem {
                 num_iter: 5,
                 initial_lm_nu: 1.0,
                 parallelize: true,
+                ..Default::default()
             },
         )
+        .unwrap()
     }
 }
 

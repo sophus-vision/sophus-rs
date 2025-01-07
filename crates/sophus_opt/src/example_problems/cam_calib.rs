@@ -1,12 +1,12 @@
-use crate::cost_fn::CostFn;
-use crate::cost_fn::CostSignature;
+use super::cost_fn::reprojection::ReprojTerm;
 use crate::example_problems::cost_fn::isometry3_prior::Isometry3PriorCostFn;
-use crate::example_problems::cost_fn::isometry3_prior::Isometry3PriorTermSignature;
-use crate::example_problems::cost_fn::reprojection::ReprojTermSignature;
+use crate::example_problems::cost_fn::isometry3_prior::Isometry3PriorTerm;
 use crate::example_problems::cost_fn::reprojection::ReprojectionCostFn;
 use crate::nlls::optimize;
 use crate::nlls::OptParams;
 use crate::prelude::*;
+use crate::quadratic_cost::cost_fn::CostFn;
+use crate::quadratic_cost::term::Terms;
 use crate::robust_kernel::HuberKernel;
 use crate::variables::VarFamily;
 use crate::variables::VarKind;
@@ -31,7 +31,7 @@ pub struct CamCalibProblem {
     /// points in world
     pub points_in_world: alloc::vec::Vec<VecF64<3>>,
     /// observations
-    pub observations: alloc::vec::Vec<ReprojTermSignature>,
+    pub observations: alloc::vec::Vec<ReprojTerm>,
 
     /// true intrinsics
     pub true_intrinsics: PinholeCameraF64,
@@ -76,7 +76,7 @@ impl CamCalibProblem {
             let v = rng.gen::<f64>() * (image_size.height as f64 - 1.0);
             let true_uv_in_img0 = VecF64::<2>::new(u, v);
             let img_noise = VecF64::<2>::new(rng.gen::<f64>() - 0.5, rng.gen::<f64>() - 0.5);
-            observations.push(ReprojTermSignature {
+            observations.push(ReprojTerm {
                 uv_in_image: true_uv_in_img0 + img_noise,
                 entity_indices: [0, 0, i],
             });
@@ -95,12 +95,12 @@ impl CamCalibProblem {
             if spurious_matches && i == 0 {
                 let u = rng.gen::<f64>() * (image_size.width as f64 - 1.0);
                 let v = rng.gen::<f64>() * (image_size.height as f64 - 1.0);
-                observations.push(ReprojTermSignature {
+                observations.push(ReprojTerm {
                     uv_in_image: VecF64::<2>::new(u, v),
                     entity_indices: [0, 1, i],
                 });
             } else {
-                observations.push(ReprojTermSignature {
+                observations.push(ReprojTerm {
                     uv_in_image: true_uv_in_img1 + img_noise,
                     entity_indices: [0, 1, i],
                 });
@@ -111,7 +111,7 @@ impl CamCalibProblem {
             let true_point_in_cam2 = true_cam2_from_cam0.transform(true_point_in_cam0);
             let true_uv_in_img2 = true_intrinsics.cam_proj(true_point_in_cam2);
             let img_noise = VecF64::<2>::new(rng.gen::<f64>() - 0.5, rng.gen::<f64>() - 0.5);
-            observations.push(ReprojTermSignature {
+            observations.push(ReprojTerm {
                 uv_in_image: true_uv_in_img2 + img_noise,
                 entity_indices: [0, 2, i],
             });
@@ -135,7 +135,7 @@ impl CamCalibProblem {
 
     /// optimize with two poses fixed
     pub fn optimize_with_two_poses_fixed(&self, intrinsics_var_kind: VarKind) {
-        let reproj_obs = CostSignature::<3, VecF64<2>, ReprojTermSignature>::new(
+        let reproj_obs = Terms::<3, VecF64<2>, ReprojTerm>::new(
             ["cams".into(), "poses".into(), "points".into()],
             self.observations.clone(),
         );
@@ -177,8 +177,10 @@ impl CamCalibProblem {
                 num_iter: 25,       // should converge in single iteration
                 initial_lm_nu: 1.0, // if lm prior param is tiny
                 parallelize: true,
+                linear_solver: crate::nlls::LinearSolverType::NalgebraDenseFullPiVLu,
             },
-        );
+        )
+        .unwrap();
 
         let refined_world_from_robot = up_var_pool.get_members::<Isometry3F64>("poses".into());
 
@@ -191,28 +193,27 @@ impl CamCalibProblem {
 
     /// optimize with priors
     pub fn optimize_with_priors(&self) {
-        let priors =
-            CostSignature::<1, (Isometry3F64, MatF64<6, 6>), Isometry3PriorTermSignature>::new(
-                ["poses".into()],
-                alloc::vec![
-                    Isometry3PriorTermSignature {
-                        entity_indices: [0],
-                        isometry_prior: (
-                            self.true_world_from_cameras[0],
-                            MatF64::<6, 6>::new_scaling(10000.0),
-                        ),
-                    },
-                    Isometry3PriorTermSignature {
-                        entity_indices: [1],
-                        isometry_prior: (
-                            self.true_world_from_cameras[1],
-                            MatF64::<6, 6>::new_scaling(10000.0),
-                        ),
-                    },
-                ],
-            );
+        let priors = Terms::<1, (Isometry3F64, MatF64<6, 6>), Isometry3PriorTerm>::new(
+            ["poses".into()],
+            alloc::vec![
+                Isometry3PriorTerm {
+                    entity_indices: [0],
+                    isometry_prior: (
+                        self.true_world_from_cameras[0],
+                        MatF64::<6, 6>::new_scaling(10000.0),
+                    ),
+                },
+                Isometry3PriorTerm {
+                    entity_indices: [1],
+                    isometry_prior: (
+                        self.true_world_from_cameras[1],
+                        MatF64::<6, 6>::new_scaling(10000.0),
+                    ),
+                },
+            ],
+        );
 
-        let reproj_obs = CostSignature::<3, VecF64<2>, ReprojTermSignature>::new(
+        let reproj_obs = Terms::<3, VecF64<2>, ReprojTerm>::new(
             ["cams".into(), "poses".into(), "points".into()],
             self.observations.clone(),
         );
@@ -242,8 +243,10 @@ impl CamCalibProblem {
                 num_iter: 5,
                 initial_lm_nu: 1.0,
                 parallelize: true,
+                linear_solver: crate::nlls::LinearSolverType::NalgebraDenseFullPiVLu,
             },
-        );
+        )
+        .unwrap();
 
         let refined_world_from_robot = up_var_pool.get_members::<Isometry3F64>("poses".into());
 

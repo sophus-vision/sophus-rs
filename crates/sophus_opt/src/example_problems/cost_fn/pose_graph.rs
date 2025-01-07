@@ -1,9 +1,9 @@
-use crate::cost_fn::IsResidualFn;
-use crate::cost_fn::IsTermSignature;
 use crate::prelude::*;
+use crate::quadratic_cost::evaluated_term::EvaluatedCostTerm;
+use crate::quadratic_cost::evaluated_term::MakeEvaluatedCostTerm;
+use crate::quadratic_cost::residual_fn::IsResidualFn;
+use crate::quadratic_cost::term::IsTerm;
 use crate::robust_kernel;
-use crate::term::MakeTerm;
-use crate::term::Term;
 use crate::variables::VarKind;
 use sophus_lie::Isometry2;
 use sophus_lie::Isometry2F64;
@@ -30,7 +30,7 @@ impl IsResidualFn<12, 2, (), (Isometry2F64, Isometry2F64), Isometry2F64> for Pos
         var_kinds: [VarKind; 2],
         robust_kernel: Option<robust_kernel::RobustKernel>,
         obs: &Isometry2F64,
-    ) -> Term<12, 2> {
+    ) -> EvaluatedCostTerm<12, 2> {
         let world_from_pose_a = world_from_pose_x.0;
         let world_from_pose_b = world_from_pose_x.1;
 
@@ -50,20 +50,20 @@ impl IsResidualFn<12, 2, (), (Isometry2F64, Isometry2F64), Isometry2F64> for Pos
                 )
             },
         )
-            .make_term(idx, var_kinds, residual, robust_kernel, None)
+            .make(idx, var_kinds, residual, robust_kernel, None)
     }
 }
 
-/// Pose graph term signature
+/// Pose graph term
 #[derive(Debug, Clone)]
-pub struct PoseGraphCostTermSignature {
+pub struct PoseGraphCostTerm {
     /// 2d relative pose constraint
     pub pose_a_from_pose_b: Isometry2F64,
     /// ids of the two poses
     pub entity_indices: [usize; 2],
 }
 
-impl IsTermSignature<2> for PoseGraphCostTermSignature {
+impl IsTerm<2> for PoseGraphCostTerm {
     type Constants = Isometry2F64;
 
     fn c_ref(&self) -> &Self::Constants {

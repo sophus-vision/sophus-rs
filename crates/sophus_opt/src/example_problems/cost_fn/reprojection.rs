@@ -1,9 +1,9 @@
-use crate::cost_fn::IsResidualFn;
-use crate::cost_fn::IsTermSignature;
 use crate::prelude::*;
+use crate::quadratic_cost::evaluated_term::EvaluatedCostTerm;
+use crate::quadratic_cost::evaluated_term::MakeEvaluatedCostTerm;
+use crate::quadratic_cost::residual_fn::IsResidualFn;
+use crate::quadratic_cost::term::IsTerm;
 use crate::robust_kernel;
-use crate::term::MakeTerm;
-use crate::term::Term;
 use crate::variables::VarKind;
 use sophus_autodiff::dual::DualScalar;
 use sophus_autodiff::dual::DualVector;
@@ -28,16 +28,16 @@ fn res_fn<Scalar: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize>(
     uv_in_image - intrinscs.cam_proj(point_in_cam)
 }
 
-/// Reprojection term signature
+/// Reprojection term
 #[derive(Clone)]
-pub struct ReprojTermSignature {
+pub struct ReprojTerm {
     /// Pixel measurement
     pub uv_in_image: VecF64<2>,
     /// camera/intrinsics index, pose index, point index
     pub entity_indices: [usize; 3],
 }
 
-impl IsTermSignature<3> for ReprojTermSignature {
+impl IsTerm<3> for ReprojTerm {
     type Constants = VecF64<2>;
 
     fn c_ref(&self) -> &Self::Constants {
@@ -66,7 +66,7 @@ impl IsResidualFn<13, 3, (), (PinholeCameraF64, Isometry3F64, VecF64<3>), VecF64
         var_kinds: [VarKind; 3],
         robust_kernel: Option<robust_kernel::RobustKernel>,
         uv_in_image: &VecF64<2>,
-    ) -> Term<13, 3> {
+    ) -> EvaluatedCostTerm<13, 3> {
         // calculate residual
         let residual = res_fn(
             intrinsics,
@@ -132,6 +132,6 @@ impl IsResidualFn<13, 3, (), (PinholeCameraF64, Isometry3F64, VecF64<3>), VecF64
                 )
             },
         )
-            .make_term(idx, var_kinds, residual, robust_kernel, None)
+            .make(idx, var_kinds, residual, robust_kernel, None)
     }
 }
