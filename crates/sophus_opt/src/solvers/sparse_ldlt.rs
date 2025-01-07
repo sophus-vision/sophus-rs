@@ -1,67 +1,29 @@
+use faer::sparse::FaerError;
 use nalgebra::DMatrix;
+
+use super::normal_equation::SymmetricTripletMatrix;
 
 extern crate alloc;
 
-/// A matrix in triplet format for sparse LDLT factorization / using faer crate
-pub struct SparseLdlt {
-    upper_ccs: faer::sparse::SparseColMat<usize, f64>,
+/// sparse LDLT factorization parameters
+#[derive(Copy, Clone, Debug)]
+pub struct SparseLdltParams {
+    /// Regularization for LDLT factorization
+    pub regularization_eps: f64,
 }
 
-/// A matrix in triplet format
-pub struct SymmetricTripletMatrix {
-    /// upper diagonal triplets
-    pub upper_triplets: alloc::vec::Vec<(usize, usize, f64)>,
-    /// row count (== column count)
-    pub size: usize,
-}
-
-impl SymmetricTripletMatrix {
-    /// Create an example matrix
-    pub fn example() -> Self {
+impl Default for SparseLdltParams {
+    fn default() -> Self {
         Self {
-            upper_triplets: alloc::vec![
-                (0, 0, 3.05631771),
-                (1, 1, 60.05631771),
-                (2, 2, 6.05631771),
-                (3, 3, 5.05631771),
-                (4, 4, 8.05631771),
-                (5, 5, 5.05631771),
-                (6, 6, 0.05631771),
-                (7, 7, 10.005631771),
-                (0, 1, 2.41883573),
-                (0, 3, 2.41883573),
-                (0, 5, 1.88585946),
-                (1, 3, 1.73897015),
-                (1, 5, 2.12387697),
-                (1, 7, 1.47609157),
-                (2, 7, 1.4541327),
-                (3, 4, 2.35666066),
-                (3, 7, 0.94642903),
-            ],
-            size: 8,
+            regularization_eps: 1e-6,
         }
     }
+}
 
-    /// Convert to dense matrix
-    pub fn to_dense(&self) -> nalgebra::DMatrix<f64> {
-        let mut full_matrix = nalgebra::DMatrix::from_element(self.size, self.size, 0.0);
-        for &(row, col, value) in self.upper_triplets.iter() {
-            full_matrix[(row, col)] = value;
-            if row != col {
-                full_matrix[(col, row)] = value;
-            }
-        }
-        full_matrix
-    }
-
-    /// Returns true if the matrix is semi-positive definite
-    ///
-    /// TODO: This is a very inefficient implementation
-    pub fn is_semi_positive_definite(&self) -> bool {
-        let full_matrix = self.to_dense();
-        let eigen_comp = full_matrix.symmetric_eigen();
-        eigen_comp.eigenvalues.iter().all(|&x| x >= 0.0)
-    }
+/// A matrix in triplet format for sparse LDLT factorization / using faer crate
+pub struct SimplicalSparseLdlt {
+    upper_ccs: faer::sparse::SparseColMat<usize, f64>,
+    params: SparseLdltParams,
 }
 
 struct SparseLdltPerm {
@@ -126,8 +88,10 @@ struct SparseLdltPermSymb {
     symbolic: faer::sparse::linalg::cholesky::simplicial::SymbolicSimplicialCholesky<usize>,
 }
 
-impl SparseLdlt {
-    fn symbolic_and_perm(&self) -> SparseLdltPermSymb {
+impl SimplicalSparseLdlt {
+    fn symbolic_and_perm(&self) -> Result<SparseLdltPermSymb, FaerError> {
+        // Following low-level example from faer crate:
+        // https://github.com/sarah-quinones/faer-rs/blob/main/src/sparse/linalg/cholesky.rs#L11
         let dim = self.upper_ccs.ncols();
 
         let nnz = self.upper_ccs.compute_nnz();
@@ -135,23 +99,22 @@ impl SparseLdlt {
         let (perm, perm_inv) = {
             let mut perm = alloc::vec::Vec::new();
             let mut perm_inv = alloc::vec::Vec::new();
-            perm.try_reserve_exact(dim).unwrap();
-            perm_inv.try_reserve_exact(dim).unwrap();
+            perm.try_reserve_exact(dim)?;
+            perm_inv.try_reserve_exact(dim)?;
             perm.resize(dim, 0usize);
             perm_inv.resize(dim, 0usize);
 
-            let mut mem = faer::dyn_stack::GlobalPodBuffer::try_new(
-                faer::sparse::linalg::amd::order_req::<usize>(dim, nnz).unwrap(),
-            )
-            .unwrap();
+            let mut mem =
+                faer::dyn_stack::GlobalPodBuffer::try_new(faer::sparse::linalg::amd::order_req::<
+                    usize,
+                >(dim, nnz)?)?;
             faer::sparse::linalg::amd::order(
                 &mut perm,
                 &mut perm_inv,
                 self.upper_ccs.symbolic(),
                 faer::sparse::linalg::amd::Control::default(),
                 faer::dyn_stack::PodStack::new(&mut mem),
-            )
-            .unwrap();
+            )?;
 
             (perm, perm_inv)
         };
@@ -164,19 +127,19 @@ impl SparseLdlt {
                 faer::dyn_stack::StackReq::try_any_of([
                     faer::sparse::linalg::cholesky::simplicial::prefactorize_symbolic_cholesky_req::<
                         usize,
-                    >(dim, self.upper_ccs.compute_nnz()).unwrap(),
+                    >(dim, self.upper_ccs.compute_nnz())?,
                     faer::sparse::linalg::cholesky::simplicial::factorize_simplicial_symbolic_req::<
                         usize,
-                    >(dim).unwrap(),
-                ]).unwrap(),
-            ).unwrap();
+                    >(dim)?,
+                ])?,
+            )?;
             let mut stack = faer::dyn_stack::PodStack::new(&mut mem);
 
             let mut etree = alloc::vec::Vec::new();
             let mut col_counts = alloc::vec::Vec::new();
-            etree.try_reserve_exact(dim).unwrap();
+            etree.try_reserve_exact(dim)?;
             etree.resize(dim, 0isize);
-            col_counts.try_reserve_exact(dim).unwrap();
+            col_counts.try_reserve_exact(dim)?;
             col_counts.resize(dim, 0usize);
 
             faer::sparse::linalg::cholesky::simplicial::prefactorize_symbolic_cholesky(
@@ -196,20 +159,19 @@ impl SparseLdlt {
                 },
                 &col_counts,
                 faer::reborrow::ReborrowMut::rb_mut(&mut stack),
-            )
-            .unwrap()
+            )?
         };
-        SparseLdltPermSymb {
+        Ok(SparseLdltPermSymb {
             permutation,
             symbolic,
-        }
+        })
     }
 
     fn solve_from_symbolic(
         &self,
         b: &nalgebra::DVector<f64>,
         symbolic_perm: &SparseLdltPermSymb,
-    ) -> nalgebra::DVector<f64> {
+    ) -> Result<nalgebra::DVector<f64>, FaerError> {
         let dim = self.upper_ccs.ncols();
         let perm_ref = unsafe {
             faer::perm::PermRef::new_unchecked(
@@ -220,22 +182,30 @@ impl SparseLdlt {
         };
         let symbolic = &symbolic_perm.symbolic;
 
-        let mut mem = faer::dyn_stack::GlobalPodBuffer::try_new(faer::dyn_stack::StackReq::try_all_of([
-            faer::sparse::linalg::cholesky::simplicial::factorize_simplicial_numeric_ldlt_req::<usize, f64>(dim).unwrap(),
-            faer::perm::permute_rows_in_place_req::<usize, f64>(dim, 1).unwrap(),
-            symbolic.solve_in_place_req::<f64>(dim).unwrap(),
-        ]).unwrap()).unwrap();
+        let mut mem =
+            faer::dyn_stack::GlobalPodBuffer::try_new(faer::dyn_stack::StackReq::try_all_of([
+                faer::sparse::linalg::cholesky::simplicial::factorize_simplicial_numeric_ldlt_req::<
+                    usize,
+                    f64,
+                >(dim)?,
+                faer::perm::permute_rows_in_place_req::<usize, f64>(dim, 1)?,
+                symbolic.solve_in_place_req::<f64>(dim)?,
+            ])?)?;
         let mut stack = faer::dyn_stack::PodStack::new(&mut mem);
 
         let mut l_values = alloc::vec::Vec::new();
-        l_values.try_reserve_exact(symbolic.len_values()).unwrap();
+        l_values.try_reserve_exact(symbolic.len_values())?;
         l_values.resize(symbolic.len_values(), 0.0f64);
         let ccs_perm_upper = symbolic_perm.permutation.perm_upper_ccs(&self.upper_ccs);
 
         faer::sparse::linalg::cholesky::simplicial::factorize_simplicial_numeric_ldlt::<usize, f64>(
             &mut l_values,
             ccs_perm_upper.as_ref(),
-            faer::sparse::linalg::cholesky::LdltRegularization::default(),
+            faer::sparse::linalg::cholesky::LdltRegularization {
+                dynamic_regularization_signs: Some(&vec![1; dim]),
+                dynamic_regularization_delta: self.params.regularization_eps,
+                dynamic_regularization_epsilon: self.params.regularization_eps,
+            },
             symbolic,
             faer::reborrow::ReborrowMut::rb_mut(&mut stack),
         );
@@ -265,18 +235,19 @@ impl SparseLdlt {
             faer::reborrow::ReborrowMut::rb_mut(&mut stack),
         );
 
-        x
+        Ok(x)
     }
 
     /// Create a sparse LDLT factorization from a symmetric triplet matrix
-    pub fn from_triplets(sym_tri_mat: &SymmetricTripletMatrix) -> Self {
-        SparseLdlt {
+    pub fn from_triplets(sym_tri_mat: &SymmetricTripletMatrix, params: SparseLdltParams) -> Self {
+        SimplicalSparseLdlt {
             upper_ccs: faer::sparse::SparseColMat::try_new_from_triplets(
                 sym_tri_mat.size,
                 sym_tri_mat.size,
-                &sym_tri_mat.upper_triplets,
+                &sym_tri_mat.triplets,
             )
             .unwrap(),
+            params,
         }
     }
 
@@ -298,8 +269,8 @@ impl SparseLdlt {
     ///
     /// TODO: Consider a more efficient API where the symbolic factorization is
     ///       computed once and then reused for multiple solves.
-    pub fn solve(&self, b: &nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
-        let symbolic_perm = self.symbolic_and_perm();
+    pub fn solve(&self, b: &nalgebra::DVector<f64>) -> Result<nalgebra::DVector<f64>, FaerError> {
+        let symbolic_perm = self.symbolic_and_perm()?;
         self.solve_from_symbolic(b, &symbolic_perm)
     }
 }
@@ -312,15 +283,15 @@ mod tests {
 
     #[test]
     fn ldlt() {
-        let sym_tri_mat = SymmetricTripletMatrix::example();
+        let sym_tri_mat = SymmetricTripletMatrix::upper_diagonal_example();
         assert!(sym_tri_mat.is_semi_positive_definite());
         let dense_mat = sym_tri_mat.to_dense();
 
-        let sparse_ldlt = SparseLdlt::from_triplets(&sym_tri_mat);
+        let sparse_ldlt = SimplicalSparseLdlt::from_triplets(&sym_tri_mat, Default::default());
         assert_eq!(sparse_ldlt.to_dense(), dense_mat);
 
         let b = DVector::from_element(8, 1.0);
-        let x = sparse_ldlt.solve(&b);
+        let x = sparse_ldlt.solve(&b).unwrap();
 
         approx::assert_abs_diff_eq!(dense_mat * x, b);
     }

@@ -1,45 +1,33 @@
-use crate::term::Term;
 use crate::variables::VarKind;
 use crate::variables::VarPool;
 use core::fmt::Debug;
 use core::ops::AddAssign;
 use dyn_clone::DynClone;
 
+use super::evaluated_term::EvaluatedCostTerm;
+
 extern crate alloc;
 
-/// Evaluated cost
-pub trait IsCost: Debug + DynClone {
-    /// squared error
-    fn calc_square_error(&self) -> f64;
-
-    /// populate the normal equation
-    fn populate_normal_equation(
-        &self,
-        variables: &VarPool,
-        nu: f64,
-        upper_hessian_triplet: &mut alloc::vec::Vec<(usize, usize, f64)>,
-        neg_grad: &mut nalgebra::DVector<f64>,
-    );
-}
-
-/// Generic evaluated cost
+/// Generic evaluated cost.
+///
+/// This is produced as Box<dyn IsCost> by the cost function CostFn.
 #[derive(Debug, Clone)]
-pub struct Cost<const NUM: usize, const NUM_ARGS: usize> {
-    /// one name (of the corresponding variable family) for each argument (of the cost function
+pub struct EvaluatedCost<const NUM: usize, const NUM_ARGS: usize> {
+    /// one name (of the corresponding variable family) for each argument (of the cost function)
     pub family_names: [alloc::string::String; NUM_ARGS],
-    /// evaluated terms of the cost function
-    pub terms: alloc::vec::Vec<Term<NUM, NUM_ARGS>>,
+    /// evaluated terms of the overall cost
+    pub terms: alloc::vec::Vec<EvaluatedCostTerm<NUM, NUM_ARGS>>,
     /// degrees of freedom for each argument
     pub dof_tuple: [i64; NUM_ARGS],
 }
 
-impl<const NUM: usize, const NUM_ARGS: usize> Cost<NUM, NUM_ARGS> {
+impl<const NUM: usize, const NUM_ARGS: usize> EvaluatedCost<NUM, NUM_ARGS> {
     /// create a new evaluated cost
     pub fn new(
         family_names: [alloc::string::String; NUM_ARGS],
         dof_tuple: [i64; NUM_ARGS],
     ) -> Self {
-        Cost {
+        EvaluatedCost {
             family_names,
             terms: alloc::vec::Vec::new(),
             dof_tuple,
@@ -61,7 +49,23 @@ impl<const NUM: usize, const NUM_ARGS: usize> Cost<NUM, NUM_ARGS> {
     }
 }
 
-impl<const NUM: usize, const NUM_ARGS: usize> IsCost for Cost<NUM, NUM_ARGS> {
+/// Evaluated cost.
+pub trait IsEvaluatedCost: Debug + DynClone {
+    /// squared error
+    fn calc_square_error(&self) -> f64;
+
+    /// populate the normal equation
+    fn populate_normal_equation(
+        &self,
+        variables: &VarPool,
+        nu: f64,
+        upper_hessian_triplet: &mut alloc::vec::Vec<(usize, usize, f64)>,
+        neg_grad: &mut nalgebra::DVector<f64>,
+        upper_only: bool,
+    );
+}
+
+impl<const NUM: usize, const NUM_ARGS: usize> IsEvaluatedCost for EvaluatedCost<NUM, NUM_ARGS> {
     fn calc_square_error(&self) -> f64 {
         let mut error = 0.0;
         for term in self.terms.iter() {
@@ -76,6 +80,7 @@ impl<const NUM: usize, const NUM_ARGS: usize> IsCost for Cost<NUM, NUM_ARGS> {
         nu: f64,
         upper_hessian_triplet: &mut alloc::vec::Vec<(usize, usize, f64)>,
         neg_grad: &mut nalgebra::DVector<f64>,
+        upper_only: bool,
     ) {
         let num_args = self.family_names.len();
 
@@ -125,7 +130,7 @@ impl<const NUM: usize, const NUM_ARGS: usize> IsCost for Cost<NUM, NUM_ARGS> {
                             d = nu;
                         }
 
-                        if r <= c {
+                        if !upper_only || r <= c {
                             // upper triangular
                             upper_hessian_triplet.push((
                                 start_idx_alpha + r,
@@ -153,7 +158,7 @@ impl<const NUM: usize, const NUM_ARGS: usize> IsCost for Cost<NUM, NUM_ARGS> {
                         continue;
                     }
                     let start_idx_beta = start_idx_beta as usize;
-                    if start_idx_beta < start_idx_alpha {
+                    if upper_only && start_idx_beta < start_idx_alpha {
                         // upper triangular, skip lower triangular
                         continue;
                     }

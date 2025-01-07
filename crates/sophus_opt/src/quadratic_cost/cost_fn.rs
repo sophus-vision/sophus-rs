@@ -1,8 +1,12 @@
-use crate::cost::Cost;
-use crate::cost::IsCost;
-use crate::cost_args::c_from_var_kind;
+use super::evaluated_cost::IsEvaluatedCost;
+use super::residual_fn::IsResidualFn;
+use super::term::IsTerm;
+use super::term::Terms;
+use crate::quadratic_cost::compare_idx::c_from_var_kind;
+use crate::quadratic_cost::compare_idx::CompareIdx;
+use crate::quadratic_cost::evaluated_cost::EvaluatedCost;
+use crate::quadratic_cost::evaluated_term::EvaluatedCostTerm;
 use crate::robust_kernel::RobustKernel;
-use crate::term::Term;
 use crate::variables::IsVarTuple;
 use crate::variables::VarKind;
 use crate::variables::VarPool;
@@ -11,84 +15,17 @@ use core::ops::Range;
 
 extern crate alloc;
 
-/// Signature of a term of a cost function
-pub trait IsTermSignature<const N: usize>: Send + Sync + 'static {
-    /// associated constants such as measurements, etc.
-    type Constants;
-
-    /// one DOF for each argument
-    const DOF_TUPLE: [i64; N];
-
-    /// reference to the constants
-    fn c_ref(&self) -> &Self::Constants;
-
-    /// one index (into the variable family) for each argument
-    fn idx_ref(&self) -> &[usize; N];
-}
-
-/// Signature of a cost function
-#[derive(Debug, Clone)]
-pub struct CostSignature<
-    const NUM_ARGS: usize,
-    Constants,
-    TermSignature: IsTermSignature<NUM_ARGS, Constants = Constants>,
-> {
-    /// one variable family name for each argument
-    pub family_names: [alloc::string::String; NUM_ARGS],
-    /// terms of the unevaluated cost function
-    pub terms: alloc::vec::Vec<TermSignature>,
-    pub(crate) reduction_ranges: Option<alloc::vec::Vec<Range<usize>>>,
-}
-
-impl<
-        const NUM_ARGS: usize,
-        Constants,
-        TermSignature: IsTermSignature<NUM_ARGS, Constants = Constants>,
-    > CostSignature<NUM_ARGS, Constants, TermSignature>
-{
-    /// Create a new cost signature
-    pub fn new(
-        family_names: [alloc::string::String; NUM_ARGS],
-        terms: alloc::vec::Vec<TermSignature>,
-    ) -> Self {
-        CostSignature {
-            family_names,
-            terms,
-            reduction_ranges: None,
-        }
-    }
-}
-
-/// Residual function
-pub trait IsResidualFn<
-    const NUM: usize,
-    const NUM_ARGS: usize,
-    GlobalConstants: 'static + Send + Sync,
-    Args: IsVarTuple<NUM_ARGS>,
-    Constants,
->: Copy + Send + Sync + 'static
-{
-    /// evaluate the residual function which shall be defined by the user
-    fn eval(
-        &self,
-        global_constants: &GlobalConstants,
-        idx: [usize; NUM_ARGS],
-        args: Args,
-        derivatives: [VarKind; NUM_ARGS],
-        robust_kernel: Option<RobustKernel>,
-        constants: &Constants,
-    ) -> Term<NUM, NUM_ARGS>;
-}
-
-/// Quadratic cost function of the non-linear least squares problem
+/// Quadratic cost function of the non-linear least squares problem.
+///
+/// This is producing an evaluated cost: Box<dyn IsCost> which is a sum of squared residuals.
 pub trait IsCostFn {
-    /// evaluate the cost function
+    /// Evaluate the cost function.
     fn eval(
         &self,
         var_pool: &VarPool,
         calc_derivatives: bool,
         parallelize: bool,
-    ) -> alloc::boxed::Box<dyn IsCost>;
+    ) -> alloc::boxed::Box<dyn IsEvaluatedCost>;
 
     /// sort the terms of the cost function (to ensure more efficient evaluation and reduction over
     /// conditioned variables)
@@ -98,21 +35,23 @@ pub trait IsCostFn {
     fn robust_kernel(&self) -> Option<RobustKernel>;
 }
 
-/// Generic cost function of the non-linear least squares problem
+/// Generic cost function of the non-linear least squares problem.
+///
+/// This struct is passed as a Box<dyn IsCostFn> to the optimizer.
 #[derive(Debug, Clone)]
 pub struct CostFn<
     const NUM: usize,
     const NUM_ARGS: usize,
     GlobalConstants: 'static + Send + Sync,
     Constants,
-    TermSignature: IsTermSignature<NUM_ARGS, Constants = Constants>,
+    Term: IsTerm<NUM_ARGS, Constants = Constants>,
     ResidualFn,
     VarTuple: IsVarTuple<NUM_ARGS> + 'static,
 > where
     ResidualFn: IsResidualFn<NUM, NUM_ARGS, GlobalConstants, VarTuple, Constants>,
 {
     global_constants: GlobalConstants,
-    signature: CostSignature<NUM_ARGS, Constants, TermSignature>,
+    cost_terms: Terms<NUM_ARGS, Constants, Term>,
     residual_fn: ResidualFn,
     robust_kernel: Option<RobustKernel>,
     phantom: PhantomData<VarTuple>,
@@ -123,38 +62,38 @@ impl<
         const NUM_ARGS: usize,
         GlobalConstants: 'static + Send + Sync,
         Constants: 'static,
-        TermSignature: IsTermSignature<NUM_ARGS, Constants = Constants> + 'static,
+        Term: IsTerm<NUM_ARGS, Constants = Constants> + 'static,
         ResidualFn,
         VarTuple: IsVarTuple<NUM_ARGS> + 'static,
-    > CostFn<NUM, NUM_ARGS, GlobalConstants, Constants, TermSignature, ResidualFn, VarTuple>
+    > CostFn<NUM, NUM_ARGS, GlobalConstants, Constants, Term, ResidualFn, VarTuple>
 where
     ResidualFn: IsResidualFn<NUM, NUM_ARGS, GlobalConstants, VarTuple, Constants> + 'static,
 {
-    /// create a new cost function from a signature and a residual function
+    /// create a new cost function from the cost terms and a residual function
     pub fn new_box(
         global_constants: GlobalConstants,
-        signature: CostSignature<NUM_ARGS, Constants, TermSignature>,
+        terms: Terms<NUM_ARGS, Constants, Term>,
         residual_fn: ResidualFn,
     ) -> alloc::boxed::Box<dyn IsCostFn> {
         alloc::boxed::Box::new(Self {
             global_constants,
-            signature,
+            cost_terms: terms,
             residual_fn,
             robust_kernel: None,
             phantom: PhantomData,
         })
     }
 
-    /// create a new robust cost function from a signature, a residual function and a robust kernel
+    /// create a new robust cost function from the cost terms, a residual function and a robust kernel
     pub fn new_robust(
         global_constants: GlobalConstants,
-        signature: CostSignature<NUM_ARGS, Constants, TermSignature>,
+        terms: Terms<NUM_ARGS, Constants, Term>,
         residual_fn: ResidualFn,
         robust_kernel: RobustKernel,
     ) -> alloc::boxed::Box<dyn IsCostFn> {
         alloc::boxed::Box::new(Self {
             global_constants,
-            signature,
+            cost_terms: terms,
             residual_fn,
             robust_kernel: Some(robust_kernel),
             phantom: PhantomData,
@@ -167,11 +106,10 @@ impl<
         const NUM_ARGS: usize,
         GlobalConstants: 'static + Send + Sync,
         Constants,
-        TermSignature: IsTermSignature<NUM_ARGS, Constants = Constants>,
+        Term: IsTerm<NUM_ARGS, Constants = Constants>,
         ResidualFn,
         VarTuple: IsVarTuple<NUM_ARGS> + 'static,
-    > IsCostFn
-    for CostFn<NUM, NUM_ARGS, GlobalConstants, Constants, TermSignature, ResidualFn, VarTuple>
+    > IsCostFn for CostFn<NUM, NUM_ARGS, GlobalConstants, Constants, Term, ResidualFn, VarTuple>
 where
     ResidualFn: IsResidualFn<NUM, NUM_ARGS, GlobalConstants, VarTuple, Constants>,
 {
@@ -180,34 +118,32 @@ where
         var_pool: &VarPool,
         calc_derivatives: bool,
         parallelize: bool,
-    ) -> alloc::boxed::Box<dyn IsCost> {
+    ) -> alloc::boxed::Box<dyn IsEvaluatedCost> {
         let mut var_kind_array =
-            VarTuple::var_kind_array(var_pool, self.signature.family_names.clone());
+            VarTuple::var_kind_array(var_pool, self.cost_terms.family_names.clone());
 
         if !calc_derivatives {
             var_kind_array = var_kind_array.map(|_x| VarKind::Conditioned)
         }
 
-        let mut evaluated_terms = Cost::new(
-            self.signature.family_names.clone(),
-            TermSignature::DOF_TUPLE,
-        );
+        let mut evaluated_terms =
+            EvaluatedCost::new(self.cost_terms.family_names.clone(), Term::DOF_TUPLE);
 
         let var_family_tuple =
-            VarTuple::ref_var_family_tuple(var_pool, self.signature.family_names.clone());
+            VarTuple::ref_var_family_tuple(var_pool, self.cost_terms.family_names.clone());
 
-        let eval_res = |term_signature: &TermSignature| {
+        let eval_res = |term: &Term| {
             self.residual_fn.eval(
                 &self.global_constants,
-                *term_signature.idx_ref(),
-                VarTuple::extract(&var_family_tuple, *term_signature.idx_ref()),
+                *term.idx_ref(),
+                VarTuple::extract(&var_family_tuple, *term.idx_ref()),
                 var_kind_array,
                 self.robust_kernel,
-                term_signature.c_ref(),
+                term.c_ref(),
             )
         };
 
-        let reduction_ranges = self.signature.reduction_ranges.as_ref().unwrap();
+        let reduction_ranges = self.cost_terms.reduction_ranges.as_ref().unwrap();
 
         #[derive(Debug)]
         enum ParallelizationStrategy {
@@ -220,7 +156,7 @@ where
         const REDUCTION_RATIO_THRESHOLD: f64 = 1.0;
 
         let average_inner_loop_size =
-            self.signature.terms.len() as f64 / reduction_ranges.len() as f64;
+            self.cost_terms.collection.len() as f64 / reduction_ranges.len() as f64;
         let reduction_ratio = average_inner_loop_size / reduction_ranges.len() as f64;
 
         let parallelization_strategy = match parallelize {
@@ -248,7 +184,7 @@ where
                 // evaluated_terms.terms = reduction_ranges
                 //     .iter() // sequential outer loop
                 //     .map(|range| {
-                //         let evaluated_term_sum = self.signature.terms[range.start..range.end]
+                //         let evaluated_term_sum = self.terms.terms[range.start..range.end]
                 //             .iter() // sequential inner loop
                 //             .fold(None, |acc: Option<Term<NUM, NUM_ARGS>>, term| {
                 //                 let evaluated_term = eval_res(term);
@@ -267,9 +203,9 @@ where
 
                 evaluated_terms.terms.reserve(reduction_ranges.len());
                 for range in reduction_ranges.iter() {
-                    let mut evaluated_term_sum: Option<Term<NUM, NUM_ARGS>> = None;
+                    let mut evaluated_term_sum: Option<EvaluatedCostTerm<NUM, NUM_ARGS>> = None;
 
-                    for term in self.signature.terms[range.start..range.end].iter() {
+                    for term in self.cost_terms.collection[range.start..range.end].iter() {
                         match evaluated_term_sum {
                             Some(mut sum) => {
                                 sum.reduce(eval_res(term));
@@ -288,18 +224,21 @@ where
                 evaluated_terms.terms = reduction_ranges
                     .par_iter() // parallelize over the outer terms
                     .map(|range| {
-                        let evaluated_term_sum = self.signature.terms[range.start..range.end]
+                        let evaluated_term_sum = self.cost_terms.collection[range.start..range.end]
                             .iter() // sequential inner loop
-                            .fold(None, |acc: Option<Term<NUM, NUM_ARGS>>, term| {
-                                let evaluated_term = eval_res(term);
-                                match acc {
-                                    Some(mut sum) => {
-                                        sum.reduce(evaluated_term);
-                                        Some(sum)
+                            .fold(
+                                None,
+                                |acc: Option<EvaluatedCostTerm<NUM, NUM_ARGS>>, term| {
+                                    let evaluated_term = eval_res(term);
+                                    match acc {
+                                        Some(mut sum) => {
+                                            sum.reduce(evaluated_term);
+                                            Some(sum)
+                                        }
+                                        None => Some(evaluated_term),
                                     }
-                                    None => Some(evaluated_term),
-                                }
-                            });
+                                },
+                            );
 
                         evaluated_term_sum.unwrap()
                     })
@@ -316,11 +255,11 @@ where
                         //
                         // todo: Consider adding an if statement here and only parallelize the
                         //       inner loop if the range length is greater than some threshold.
-                        let evaluated_term_sum = self.signature.terms[range.start..range.end]
+                        let evaluated_term_sum = self.cost_terms.collection[range.start..range.end]
                             .par_iter() // parallelize over the inner terms
                             .fold(
                                 || None,
-                                |acc: Option<Term<NUM, NUM_ARGS>>, term| {
+                                |acc: Option<EvaluatedCostTerm<NUM, NUM_ARGS>>, term| {
                                     let evaluated_term = eval_res(term);
                                     match acc {
                                         Some(mut sum) => {
@@ -354,37 +293,36 @@ where
 
     fn sort(&mut self, variables: &VarPool) {
         let var_kind_array =
-            &VarTuple::var_kind_array(variables, self.signature.family_names.clone());
-        use crate::cost_args::CompareIdx;
+            &VarTuple::var_kind_array(variables, self.cost_terms.family_names.clone());
 
         let c_array = c_from_var_kind(var_kind_array);
 
         let less = CompareIdx::new(&c_array);
 
-        assert!(!self.signature.terms.is_empty());
+        assert!(!self.cost_terms.collection.is_empty());
 
-        self.signature
-            .terms
+        self.cost_terms
+            .collection
             .sort_by(|a, b| less.le_than(*a.idx_ref(), *b.idx_ref()));
 
-        for t in 0..self.signature.terms.len() - 1 {
+        for t in 0..self.cost_terms.collection.len() - 1 {
             assert!(
                 less.le_than(
-                    *self.signature.terms[t].idx_ref(),
-                    *self.signature.terms[t + 1].idx_ref()
+                    *self.cost_terms.collection[t].idx_ref(),
+                    *self.cost_terms.collection[t + 1].idx_ref()
                 ) != core::cmp::Ordering::Greater
             );
         }
 
         let mut reduction_ranges: alloc::vec::Vec<Range<usize>> = alloc::vec![];
         let mut i = 0;
-        while i < self.signature.terms.len() {
-            let outer_term_signature = &self.signature.terms[i];
+        while i < self.cost_terms.collection.len() {
+            let outer_term = &self.cost_terms.collection[i];
             let outer_term_idx = i;
-            while i < self.signature.terms.len()
+            while i < self.cost_terms.collection.len()
                 && less.free_vars_equal(
-                    outer_term_signature.idx_ref(),
-                    self.signature.terms[i].idx_ref(),
+                    outer_term.idx_ref(),
+                    self.cost_terms.collection[i].idx_ref(),
                 )
             {
                 i += 1;
@@ -392,7 +330,7 @@ where
             reduction_ranges.push(outer_term_idx..i);
         }
 
-        self.signature.reduction_ranges = Some(reduction_ranges);
+        self.cost_terms.reduction_ranges = Some(reduction_ranges);
     }
 
     fn robust_kernel(&self) -> Option<RobustKernel> {

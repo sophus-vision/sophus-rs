@@ -1,9 +1,9 @@
-use crate::cost_fn::IsResidualFn;
-use crate::cost_fn::IsTermSignature;
 use crate::prelude::*;
+use crate::quadratic_cost::evaluated_term::EvaluatedCostTerm;
+use crate::quadratic_cost::evaluated_term::MakeEvaluatedCostTerm;
+use crate::quadratic_cost::residual_fn::IsResidualFn;
+use crate::quadratic_cost::term::IsTerm;
 use crate::robust_kernel;
-use crate::term::MakeTerm;
-use crate::term::Term;
 use crate::variables::VarKind;
 use sophus_autodiff::dual::DualScalar;
 use sophus_autodiff::dual::DualVector;
@@ -16,16 +16,16 @@ use sophus_lie::Isometry2F64;
 #[derive(Copy, Clone)]
 pub struct Isometry2PriorCostFn {}
 
-/// Isometry2 prior term signature
+/// Isometry2 prior term
 #[derive(Clone)]
-pub struct Isometry2PriorTermSignature {
+pub struct Isometry2PriorTerm {
     /// prior mean
     pub isometry_prior_mean: Isometry2F64,
     /// entity index
     pub entity_indices: [usize; 1],
 }
 
-impl IsTermSignature<1> for Isometry2PriorTermSignature {
+impl IsTerm<1> for Isometry2PriorTerm {
     type Constants = Isometry2F64;
 
     fn c_ref(&self) -> &Self::Constants {
@@ -55,7 +55,7 @@ impl IsResidualFn<3, 1, (), Isometry2F64, Isometry2F64> for Isometry2PriorCostFn
         var_kinds: [VarKind; 1],
         robust_kernel: Option<robust_kernel::RobustKernel>,
         isometry_prior_mean: &Isometry2F64,
-    ) -> Term<3, 1> {
+    ) -> EvaluatedCostTerm<3, 1> {
         let isometry: Isometry2F64 = args;
 
         let residual = res_fn(isometry, *isometry_prior_mean);
@@ -74,6 +74,6 @@ impl IsResidualFn<3, 1, (), Isometry2F64, Isometry2F64> for Isometry2PriorCostFn
                 dx_res_fn, zeros,
             )
         },)
-            .make_term(idx, var_kinds, residual, robust_kernel, None)
+            .make(idx, var_kinds, residual, robust_kernel, None)
     }
 }

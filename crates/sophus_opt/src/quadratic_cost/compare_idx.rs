@@ -129,7 +129,6 @@ where
 }
 
 mod test {
-    use crate::cost_args::CompareIdx;
 
     #[allow(dead_code)]
     fn le_than<const N: usize>(
@@ -137,7 +136,7 @@ mod test {
         lhs: [usize; N],
         rhs: [usize; N],
     ) -> core::cmp::Ordering {
-        CompareIdx::new(c).le_than(lhs, rhs)
+        super::CompareIdx::new(c).le_than(lhs, rhs)
     }
 
     #[test]
@@ -401,7 +400,7 @@ mod test {
             [3, 2, 1],
         ];
 
-        let less = CompareIdx::new(c);
+        let less = crate::quadratic_cost::compare_idx::CompareIdx::new(c);
         l.sort_by(|a, b| less.le_than(*a, *b));
     }
 }

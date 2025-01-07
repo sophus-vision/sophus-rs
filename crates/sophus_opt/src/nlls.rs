@@ -1,12 +1,49 @@
-use crate::cost::IsCost;
-use crate::cost_fn::IsCostFn;
-use crate::solvers::solve;
+use crate::quadratic_cost::cost_fn::IsCostFn;
+use crate::quadratic_cost::evaluated_cost::IsEvaluatedCost;
+use crate::solvers::normal_equation::solve;
+use crate::solvers::normal_equation::SolveError;
+use crate::solvers::normal_equation::TripletType;
+use crate::solvers::sparse_ldlt::SparseLdltParams;
 use crate::variables::VarPool;
 use core::fmt::Debug;
 use log::debug;
 use log::info;
 
 extern crate alloc;
+
+/// Linear solver type
+#[derive(Copy, Clone, Debug)]
+pub enum LinearSolverType {
+    /// Sparse LDLT solver (using faer crate)
+    FaerSparseLdlt(SparseLdltParams),
+    /// Sparse partial pivoting LU solver (using faer crate)
+    FaerSparsePartialPivLu,
+    /// Sparse QR solver (using faer crate)
+    FaerSparseQR,
+    /// Dense cholesky (using nalgebra crate)
+    NalgebraDenseCholesky,
+    /// Dense full-piovt. LU solver (using nalgebra crate)
+    NalgebraDenseFullPiVLu,
+}
+
+impl Default for LinearSolverType {
+    fn default() -> Self {
+        LinearSolverType::FaerSparseLdlt(Default::default())
+    }
+}
+
+impl LinearSolverType {
+    /// Get the triplet type
+    pub fn triplet_type(&self) -> TripletType {
+        match self {
+            LinearSolverType::FaerSparseLdlt(_) => TripletType::Upper,
+            LinearSolverType::FaerSparsePartialPivLu => TripletType::Full,
+            LinearSolverType::FaerSparseQR => TripletType::Full,
+            LinearSolverType::NalgebraDenseCholesky => TripletType::Full,
+            LinearSolverType::NalgebraDenseFullPiVLu => TripletType::Full,
+        }
+    }
+}
 
 /// Optimization parameters
 #[derive(Copy, Clone, Debug)]
@@ -17,6 +54,8 @@ pub struct OptParams {
     pub initial_lm_nu: f64,
     /// whether to use parallelization
     pub parallelize: bool,
+    /// linear solver type
+    pub linear_solver: LinearSolverType,
 }
 
 impl Default for OptParams {
@@ -25,6 +64,7 @@ impl Default for OptParams {
             num_iter: 20,
             initial_lm_nu: 10.0,
             parallelize: true,
+            linear_solver: Default::default(),
         }
     }
 }
@@ -34,8 +74,9 @@ pub fn optimize(
     mut variables: VarPool,
     mut cost_fns: alloc::vec::Vec<alloc::boxed::Box<dyn IsCostFn>>,
     params: OptParams,
-) -> VarPool {
-    let mut init_costs: alloc::vec::Vec<alloc::boxed::Box<dyn IsCost>> = alloc::vec::Vec::new();
+) -> Result<VarPool, SolveError> {
+    let mut init_costs: alloc::vec::Vec<alloc::boxed::Box<dyn IsEvaluatedCost>> =
+        alloc::vec::Vec::new();
 
     for cost_fn in cost_fns.iter_mut() {
         // sort to achieve more efficient evaluation and reduction
@@ -52,15 +93,16 @@ pub fn optimize(
     let initial_mse = mse;
 
     for i in 0..params.num_iter {
-        let mut evaluated_costs: alloc::vec::Vec<alloc::boxed::Box<dyn IsCost>> =
+        let mut evaluated_costs: alloc::vec::Vec<alloc::boxed::Box<dyn IsEvaluatedCost>> =
             alloc::vec::Vec::new();
         for cost_fn in cost_fns.iter_mut() {
             evaluated_costs.push(cost_fn.eval(&variables, true, params.parallelize));
         }
 
-        let updated_families = solve(&variables, evaluated_costs, nu);
+        let updated_families = solve(&variables, evaluated_costs, nu, params.linear_solver)?;
 
-        let mut new_costs: alloc::vec::Vec<alloc::boxed::Box<dyn IsCost>> = alloc::vec::Vec::new();
+        let mut new_costs: alloc::vec::Vec<alloc::boxed::Box<dyn IsEvaluatedCost>> =
+            alloc::vec::Vec::new();
         for cost_fn in cost_fns.iter_mut() {
             new_costs.push(cost_fn.eval(&updated_families, true, params.parallelize));
         }
@@ -84,5 +126,5 @@ pub fn optimize(
     }
     info!("e^2: {:?} -> {:?}", initial_mse, mse);
 
-    variables
+    Ok(variables)
 }

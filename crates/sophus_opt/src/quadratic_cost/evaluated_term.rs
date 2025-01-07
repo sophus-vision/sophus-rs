@@ -1,5 +1,5 @@
-use crate::block::BlockMatrix;
-use crate::block::BlockVector;
+use crate::block::block_gradient::BlockGradient;
+use crate::block::block_hessian::BlockHessian;
 use crate::prelude::*;
 use crate::robust_kernel;
 use crate::variables::VarKind;
@@ -10,11 +10,11 @@ extern crate alloc;
 
 /// Evaluated cost term
 #[derive(Debug, Clone)]
-pub struct Term<const DIM: usize, const NUM_ARGS: usize> {
+pub struct EvaluatedCostTerm<const DIM: usize, const NUM_ARGS: usize> {
     /// Hessian
-    pub hessian: BlockMatrix<DIM, NUM_ARGS>,
+    pub hessian: BlockHessian<DIM, NUM_ARGS>,
     /// Gradient
-    pub gradient: BlockVector<DIM, NUM_ARGS>,
+    pub gradient: BlockGradient<DIM, NUM_ARGS>,
     /// cost: 0.5 * residual^T * precision_mat * residual
     pub cost: f64,
     /// indices of the variable families
@@ -23,8 +23,8 @@ pub struct Term<const DIM: usize, const NUM_ARGS: usize> {
     pub num_sub_terms: usize,
 }
 
-impl<const DIM: usize, const NUM_ARGS: usize> Term<DIM, NUM_ARGS> {
-    pub(crate) fn reduce(&mut self, other: Term<DIM, NUM_ARGS>) {
+impl<const DIM: usize, const NUM_ARGS: usize> EvaluatedCostTerm<DIM, NUM_ARGS> {
+    pub(crate) fn reduce(&mut self, other: EvaluatedCostTerm<DIM, NUM_ARGS>) {
         self.hessian.mat += other.hessian.mat;
         self.gradient.vec += other.gradient.vec;
         self.cost += other.cost;
@@ -38,7 +38,7 @@ trait RowLoop<const DIM: usize, const NUM_ARGS: usize, const R: usize> {
         idx: usize,
         i: usize,
         j: usize,
-        hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
+        hessian: &mut BlockHessian<DIM, NUM_ARGS>,
         precision_mat: Option<MatF64<R, R>>,
     );
 
@@ -47,8 +47,8 @@ trait RowLoop<const DIM: usize, const NUM_ARGS: usize, const R: usize> {
         idx: usize,
         i: usize,
         lambda_res: &VecF64<R>,
-        gradient: &mut BlockVector<DIM, NUM_ARGS>,
-        hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
+        gradient: &mut BlockGradient<DIM, NUM_ARGS>,
+        hessian: &mut BlockHessian<DIM, NUM_ARGS>,
         precision_mat: Option<MatF64<R, R>>,
     );
 }
@@ -59,7 +59,7 @@ impl<const DIM: usize, const NUM_ARGS: usize, const R: usize> RowLoop<DIM, NUM_A
         _idx: usize,
         _i: usize,
         _j: usize,
-        _hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
+        _hessian: &mut BlockHessian<DIM, NUM_ARGS>,
         _precision_mat: Option<MatF64<R, R>>,
     ) {
     }
@@ -69,8 +69,8 @@ impl<const DIM: usize, const NUM_ARGS: usize, const R: usize> RowLoop<DIM, NUM_A
         _idx: usize,
         _i: usize,
         _lambda_res: &VecF64<R>,
-        _gradient: &mut BlockVector<DIM, NUM_ARGS>,
-        _hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
+        _gradient: &mut BlockGradient<DIM, NUM_ARGS>,
+        _hessian: &mut BlockHessian<DIM, NUM_ARGS>,
         _precision_mat: Option<MatF64<R, R>>,
     ) {
     }
@@ -89,7 +89,7 @@ impl<
         idx: usize,
         i: usize,
         j: usize,
-        hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
+        hessian: &mut BlockHessian<DIM, NUM_ARGS>,
         precision_mat: Option<MatF64<R, R>>,
     ) {
         if idx == i {
@@ -107,8 +107,8 @@ impl<
         idx: usize,
         i: usize,
         lambda_res: &VecF64<R>,
-        gradient: &mut BlockVector<DIM, NUM_ARGS>,
-        hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
+        gradient: &mut BlockGradient<DIM, NUM_ARGS>,
+        hessian: &mut BlockHessian<DIM, NUM_ARGS>,
         precision_mat: Option<MatF64<R, R>>,
     ) {
         if idx == i {
@@ -137,7 +137,7 @@ trait ColLoop<const DIM: usize, const NUM_ARGS: usize, const R: usize, const DJ:
         idx: usize,
         i: usize,
         j: usize,
-        hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
+        hessian: &mut BlockHessian<DIM, NUM_ARGS>,
         lhs: MatF64<R, DJ>,
         precision_mat: Option<MatF64<R, R>>,
     );
@@ -151,7 +151,7 @@ impl<const DIM: usize, const NUM_ARGS: usize, const R: usize, const DJ: usize>
         _idx: usize,
         _i: usize,
         _j: usize,
-        _hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
+        _hessian: &mut BlockHessian<DIM, NUM_ARGS>,
         _lhs: MatF64<R, DJ>,
         _precision_mat: Option<MatF64<R, R>>,
     ) {
@@ -172,7 +172,7 @@ impl<
         idx: usize,
         i: usize,
         j: usize,
-        hessian: &mut BlockMatrix<DIM, NUM_ARGS>,
+        hessian: &mut BlockHessian<DIM, NUM_ARGS>,
         lhs: MatF64<R, DJ>,
         precision_mat: Option<MatF64<R, R>>,
     ) {
@@ -192,7 +192,7 @@ impl<
 }
 
 /// Trait for making n-ary terms
-pub trait MakeTerm<const R: usize, const N: usize> {
+pub trait MakeEvaluatedCostTerm<const R: usize, const N: usize> {
     /// make a term from a residual value, and derivatives (=self)
     ///
     /// In more detail, this function computes the Hessian, gradient and least-squares cost of the
@@ -207,14 +207,14 @@ pub trait MakeTerm<const R: usize, const N: usize> {
     /// - `precision_mat`: Precision matrix - i.e. inverse of the covariance matrix - to compute the
     ///                    least-squares cost: `0.5 * residual^T * precision_mat * residual`.
     ///                    If `None`, the identity matrix is used: `0.5 * residual^T * residual`.
-    fn make_term<const DIM: usize>(
+    fn make<const DIM: usize>(
         self,
         idx: [usize; N],
         var_kinds: [VarKind; N],
         residual: VecF64<R>,
         robust_kernel: Option<robust_kernel::RobustKernel>,
         precision_mat: Option<MatF64<R, R>>,
-    ) -> Term<DIM, N>;
+    ) -> EvaluatedCostTerm<DIM, N>;
 }
 
 macro_rules! nested_option_tuple {
@@ -242,24 +242,24 @@ macro_rules! nested_option_tuple {
     };
 }
 
-macro_rules! impl_make_term_for_tuples {
+macro_rules! impl_make_evaluated_cost_term_for_tuples {
     ($($N:literal: ($($F:ident, $D:ident, $idx:tt),+),)+) => {
         $(
             #[allow(non_snake_case)]
-            impl<const R: usize, $($F,)+ $(const $D: usize,)+> MakeTerm<R, $N> for ($($F,)+)
+            impl<const R: usize, $($F,)+ $(const $D: usize,)+> MakeEvaluatedCostTerm<R, $N> for ($($F,)+)
             where
                 $(
                     $F: FnOnce() -> MatF64<R, $D>,
                 )+
             {
-                fn make_term<const DIM: usize>(
+                fn make<const DIM: usize>(
                     self,
                     idx: [usize; $N],
                     var_kinds: [VarKind; $N],
                     residual: VecF64<R>,
                     robust_kernel: Option<robust_kernel::RobustKernel>,
                     precision_mat: Option<MatF64<R, R>>,
-                ) -> Term<DIM, $N> {
+                ) -> EvaluatedCostTerm<DIM, $N> {
                     let residual = match robust_kernel {
                         Some(rk) => rk.weight(residual.norm()) * residual,
                         None => residual,
@@ -270,8 +270,8 @@ macro_rules! impl_make_term_for_tuples {
                     let maybe_dx = nested_option_tuple!(var_kinds; $($F, $D, $idx),+);
 
                     let dims = [$($D,)+];
-                    let mut hessian = BlockMatrix::new(&dims);
-                    let mut gradient = BlockVector::new(&dims);
+                    let mut hessian = BlockHessian::new(&dims);
+                    let mut gradient = BlockGradient::new(&dims);
 
                     let lambda_res = match precision_mat {
                         Some(pm) => pm * residual,
@@ -286,7 +286,7 @@ macro_rules! impl_make_term_for_tuples {
                         }
                     }
 
-                    Term {
+                    EvaluatedCostTerm {
                         hessian,
                         gradient,
                         cost: (residual.transpose() * lambda_res)[0],
@@ -299,8 +299,8 @@ macro_rules! impl_make_term_for_tuples {
     }
 }
 
-// implement MakeTerm for up to 25 arguments.
-impl_make_term_for_tuples! {
+// implement MakeEvaluatedCostTerm for up to 25 arguments.
+impl_make_evaluated_cost_term_for_tuples! {
     1: ( F0, D0, 0),
     2: ( F0, D0, 0, F1 ,D1, 1),
     3: ( F0, D0, 0, F1 ,D1, 1, F2, D2, 2),
