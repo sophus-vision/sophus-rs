@@ -1,14 +1,13 @@
-use super::cost_fn::pose_graph::PoseGraphCostFn;
-use crate::example_problems::cost_fn::pose_graph::PoseGraphCostTerm;
+use crate::nlls::functor_library::costs::pose_graph::PoseGraphCostTerm;
 use crate::nlls::optimize;
+use crate::nlls::quadratic_cost::cost_fn::CostFn;
+use crate::nlls::quadratic_cost::cost_term::CostTerms;
+use crate::nlls::LinearSolverType;
 use crate::nlls::OptParams;
 use crate::prelude::*;
-use crate::quadratic_cost::cost_fn::CostFn;
-use crate::quadratic_cost::term::Terms;
-use crate::variables::VarFamily;
+use crate::variables::var_builder::VarBuilder;
+use crate::variables::var_family::VarFamily;
 use crate::variables::VarKind;
-use crate::variables::VarPool;
-use crate::variables::VarPoolBuilder;
 use sophus_autodiff::linalg::VecF64;
 use sophus_lie::Isometry2;
 use sophus_lie::Isometry2F64;
@@ -23,7 +22,8 @@ pub struct PoseCircleProblem {
     /// estimated poses
     pub est_world_from_robot: alloc::vec::Vec<Isometry2F64>,
     /// pose-pose constraints
-    pub obs_pose_a_from_pose_b_poses: Terms<2, Isometry2F64, PoseGraphCostTerm>,
+    pub obs_pose_a_from_pose_b_poses:
+        CostTerms<12, 2, (), (Isometry2F64, Isometry2F64), Isometry2F64, PoseGraphCostTerm>,
 }
 
 impl Default for PoseCircleProblem {
@@ -37,10 +37,7 @@ impl PoseCircleProblem {
     pub fn new(len: usize) -> Self {
         let mut true_world_from_robot_poses = alloc::vec![];
         let mut est_world_from_robot_poses = alloc::vec![];
-        let mut obs_pose_a_from_pose_b_poses = Terms::<2, Isometry2F64, PoseGraphCostTerm>::new(
-            ["poses".into(), "poses".into()],
-            alloc::vec![],
-        );
+        let mut obs_pose_a_from_pose_b_poses = CostTerms::new(["poses", "poses"], alloc::vec![]);
 
         let radius = 10.0;
 
@@ -104,7 +101,7 @@ impl PoseCircleProblem {
     pub fn calc_error(&self, est_world_from_robot: &[Isometry2F64]) -> f64 {
         let mut res_err = 0.0;
         for obs in self.obs_pose_a_from_pose_b_poses.collection.clone() {
-            let residual = super::cost_fn::pose_graph::res_fn(
+            let residual = PoseGraphCostTerm::residual(
                 est_world_from_robot[obs.entity_indices[0]],
                 est_world_from_robot[obs.entity_indices[1]],
                 obs.pose_a_from_pose_b,
@@ -116,46 +113,50 @@ impl PoseCircleProblem {
     }
 
     /// Optimize the problem
-    pub fn optimize(&self) -> VarPool {
+    pub fn optimize(&self, solver: LinearSolverType) -> Vec<Isometry2F64> {
         let mut constants = alloc::collections::BTreeMap::new();
         constants.insert(0, ());
 
-        let family: VarFamily<Isometry2F64> = VarFamily::new_with_const_ids(
-            VarKind::Free,
-            self.est_world_from_robot.clone(),
-            constants,
-        );
-
-        let var_pool = VarPoolBuilder::new().add_family("poses", family).build();
-
-        optimize(
-            var_pool,
+        const POSES: &str = "poses";
+        let variables = VarBuilder::new()
+            .add_family(
+                POSES,
+                VarFamily::new_with_const_ids(
+                    VarKind::Free,
+                    self.est_world_from_robot.clone(),
+                    constants,
+                ),
+            )
+            .build();
+        let solution = optimize(
+            variables,
             alloc::vec![CostFn::new_box(
                 (),
                 self.obs_pose_a_from_pose_b_poses.clone(),
-                PoseGraphCostFn {},
             )],
             OptParams {
-                num_iter: 5,
-                initial_lm_nu: 1.0,
+                num_iterations: 16,
+                initial_lm_damping: 1.0,
                 parallelize: true,
-                ..Default::default()
+                linear_solver: solver,
             },
         )
-        .unwrap()
+        .unwrap();
+        solution.variables.get_members::<Isometry2F64>(POSES)
     }
 }
 
 #[test]
 fn pose_circle_opt_tests() {
-    let pose_graph = PoseCircleProblem::new(2500);
+    for solver in LinearSolverType::sparse_solvers() {
+        let pose_graph = PoseCircleProblem::new(2500);
 
-    let res_err = pose_graph.calc_error(&pose_graph.est_world_from_robot);
-    assert!(res_err > 1.0, "{} > thr?", res_err);
+        let res_err = pose_graph.calc_error(&pose_graph.est_world_from_robot);
+        assert!(res_err > 1.0, "{} > thr?", res_err);
 
-    let up_var_pool = pose_graph.optimize();
-    let refined_world_from_robot = up_var_pool.get_members::<Isometry2F64>("poses".into());
+        let refined_world_from_robot = pose_graph.optimize(solver);
 
-    let res_err = pose_graph.calc_error(&refined_world_from_robot);
-    assert!(res_err < 0.05, "{} < thr?", res_err);
+        let res_err = pose_graph.calc_error(&refined_world_from_robot);
+        assert!(res_err < 0.05, "{} < thr?", res_err);
+    }
 }

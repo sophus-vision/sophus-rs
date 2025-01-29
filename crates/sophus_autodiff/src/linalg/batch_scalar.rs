@@ -275,6 +275,12 @@ where
         }
     }
 
+    fn exp(&self) -> Self {
+        BatchScalarF64 {
+            0: sleef::Sleef::exp(self.0),
+        }
+    }
+
     fn sin(&self) -> Self {
         BatchScalarF64 {
             0: sleef::Sleef::sin(self.0),
