@@ -80,7 +80,7 @@ impl NonLinearEqToyProblem {
                 num_iterations: 10,
                 initial_lm_damping: EPS_F64,
                 parallelize: true,
-                linear_solver: solver,
+                solver,
             },
         )
         .unwrap()

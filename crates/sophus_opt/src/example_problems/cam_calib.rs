@@ -199,7 +199,7 @@ impl CamCalibProblem {
                 num_iterations: 25, // should converge in single iteration
                 initial_lm_damping: 1.0,
                 parallelize: true,
-                linear_solver: solver,
+                solver,
             },
         )
         .unwrap();
@@ -265,7 +265,7 @@ impl CamCalibProblem {
                 num_iterations: 10,
                 initial_lm_damping: 1.0,
                 parallelize: true,
-                linear_solver: solver,
+                solver,
             },
         )
         .unwrap();

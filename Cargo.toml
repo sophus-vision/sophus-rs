@@ -42,7 +42,7 @@ sophus_viewer = { path = "crates/sophus_viewer", version = "0.12.0" }
 approx = "0.5"
 as-any = "0.3"
 async-trait = "0.1"
-bytemuck = { version = "1.21.0", features = ["derive"] }
+bytemuck = { version = "1.20.0", features = ["derive"] }
 concat-arrays = "0.1"
 dyn-clone = "1.0"
 env_logger = "0.11"
