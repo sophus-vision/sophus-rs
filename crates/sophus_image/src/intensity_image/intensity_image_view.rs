@@ -1,16 +1,20 @@
-use crate::image_view::ImageView2U16;
-use crate::image_view::ImageView2U8;
-use crate::image_view::ImageView3F32;
-use crate::image_view::ImageView3U16;
-use crate::image_view::ImageView3U8;
-use crate::image_view::ImageView4F32;
-use crate::image_view::ImageView4U16;
-use crate::image_view::ImageView4U8;
-use crate::image_view::ImageViewF32;
-use crate::image_view::ImageViewU16;
-use crate::image_view::ImageViewU8;
-use crate::prelude::*;
-use crate::ImageSize;
+use crate::{
+    image_view::{
+        ImageView2U16,
+        ImageView2U8,
+        ImageView3F32,
+        ImageView3U16,
+        ImageView3U8,
+        ImageView4F32,
+        ImageView4U16,
+        ImageView4U8,
+        ImageViewF32,
+        ImageViewU16,
+        ImageViewU8,
+    },
+    prelude::*,
+    ImageSize,
+};
 
 /// Intensity image view of unsigned integer values.
 pub trait IsIntensityViewImageU<'a> {

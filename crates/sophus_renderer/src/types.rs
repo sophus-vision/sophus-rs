@@ -1,10 +1,13 @@
-use crate::aspect_ratio::HasAspectRatio;
-use crate::offscreen_renderer::OffscreenRenderer;
-use crate::renderables::color::Color;
-use crate::textures::depth_image::DepthImage;
 use eframe::egui;
 use sophus_autodiff::linalg::VecF64;
 use sophus_image::arc_image::ArcImage4U8;
+
+use crate::{
+    aspect_ratio::HasAspectRatio,
+    offscreen_renderer::OffscreenRenderer,
+    renderables::color::Color,
+    textures::depth_image::DepthImage,
+};
 
 /// Render result
 pub struct RenderResult {

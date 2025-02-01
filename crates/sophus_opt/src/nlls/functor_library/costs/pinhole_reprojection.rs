@@ -1,15 +1,26 @@
-use crate::nlls::quadratic_cost::evaluated_term::EvaluatedCostTerm;
-use crate::prelude::*;
-use crate::robust_kernel;
-use crate::variables::VarKind;
-use sophus_autodiff::dual::DualScalar;
-use sophus_autodiff::dual::DualVector;
-use sophus_autodiff::linalg::VecF64;
-use sophus_autodiff::maps::VectorValuedVectorMap;
-use sophus_lie::Isometry3;
-use sophus_lie::Isometry3F64;
-use sophus_sensor::camera_enum::perspective_camera::PinholeCameraF64;
-use sophus_sensor::PinholeCamera;
+use sophus_autodiff::{
+    dual::{
+        DualScalar,
+        DualVector,
+    },
+    linalg::VecF64,
+    maps::VectorValuedVectorMap,
+};
+use sophus_lie::{
+    Isometry3,
+    Isometry3F64,
+};
+use sophus_sensor::{
+    camera_enum::perspective_camera::PinholeCameraF64,
+    PinholeCamera,
+};
+
+use crate::{
+    nlls::quadratic_cost::evaluated_term::EvaluatedCostTerm,
+    prelude::*,
+    robust_kernel,
+    variables::VarKind,
+};
 
 /// Pinhole camera reprojection cost term
 #[derive(Clone, Debug)]

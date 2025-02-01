@@ -11,7 +11,8 @@ pub mod unit_vector;
 
 /// sophus_geo prelude
 pub mod prelude {
-    pub use crate::region::IsRegion;
     pub use sophus_autodiff::prelude::*;
     pub use sophus_lie::prelude::*;
+
+    pub use crate::region::IsRegion;
 }

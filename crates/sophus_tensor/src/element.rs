@@ -1,8 +1,13 @@
 use core::fmt::Debug;
-use sophus_autodiff::linalg::scalar::NumberCategory;
-use sophus_autodiff::linalg::SMat;
-use sophus_autodiff::linalg::SVec;
-use sophus_autodiff::prelude::*;
+
+use sophus_autodiff::{
+    linalg::{
+        scalar::NumberCategory,
+        SMat,
+        SVec,
+    },
+    prelude::*,
+};
 
 /// Trait for static tensors
 pub trait IsStaticTensor<
@@ -151,14 +156,16 @@ fn test_elements() {
     use approx::assert_abs_diff_eq;
     #[cfg(feature = "simd")]
     use sophus_autodiff::linalg::scalar::IsScalar;
-    use sophus_autodiff::linalg::scalar::NumberCategory;
     #[cfg(feature = "simd")]
     use sophus_autodiff::linalg::BatchScalar;
     #[cfg(feature = "simd")]
     use sophus_autodiff::linalg::BatchScalarF64;
     #[cfg(feature = "simd")]
     use sophus_autodiff::linalg::BatchVecF64;
-    use sophus_autodiff::linalg::VecF32;
+    use sophus_autodiff::linalg::{
+        scalar::NumberCategory,
+        VecF32,
+    };
 
     assert_eq!(f32::number_category(), NumberCategory::Real);
     assert_eq!(u32::number_category(), NumberCategory::Unsigned);

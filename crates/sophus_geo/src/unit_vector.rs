@@ -1,6 +1,9 @@
-use core::borrow::Borrow;
-use core::marker::PhantomData;
-use core::ops::Neg;
+use core::{
+    borrow::Borrow,
+    marker::PhantomData,
+    ops::Neg,
+};
+
 use sophus_lie::prelude::*;
 extern crate alloc;
 

@@ -1,13 +1,23 @@
-use crate::types::DOG_MULTISAMPLE_COUNT;
-use crate::RenderContext;
 use core::f32;
-use eframe::egui::{self};
-use sophus_image::arc_image::ArcImage4U16;
-use sophus_image::arc_image::ArcImage4U8;
-use sophus_image::arc_image::ArcImageF32;
-use sophus_image::image_view::ImageView4U8;
-use sophus_image::ImageSize;
+
+use eframe::egui::{
+    self,
+};
+use sophus_image::{
+    arc_image::{
+        ArcImage4U16,
+        ArcImage4U8,
+        ArcImageF32,
+    },
+    image_view::ImageView4U8,
+    ImageSize,
+};
 use wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+
+use crate::{
+    types::DOG_MULTISAMPLE_COUNT,
+    RenderContext,
+};
 
 /// rgba texture
 #[derive(Debug)]

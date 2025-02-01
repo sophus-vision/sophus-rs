@@ -1,7 +1,10 @@
+use sophus_lie::prelude::{
+    IsScalar,
+    IsSingleScalar,
+    IsVector,
+};
+
 use crate::unit_vector::UnitVector;
-use sophus_lie::prelude::IsScalar;
-use sophus_lie::prelude::IsSingleScalar;
-use sophus_lie::prelude::IsVector;
 
 /// Ray
 #[derive(Clone, Debug)]

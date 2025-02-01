@@ -1,9 +1,14 @@
-use super::evaluated_term::EvaluatedCostTerm;
-use crate::robust_kernel::RobustKernel;
-use crate::variables::var_tuple::IsVarTuple;
-use crate::variables::VarKind;
 use core::ops::Range;
 use std::fmt::Debug;
+
+use super::evaluated_term::EvaluatedCostTerm;
+use crate::{
+    robust_kernel::RobustKernel,
+    variables::{
+        var_tuple::IsVarTuple,
+        VarKind,
+    },
+};
 
 extern crate alloc;
 

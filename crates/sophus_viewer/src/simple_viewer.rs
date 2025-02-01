@@ -1,10 +1,15 @@
-use crate::packets::Packet;
-use crate::prelude::*;
-use crate::viewer_base::ViewerBase;
-use crate::viewer_base::ViewerBaseConfig;
 use eframe::egui;
 use sophus_renderer::RenderContext;
 use thingbuf::mpsc::blocking::Receiver;
+
+use crate::{
+    packets::Packet,
+    prelude::*,
+    viewer_base::{
+        ViewerBase,
+        ViewerBaseConfig,
+    },
+};
 
 /// Simple viewer
 pub struct SimpleViewer {

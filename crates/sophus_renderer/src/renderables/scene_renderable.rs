@@ -1,9 +1,16 @@
-use crate::prelude::*;
-use crate::renderables::color::Color;
-use crate::renderables::pixel_renderable::HasToVec2F32;
 use sophus_autodiff::linalg::SVec;
-use sophus_lie::Isometry3;
-use sophus_lie::Isometry3F64;
+use sophus_lie::{
+    Isometry3,
+    Isometry3F64,
+};
+
+use crate::{
+    prelude::*,
+    renderables::{
+        color::Color,
+        pixel_renderable::HasToVec2F32,
+    },
+};
 
 /// axes
 pub mod axes;

@@ -1,12 +1,18 @@
-use crate::unit_vector::UnitVector;
-use sophus_autodiff::linalg::MatF64;
-use sophus_autodiff::linalg::VecF64;
-use sophus_lie::prelude::*;
-use sophus_lie::Isometry2;
-use sophus_lie::Isometry2F64;
-use sophus_lie::Isometry3;
-use sophus_lie::Isometry3F64;
 use std::borrow::Borrow;
+
+use sophus_autodiff::linalg::{
+    MatF64,
+    VecF64,
+};
+use sophus_lie::{
+    prelude::*,
+    Isometry2,
+    Isometry2F64,
+    Isometry3,
+    Isometry3F64,
+};
+
+use crate::unit_vector::UnitVector;
 
 /// N-dimensional Hyperplane.
 pub struct HyperPlane<
@@ -34,8 +40,8 @@ impl<
 {
     /// Projects a point onto the hyperplane.
     ///
-    /// Given a N-d point, this function is projecting the point onto the hyperplane (along the planar
-    /// normal) and returning the result.
+    /// Given a N-d point, this function is projecting the point onto the hyperplane (along the
+    /// planar normal) and returning the result.
     pub fn proj_onto<B: Borrow<S::Vector<DIM>>>(&self, point: B) -> S::Vector<DIM> {
         let point = point.borrow();
         let diff = *point - self.origin;
@@ -180,10 +186,14 @@ impl PlaneF64 {
 
 #[test]
 fn plane_test() {
-    use sophus_autodiff::dual::DualScalar;
-    use sophus_autodiff::linalg::VecF64;
-    use sophus_autodiff::linalg::EPS_F64;
-    use sophus_autodiff::maps::VectorValuedVectorMap;
+    use sophus_autodiff::{
+        dual::DualScalar,
+        linalg::{
+            VecF64,
+            EPS_F64,
+        },
+        maps::VectorValuedVectorMap,
+    };
     {
         let plane = Plane::<f64, 1, 0, 0>::from_isometry3(Isometry3::rot_y(0.2));
 

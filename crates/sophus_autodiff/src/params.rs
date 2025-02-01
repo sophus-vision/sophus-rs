@@ -1,9 +1,14 @@
-use crate::example_points;
-use crate::linalg::VecF64;
-use crate::prelude::IsScalar;
-use alloc::vec;
-use alloc::vec::Vec;
+use alloc::{
+    vec,
+    vec::Vec,
+};
 use core::borrow::Borrow;
+
+use crate::{
+    example_points,
+    linalg::VecF64,
+    prelude::IsScalar,
+};
 
 extern crate alloc;
 

@@ -1,11 +1,18 @@
-use crate::intensity_image::dyn_intensity_image::DynIntensityMutImageU;
-use crate::intensity_image::intensity_pixel::IntensityPixel;
-use crate::intensity_image::intensity_scalar::IsIntensityScalar;
-use crate::mut_image::MutImageR;
-use crate::prelude::DynIntensityMutImage;
-use crate::prelude::*;
-use crate::MutImage;
 use sophus_autodiff::linalg::SVec;
+
+use crate::{
+    intensity_image::{
+        dyn_intensity_image::DynIntensityMutImageU,
+        intensity_pixel::IntensityPixel,
+        intensity_scalar::IsIntensityScalar,
+    },
+    mut_image::MutImageR,
+    prelude::{
+        DynIntensityMutImage,
+        *,
+    },
+    MutImage,
+};
 
 /// Trait for "intensity" images (grayscale, grayscale+alpha, RGB, RGBA).
 ///
@@ -19,8 +26,8 @@ use sophus_autodiff::linalg::SVec;
 ///
 ///  - u16 images are in the range [0, 65535], i.e. 100% intensity corresponds to 65535.
 ///
-///  - f32 images shall be in the range [0.0, 1.0] and 100% intensity corresponds to 1.0.
-///    If the f32 is outside this range, conversion results may be surprising.
+///  - f32 images shall be in the range [0.0, 1.0] and 100% intensity corresponds to 1.0. If the f32
+///    is outside this range, conversion results may be surprising.
 ///
 /// These are image type which typically used for computer vision and graphics applications.
 pub trait IsIntensityMutImage<

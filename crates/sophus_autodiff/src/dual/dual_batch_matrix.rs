@@ -1,23 +1,38 @@
-use crate::dual::dual_batch_scalar::DualBatchScalar;
-use crate::dual::DualBatchVector;
-use crate::linalg::batch_mask::BatchMask;
-use crate::linalg::BatchMatF64;
-use crate::linalg::BatchScalarF64;
-use crate::linalg::SMat;
-use crate::prelude::*;
-use approx::AbsDiffEq;
-use approx::RelativeEq;
-use core::borrow::Borrow;
-use core::fmt::Debug;
-use core::ops::Add;
-use core::ops::Mul;
-use core::ops::Neg;
-use core::ops::Sub;
-use core::simd::LaneCount;
-use core::simd::SupportedLaneCount;
+use core::{
+    borrow::Borrow,
+    fmt::Debug,
+    ops::{
+        Add,
+        Mul,
+        Neg,
+        Sub,
+    },
+    simd::{
+        LaneCount,
+        SupportedLaneCount,
+    },
+};
+
+use approx::{
+    AbsDiffEq,
+    RelativeEq,
+};
 use num_traits::Zero;
 
 use super::matrix::MatrixValuedDerivative;
+use crate::{
+    dual::{
+        dual_batch_scalar::DualBatchScalar,
+        DualBatchVector,
+    },
+    linalg::{
+        batch_mask::BatchMask,
+        BatchMatF64,
+        BatchScalarF64,
+        SMat,
+    },
+    prelude::*,
+};
 
 /// DualScalarLike matrix
 #[derive(Clone, Debug, Copy)]

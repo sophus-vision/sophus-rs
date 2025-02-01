@@ -1,38 +1,59 @@
-use crate::dual::DualBatchMatrix;
-use crate::dual::DualBatchScalar;
-use crate::dual::DualBatchVector;
-use crate::linalg::scalar::IsBatchScalar;
-use crate::linalg::scalar::NumberCategory;
-use crate::linalg::BatchMatF64;
-use crate::linalg::BatchScalar;
-use crate::linalg::BatchScalarF64;
-use crate::linalg::BatchVecF64;
-use crate::linalg::EPS_F64;
-use crate::prelude::IsCoreScalar;
-use crate::prelude::*;
-use alloc::vec;
-use alloc::vec::Vec;
-use approx::AbsDiffEq;
-use approx::RelativeEq;
-use core::borrow::Borrow;
-use core::fmt::Debug;
-use core::ops::AddAssign;
-use core::ops::Div;
-use core::ops::DivAssign;
-use core::ops::Mul;
-use core::ops::MulAssign;
-use core::ops::Neg;
-use core::ops::Sub;
-use core::ops::SubAssign;
-use core::simd::cmp::SimdPartialOrd;
-use core::simd::num::SimdFloat;
-use core::simd::LaneCount;
-use core::simd::Simd;
-use core::simd::SimdElement;
-use core::simd::SupportedLaneCount;
+use alloc::{
+    vec,
+    vec::Vec,
+};
+use core::{
+    borrow::Borrow,
+    fmt::Debug,
+    ops::{
+        AddAssign,
+        Div,
+        DivAssign,
+        Mul,
+        MulAssign,
+        Neg,
+        Sub,
+        SubAssign,
+    },
+    simd::{
+        cmp::SimdPartialOrd,
+        num::SimdFloat,
+        LaneCount,
+        Simd,
+        SimdElement,
+        SupportedLaneCount,
+    },
+};
+
+use approx::{
+    AbsDiffEq,
+    RelativeEq,
+};
 use sleef::Sleef;
 
 use super::batch_mask::BatchMask;
+use crate::{
+    dual::{
+        DualBatchMatrix,
+        DualBatchScalar,
+        DualBatchVector,
+    },
+    linalg::{
+        scalar::{
+            IsBatchScalar,
+            NumberCategory,
+        },
+        BatchMatF64,
+        BatchScalar,
+        BatchScalarF64,
+        BatchVecF64,
+        EPS_F64,
+    },
+    prelude::{
+        IsCoreScalar,
+        *,
+    },
+};
 
 extern crate alloc;
 

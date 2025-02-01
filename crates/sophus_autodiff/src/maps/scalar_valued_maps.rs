@@ -7,7 +7,6 @@ use crate::prelude::*;
 ///   f: ℝᵐ -> ℝ
 ///
 /// These functions are also called a scalar fields (on vector spaces).
-///
 pub struct ScalarValuedVectorMap<
     S: IsScalar<BATCH, DM, DN>,
     const BATCH: usize,
@@ -130,12 +129,14 @@ impl<
 
 #[test]
 fn scalar_valued_map_tests() {
-    use crate::dual::dual_scalar::DualScalar;
     #[cfg(feature = "simd")]
     use crate::dual::DualBatchScalar;
     #[cfg(feature = "simd")]
     use crate::linalg::BatchScalarF64;
-    use crate::linalg::EPS_F64;
+    use crate::{
+        dual::dual_scalar::DualScalar,
+        linalg::EPS_F64,
+    };
 
     #[cfg(test)]
     trait Test {

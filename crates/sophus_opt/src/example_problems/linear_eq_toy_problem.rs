@@ -1,17 +1,30 @@
-use crate::nlls::constraint::eq_constraint::EqConstraints;
-use crate::nlls::constraint::eq_constraint_fn::EqConstraintFn;
-use crate::nlls::functor_library::costs::quadratic1::QuadraticCostTerm;
-use crate::nlls::functor_library::eq_constraints::linear_eq::LinearEqConstraint1;
-use crate::nlls::optimize_with_eq_constraints;
-use crate::nlls::quadratic_cost::cost_fn::CostFn;
-use crate::nlls::quadratic_cost::cost_term::CostTerms;
-use crate::nlls::LinearSolverType;
-use crate::nlls::OptParams;
-use crate::variables::var_builder::VarBuilder;
-use crate::variables::var_family::VarFamily;
-use crate::variables::VarKind;
 use sophus_autodiff::linalg::VecF64;
 use sophus_lie::prelude::IsMatrix;
+
+use crate::{
+    nlls::{
+        constraint::{
+            eq_constraint::EqConstraints,
+            eq_constraint_fn::EqConstraintFn,
+        },
+        functor_library::{
+            costs::quadratic1::QuadraticCostTerm,
+            eq_constraints::linear_eq::LinearEqConstraint1,
+        },
+        optimize_with_eq_constraints,
+        quadratic_cost::{
+            cost_fn::CostFn,
+            cost_term::CostTerms,
+        },
+        LinearSolverType,
+        OptParams,
+    },
+    variables::{
+        var_builder::VarBuilder,
+        var_family::VarFamily,
+        VarKind,
+    },
+};
 
 extern crate alloc;
 

@@ -1,28 +1,42 @@
-use crate::lie_group::LieGroup;
-use crate::prelude::*;
-use crate::traits::IsLieGroupImpl;
-use crate::traits::IsRealLieGroupImpl;
-use crate::Isometry2;
-use crate::Isometry2F64;
-use crate::Isometry3;
-use crate::Isometry3F64;
-use crate::Rotation2;
-use crate::Rotation2F64;
-use crate::Rotation3;
-use crate::Rotation3F64;
+use core::{
+    borrow::Borrow,
+    fmt::{
+        Display,
+        Formatter,
+    },
+};
+
 use approx::assert_relative_eq;
-use core::borrow::Borrow;
-use core::fmt::Display;
-use core::fmt::Formatter;
 use nalgebra::SVector;
 #[cfg(feature = "simd")]
 use sophus_autodiff::dual::dual_batch_scalar::DualBatchScalar;
-use sophus_autodiff::dual::DualScalar;
 #[cfg(feature = "simd")]
 use sophus_autodiff::linalg::BatchScalarF64;
-use sophus_autodiff::maps::MatrixValuedVectorMap;
-use sophus_autodiff::maps::VectorValuedMatrixMap;
-use sophus_autodiff::maps::VectorValuedVectorMap;
+use sophus_autodiff::{
+    dual::DualScalar,
+    maps::{
+        MatrixValuedVectorMap,
+        VectorValuedMatrixMap,
+        VectorValuedVectorMap,
+    },
+};
+
+use crate::{
+    lie_group::LieGroup,
+    prelude::*,
+    traits::{
+        IsLieGroupImpl,
+        IsRealLieGroupImpl,
+    },
+    Isometry2,
+    Isometry2F64,
+    Isometry3,
+    Isometry3F64,
+    Rotation2,
+    Rotation2F64,
+    Rotation3,
+    Rotation3F64,
+};
 
 extern crate alloc;
 

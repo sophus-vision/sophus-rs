@@ -1,17 +1,30 @@
-use crate::block::block_vector::BlockVector;
-use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
-use crate::block::PartitionSpec;
-use crate::nlls::linear_system::linear_solvers::dense_lu::DenseLU;
-use crate::nlls::linear_system::linear_solvers::sparse_ldlt::SparseLDLt;
-use crate::nlls::linear_system::linear_solvers::IsSparseSymmetricLinearSystem;
-use crate::nlls::LinearSolverType;
-use crate::variables::var_families::VarFamilies;
-use crate::variables::VarKind;
 use eq_system::EqSystem;
-use linear_solvers::sparse_lu::SparseLU;
-use linear_solvers::sparse_qr::SparseQR;
-use linear_solvers::SolveError;
+use linear_solvers::{
+    sparse_lu::SparseLU,
+    sparse_qr::SparseQR,
+    SolveError,
+};
 use quadratic_cost_system::CostSystem;
+
+use crate::{
+    block::{
+        block_vector::BlockVector,
+        symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
+        PartitionSpec,
+    },
+    nlls::{
+        linear_system::linear_solvers::{
+            dense_lu::DenseLU,
+            sparse_ldlt::SparseLDLt,
+            IsSparseSymmetricLinearSystem,
+        },
+        LinearSolverType,
+    },
+    variables::{
+        var_families::VarFamilies,
+        VarKind,
+    },
+};
 
 extern crate alloc;
 
@@ -31,15 +44,42 @@ pub enum EvalMode {
     DontCalculateDerivatives,
 }
 
-// Linear system of the normal equation
-pub(crate) struct LinearSystem {
+/// Linear system of the non-linear least squares problem with equality constraints
+pub struct LinearSystem {
     pub(crate) sparse_hessian_plus_damping: SymmetricBlockSparseMatrixBuilder,
     pub(crate) neg_gradient: BlockVector,
     pub(crate) linear_solver: LinearSolverType,
 }
 
 impl LinearSystem {
-    pub(crate) fn from_families_costs_and_constraints(
+    /// Populates the complete linear system of the non-linear least squares problem with equality
+    /// and >= constraints is given by the following KKT system:
+    ///
+    /// ```ascii
+    ///
+    ///   J'J + nuI      G'     | dx              /  -J'r + G'lambda \
+    ///      G           0      | -d lambda       \  -c              /
+    /// ```
+    ///
+    /// where r is the residual, J is the Jacobian of the cost function, c is the residual and G
+    /// is the Jacobian of the equality constraints, and lambda is the Lagrange multiplier.
+    ///
+    /// First, the normal equation system for the cost function is populated:
+    ///
+    /// ```ascii
+    ///
+    ///   J'J + nuI      *    | dx        /  -J'r   \
+    ///       *          *    | *         \   *     /
+    /// ```
+    ///
+    /// Then, the normal equation system for the equality constraints is populated:
+    ///
+    /// ```ascii
+    ///
+    ///      *           G'          *          | *               /  * + G'lambda  \
+    ///      G           0           *          | -d lambda  =    \ -c             /
+    /// ```
+    pub fn from_families_costs_and_constraints(
         variables: &VarFamilies,
         cost_system: &CostSystem,
         eq_system: &EqSystem,
@@ -51,17 +91,9 @@ impl LinearSystem {
         // Note let's first focus on these special cases, before attempting a
         // general version covering all cases holistically. Also, it might not be trivial
         // to implement VarKind::Marginalized > 1.
-        //  -  Example, the the arrow-head sparsity uses a recursive application of the Schur-Complement.
+        //  - Example, the the arrow-head sparsity uses a recursive application of the
+        //    Schur-Complement.
 
-        // The complete linear system of the non-linear least squares problem with equality and
-        // >= constraints is given by the following KKT system:
-        //
-        //   J'J + nuI      G'     | dx        /  -J'r + G'l \
-        //      G           0      | -dl       \  -c         /
-        //
-        // where r is the residual, J is the Jacobian of the cost function, c is the residual and G
-        // is the Jacobian of the equality constraints.
-        //
         let mut partitions = vec![];
         for i in 0..variables.collection.len() {
             partitions.push(PartitionSpec {
@@ -75,11 +107,6 @@ impl LinearSystem {
         let mut block_triplets = SymmetricBlockSparseMatrixBuilder::zero(&partitions);
         let mut neg_grad = BlockVector::zero(&partitions);
 
-        //   J'J + nuI      *    | dx        /  -J'r   \
-        //      *           *    | *         \   *     /
-        //
-        // where r is the residual, J is the Jacobian, dx is the incremental update for the
-        // variables, and nu is the Levenberg-Marquardt damping parameter.
         for cost in cost_system.evaluated_costs.iter() {
             cost.populate_upper_triangulatr_normal_equation(
                 variables,
@@ -88,13 +115,7 @@ impl LinearSystem {
                 &mut neg_grad,
             );
         }
-        // Populates the KKT matrix for the equality constraints:
-        //
-        //      *           G'          *          | *         /  * + G'l  \
-        //      G           0           *          | -dl  =    \ -c        /
-        //
-        // where c is the residual of the equality constraints, G is the Jacobian of the equality
-        // constraints, and lambda is the Lagrange multiplier.
+
         for (constraint_idx, eq_constraint_set) in
             eq_system.evaluated_eq_constraints.iter().enumerate()
         {

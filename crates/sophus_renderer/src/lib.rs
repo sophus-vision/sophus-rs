@@ -31,13 +31,17 @@ pub use crate::render_context::RenderContext;
 
 /// prelude
 pub mod prelude {
-    pub(crate) use alloc::collections::btree_map::BTreeMap;
-    pub(crate) use alloc::format;
-    pub(crate) use alloc::string::String;
-    pub(crate) use alloc::string::ToString;
-    pub(crate) use alloc::sync::Arc;
-    pub(crate) use alloc::vec;
-    pub(crate) use alloc::vec::Vec;
+    pub(crate) use alloc::{
+        collections::btree_map::BTreeMap,
+        format,
+        string::{
+            String,
+            ToString,
+        },
+        sync::Arc,
+        vec,
+        vec::Vec,
+    };
 
     pub use sophus_autodiff::prelude::*;
     pub use sophus_image::prelude::*;

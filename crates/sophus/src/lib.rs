@@ -29,14 +29,15 @@ pub use sophus_viewer as viewer;
 
 pub mod examples;
 pub use eframe;
-pub use thingbuf;
-
 pub use nalgebra;
 pub use ndarray;
+pub use thingbuf;
 
 pub mod prelude {
-    pub use crate::autodiff::prelude::*;
-    pub use crate::image::prelude::*;
-    pub use crate::lie::prelude::*;
-    pub use crate::opt::prelude::*;
+    pub use crate::{
+        autodiff::prelude::*,
+        image::prelude::*,
+        lie::prelude::*,
+        opt::prelude::*,
+    };
 }

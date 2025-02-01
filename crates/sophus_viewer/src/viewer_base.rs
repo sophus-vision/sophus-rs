@@ -1,36 +1,58 @@
-use crate::interactions::ViewportScale;
-use crate::packets::plot_view_packet::curve_vec_with_conf::CurveVecWithConf;
-use crate::packets::plot_view_packet::vec_curve::CurveVec;
-use crate::packets::plot_view_packet::LineType;
-use crate::packets::Packet;
-use crate::views::active_view_info::ActiveViewInfo;
-use crate::views::get_adjusted_view_size;
-use crate::views::get_max_size;
-use crate::views::image_view::ImageView;
-use crate::views::plot_view::GraphType;
-use crate::views::plot_view::PlotView;
-use crate::views::scene_view::SceneView;
-use crate::views::View;
-use crate::views::ViewportSize;
-use alloc::collections::BTreeMap;
-use alloc::format;
-use alloc::string::String;
-use alloc::vec;
-use alloc::vec::Vec;
-use eframe::egui;
-use eframe::egui::Ui;
-use egui_plot::LineStyle;
-use egui_plot::PlotUi;
-use egui_plot::VLine;
+use alloc::{
+    collections::BTreeMap,
+    format,
+    string::String,
+    vec,
+    vec::Vec,
+};
+
+use eframe::{
+    egui,
+    egui::Ui,
+};
+use egui_plot::{
+    LineStyle,
+    PlotUi,
+    VLine,
+};
 use linked_hash_map::LinkedHashMap;
 use sophus_autodiff::prelude::HasParams;
-use sophus_image::arc_image::ArcImageF32;
-use sophus_image::ImageSize;
+use sophus_image::{
+    arc_image::ArcImageF32,
+    ImageSize,
+};
 use sophus_lie::prelude::IsTranslationProductGroup;
-use sophus_renderer::aspect_ratio::HasAspectRatio;
-use sophus_renderer::renderables::color::Color;
-use sophus_renderer::RenderContext;
+use sophus_renderer::{
+    aspect_ratio::HasAspectRatio,
+    renderables::color::Color,
+    RenderContext,
+};
 use thingbuf::mpsc::blocking::Receiver;
+
+use crate::{
+    interactions::ViewportScale,
+    packets::{
+        plot_view_packet::{
+            curve_vec_with_conf::CurveVecWithConf,
+            vec_curve::CurveVec,
+            LineType,
+        },
+        Packet,
+    },
+    views::{
+        active_view_info::ActiveViewInfo,
+        get_adjusted_view_size,
+        get_max_size,
+        image_view::ImageView,
+        plot_view::{
+            GraphType,
+            PlotView,
+        },
+        scene_view::SceneView,
+        View,
+        ViewportSize,
+    },
+};
 
 extern crate alloc;
 

@@ -1,9 +1,15 @@
-use crate::prelude::*;
-use crate::MutTensor;
-use concat_arrays::concat_arrays;
 use core::marker::PhantomData;
-use sophus_autodiff::linalg::SMat;
-use sophus_autodiff::linalg::SVec;
+
+use concat_arrays::concat_arrays;
+use sophus_autodiff::linalg::{
+    SMat,
+    SVec,
+};
+
+use crate::{
+    prelude::*,
+    MutTensor,
+};
 
 /// Tensor view
 ///
@@ -12,10 +18,9 @@ use sophus_autodiff::linalg::SVec;
 ///
 ///  1. A dynamic tensor of static tensors:
 ///    * The dynamic tensor is of rank DRANK
-///      - ``self.dims()`` is used to access its dynamic dimensions of type
-///        ``[usize: DRANK]``.
-///      - an individual element (= static tensor) can be accessed with
-///        ``self.get(idx)``, where idx is f type ``[usize: DRANK]``.
+///      - ``self.dims()`` is used to access its dynamic dimensions of type ``[usize: DRANK]``.
+///      - an individual element (= static tensor) can be accessed with ``self.get(idx)``, where idx
+///        is f type ``[usize: DRANK]``.
 ///      - Each element is of type ``STensor``.
 ///    * Each static tensor is of SRANK. In particular we have.
 ///      - rank 0: scalars of type ``Scalar`` (such as ``u8`` or BatchF64<8>).
@@ -26,10 +31,10 @@ use sophus_autodiff::linalg::SVec;
 ///         * A matrix ``SMat<Scalar, ROWS, COLS>`` aka ``nalgebra::SMatrix<Scalar, ROWS, COLS>``
 ///           with static shape (ROWS x COLS).
 ///  2. A scalar tensor of TOTAL_RANK = DRANK + SRANK.
-///    *  ``self.scalar_dims()`` is used to access its dimensions of type
-///        ``[usize: TOTAL_RANK]`` at runtime.
-///    *  an individual element (= static tensor) can be accessed with
-///       ``self.scalar_get(idx)``, where idx is of type ``[usize: DRANK]``.
+///    * ``self.scalar_dims()`` is used to access its dimensions of type ``[usize: TOTAL_RANK]`` at
+///      runtime.
+///    * an individual element (= static tensor) can be accessed with ``self.scalar_get(idx)``,
+///      where idx is of type ``[usize: DRANK]``.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TensorView<
     'a,

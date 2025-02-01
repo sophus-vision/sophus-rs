@@ -1,13 +1,18 @@
-use core::borrow::Borrow;
-use core::fmt::Debug;
+use core::{
+    borrow::Borrow,
+    fmt::Debug,
+};
 
-use crate::camera_enum::perspective_camera::UnifiedCamera;
-use crate::prelude::*;
-use crate::BrownConradyCamera;
-use crate::KannalaBrandtCamera;
-use crate::PinholeCamera;
 use sophus_autodiff::params::IsParamsImpl;
 use sophus_image::ImageSize;
+
+use crate::{
+    camera_enum::perspective_camera::UnifiedCamera,
+    prelude::*,
+    BrownConradyCamera,
+    KannalaBrandtCamera,
+    PinholeCamera,
+};
 
 /// Camera distortion implementation trait
 pub trait IsCameraDistortionImpl<

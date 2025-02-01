@@ -1,15 +1,20 @@
 // ported from https://github.com/farm-ng/farm-ng-core/blob/main/rs/plotting/src/plotter_gui/mod.rs
 
-use crate::interactions::InteractionEnum;
-use crate::packets::plot_view_packet::curve_vec_with_conf::CurveVecWithConf;
-use crate::packets::plot_view_packet::scalar_curve::ScalarCurve;
-use crate::packets::plot_view_packet::vec_curve::CurveVec;
-use crate::packets::plot_view_packet::CurveTrait;
-use crate::packets::plot_view_packet::PlotViewPacket;
-use crate::prelude::*;
-use crate::views::View;
 use linked_hash_map::LinkedHashMap;
 use sophus_renderer::aspect_ratio::HasAspectRatio;
+
+use crate::{
+    interactions::InteractionEnum,
+    packets::plot_view_packet::{
+        curve_vec_with_conf::CurveVecWithConf,
+        scalar_curve::ScalarCurve,
+        vec_curve::CurveVec,
+        CurveTrait,
+        PlotViewPacket,
+    },
+    prelude::*,
+    views::View,
+};
 
 pub(crate) struct PlotView {
     pub(crate) enabled: bool,

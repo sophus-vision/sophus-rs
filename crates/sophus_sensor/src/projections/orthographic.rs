@@ -1,10 +1,18 @@
-use crate::camera::Camera;
-use crate::distortions::affine::AffineDistortionImpl;
-use crate::traits::IsProjection;
-use core::borrow::Borrow;
-use core::marker::PhantomData;
-use sophus_autodiff::linalg::scalar::IsScalar;
-use sophus_autodiff::linalg::vector::IsVector;
+use core::{
+    borrow::Borrow,
+    marker::PhantomData,
+};
+
+use sophus_autodiff::linalg::{
+    scalar::IsScalar,
+    vector::IsVector,
+};
+
+use crate::{
+    camera::Camera,
+    distortions::affine::AffineDistortionImpl,
+    traits::IsProjection,
+};
 
 /// Orthographic projection implementation
 #[derive(Debug, Clone)]

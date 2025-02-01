@@ -1,6 +1,9 @@
-use crate::linalg::SMat;
-use crate::prelude::*;
 use nalgebra::SVector;
+
+use crate::{
+    linalg::SMat,
+    prelude::*,
+};
 
 extern crate alloc;
 
@@ -144,11 +147,15 @@ impl<D: IsDualScalar<BATCH, 1, 1>, const BATCH: usize> MatrixValuedCurve<D, BATC
 fn curve_test() {
     #[cfg(feature = "simd")]
     use crate::dual::DualBatchScalar;
-    use crate::dual::DualScalar;
-    use crate::linalg::scalar::IsScalar;
     #[cfg(feature = "simd")]
     use crate::linalg::BatchScalarF64;
-    use crate::linalg::EPS_F64;
+    use crate::{
+        dual::DualScalar,
+        linalg::{
+            scalar::IsScalar,
+            EPS_F64,
+        },
+    };
 
     trait CurveTest {
         fn run_curve_test();

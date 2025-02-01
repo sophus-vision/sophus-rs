@@ -1,8 +1,10 @@
-use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 use faer::prelude::SpSolver;
 
-use super::IsSparseSymmetricLinearSystem;
-use super::SolveError;
+use super::{
+    IsSparseSymmetricLinearSystem,
+    SolveError,
+};
+use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 
 /// Sparse LU solver
 ///

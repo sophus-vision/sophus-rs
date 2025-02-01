@@ -1,13 +1,20 @@
-use crate::block::block_vector::BlockVector;
-use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
-use crate::block::PartitionSpec;
-use crate::nlls::constraint::evaluated_eq_set::EvaluatedEqSet;
-use crate::nlls::constraint::evaluated_eq_set::IsEvaluatedEqConstraintSet;
-use crate::nlls::OptParams;
-use crate::prelude::*;
-use crate::variables::var_families::VarFamilies;
-
 use super::EvalMode;
+use crate::{
+    block::{
+        block_vector::BlockVector,
+        symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
+        PartitionSpec,
+    },
+    nlls::{
+        constraint::evaluated_eq_set::{
+            EvaluatedEqSet,
+            IsEvaluatedEqConstraintSet,
+        },
+        OptParams,
+    },
+    prelude::*,
+    variables::var_families::VarFamilies,
+};
 
 extern crate alloc;
 
@@ -67,12 +74,14 @@ impl EqSystem {
     }
 }
 
-//      *           G'          *          | *         /  * + G'l  \
-//      G           0           *          | -dl  =    \ -c        /
-//
-// where c is the residual of the equality constraints, G is the Jacobian of the equality
-// constraints, and lambda is the Lagrange multiplier.
-pub(crate) struct EqSystem {
+/// ```ascii
+///      *           G'          *          | *         /  * + G'l  \
+///      G           0           *          | -dl  =    \ -c        /
+/// ```
+///
+/// where c is the residual of the equality constraints, G is the Jacobian of the equality
+/// constraints, and lambda is the Lagrange multiplier.
+pub struct EqSystem {
     pub(crate) eq_constraints_fns: Vec<alloc::boxed::Box<dyn IsEqConstraintsFn>>,
     pub(crate) lambda: BlockVector,
     pub(crate) evaluated_eq_constraints:

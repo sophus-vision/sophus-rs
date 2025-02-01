@@ -1,10 +1,16 @@
 use sophus_image::ImageSize;
 use sophus_sensor::dyn_camera::DynCameraF64;
 
-use crate::camera::clipping_planes::ClippingPlanes;
-use crate::camera::clipping_planes::ClippingPlanesF64;
-use crate::camera::intrinsics::RenderIntrinsics;
-use crate::uniform_buffers::CameraPropertiesUniform;
+use crate::{
+    camera::{
+        clipping_planes::{
+            ClippingPlanes,
+            ClippingPlanesF64,
+        },
+        intrinsics::RenderIntrinsics,
+    },
+    uniform_buffers::CameraPropertiesUniform,
+};
 
 /// Camera properties
 #[derive(Clone, Debug)]

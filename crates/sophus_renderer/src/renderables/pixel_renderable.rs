@@ -1,6 +1,9 @@
-use crate::prelude::*;
-use crate::renderables::color::Color;
 use sophus_autodiff::linalg::SVec;
+
+use crate::{
+    prelude::*,
+    renderables::color::Color,
+};
 
 /// Pixel renderable
 #[derive(Clone, Debug)]

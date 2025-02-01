@@ -1,10 +1,15 @@
-use crate::image_view::GenImageView;
-use crate::mut_image::GenMutImage;
-use crate::prelude::*;
-use crate::ImageSize;
 use sophus_autodiff::linalg::SVec;
-use sophus_tensor::tensor_view::TensorView;
-use sophus_tensor::ArcTensor;
+use sophus_tensor::{
+    tensor_view::TensorView,
+    ArcTensor,
+};
+
+use crate::{
+    image_view::GenImageView,
+    mut_image::GenMutImage,
+    prelude::*,
+    ImageSize,
+};
 
 /// Image of static tensors with shared ownership
 #[derive(Debug, Clone)]

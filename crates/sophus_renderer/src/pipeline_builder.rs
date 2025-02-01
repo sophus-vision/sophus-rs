@@ -1,10 +1,15 @@
-use crate::prelude::*;
-use crate::types::DOG_MULTISAMPLE_COUNT;
-use crate::uniform_buffers::VertexShaderUniformBuffers;
-use crate::RenderContext;
-use bytemuck::Pod;
-use bytemuck::Zeroable;
+use bytemuck::{
+    Pod,
+    Zeroable,
+};
 use wgpu::DepthStencilState;
+
+use crate::{
+    prelude::*,
+    types::DOG_MULTISAMPLE_COUNT,
+    uniform_buffers::VertexShaderUniformBuffers,
+    RenderContext,
+};
 
 pub(crate) struct TargetTexture {
     pub(crate) rgba_output_format: wgpu::TextureFormat,

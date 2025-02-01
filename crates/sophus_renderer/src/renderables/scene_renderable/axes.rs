@@ -1,8 +1,13 @@
-use crate::prelude::*;
-use crate::renderables::color::Color;
-use crate::renderables::scene_renderable::LineSegment3;
 use sophus_autodiff::linalg::VecF64;
 use sophus_lie::Isometry3F64;
+
+use crate::{
+    prelude::*,
+    renderables::{
+        color::Color,
+        scene_renderable::LineSegment3,
+    },
+};
 
 /// opaque axes builder type.
 ///
@@ -104,10 +109,13 @@ pub fn make_axes3(world_from_local_axes: &[Isometry3F64]) -> Vec<LineSegment3> {
 /// Example:
 ///
 /// ```
-/// use sophus_renderer::renderables::scene_renderable::axes::axes3;
 /// use sophus_lie::Isometry3F64;
+/// use sophus_renderer::renderables::scene_renderable::axes::axes3;
 ///
-/// let axes = axes3(&[Isometry3F64::identity()]).scale(0.5).line_width(3.0).build();
+/// let axes = axes3(&[Isometry3F64::identity()])
+///     .scale(0.5)
+///     .line_width(3.0)
+///     .build();
 /// ```
 pub fn axes3(world_from_local_axes: &[Isometry3F64]) -> Axes3Builder {
     Axes3Builder::new(world_from_local_axes)

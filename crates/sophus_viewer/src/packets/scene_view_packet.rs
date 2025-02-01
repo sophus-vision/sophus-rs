@@ -1,7 +1,10 @@
-use crate::prelude::*;
 use sophus_lie::Isometry3F64;
-use sophus_renderer::camera::RenderCamera;
-use sophus_renderer::renderables::scene_renderable::SceneRenderable;
+use sophus_renderer::{
+    camera::RenderCamera,
+    renderables::scene_renderable::SceneRenderable,
+};
+
+use crate::prelude::*;
 
 /// Content of a scene view packet
 #[derive(Clone, Debug)]

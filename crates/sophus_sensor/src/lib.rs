@@ -17,9 +17,11 @@ pub use crate::camera::Camera;
 
 /// Projection models
 pub mod camera_enum;
-pub use crate::camera_enum::perspective_camera::BrownConradyCamera;
-pub use crate::camera_enum::perspective_camera::KannalaBrandtCamera;
-pub use crate::camera_enum::perspective_camera::PinholeCamera;
+pub use crate::camera_enum::perspective_camera::{
+    BrownConradyCamera,
+    KannalaBrandtCamera,
+    PinholeCamera,
+};
 
 /// Projection models
 pub mod projections;
@@ -32,11 +34,13 @@ pub mod traits;
 
 /// sophus sensor prelude
 pub mod prelude {
-    pub use crate::traits::IsCamera;
-    pub use crate::traits::IsPerspectiveCamera;
-    pub use crate::traits::IsProjection;
-
     pub use sophus_autodiff::prelude::*;
     pub use sophus_geo::prelude::*;
     pub use sophus_image::prelude::*;
+
+    pub use crate::traits::{
+        IsCamera,
+        IsPerspectiveCamera,
+        IsProjection,
+    };
 }

@@ -3,21 +3,34 @@ pub mod inplane_interaction;
 /// orbit interaction
 pub mod orbit_interaction;
 
-use crate::interactions::inplane_interaction::InplaneInteraction;
-use crate::interactions::orbit_interaction::OrbitalInteraction;
-use crate::prelude::*;
-use crate::views::ViewportSize;
 use eframe::egui;
 use sophus_autodiff::linalg::VecF64;
-use sophus_image::arc_image::ArcImageF32;
-use sophus_image::ImageSize;
+use sophus_image::{
+    arc_image::ArcImageF32,
+    ImageSize,
+};
 use sophus_lie::Isometry3F64;
-use sophus_renderer::camera::clipping_planes::ClippingPlanesF64;
-use sophus_renderer::camera::intrinsics::RenderIntrinsics;
-use sophus_renderer::renderables::color::Color;
-use sophus_renderer::textures::depth_image::ndc_z_to_color;
-use sophus_renderer::types::SceneFocusMarker;
-use sophus_renderer::types::TranslationAndScaling;
+use sophus_renderer::{
+    camera::{
+        clipping_planes::ClippingPlanesF64,
+        intrinsics::RenderIntrinsics,
+    },
+    renderables::color::Color,
+    textures::depth_image::ndc_z_to_color,
+    types::{
+        SceneFocusMarker,
+        TranslationAndScaling,
+    },
+};
+
+use crate::{
+    interactions::{
+        inplane_interaction::InplaneInteraction,
+        orbit_interaction::OrbitalInteraction,
+    },
+    prelude::*,
+    views::ViewportSize,
+};
 
 /// Viewport scale
 pub struct ViewportScale {

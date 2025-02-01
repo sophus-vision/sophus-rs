@@ -1,9 +1,14 @@
-use crate::nlls::quadratic_cost::evaluated_term::EvaluatedCostTerm;
-use crate::prelude::*;
-use crate::robust_kernel;
-use crate::variables::VarKind;
-use sophus_lie::Isometry2;
-use sophus_lie::Isometry2F64;
+use sophus_lie::{
+    Isometry2,
+    Isometry2F64,
+};
+
+use crate::{
+    nlls::quadratic_cost::evaluated_term::EvaluatedCostTerm,
+    prelude::*,
+    robust_kernel,
+    variables::VarKind,
+};
 
 /// Pose graph term
 #[derive(Debug, Clone)]

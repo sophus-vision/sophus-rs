@@ -1,11 +1,21 @@
-use crate::prelude::*;
-use crate::traits::IsCameraDistortionImpl;
-use core::borrow::Borrow;
-use core::marker::PhantomData;
-use sophus_autodiff::params::IsParamsImpl;
-use sophus_autodiff::prelude::IsMatrix;
-use sophus_autodiff::prelude::IsScalar;
-use sophus_autodiff::prelude::IsVector;
+use core::{
+    borrow::Borrow,
+    marker::PhantomData,
+};
+
+use sophus_autodiff::{
+    params::IsParamsImpl,
+    prelude::{
+        IsMatrix,
+        IsScalar,
+        IsVector,
+    },
+};
+
+use crate::{
+    prelude::*,
+    traits::IsCameraDistortionImpl,
+};
 
 extern crate alloc;
 

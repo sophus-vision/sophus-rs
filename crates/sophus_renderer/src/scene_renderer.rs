@@ -9,17 +9,26 @@ pub mod point;
 /// textured mesh renderer
 pub mod textured_mesh;
 
-use crate::pipeline_builder::PipelineBuilder;
-use crate::pipeline_builder::TargetTexture;
-use crate::prelude::*;
-use crate::scene_renderer::mesh::MeshRenderer;
-use crate::scene_renderer::point::ScenePointRenderer;
-use crate::textures::depth::DepthTextures;
-use crate::textures::rgba::RgbdTexture;
-use crate::uniform_buffers::VertexShaderUniformBuffers;
-use crate::RenderContext;
 use sophus_lie::Isometry3F64;
 use wgpu::DepthStencilState;
+
+use crate::{
+    pipeline_builder::{
+        PipelineBuilder,
+        TargetTexture,
+    },
+    prelude::*,
+    scene_renderer::{
+        mesh::MeshRenderer,
+        point::ScenePointRenderer,
+    },
+    textures::{
+        depth::DepthTextures,
+        rgba::RgbdTexture,
+    },
+    uniform_buffers::VertexShaderUniformBuffers,
+    RenderContext,
+};
 
 /// Scene renderer
 pub struct SceneRenderer {

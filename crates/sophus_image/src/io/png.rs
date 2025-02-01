@@ -1,19 +1,28 @@
-use crate::intensity_image::dyn_intensity_image::DynIntensityMutImage;
-use crate::intensity_image::intensity_image_view::IsIntensityViewImageU;
-use crate::mut_image::MutImage2U16;
-use crate::mut_image::MutImage2U8;
-use crate::mut_image::MutImage3U16;
-use crate::mut_image::MutImage3U8;
-use crate::mut_image::MutImage4U16;
-use crate::mut_image::MutImage4U8;
-use crate::mut_image::MutImageU16;
-use crate::mut_image::MutImageU8;
-use crate::ImageSize;
-use std::format;
-use std::fs::File;
-use std::io::BufWriter;
-use std::string::ToString;
-use std::vec;
+use std::{
+    format,
+    fs::File,
+    io::BufWriter,
+    string::ToString,
+    vec,
+};
+
+use crate::{
+    intensity_image::{
+        dyn_intensity_image::DynIntensityMutImage,
+        intensity_image_view::IsIntensityViewImageU,
+    },
+    mut_image::{
+        MutImage2U16,
+        MutImage2U8,
+        MutImage3U16,
+        MutImage3U8,
+        MutImage4U16,
+        MutImage4U8,
+        MutImageU16,
+        MutImageU8,
+    },
+    ImageSize,
+};
 
 /// Save an image of unsigned integers as a PNG file
 pub fn save_as_png<'a, ImageView: IsIntensityViewImageU<'a>>(

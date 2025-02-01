@@ -1,19 +1,35 @@
-use super::dual_matrix::DualMatrix;
-use super::dual_scalar::DualScalar;
-use super::vector::HasJacobian;
-use super::vector::VectorValuedDerivative;
-use crate::linalg::MatF64;
-use crate::linalg::SMat;
-use crate::linalg::SVec;
-use crate::linalg::VecF64;
-use crate::prelude::*;
-use approx::AbsDiffEq;
-use approx::RelativeEq;
-use core::borrow::Borrow;
-use core::fmt::Debug;
-use core::ops::Add;
-use core::ops::Neg;
-use core::ops::Sub;
+use core::{
+    borrow::Borrow,
+    fmt::Debug,
+    ops::{
+        Add,
+        Neg,
+        Sub,
+    },
+};
+
+use approx::{
+    AbsDiffEq,
+    RelativeEq,
+};
+
+use super::{
+    dual_matrix::DualMatrix,
+    dual_scalar::DualScalar,
+    vector::{
+        HasJacobian,
+        VectorValuedDerivative,
+    },
+};
+use crate::{
+    linalg::{
+        MatF64,
+        SMat,
+        SVec,
+        VecF64,
+    },
+    prelude::*,
+};
 
 /// Dual vector
 #[derive(Clone, Debug, Copy)]

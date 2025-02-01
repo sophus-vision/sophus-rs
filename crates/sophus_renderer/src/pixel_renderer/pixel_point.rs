@@ -1,10 +1,15 @@
-use crate::pipeline_builder::PipelineBuilder;
-use crate::pipeline_builder::PointVertex2;
-use crate::prelude::*;
-use crate::renderables::pixel_renderable::PointCloud2;
-use crate::RenderContext;
 use eframe::egui::mutex::Mutex;
 use wgpu::util::DeviceExt;
+
+use crate::{
+    pipeline_builder::{
+        PipelineBuilder,
+        PointVertex2,
+    },
+    prelude::*,
+    renderables::pixel_renderable::PointCloud2,
+    RenderContext,
+};
 
 pub(crate) struct Point2dEntity {
     pub(crate) vertex_data: Vec<PointVertex2>,

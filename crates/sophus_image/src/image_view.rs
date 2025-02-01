@@ -1,8 +1,11 @@
-use crate::prelude::*;
-use crate::ImageSize;
 use ndarray::ShapeBuilder;
 use sophus_autodiff::linalg::SVec;
 use sophus_tensor::tensor_view::TensorView;
+
+use crate::{
+    prelude::*,
+    ImageSize,
+};
 
 /// Image view of static tensors
 #[derive(Debug, Clone, PartialEq)]
@@ -204,8 +207,8 @@ macro_rules! image_view {
         {
             fn pixel(&'a self, u: usize, v: usize) -> STensor {
                 // NOTE:
-                // We are converting from Image Indexing Convention (d0 = u = col_idx, d1 = v = row_idx)
-                // to tensor (and matrix) convention (d0 = rows, d1 = cols).
+                // We are converting from Image Indexing Convention (d0 = u = col_idx, d1 = v =
+                // row_idx) to tensor / matrix convention (d0 = rows, d1 = cols).
                 self.tensor_view.get([v, u])
             }
 

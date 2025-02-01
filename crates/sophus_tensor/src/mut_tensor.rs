@@ -1,13 +1,23 @@
-use crate::prelude::*;
-use crate::ArcTensor;
-use crate::MutTensorView;
-use crate::TensorView;
-use core::fmt::Debug;
-use core::marker::PhantomData;
-use ndarray::Dim;
-use ndarray::Ix;
-use sophus_autodiff::linalg::SMat;
-use sophus_autodiff::linalg::SVec;
+use core::{
+    fmt::Debug,
+    marker::PhantomData,
+};
+
+use ndarray::{
+    Dim,
+    Ix,
+};
+use sophus_autodiff::linalg::{
+    SMat,
+    SVec,
+};
+
+use crate::{
+    prelude::*,
+    ArcTensor,
+    MutTensorView,
+    TensorView,
+};
 
 /// mutable tensor
 ///
@@ -506,10 +516,9 @@ mut_tensor_is_view_drank_2_plus!(5, 2, 3);
 
 #[test]
 fn mut_tensor_tests() {
+    use log::info;
     #[cfg(feature = "simd")]
     use sophus_autodiff::linalg::BatchMatF64;
-
-    use log::info;
     {
         let _rank1_tensor = MutTensorD::<u8>::default();
         //assert!(rank1_tensor.is_empty());

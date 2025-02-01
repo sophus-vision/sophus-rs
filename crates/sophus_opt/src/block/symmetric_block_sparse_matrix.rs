@@ -1,5 +1,6 @@
-use super::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 use std::collections::HashMap;
+
+use super::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 
 /// A homogeneous region in the block sparse matrix.
 #[derive(Debug)]

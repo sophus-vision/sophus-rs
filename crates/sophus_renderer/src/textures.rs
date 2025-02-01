@@ -1,7 +1,12 @@
-use crate::textures::depth::DepthTextures;
-use crate::textures::rgba::RgbdTexture;
-use crate::RenderContext;
 use sophus_image::ImageSize;
+
+use crate::{
+    textures::{
+        depth::DepthTextures,
+        rgba::RgbdTexture,
+    },
+    RenderContext,
+};
 
 /// depth textures
 pub mod depth;

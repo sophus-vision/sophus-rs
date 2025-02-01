@@ -1,13 +1,20 @@
-use crate::interactions::inplane_interaction::InplaneInteraction;
-use crate::interactions::InteractionEnum;
-use crate::packets::image_view_packet::ImageViewPacket;
-use crate::prelude::*;
-use crate::views::View;
 use linked_hash_map::LinkedHashMap;
-use sophus_renderer::aspect_ratio::HasAspectRatio;
-use sophus_renderer::camera::intrinsics::RenderIntrinsics;
-use sophus_renderer::offscreen_renderer::OffscreenRenderer;
-use sophus_renderer::RenderContext;
+use sophus_renderer::{
+    aspect_ratio::HasAspectRatio,
+    camera::intrinsics::RenderIntrinsics,
+    offscreen_renderer::OffscreenRenderer,
+    RenderContext,
+};
+
+use crate::{
+    interactions::{
+        inplane_interaction::InplaneInteraction,
+        InteractionEnum,
+    },
+    packets::image_view_packet::ImageViewPacket,
+    prelude::*,
+    views::View,
+};
 
 pub(crate) struct ImageView {
     pub(crate) renderer: OffscreenRenderer,

@@ -1,8 +1,9 @@
 use core::borrow::Borrow;
 
+use sophus_image::ImageSize;
+
 use super::traits::IsCameraDistortionImpl;
 use crate::prelude::*;
-use sophus_image::ImageSize;
 
 extern crate alloc;
 

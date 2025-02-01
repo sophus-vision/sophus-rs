@@ -1,4 +1,5 @@
 use core::any::TypeId;
+
 use sophus_autodiff::prelude::*;
 
 /// either u8, u16, or f32

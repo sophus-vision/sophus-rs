@@ -1,10 +1,18 @@
-use super::evaluated_term::EvaluatedCostTerm;
-use crate::block::block_vector::BlockVector;
-use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
-use crate::variables::var_families::VarFamilies;
-use crate::variables::VarKind;
 use core::fmt::Debug;
+
 use dyn_clone::DynClone;
+
+use super::evaluated_term::EvaluatedCostTerm;
+use crate::{
+    block::{
+        block_vector::BlockVector,
+        symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
+    },
+    variables::{
+        var_families::VarFamilies,
+        VarKind,
+    },
+};
 extern crate alloc;
 
 /// Generic evaluated cost.

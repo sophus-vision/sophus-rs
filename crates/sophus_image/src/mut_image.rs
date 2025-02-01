@@ -1,10 +1,15 @@
-use crate::arc_image::GenArcImage;
-use crate::image_view::GenImageView;
-use crate::prelude::*;
-use crate::ImageSize;
 use sophus_autodiff::linalg::SVec;
-use sophus_tensor::MutTensor;
-use sophus_tensor::TensorView;
+use sophus_tensor::{
+    MutTensor,
+    TensorView,
+};
+
+use crate::{
+    arc_image::GenArcImage,
+    image_view::GenImageView,
+    prelude::*,
+    ImageSize,
+};
 
 extern crate alloc;
 

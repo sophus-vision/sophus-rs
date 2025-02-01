@@ -1,8 +1,12 @@
-use crate::prelude::*;
-use crate::MutTensor;
-use crate::TensorView;
-use concat_arrays::concat_arrays;
 use core::marker::PhantomData;
+
+use concat_arrays::concat_arrays;
+
+use crate::{
+    prelude::*,
+    MutTensor,
+    TensorView,
+};
 
 /// Mutable tensor view
 ///

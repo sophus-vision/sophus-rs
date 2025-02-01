@@ -1,11 +1,13 @@
 use core::fmt::Debug;
+
 use sophus_autodiff::manifold::IsVariable;
 
+use super::{
+    var_builder::VarBuilder,
+    var_family::IsVarFamily,
+    VarKind,
+};
 use crate::variables::var_family::VarFamily;
-
-use super::var_builder::VarBuilder;
-use super::var_family::IsVarFamily;
-use super::VarKind;
 
 extern crate alloc;
 

@@ -1,10 +1,16 @@
 use sophus_autodiff::linalg::VecF64;
 use sophus_image::ImageSize;
 use sophus_lie::prelude::IsVector;
-use sophus_sensor::camera_enum::perspective_camera::PinholeCameraF64;
-use sophus_sensor::camera_enum::perspective_camera::UnifiedCameraF64;
-use sophus_sensor::camera_enum::PerspectiveCameraEnum;
-use sophus_sensor::dyn_camera::DynCameraF64;
+use sophus_sensor::{
+    camera_enum::{
+        perspective_camera::{
+            PinholeCameraF64,
+            UnifiedCameraF64,
+        },
+        PerspectiveCameraEnum,
+    },
+    dyn_camera::DynCameraF64,
+};
 
 /// Camera intrinsics
 #[derive(Clone, Debug)]

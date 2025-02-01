@@ -1,8 +1,14 @@
 use super::scalar::IsDualScalar;
-use crate::linalg::SMat;
-use crate::linalg::SVec;
-use crate::prelude::IsRealScalar;
-use crate::prelude::IsVector;
+use crate::{
+    linalg::{
+        SMat,
+        SVec,
+    },
+    prelude::{
+        IsRealScalar,
+        IsVector,
+    },
+};
 
 /// Derivative of a vector-valued map.
 pub struct VectorValuedDerivative<
@@ -68,17 +74,23 @@ pub trait HasJacobian<
 
 #[test]
 fn dual_vector_tests() {
-    use crate::dual::dual_scalar::DualScalar;
     #[cfg(feature = "simd")]
     use crate::dual::DualBatchScalar;
-    use crate::linalg::vector::IsVector;
     #[cfg(feature = "simd")]
     use crate::linalg::BatchScalarF64;
-    use crate::linalg::EPS_F64;
-    use crate::maps::scalar_valued_maps::ScalarValuedVectorMap;
-    use crate::maps::vector_valued_maps::VectorValuedVectorMap;
-    use crate::points::example_points;
-    use crate::prelude::IsScalar;
+    use crate::{
+        dual::dual_scalar::DualScalar,
+        linalg::{
+            vector::IsVector,
+            EPS_F64,
+        },
+        maps::{
+            scalar_valued_maps::ScalarValuedVectorMap,
+            vector_valued_maps::VectorValuedVectorMap,
+        },
+        points::example_points,
+        prelude::IsScalar,
+    };
 
     #[cfg(test)]
     trait Test {

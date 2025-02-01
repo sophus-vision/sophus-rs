@@ -1,4 +1,5 @@
 use core::marker::PhantomData;
+
 use sophus_autodiff::prelude::*;
 
 /// cubic basis function
@@ -187,15 +188,22 @@ mod test {
 
     #[test]
     fn test_spline_basis_fn() {
-        use crate::spline_segment::CubicBSplineFn;
         use num_traits::Zero;
-        use sophus_autodiff::dual::dual_scalar::DualScalar;
-        use sophus_autodiff::dual::dual_vector::DualVector;
-        use sophus_autodiff::linalg::scalar::IsScalar;
-        use sophus_autodiff::linalg::vector::IsVector;
-        use sophus_autodiff::linalg::VecF64;
-        use sophus_autodiff::maps::vector_valued_maps::VectorValuedVectorMap;
-        use sophus_autodiff::points::example_points;
+        use sophus_autodiff::{
+            dual::{
+                dual_scalar::DualScalar,
+                dual_vector::DualVector,
+            },
+            linalg::{
+                scalar::IsScalar,
+                vector::IsVector,
+                VecF64,
+            },
+            maps::vector_valued_maps::VectorValuedVectorMap,
+            points::example_points,
+        };
+
+        use crate::spline_segment::CubicBSplineFn;
 
         let points = &example_points::<f64, 3, 1, 0, 0>();
         assert!(points.len() >= 8);
@@ -261,16 +269,25 @@ mod test {
 
     #[test]
     fn test_spline_segment() {
-        use crate::CubicBSplineSegment;
-        use crate::SegmentCase;
         use num_traits::Zero;
-        use sophus_autodiff::dual::dual_scalar::DualScalar;
-        use sophus_autodiff::dual::dual_vector::DualVector;
-        use sophus_autodiff::linalg::scalar::IsScalar;
-        use sophus_autodiff::linalg::vector::IsVector;
-        use sophus_autodiff::linalg::VecF64;
-        use sophus_autodiff::maps::vector_valued_maps::VectorValuedVectorMap;
-        use sophus_autodiff::points::example_points;
+        use sophus_autodiff::{
+            dual::{
+                dual_scalar::DualScalar,
+                dual_vector::DualVector,
+            },
+            linalg::{
+                scalar::IsScalar,
+                vector::IsVector,
+                VecF64,
+            },
+            maps::vector_valued_maps::VectorValuedVectorMap,
+            points::example_points,
+        };
+
+        use crate::{
+            CubicBSplineSegment,
+            SegmentCase,
+        };
 
         let points = &example_points::<f64, 3, 1, 0, 0>();
         assert!(points.len() >= 8);

@@ -1,9 +1,16 @@
-use crate::nlls::constraint::eq_constraint::IsEqConstraint;
-use crate::prelude::*;
-use sophus_autodiff::dual::DualScalar;
-use sophus_autodiff::dual::DualVector;
-use sophus_autodiff::linalg::VecF64;
-use sophus_autodiff::maps::VectorValuedVectorMap;
+use sophus_autodiff::{
+    dual::{
+        DualScalar,
+        DualVector,
+    },
+    linalg::VecF64,
+    maps::VectorValuedVectorMap,
+};
+
+use crate::{
+    nlls::constraint::eq_constraint::IsEqConstraint,
+    prelude::*,
+};
 
 /// spherical equality constraint
 #[derive(Clone, Debug)]

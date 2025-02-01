@@ -1,7 +1,10 @@
-use super::IsSparseSymmetricLinearSystem;
-use super::SolveError;
-use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 use faer::sparse::FaerError;
+
+use super::{
+    IsSparseSymmetricLinearSystem,
+    SolveError,
+};
+use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 
 extern crate alloc;
 

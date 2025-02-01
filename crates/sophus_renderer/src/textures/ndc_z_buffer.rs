@@ -1,6 +1,9 @@
-use crate::types::DOG_MULTISAMPLE_COUNT;
-use crate::RenderContext;
 use sophus_image::ImageSize;
+
+use crate::{
+    types::DOG_MULTISAMPLE_COUNT,
+    RenderContext,
+};
 
 #[derive(Debug)]
 pub(crate) struct NdcZBuffer {

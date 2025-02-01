@@ -1,9 +1,14 @@
-use crate::pipeline_builder::LineVertex2;
-use crate::pipeline_builder::PipelineBuilder;
-use crate::prelude::*;
-use crate::renderables::pixel_renderable::LineSegments2;
-use crate::RenderContext;
 use wgpu::util::DeviceExt;
+
+use crate::{
+    pipeline_builder::{
+        LineVertex2,
+        PipelineBuilder,
+    },
+    prelude::*,
+    renderables::pixel_renderable::LineSegments2,
+    RenderContext,
+};
 pub(crate) struct Line2dEntity {
     pub(crate) vertex_data: Vec<LineVertex2>,
     pub(crate) vertex_buffer: wgpu::Buffer,

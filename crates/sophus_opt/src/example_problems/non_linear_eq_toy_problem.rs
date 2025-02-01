@@ -1,16 +1,29 @@
-use crate::nlls::constraint::eq_constraint::EqConstraints;
-use crate::nlls::constraint::eq_constraint_fn::EqConstraintFn;
-use crate::nlls::functor_library::costs::example_non_linear_cost::ExampleNonLinearQuadraticCost;
-use crate::nlls::functor_library::eq_constraints::small_non_linear_eq::SmallNonLinearEqConstraint;
-use crate::nlls::optimize_with_eq_constraints;
-use crate::nlls::quadratic_cost::cost_fn::CostFn;
-use crate::nlls::quadratic_cost::cost_term::CostTerms;
-use crate::nlls::LinearSolverType;
-use crate::nlls::OptParams;
-use crate::variables::var_builder::VarBuilder;
-use crate::variables::var_family::VarFamily;
-use crate::variables::VarKind;
 use sophus_autodiff::linalg::VecF64;
+
+use crate::{
+    nlls::{
+        constraint::{
+            eq_constraint::EqConstraints,
+            eq_constraint_fn::EqConstraintFn,
+        },
+        functor_library::{
+            costs::example_non_linear_cost::ExampleNonLinearQuadraticCost,
+            eq_constraints::small_non_linear_eq::SmallNonLinearEqConstraint,
+        },
+        optimize_with_eq_constraints,
+        quadratic_cost::{
+            cost_fn::CostFn,
+            cost_term::CostTerms,
+        },
+        LinearSolverType,
+        OptParams,
+    },
+    variables::{
+        var_builder::VarBuilder,
+        var_family::VarFamily,
+        VarKind,
+    },
+};
 extern crate alloc;
 
 /// non-linear == constraint toy problem

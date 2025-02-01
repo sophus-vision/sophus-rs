@@ -1,16 +1,25 @@
-use crate::interactions::orbit_interaction::OrbitalInteraction;
-use crate::interactions::InteractionEnum;
-use crate::packets::scene_view_packet::SceneViewCreation;
-use crate::packets::scene_view_packet::SceneViewPacket;
-use crate::packets::scene_view_packet::SceneViewPacketContent;
-use crate::prelude::*;
-use crate::views::View;
 use linked_hash_map::LinkedHashMap;
 use log::warn;
-use sophus_renderer::aspect_ratio::HasAspectRatio;
-use sophus_renderer::camera::intrinsics::RenderIntrinsics;
-use sophus_renderer::offscreen_renderer::OffscreenRenderer;
-use sophus_renderer::RenderContext;
+use sophus_renderer::{
+    aspect_ratio::HasAspectRatio,
+    camera::intrinsics::RenderIntrinsics,
+    offscreen_renderer::OffscreenRenderer,
+    RenderContext,
+};
+
+use crate::{
+    interactions::{
+        orbit_interaction::OrbitalInteraction,
+        InteractionEnum,
+    },
+    packets::scene_view_packet::{
+        SceneViewCreation,
+        SceneViewPacket,
+        SceneViewPacketContent,
+    },
+    prelude::*,
+    views::View,
+};
 
 pub(crate) struct SceneView {
     pub(crate) renderer: OffscreenRenderer,

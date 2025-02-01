@@ -1,13 +1,18 @@
 use core::borrow::Borrow;
 
-use crate::camera_enum::perspective_camera::UnifiedCamera;
-use crate::camera_enum::GeneralCameraEnum;
-use crate::camera_enum::PerspectiveCameraEnum;
-use crate::prelude::*;
-use crate::BrownConradyCamera;
-use crate::KannalaBrandtCamera;
-use crate::PinholeCamera;
 use sophus_image::ImageSize;
+
+use crate::{
+    camera_enum::{
+        perspective_camera::UnifiedCamera,
+        GeneralCameraEnum,
+        PerspectiveCameraEnum,
+    },
+    prelude::*,
+    BrownConradyCamera,
+    KannalaBrandtCamera,
+    PinholeCamera,
+};
 
 extern crate alloc;
 
@@ -194,15 +199,24 @@ impl<
 
 #[test]
 fn dyn_camera_tests() {
-    use crate::distortions::affine::AffineDistortionImpl;
-    use crate::distortions::kannala_brandt::KannalaBrandtDistortionImpl;
-    use crate::distortions::unified::UnifiedDistortionImpl;
-    use crate::traits::IsCameraDistortionImpl;
     use approx::assert_relative_eq;
-    use sophus_autodiff::linalg::VecF64;
-    use sophus_autodiff::linalg::EPS_F64;
-    use sophus_autodiff::maps::vector_valued_maps::VectorValuedVectorMap;
+    use sophus_autodiff::{
+        linalg::{
+            VecF64,
+            EPS_F64,
+        },
+        maps::vector_valued_maps::VectorValuedVectorMap,
+    };
     use sophus_image::ImageSize;
+
+    use crate::{
+        distortions::{
+            affine::AffineDistortionImpl,
+            kannala_brandt::KannalaBrandtDistortionImpl,
+            unified::UnifiedDistortionImpl,
+        },
+        traits::IsCameraDistortionImpl,
+    };
 
     {
         let mut cameras: alloc::vec::Vec<DynCameraF64> = alloc::vec![];

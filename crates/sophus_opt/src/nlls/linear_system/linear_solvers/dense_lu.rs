@@ -1,8 +1,11 @@
-use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
-use crate::nlls::linear_system::linear_solvers::IsDenseLinearSystem;
-
-use super::IsSparseSymmetricLinearSystem;
-use super::SolveError;
+use super::{
+    IsSparseSymmetricLinearSystem,
+    SolveError,
+};
+use crate::{
+    block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
+    nlls::linear_system::linear_solvers::IsDenseLinearSystem,
+};
 
 /// Dense LU solver
 ///

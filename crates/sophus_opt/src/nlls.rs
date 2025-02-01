@@ -7,20 +7,34 @@ pub mod linear_system;
 /// Cost functions, terms, residuals etc.
 pub mod quadratic_cost;
 
-use crate::block::block_vector::BlockVector;
-use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
-use crate::nlls::constraint::eq_constraint_fn::IsEqConstraintsFn;
-use crate::nlls::linear_system::linear_solvers::sparse_ldlt::SparseLdltParams;
-use crate::nlls::linear_system::EvalMode;
-use crate::nlls::linear_system::LinearSystem;
-use crate::nlls::quadratic_cost::cost_fn::IsCostFn;
-use crate::variables::var_families::VarFamilies;
 use core::fmt::Debug;
-use linear_system::eq_system::EqSystem;
-use linear_system::linear_solvers::SolveError;
-use linear_system::quadratic_cost_system::CostSystem;
-use log::debug;
-use log::info;
+
+use linear_system::{
+    eq_system::EqSystem,
+    linear_solvers::SolveError,
+    quadratic_cost_system::CostSystem,
+};
+use log::{
+    debug,
+    info,
+};
+
+use crate::{
+    block::{
+        block_vector::BlockVector,
+        symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
+    },
+    nlls::{
+        constraint::eq_constraint_fn::IsEqConstraintsFn,
+        linear_system::{
+            linear_solvers::sparse_ldlt::SparseLdltParams,
+            EvalMode,
+            LinearSystem,
+        },
+        quadratic_cost::cost_fn::IsCostFn,
+    },
+    variables::var_families::VarFamilies,
+};
 
 extern crate alloc;
 
@@ -198,9 +212,10 @@ pub fn optimize_with_eq_constraints(
     }
     info!("e^2: {:?} -> {:?}", initial_merit, merit);
 
-    // Calculate the final gradient and hessian. This is not strictly necessary, but it is useful for debugging,
-    // and not too expensive.
-    // TODO: Consider making this optional, i.e. only return the final gradient and hessian if requested.
+    // Calculate the final gradient and hessian. This is not strictly necessary, but it is useful
+    // for debugging, and not too expensive.
+    // TODO: Consider making this optional, i.e. only return the final gradient and hessian if
+    // requested.
     let final_linear_system =
         evaluate_cost_and_build_linear_system(&variables, &mut cost_system, &mut eq_system, params);
 

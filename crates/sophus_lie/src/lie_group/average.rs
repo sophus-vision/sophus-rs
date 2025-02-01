@@ -1,13 +1,22 @@
-use crate::groups::rotation2::Rotation2F64;
-use crate::groups::rotation3::Rotation3F64;
-use crate::traits::IsLieGroupImpl;
-use crate::Isometry2F64;
-use crate::Isometry3F64;
-use crate::LieGroup;
 use snafu::prelude::*;
-use sophus_autodiff::linalg::EPS_F64;
-use sophus_autodiff::prelude::IsSingleScalar;
-use sophus_autodiff::prelude::IsVector;
+use sophus_autodiff::{
+    linalg::EPS_F64,
+    prelude::{
+        IsSingleScalar,
+        IsVector,
+    },
+};
+
+use crate::{
+    groups::{
+        rotation2::Rotation2F64,
+        rotation3::Rotation3F64,
+    },
+    traits::IsLieGroupImpl,
+    Isometry2F64,
+    Isometry3F64,
+    LieGroup,
+};
 
 /// error of iterative_average
 #[derive(Snafu, Debug)]
@@ -86,9 +95,10 @@ macro_rules! def_average_test_template {
 ) => {
         impl LieGroupAverageTests for $group {
             fn run_average_tests() {
-                use crate::traits::HasAverage;
                 use approx::assert_relative_eq;
                 use sophus_autodiff::linalg::VecF64;
+
+                use crate::traits::HasAverage;
 
                 // test: empty slice
                 assert!(Self::average(&[]).is_err());
@@ -120,7 +130,8 @@ macro_rules! def_average_test_template {
                         );
 
                         for parent_from_c in Self::element_examples() {
-                            // test: average of all tangents from each element to the average equal zero.
+                            // test: average of all tangents from each element to the average equal
+                            // zero.
 
                             let list = [parent_from_a, parent_from_b, parent_from_c];
                             let parent_from_average = Self::average(&list).unwrap();

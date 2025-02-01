@@ -1,10 +1,15 @@
-use sophus_autodiff::linalg::VecF64;
-use sophus_autodiff::manifold::IsVariable;
-
-use crate::lie_group::LieGroup;
-use crate::prelude::*;
-use crate::traits::IsLieGroupImpl;
 use core::fmt::Debug;
+
+use sophus_autodiff::{
+    linalg::VecF64,
+    manifold::IsVariable,
+};
+
+use crate::{
+    lie_group::LieGroup,
+    prelude::*,
+    traits::IsLieGroupImpl,
+};
 
 extern crate alloc;
 

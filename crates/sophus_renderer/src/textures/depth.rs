@@ -1,14 +1,21 @@
-use crate::camera::clipping_planes::ClippingPlanesF64;
-use crate::prelude::*;
-use crate::textures::depth_image::DepthImage;
-use crate::textures::ndc_z_buffer::NdcZBuffer;
-use crate::textures::visual_depth::VisualDepthTexture;
-use crate::RenderContext;
-use sophus_image::arc_image::ArcImageF32;
-use sophus_image::image_view::ImageViewF32;
-use sophus_image::prelude::IsImageView;
-use sophus_image::ImageSize;
+use sophus_image::{
+    arc_image::ArcImageF32,
+    image_view::ImageViewF32,
+    prelude::IsImageView,
+    ImageSize,
+};
 use wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+
+use crate::{
+    camera::clipping_planes::ClippingPlanesF64,
+    prelude::*,
+    textures::{
+        depth_image::DepthImage,
+        ndc_z_buffer::NdcZBuffer,
+        visual_depth::VisualDepthTexture,
+    },
+    RenderContext,
+};
 
 #[derive(Debug)]
 pub(crate) struct DepthTextures {

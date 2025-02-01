@@ -1,11 +1,16 @@
-use crate::pipeline_builder::PipelineBuilder;
-use crate::pipeline_builder::PointVertex3;
-use crate::prelude::*;
-use crate::renderables::scene_renderable::PointCloud3;
-use crate::uniform_buffers::VertexShaderUniformBuffers;
-use crate::RenderContext;
 use sophus_lie::Isometry3F64;
 use wgpu::util::DeviceExt;
+
+use crate::{
+    pipeline_builder::{
+        PipelineBuilder,
+        PointVertex3,
+    },
+    prelude::*,
+    renderables::scene_renderable::PointCloud3,
+    uniform_buffers::VertexShaderUniformBuffers,
+    RenderContext,
+};
 pub(crate) struct Point3dEntity {
     pub(crate) vertex_data: Vec<PointVertex3>,
     pub(crate) vertex_buffer: wgpu::Buffer,

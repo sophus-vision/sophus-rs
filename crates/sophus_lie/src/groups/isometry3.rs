@@ -1,14 +1,26 @@
-use super::rotation3::Rotation3Impl;
-use super::translation_product_product::TranslationProductGroupImpl;
-use crate::lie_group::average::iterative_average;
-use crate::lie_group::average::IterativeAverageError;
-use crate::lie_group::LieGroup;
-use crate::prelude::*;
-use crate::traits::EmptySliceError;
-use crate::traits::HasAverage;
-use crate::Rotation3;
 use core::borrow::Borrow;
+
 use log::warn;
+
+use super::{
+    rotation3::Rotation3Impl,
+    translation_product_product::TranslationProductGroupImpl,
+};
+use crate::{
+    lie_group::{
+        average::{
+            iterative_average,
+            IterativeAverageError,
+        },
+        LieGroup,
+    },
+    prelude::*,
+    traits::{
+        EmptySliceError,
+        HasAverage,
+    },
+    Rotation3,
+};
 
 /// 3D isometry group implementation struct - SE(3)
 pub type Isometry3Impl<S, const BATCH: usize, const DM: usize, const DN: usize> =
@@ -163,12 +175,13 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
 
 #[test]
 fn isometry3_prop_tests() {
-    use crate::lie_group::real_lie_group::RealLieGroupTest;
     use sophus_autodiff::dual::dual_scalar::DualScalar;
     #[cfg(feature = "simd")]
     use sophus_autodiff::dual::DualBatchScalar;
     #[cfg(feature = "simd")]
     use sophus_autodiff::linalg::BatchScalarF64;
+
+    use crate::lie_group::real_lie_group::RealLieGroupTest;
 
     Isometry3F64::test_suite();
     #[cfg(feature = "simd")]

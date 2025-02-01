@@ -7,12 +7,22 @@ pub mod scalar_valued_maps;
 /// vector-valued map - a function from M to ℝⁿ, where M is a manifold
 pub mod vector_valued_maps;
 
-pub use crate::maps::curves::MatrixValuedCurve;
-pub use crate::maps::curves::ScalarValuedCurve;
-pub use crate::maps::curves::VectorValuedCurve;
-pub use crate::maps::matrix_valued_maps::MatrixValuedMatrixMap;
-pub use crate::maps::matrix_valued_maps::MatrixValuedVectorMap;
-pub use crate::maps::scalar_valued_maps::ScalarValuedMatrixMap;
-pub use crate::maps::scalar_valued_maps::ScalarValuedVectorMap;
-pub use crate::maps::vector_valued_maps::VectorValuedMatrixMap;
-pub use crate::maps::vector_valued_maps::VectorValuedVectorMap;
+pub use crate::maps::{
+    curves::{
+        MatrixValuedCurve,
+        ScalarValuedCurve,
+        VectorValuedCurve,
+    },
+    matrix_valued_maps::{
+        MatrixValuedMatrixMap,
+        MatrixValuedVectorMap,
+    },
+    scalar_valued_maps::{
+        ScalarValuedMatrixMap,
+        ScalarValuedVectorMap,
+    },
+    vector_valued_maps::{
+        VectorValuedMatrixMap,
+        VectorValuedVectorMap,
+    },
+};

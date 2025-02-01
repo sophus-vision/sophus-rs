@@ -1,6 +1,8 @@
-use crate::linalg::VecF64;
-use crate::params::HasParams;
-use crate::prelude::IsScalar;
+use crate::{
+    linalg::VecF64,
+    params::HasParams,
+    prelude::IsScalar,
+};
 extern crate alloc;
 use core::fmt::Debug;
 
