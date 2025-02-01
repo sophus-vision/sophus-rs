@@ -1,17 +1,29 @@
 #![cfg(feature = "std")]
 
-use sophus::lie::Isometry3;
-use sophus::prelude::IsImageView;
-use sophus::sim::camera_simulator::CameraSimulator;
-use sophus_image::io::png::save_as_png;
-use sophus_image::io::tiff::save_as_tiff;
-use sophus_image::ImageSize;
-use sophus_renderer::camera::properties::RenderCameraProperties;
-use sophus_renderer::renderables::color::Color;
-use sophus_renderer::renderables::scene_renderable::make_line3;
-use sophus_renderer::renderables::scene_renderable::make_mesh3_at;
-use sophus_renderer::renderables::scene_renderable::make_point3;
-use sophus_renderer::RenderContext;
+use sophus::{
+    lie::Isometry3,
+    prelude::IsImageView,
+    sim::camera_simulator::CameraSimulator,
+};
+use sophus_image::{
+    io::{
+        png::save_as_png,
+        tiff::save_as_tiff,
+    },
+    ImageSize,
+};
+use sophus_renderer::{
+    camera::properties::RenderCameraProperties,
+    renderables::{
+        color::Color,
+        scene_renderable::{
+            make_line3,
+            make_mesh3_at,
+            make_point3,
+        },
+    },
+    RenderContext,
+};
 
 pub async fn run_offscreen() {
     let render_state = RenderContext::new().await;

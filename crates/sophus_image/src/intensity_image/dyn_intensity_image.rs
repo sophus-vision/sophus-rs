@@ -1,43 +1,53 @@
-use crate::arc_image::ArcImage2F32;
-use crate::arc_image::ArcImage2U16;
-use crate::arc_image::ArcImage2U8;
-use crate::arc_image::ArcImage3F32;
-use crate::arc_image::ArcImage3U16;
-use crate::arc_image::ArcImage3U8;
-use crate::arc_image::ArcImage4F32;
-use crate::arc_image::ArcImage4U16;
-use crate::arc_image::ArcImage4U8;
-use crate::arc_image::ArcImageF32;
-use crate::arc_image::ArcImageR;
-use crate::arc_image::ArcImageU16;
-use crate::arc_image::ArcImageU8;
-use crate::image_view::ImageView2F32;
-use crate::image_view::ImageView2U16;
-use crate::image_view::ImageView2U8;
-use crate::image_view::ImageView3F32;
-use crate::image_view::ImageView3U16;
-use crate::image_view::ImageView3U8;
-use crate::image_view::ImageView4F32;
-use crate::image_view::ImageView4U16;
-use crate::image_view::ImageView4U8;
-use crate::image_view::ImageViewF32;
-use crate::image_view::ImageViewU16;
-use crate::image_view::ImageViewU8;
-use crate::intensity_image::intensity_arc_image::IsIntensityArcImage;
-use crate::intensity_image::intensity_scalar::IsIntensityScalar;
-use crate::mut_image::MutImage2F32;
-use crate::mut_image::MutImage2U16;
-use crate::mut_image::MutImage2U8;
-use crate::mut_image::MutImage3F32;
-use crate::mut_image::MutImage3U16;
-use crate::mut_image::MutImage3U8;
-use crate::mut_image::MutImage4F32;
-use crate::mut_image::MutImage4U16;
-use crate::mut_image::MutImage4U8;
-use crate::mut_image::MutImageF32;
-use crate::mut_image::MutImageU16;
-use crate::mut_image::MutImageU8;
-use crate::ArcImage;
+use crate::{
+    arc_image::{
+        ArcImage2F32,
+        ArcImage2U16,
+        ArcImage2U8,
+        ArcImage3F32,
+        ArcImage3U16,
+        ArcImage3U8,
+        ArcImage4F32,
+        ArcImage4U16,
+        ArcImage4U8,
+        ArcImageF32,
+        ArcImageR,
+        ArcImageU16,
+        ArcImageU8,
+    },
+    image_view::{
+        ImageView2F32,
+        ImageView2U16,
+        ImageView2U8,
+        ImageView3F32,
+        ImageView3U16,
+        ImageView3U8,
+        ImageView4F32,
+        ImageView4U16,
+        ImageView4U8,
+        ImageViewF32,
+        ImageViewU16,
+        ImageViewU8,
+    },
+    intensity_image::{
+        intensity_arc_image::IsIntensityArcImage,
+        intensity_scalar::IsIntensityScalar,
+    },
+    mut_image::{
+        MutImage2F32,
+        MutImage2U16,
+        MutImage2U8,
+        MutImage3F32,
+        MutImage3U16,
+        MutImage3U8,
+        MutImage4F32,
+        MutImage4U16,
+        MutImage4U8,
+        MutImageF32,
+        MutImageU16,
+        MutImageU8,
+    },
+    ArcImage,
+};
 
 /// dynamic mutable intensity image of unsigned integer values
 pub enum DynIntensityMutImageU {
@@ -180,7 +190,6 @@ pub enum DynIntensityArcImage {
 }
 
 /// Convert a GenMutImage to an GenArcImage
-///
 impl From<DynIntensityMutImage> for DynIntensityArcImage {
     fn from(image: DynIntensityMutImage) -> Self {
         match image {

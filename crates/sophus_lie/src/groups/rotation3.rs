@@ -1,23 +1,41 @@
-use crate::lie_group::average::iterative_average;
-use crate::lie_group::average::IterativeAverageError;
-use crate::lie_group::LieGroup;
-use crate::prelude::*;
-use crate::traits::EmptySliceError;
-use crate::traits::HasAverage;
-use crate::traits::HasDisambiguate;
-use crate::traits::IsLieGroupImpl;
-use crate::traits::IsRealLieFactorGroupImpl;
-use crate::traits::IsRealLieGroupImpl;
-use core::borrow::Borrow;
-use core::f64;
-use core::marker::PhantomData;
+use core::{
+    borrow::Borrow,
+    f64,
+    marker::PhantomData,
+};
+
 use log::warn;
-use sophus_autodiff::linalg::vector::cross;
-use sophus_autodiff::linalg::MatF64;
-use sophus_autodiff::linalg::EPS_F64;
-use sophus_autodiff::manifold::IsTangent;
-use sophus_autodiff::params::HasParams;
-use sophus_autodiff::params::IsParamsImpl;
+use sophus_autodiff::{
+    linalg::{
+        vector::cross,
+        MatF64,
+        EPS_F64,
+    },
+    manifold::IsTangent,
+    params::{
+        HasParams,
+        IsParamsImpl,
+    },
+};
+
+use crate::{
+    lie_group::{
+        average::{
+            iterative_average,
+            IterativeAverageError,
+        },
+        LieGroup,
+    },
+    prelude::*,
+    traits::{
+        EmptySliceError,
+        HasAverage,
+        HasDisambiguate,
+        IsLieGroupImpl,
+        IsRealLieFactorGroupImpl,
+        IsRealLieGroupImpl,
+    },
+};
 
 extern crate alloc;
 
@@ -1040,13 +1058,16 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
 
 #[test]
 fn rotation3_prop_tests() {
-    use crate::factor_lie_group::RealFactorLieGroupTest;
-    use crate::lie_group::real_lie_group::RealLieGroupTest;
     use sophus_autodiff::dual::dual_scalar::DualScalar;
     #[cfg(feature = "simd")]
     use sophus_autodiff::dual::DualBatchScalar;
     #[cfg(feature = "simd")]
     use sophus_autodiff::linalg::BatchScalarF64;
+
+    use crate::{
+        factor_lie_group::RealFactorLieGroupTest,
+        lie_group::real_lie_group::RealLieGroupTest,
+    };
 
     Rotation3F64::test_suite();
     #[cfg(feature = "simd")]

@@ -1,7 +1,11 @@
-use crate::dual::vector::HasJacobian;
-use crate::dual::vector::VectorValuedDerivative;
-use crate::linalg::SVec;
-use crate::prelude::*;
+use crate::{
+    dual::vector::{
+        HasJacobian,
+        VectorValuedDerivative,
+    },
+    linalg::SVec,
+    prelude::*,
+};
 
 /// Vector-valued map on a vector space.
 ///
@@ -10,7 +14,6 @@ use crate::prelude::*;
 ///  f: ℝᵐ -> ℝʳ
 ///
 /// These functions are also called vector fields (on vector space).
-///
 pub struct VectorValuedVectorMap<
     S: IsScalar<BATCH, DM, DN>,
     const BATCH: usize,
@@ -26,7 +29,6 @@ impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize>
     /// Finite difference quotient of the vector-valued map.
     ///
     /// The derivative is a matrix or rank-2 tensor with shape (Rₒ x Rᵢ).
-    ///
     pub fn sym_diff_quotient_jacobian<TFn, const OUTROWS: usize, const INROWS: usize>(
         vector_valued: TFn,
         a: S::RealVector<INROWS>,
@@ -61,7 +63,6 @@ impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize>
     /// Finite difference quotient of the vector-valued map.
     ///
     /// The derivative is a matrix or rank-2 tensor with shape (Rₒ x Rᵢ).
-    ///
     pub fn sym_diff_quotient<TFn, const OUTROWS: usize, const INROWS: usize>(
         vector_valued: TFn,
         a: S::RealVector<INROWS>,
@@ -137,7 +138,6 @@ impl<
 ///  f: ℝᵐ x ℝⁿ -> ℝʳ
 ///
 /// This type of function is also called a vector field (on product spaces).
-///
 pub struct VectorValuedMatrixMap<
     S: IsScalar<BATCH, DM, DN>,
     const BATCH: usize,
@@ -155,7 +155,6 @@ impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize>
     /// The derivative is a matrix or rank-3 tensor with shape (Rₒ x Rᵢ x Cᵢ).
     ///
     /// For efficiency reasons, we return Rᵢ x Cᵢ x (Rₒ)
-    ///
     pub fn sym_diff_quotient<TFn, const OUTROWS: usize, const INROWS: usize, const INCOLS: usize>(
         vector_valued: TFn,
         a: S::RealMatrix<INROWS, INCOLS>,
@@ -212,16 +211,21 @@ impl<
 
 #[test]
 fn vector_valued_map_from_vector_tests() {
-    use crate::dual::dual_scalar::DualScalar;
-    use crate::linalg::vector::IsVector;
-    use crate::linalg::EPS_F64;
-    use crate::maps::vector_valued_maps::VectorValuedMatrixMap;
-    use crate::maps::vector_valued_maps::VectorValuedVectorMap;
-
     #[cfg(feature = "simd")]
     use crate::dual::DualBatchScalar;
     #[cfg(feature = "simd")]
     use crate::linalg::BatchScalarF64;
+    use crate::{
+        dual::dual_scalar::DualScalar,
+        linalg::{
+            vector::IsVector,
+            EPS_F64,
+        },
+        maps::vector_valued_maps::{
+            VectorValuedMatrixMap,
+            VectorValuedVectorMap,
+        },
+    };
 
     #[cfg(test)]
     trait Test {

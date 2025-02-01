@@ -1,9 +1,17 @@
-use crate::prelude::*;
-use crate::traits::IsCameraDistortionImpl;
-use core::borrow::Borrow;
-use core::marker::PhantomData;
-use sophus_autodiff::linalg::EPS_F64;
-use sophus_autodiff::params::IsParamsImpl;
+use core::{
+    borrow::Borrow,
+    marker::PhantomData,
+};
+
+use sophus_autodiff::{
+    linalg::EPS_F64,
+    params::IsParamsImpl,
+};
+
+use crate::{
+    prelude::*,
+    traits::IsCameraDistortionImpl,
+};
 
 extern crate alloc;
 

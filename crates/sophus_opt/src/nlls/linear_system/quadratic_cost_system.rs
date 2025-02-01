@@ -1,11 +1,16 @@
-use crate::block::block_vector::BlockVector;
-use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
-use crate::nlls::quadratic_cost::evaluated_cost::EvaluatedCost;
-use crate::nlls::OptParams;
-use crate::prelude::*;
-use crate::variables::var_families::VarFamilies;
-
 use super::EvalMode;
+use crate::{
+    block::{
+        block_vector::BlockVector,
+        symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
+    },
+    nlls::{
+        quadratic_cost::evaluated_cost::EvaluatedCost,
+        OptParams,
+    },
+    prelude::*,
+    variables::var_families::VarFamilies,
+};
 
 extern crate alloc;
 
@@ -37,12 +42,14 @@ impl CostSystem {
     }
 }
 
-//   J'J + nuI      *    | dx        /  -J'r   \
-//      *           *    | *         \   *     /
-//
-// where r is the residual, J is the Jacobian, dx is the incremental update for the
-// variables, and nu is the Levenberg-Marquardt damping parameter.
-pub(crate) struct CostSystem {
+/// ```ascii
+///   J'J + nuI      *    | dx        /  -J'r   \
+///      *           *    | *         \   *     /
+/// ```
+///
+/// where r is the residual, J is the Jacobian, dx is the incremental update for the
+/// variables, and nu is the Levenberg-Marquardt damping parameter.
+pub struct CostSystem {
     pub(crate) lm_damping: f64,
     pub(crate) cost_fns: Vec<alloc::boxed::Box<dyn IsCostFn>>,
     pub(crate) evaluated_costs: alloc::vec::Vec<alloc::boxed::Box<dyn IsEvaluatedCost>>,

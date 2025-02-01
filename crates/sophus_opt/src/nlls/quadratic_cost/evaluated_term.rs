@@ -1,10 +1,17 @@
-use crate::block::block_gradient::BlockGradient;
-use crate::block::block_hessian::BlockHessian;
-use crate::prelude::*;
-use crate::robust_kernel;
-use crate::variables::VarKind;
-use sophus_autodiff::linalg::MatF64;
-use sophus_autodiff::linalg::VecF64;
+use sophus_autodiff::linalg::{
+    MatF64,
+    VecF64,
+};
+
+use crate::{
+    block::{
+        block_gradient::BlockGradient,
+        block_hessian::BlockHessian,
+    },
+    prelude::*,
+    robust_kernel,
+    variables::VarKind,
+};
 
 extern crate alloc;
 
@@ -199,14 +206,14 @@ pub trait MakeEvaluatedCostTerm<const R: usize, const N: usize> {
     /// corresponding term given the following inputs:
     ///
     /// - `self`:          A tuple of functions that return the Jacobian of the cost function with
-    ///                    respect to each argument.
+    ///   respect to each argument.
     /// - `var_kinds`:     An array of `VarKind` for each argument of the cost function. A gradient
-    ///                    and Hessian will be computed for each argument that is not `Conditioned`.
+    ///   and Hessian will be computed for each argument that is not `Conditioned`.
     /// - `residual`:      The residual of the corresponding cost term.
     /// - `robust_kernel`: An optional robust kernel to apply to the residual.
     /// - `precision_mat`: Precision matrix - i.e. inverse of the covariance matrix - to compute the
-    ///                    least-squares cost: `0.5 * residual^T * precision_mat * residual`.
-    ///                    If `None`, the identity matrix is used: `0.5 * residual^T * residual`.
+    ///   least-squares cost: `0.5 * residual^T * precision_mat * residual`. If `None`, the identity
+    ///   matrix is used: `0.5 * residual^T * residual`.
     fn make<const DIM: usize>(
         self,
         idx: [usize; N],

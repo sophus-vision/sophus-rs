@@ -1,13 +1,22 @@
-use crate::camera::clipping_planes::ClippingPlanesF32;
 use eframe::egui::mutex::Mutex;
 use sophus_autodiff::linalg::SVec;
-use sophus_image::arc_image::ArcImage4U8;
-use sophus_image::arc_image::ArcImageF32;
-use sophus_image::color_map::BlueWhiteRedBlackColorMap;
-use sophus_image::mut_image::MutImage4U8;
-use sophus_image::mut_image::MutImageF32;
-use sophus_image::prelude::IsImageView;
-use sophus_image::prelude::IsMutImageView;
+use sophus_image::{
+    arc_image::{
+        ArcImage4U8,
+        ArcImageF32,
+    },
+    color_map::BlueWhiteRedBlackColorMap,
+    mut_image::{
+        MutImage4U8,
+        MutImageF32,
+    },
+    prelude::{
+        IsImageView,
+        IsMutImageView,
+    },
+};
+
+use crate::camera::clipping_planes::ClippingPlanesF32;
 
 /// depth image
 pub struct DepthImage {

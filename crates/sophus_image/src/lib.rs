@@ -23,11 +23,13 @@ pub mod mut_image;
 /// mutable image view
 pub mod mut_image_view;
 
-pub use crate::arc_image::ArcImage;
-pub use crate::image_view::ImageView;
-pub use crate::interpolation::interpolate;
-pub use crate::mut_image::MutImage;
-pub use crate::mut_image_view::MutImageView;
+pub use crate::{
+    arc_image::ArcImage,
+    image_view::ImageView,
+    interpolation::interpolate,
+    mut_image::MutImage,
+    mut_image_view::MutImageView,
+};
 
 /// Image size
 #[derive(Debug, Copy, Clone, Default)]
@@ -85,9 +87,12 @@ impl PartialEq for ImageSize {
 
 /// sophus_image prelude
 pub mod prelude {
-    pub use crate::image_view::IsImageView;
-    pub use crate::intensity_image::dyn_intensity_image::DynIntensityMutImage;
-    pub use crate::mut_image_view::IsMutImageView;
     pub use sophus_autodiff::prelude::*;
     pub use sophus_tensor::prelude::*;
+
+    pub use crate::{
+        image_view::IsImageView,
+        intensity_image::dyn_intensity_image::DynIntensityMutImage,
+        mut_image_view::IsMutImageView,
+    };
 }

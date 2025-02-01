@@ -1,13 +1,15 @@
-use crate::dual::matrix::MatrixValuedDerivative;
-use crate::prelude::*;
 use nalgebra::SMatrix;
+
+use crate::{
+    dual::matrix::MatrixValuedDerivative,
+    prelude::*,
+};
 
 /// Matrix-valued map on a vector space.
 ///
 /// This is a function which takes a vector and returns a matrix:
 ///
 ///  f: ℝᵐ -> ℝʳ x ℝᶜ
-///
 pub struct MatrixValuedVectorMap<S, const BATCH: usize, const DM: usize, const DN: usize> {
     phantom: core::marker::PhantomData<S>,
 }
@@ -76,7 +78,6 @@ impl<
 /// This is a function which takes a matrix and returns a matrix:
 ///
 ///  f: ℝᵐ x ℝⁿ -> ℝʳ x ℝᶜ
-///
 pub struct MatrixValuedMatrixMap<
     S: IsScalar<BATCH, DM, DN>,
     const BATCH: usize,
@@ -157,15 +158,19 @@ impl<
 
 #[test]
 fn matrix_valued_map_from_vector_tests() {
-    use crate::dual::dual_scalar::DualScalar;
     #[cfg(feature = "simd")]
     use crate::dual::DualBatchScalar;
-    use crate::linalg::scalar::IsScalar;
-    use crate::linalg::vector::IsVector;
     #[cfg(feature = "simd")]
     use crate::linalg::BatchScalarF64;
-    use crate::linalg::EPS_F64;
-    use crate::maps::matrix_valued_maps::MatrixValuedVectorMap;
+    use crate::{
+        dual::dual_scalar::DualScalar,
+        linalg::{
+            scalar::IsScalar,
+            vector::IsVector,
+            EPS_F64,
+        },
+        maps::matrix_valued_maps::MatrixValuedVectorMap,
+    };
 
     #[cfg(test)]
     trait Test {

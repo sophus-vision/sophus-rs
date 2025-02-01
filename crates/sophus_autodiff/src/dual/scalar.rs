@@ -42,11 +42,13 @@ pub trait IsDualScalar<const BATCH: usize, const DM: usize, const DN: usize>:
 fn dual_scalar_tests() {
     #[cfg(feature = "simd")]
     use crate::dual::DualBatchScalar;
-    use crate::dual::DualScalar;
     #[cfg(feature = "simd")]
     use crate::linalg::BatchScalarF64;
-    use crate::linalg::EPS_F64;
-    use crate::maps::curves::ScalarValuedCurve;
+    use crate::{
+        dual::DualScalar,
+        linalg::EPS_F64,
+        maps::curves::ScalarValuedCurve,
+    };
 
     trait DualScalarTest {
         fn run_dual_scalar_test();

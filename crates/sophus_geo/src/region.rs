@@ -1,5 +1,7 @@
-use sophus_autodiff::linalg::SVec;
-use sophus_autodiff::IsPoint;
+use sophus_autodiff::{
+    linalg::SVec,
+    IsPoint,
+};
 
 /// Floating-point interval
 #[derive(Debug, Copy, Clone, PartialEq)]

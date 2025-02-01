@@ -1,18 +1,30 @@
-use crate::lie_group::LieGroup;
-use crate::prelude::*;
-use crate::traits::EmptySliceError;
-use crate::traits::HasAverage;
-use crate::traits::HasDisambiguate;
-use crate::traits::IsLieFactorGroupImpl;
-use crate::traits::IsLieGroupImpl;
-use crate::traits::IsRealLieFactorGroupImpl;
-use crate::traits::IsRealLieGroupImpl;
-use core::borrow::Borrow;
-use core::marker::PhantomData;
-use sophus_autodiff::linalg::EPS_F64;
-use sophus_autodiff::manifold::IsTangent;
-use sophus_autodiff::params::HasParams;
-use sophus_autodiff::params::IsParamsImpl;
+use core::{
+    borrow::Borrow,
+    marker::PhantomData,
+};
+
+use sophus_autodiff::{
+    linalg::EPS_F64,
+    manifold::IsTangent,
+    params::{
+        HasParams,
+        IsParamsImpl,
+    },
+};
+
+use crate::{
+    lie_group::LieGroup,
+    prelude::*,
+    traits::{
+        EmptySliceError,
+        HasAverage,
+        HasDisambiguate,
+        IsLieFactorGroupImpl,
+        IsLieGroupImpl,
+        IsRealLieFactorGroupImpl,
+        IsRealLieGroupImpl,
+    },
+};
 
 extern crate alloc;
 
@@ -365,13 +377,16 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
 
 #[test]
 fn rotation2_prop_tests() {
-    use crate::factor_lie_group::RealFactorLieGroupTest;
-    use crate::lie_group::real_lie_group::RealLieGroupTest;
     use sophus_autodiff::dual::dual_scalar::DualScalar;
     #[cfg(feature = "simd")]
     use sophus_autodiff::dual::DualBatchScalar;
     #[cfg(feature = "simd")]
     use sophus_autodiff::linalg::BatchScalarF64;
+
+    use crate::{
+        factor_lie_group::RealFactorLieGroupTest,
+        lie_group::real_lie_group::RealLieGroupTest,
+    };
 
     Rotation2F64::test_suite();
     #[cfg(feature = "simd")]

@@ -1,5 +1,6 @@
-use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 use snafu::Snafu;
+
+use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 
 /// dense lu
 pub mod dense_lu;
@@ -58,15 +59,20 @@ pub trait IsDenseLinearSystem {
 
 #[test]
 fn linear_solver_tests() {
-    use crate::nlls::linear_system::DenseLU;
-    use crate::nlls::linear_system::PartitionSpec;
-    use crate::nlls::linear_system::SparseLDLt;
-    use crate::nlls::linear_system::SparseLU;
-    use crate::nlls::linear_system::SparseQR;
     use log::info;
     use nalgebra::DMatrix;
-    use sophus_autodiff::linalg::MatF64;
-    use sophus_autodiff::prelude::*;
+    use sophus_autodiff::{
+        linalg::MatF64,
+        prelude::*,
+    };
+
+    use crate::nlls::linear_system::{
+        DenseLU,
+        PartitionSpec,
+        SparseLDLt,
+        SparseLU,
+        SparseQR,
+    };
 
     pub fn from_triplets_nxn(n: usize, triplets: &[(usize, usize, f64)]) -> DMatrix<f64> {
         let mut mat = DMatrix::zeros(n, n);

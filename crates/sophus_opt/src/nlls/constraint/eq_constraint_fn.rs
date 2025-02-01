@@ -1,17 +1,34 @@
-use super::eq_constraint::EqConstraints;
-use super::eq_constraint::IsEqConstraint;
-use super::evaluated_eq_set::IsEvaluatedEqConstraintSet;
-use crate::nlls::constraint::evaluated_constraint::EvaluatedConstraint;
-use crate::nlls::constraint::evaluated_eq_set::EvaluatedEqSet;
-use crate::nlls::linear_system::EvalMode;
-use crate::nlls::quadratic_cost::compare_idx::c_from_var_kind;
-use crate::nlls::quadratic_cost::compare_idx::CompareIdx;
-use crate::variables::var_families::VarFamilies;
-use crate::variables::var_tuple::IsVarTuple;
-use crate::variables::VarKind;
-use std::fmt::Debug;
-use std::marker::PhantomData;
-use std::ops::Range;
+use std::{
+    fmt::Debug,
+    marker::PhantomData,
+    ops::Range,
+};
+
+use super::{
+    eq_constraint::{
+        EqConstraints,
+        IsEqConstraint,
+    },
+    evaluated_eq_set::IsEvaluatedEqConstraintSet,
+};
+use crate::{
+    nlls::{
+        constraint::{
+            evaluated_constraint::EvaluatedConstraint,
+            evaluated_eq_set::EvaluatedEqSet,
+        },
+        linear_system::EvalMode,
+        quadratic_cost::compare_idx::{
+            c_from_var_kind,
+            CompareIdx,
+        },
+    },
+    variables::{
+        var_families::VarFamilies,
+        var_tuple::IsVarTuple,
+        VarKind,
+    },
+};
 
 extern crate alloc;
 

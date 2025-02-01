@@ -1,7 +1,12 @@
-use crate::prelude::*;
-use crate::types::DOG_MULTISAMPLE_COUNT;
-use eframe::egui_wgpu;
-use eframe::epaint::mutex::RwLock;
+use eframe::{
+    egui_wgpu,
+    epaint::mutex::RwLock,
+};
+
+use crate::{
+    prelude::*,
+    types::DOG_MULTISAMPLE_COUNT,
+};
 
 /// The render context
 #[derive(Clone)]

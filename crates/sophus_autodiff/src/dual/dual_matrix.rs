@@ -1,19 +1,32 @@
-use crate::dual::DualScalar;
-use crate::dual::DualVector;
-use crate::linalg::MatF64;
-use crate::linalg::SMat;
-use crate::prelude::*;
-use approx::AbsDiffEq;
-use approx::RelativeEq;
-use core::borrow::Borrow;
-use core::fmt::Debug;
-use core::ops::Add;
-use core::ops::Mul;
-use core::ops::Neg;
-use core::ops::Sub;
+use core::{
+    borrow::Borrow,
+    fmt::Debug,
+    ops::{
+        Add,
+        Mul,
+        Neg,
+        Sub,
+    },
+};
+
+use approx::{
+    AbsDiffEq,
+    RelativeEq,
+};
 use num_traits::Zero;
 
 use super::matrix::MatrixValuedDerivative;
+use crate::{
+    dual::{
+        DualScalar,
+        DualVector,
+    },
+    linalg::{
+        MatF64,
+        SMat,
+    },
+    prelude::*,
+};
 
 /// DualScalarLike matrix
 #[derive(Clone, Debug, Copy)]

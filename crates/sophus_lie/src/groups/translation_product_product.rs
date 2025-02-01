@@ -1,21 +1,29 @@
 use core::borrow::Borrow;
 
-use crate::lie_group::LieGroup;
-use crate::prelude::*;
-use crate::traits::HasDisambiguate;
-use crate::traits::IsLieFactorGroupImpl;
-use crate::traits::IsLieGroupImpl;
-use crate::traits::IsRealLieFactorGroupImpl;
-use crate::traits::IsRealLieGroupImpl;
-use sophus_autodiff::manifold::IsTangent;
-use sophus_autodiff::params::IsParamsImpl;
-use sophus_autodiff::points::example_points;
+use sophus_autodiff::{
+    manifold::IsTangent,
+    params::IsParamsImpl,
+    points::example_points,
+};
+
+use crate::{
+    lie_group::LieGroup,
+    prelude::*,
+    traits::{
+        HasDisambiguate,
+        IsLieFactorGroupImpl,
+        IsLieGroupImpl,
+        IsRealLieFactorGroupImpl,
+        IsRealLieGroupImpl,
+    },
+};
 
 extern crate alloc;
 
 /// implementation of a translation product group
 ///
-/// It is a semi-direct product of the commutative translation group (Euclidean vector space) and a factor group.
+/// It is a semi-direct product of the commutative translation group (Euclidean vector space) and a
+/// factor group.
 #[derive(Debug, Copy, Clone, Default)]
 pub struct TranslationProductGroupImpl<
     S: IsScalar<BATCH, DM, DN>,

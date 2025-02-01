@@ -1,13 +1,21 @@
-use crate::dual::DualBatchMatrix;
-use crate::linalg::BatchMatF64;
-use crate::linalg::BatchScalarF64;
-use crate::linalg::BatchVecF64;
-use crate::prelude::*;
-use core::borrow::Borrow;
-use core::simd::LaneCount;
-use core::simd::SupportedLaneCount;
+use core::{
+    borrow::Borrow,
+    simd::{
+        LaneCount,
+        SupportedLaneCount,
+    },
+};
 
 use super::batch_mask::BatchMask;
+use crate::{
+    dual::DualBatchMatrix,
+    linalg::{
+        BatchMatF64,
+        BatchScalarF64,
+        BatchVecF64,
+    },
+    prelude::*,
+};
 
 impl<const ROWS: usize, const COLS: usize, const BATCH: usize>
     IsMatrix<BatchScalarF64<BATCH>, ROWS, COLS, BATCH, 0, 0> for BatchMatF64<ROWS, COLS, BATCH>

@@ -1,7 +1,11 @@
-use crate::lie_group::LieGroup;
-use crate::traits::IsLieGroupImpl;
 use core::ops::Mul;
+
 use sophus_autodiff::prelude::IsScalar;
+
+use crate::{
+    lie_group::LieGroup,
+    traits::IsLieGroupImpl,
+};
 
 // a * b
 impl<

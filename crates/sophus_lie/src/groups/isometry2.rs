@@ -1,15 +1,26 @@
-use crate::groups::rotation2::Rotation2Impl;
-use crate::groups::translation_product_product::TranslationProductGroupImpl;
-use crate::lie_group::average::iterative_average;
-use crate::lie_group::average::IterativeAverageError;
-use crate::lie_group::LieGroup;
-use crate::prelude::*;
-use crate::traits::EmptySliceError;
-use crate::traits::HasAverage;
-use crate::Rotation2;
 use core::borrow::Borrow;
 
 use log::warn;
+
+use crate::{
+    groups::{
+        rotation2::Rotation2Impl,
+        translation_product_product::TranslationProductGroupImpl,
+    },
+    lie_group::{
+        average::{
+            iterative_average,
+            IterativeAverageError,
+        },
+        LieGroup,
+    },
+    prelude::*,
+    traits::{
+        EmptySliceError,
+        HasAverage,
+    },
+    Rotation2,
+};
 
 /// 2D isometry group implementation struct - SE(2)
 pub type Isometry2Impl<S, const BATCH: usize, const DM: usize, const DN: usize> =
@@ -140,12 +151,13 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
 
 #[test]
 fn isometry2_prop_tests() {
-    use crate::lie_group::real_lie_group::RealLieGroupTest;
     #[cfg(feature = "simd")]
     use sophus_autodiff::dual::dual_batch_scalar::DualBatchScalar;
     use sophus_autodiff::dual::dual_scalar::DualScalar;
     #[cfg(feature = "simd")]
     use sophus_autodiff::linalg::BatchScalarF64;
+
+    use crate::lie_group::real_lie_group::RealLieGroupTest;
 
     Isometry2F64::test_suite();
     #[cfg(feature = "simd")]

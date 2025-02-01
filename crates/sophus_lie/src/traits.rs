@@ -1,9 +1,17 @@
+use core::{
+    borrow::Borrow,
+    fmt::Debug,
+};
+
+use sophus_autodiff::{
+    manifold::IsTangent,
+    params::{
+        HasParams,
+        IsParamsImpl,
+    },
+};
+
 use crate::prelude::*;
-use core::borrow::Borrow;
-use core::fmt::Debug;
-use sophus_autodiff::manifold::IsTangent;
-use sophus_autodiff::params::HasParams;
-use sophus_autodiff::params::IsParamsImpl;
 
 /// Disambiguate the parameters.
 pub trait HasDisambiguate<
@@ -25,9 +33,9 @@ pub trait HasDisambiguate<
     /// instead.
     ///
     /// Example where disambiguation is needed: A rotation in 3d represented by a unit quaternion.
-    /// The quaternion (r, (x, y, z)) and (r, (-x, -y, -z)) represent the same rotation. In this case,
-    /// the disambiguation function would return a disambiguated representation, e.g. a unit
-    /// quaternion with the positive r component.
+    /// The quaternion (r, (x, y, z)) and (r, (-x, -y, -z)) represent the same rotation. In this
+    /// case, the disambiguation function would return a disambiguated representation, e.g. a
+    /// unit quaternion with the positive r component.
     fn disambiguate(params: S::Vector<PARAMS>) -> S::Vector<PARAMS> {
         params
     }

@@ -1,6 +1,7 @@
-use crate::prelude::*;
 use nalgebra::SVector;
 use num_traits::Bounded;
+
+use crate::prelude::*;
 extern crate alloc;
 
 /// Traits for points

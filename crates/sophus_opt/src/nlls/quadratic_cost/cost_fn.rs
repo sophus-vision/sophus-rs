@@ -1,18 +1,35 @@
-use super::cost_term::CostTerms;
-use super::cost_term::IsCostTerm;
-use super::evaluated_cost::IsEvaluatedCost;
-use crate::nlls::linear_system::EvalMode;
-use crate::nlls::quadratic_cost::compare_idx::c_from_var_kind;
-use crate::nlls::quadratic_cost::compare_idx::CompareIdx;
-use crate::nlls::quadratic_cost::evaluated_cost::EvaluatedCost;
-use crate::nlls::quadratic_cost::evaluated_term::EvaluatedCostTerm;
-use crate::robust_kernel::RobustKernel;
-use crate::variables::var_families::VarFamilies;
-use crate::variables::var_tuple::IsVarTuple;
-use crate::variables::VarKind;
-use core::marker::PhantomData;
-use core::ops::Range;
+use core::{
+    marker::PhantomData,
+    ops::Range,
+};
 use std::fmt::Debug;
+
+use super::{
+    cost_term::{
+        CostTerms,
+        IsCostTerm,
+    },
+    evaluated_cost::IsEvaluatedCost,
+};
+use crate::{
+    nlls::{
+        linear_system::EvalMode,
+        quadratic_cost::{
+            compare_idx::{
+                c_from_var_kind,
+                CompareIdx,
+            },
+            evaluated_cost::EvaluatedCost,
+            evaluated_term::EvaluatedCostTerm,
+        },
+    },
+    robust_kernel::RobustKernel,
+    variables::{
+        var_families::VarFamilies,
+        var_tuple::IsVarTuple,
+        VarKind,
+    },
+};
 
 extern crate alloc;
 
@@ -75,7 +92,8 @@ impl<
         })
     }
 
-    /// create a new robust cost function from the cost terms, a residual function and a robust kernel
+    /// create a new robust cost function from the cost terms, a residual function and a robust
+    /// kernel
     pub fn new_robust(
         global_constants: GlobalConstants,
         terms: CostTerms<NUM, NUM_ARGS, GlobalConstants, VarTuple, Constants, Term>,

@@ -1,13 +1,18 @@
 use core::borrow::Borrow;
 
-use crate::camera_enum::perspective_camera::PerspectiveCameraEnum;
-use crate::camera_enum::perspective_camera::UnifiedCamera;
-use crate::prelude::*;
-use crate::projections::orthographic::OrthographicCamera;
-use crate::BrownConradyCamera;
-use crate::KannalaBrandtCamera;
-use crate::PinholeCamera;
 use sophus_image::ImageSize;
+
+use crate::{
+    camera_enum::perspective_camera::{
+        PerspectiveCameraEnum,
+        UnifiedCamera,
+    },
+    prelude::*,
+    projections::orthographic::OrthographicCamera,
+    BrownConradyCamera,
+    KannalaBrandtCamera,
+    PinholeCamera,
+};
 
 /// Generalized camera enum
 #[derive(Debug, Clone)]

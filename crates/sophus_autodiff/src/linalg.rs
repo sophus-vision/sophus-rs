@@ -21,7 +21,6 @@ pub mod vector;
 
 #[cfg(feature = "simd")]
 use core::ops::Add;
-
 #[cfg(feature = "simd")]
 use core::simd::cmp::SimdPartialEq;
 #[cfg(feature = "simd")]
@@ -127,8 +126,9 @@ fn test_core() {
 #[test]
 #[cfg(feature = "simd")]
 fn test_simd_core() {
-    use crate::linalg::scalar::IsScalar;
     use approx::assert_abs_diff_eq;
+
+    use crate::linalg::scalar::IsScalar;
 
     let batch_scalar = BatchScalar::<f64, 4>(Simd::<f64, 4>::from_array([1.0, 2.0, 3.0, 4.0]));
     assert_abs_diff_eq!(

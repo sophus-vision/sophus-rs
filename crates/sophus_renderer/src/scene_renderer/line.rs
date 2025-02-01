@@ -1,11 +1,16 @@
-use crate::pipeline_builder::LineVertex3;
-use crate::pipeline_builder::PipelineBuilder;
-use crate::prelude::*;
-use crate::renderables::scene_renderable::LineSegments3;
-use crate::uniform_buffers::VertexShaderUniformBuffers;
-use crate::RenderContext;
 use sophus_lie::Isometry3F64;
 use wgpu::util::DeviceExt;
+
+use crate::{
+    pipeline_builder::{
+        LineVertex3,
+        PipelineBuilder,
+    },
+    prelude::*,
+    renderables::scene_renderable::LineSegments3,
+    uniform_buffers::VertexShaderUniformBuffers,
+    RenderContext,
+};
 
 pub(crate) struct Line3dEntity {
     pub(crate) vertex_data: Vec<LineVertex3>,

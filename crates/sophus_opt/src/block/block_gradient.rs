@@ -1,6 +1,7 @@
-use super::BlockRange;
 use nalgebra::Const;
 use sophus_autodiff::linalg::VecF64;
+
+use super::BlockRange;
 
 /// Block gradient vector
 #[derive(Debug, Clone)]

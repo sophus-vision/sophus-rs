@@ -1,7 +1,11 @@
 use super::scalar::IsDualScalar;
-use crate::linalg::SMat;
-use crate::prelude::IsMatrix;
-use crate::prelude::IsRealScalar;
+use crate::{
+    linalg::SMat,
+    prelude::{
+        IsMatrix,
+        IsRealScalar,
+    },
+};
 
 /// Derivative of a matrix-valued map.
 pub struct MatrixValuedDerivative<
@@ -60,12 +64,14 @@ pub trait IsDualMatrix<
 fn dual_matrix_tests() {
     #[cfg(feature = "simd")]
     use crate::dual::DualBatchScalar;
-    use crate::dual::DualScalar;
     #[cfg(feature = "simd")]
     use crate::linalg::BatchScalarF64;
-    use crate::linalg::EPS_F64;
-    use crate::maps::matrix_valued_maps::MatrixValuedMatrixMap;
-    use crate::prelude::IsScalar;
+    use crate::{
+        dual::DualScalar,
+        linalg::EPS_F64,
+        maps::matrix_valued_maps::MatrixValuedMatrixMap,
+        prelude::IsScalar,
+    };
 
     #[cfg(test)]
     trait Test {

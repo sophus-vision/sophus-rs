@@ -1,15 +1,20 @@
 use core::borrow::Borrow;
 
-use crate::distortions::affine::AffineDistortionImpl;
-use crate::distortions::brown_conrady::BrownConradyDistortionImpl;
-use crate::distortions::kannala_brandt::KannalaBrandtDistortionImpl;
-use crate::distortions::unified::UnifiedDistortionImpl;
-use crate::prelude::*;
-use crate::projections::perspective::PerspectiveProjectionImpl;
-use crate::traits::IsCameraDistortionImpl;
-use crate::Camera;
 use sophus_autodiff::manifold::IsVariable;
 use sophus_image::ImageSize;
+
+use crate::{
+    distortions::{
+        affine::AffineDistortionImpl,
+        brown_conrady::BrownConradyDistortionImpl,
+        kannala_brandt::KannalaBrandtDistortionImpl,
+        unified::UnifiedDistortionImpl,
+    },
+    prelude::*,
+    projections::perspective::PerspectiveProjectionImpl,
+    traits::IsCameraDistortionImpl,
+    Camera,
+};
 
 /// Pinhole camera
 pub type PinholeCamera<S, const BATCH: usize, const DM: usize, const DN: usize> = Camera<

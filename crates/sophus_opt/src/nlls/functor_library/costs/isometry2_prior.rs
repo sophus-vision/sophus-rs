@@ -1,14 +1,25 @@
-use crate::nlls::quadratic_cost::evaluated_term::EvaluatedCostTerm;
-use crate::prelude::*;
-use crate::robust_kernel;
-use crate::variables::VarKind;
-use sophus_autodiff::dual::DualScalar;
-use sophus_autodiff::dual::DualVector;
-use sophus_autodiff::linalg::MatF64;
-use sophus_autodiff::linalg::VecF64;
-use sophus_autodiff::maps::VectorValuedVectorMap;
-use sophus_lie::Isometry2;
-use sophus_lie::Isometry2F64;
+use sophus_autodiff::{
+    dual::{
+        DualScalar,
+        DualVector,
+    },
+    linalg::{
+        MatF64,
+        VecF64,
+    },
+    maps::VectorValuedVectorMap,
+};
+use sophus_lie::{
+    Isometry2,
+    Isometry2F64,
+};
+
+use crate::{
+    nlls::quadratic_cost::evaluated_term::EvaluatedCostTerm,
+    prelude::*,
+    robust_kernel,
+    variables::VarKind,
+};
 
 /// Isometry2 prior cost term
 #[derive(Clone, Debug)]

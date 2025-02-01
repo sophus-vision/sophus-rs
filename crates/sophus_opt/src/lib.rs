@@ -19,16 +19,25 @@ pub mod variables;
 
 /// Sophus optimization prelude
 pub mod prelude {
-    pub use crate::nlls::constraint::eq_constraint::IsEqConstraint;
-    pub use crate::nlls::constraint::eq_constraint_fn::IsEqConstraintsFn;
-    pub use crate::nlls::constraint::evaluated_constraint::MakeEvaluatedConstraint;
-    pub use crate::nlls::quadratic_cost::cost_fn::IsCostFn;
-    pub use crate::nlls::quadratic_cost::cost_term::IsCostTerm;
-    pub use crate::nlls::quadratic_cost::evaluated_cost::IsEvaluatedCost;
-    pub use crate::nlls::quadratic_cost::evaluated_term::MakeEvaluatedCostTerm;
-    pub use crate::robust_kernel::IsRobustKernel;
     pub use sophus_autodiff::prelude::*;
     pub use sophus_image::prelude::*;
     pub use sophus_lie::prelude::*;
     pub use sophus_sensor::prelude::*;
+
+    pub use crate::{
+        nlls::{
+            constraint::{
+                eq_constraint::IsEqConstraint,
+                eq_constraint_fn::IsEqConstraintsFn,
+                evaluated_constraint::MakeEvaluatedConstraint,
+            },
+            quadratic_cost::{
+                cost_fn::IsCostFn,
+                cost_term::IsCostTerm,
+                evaluated_cost::IsEvaluatedCost,
+                evaluated_term::MakeEvaluatedCostTerm,
+            },
+        },
+        robust_kernel::IsRobustKernel,
+    };
 }

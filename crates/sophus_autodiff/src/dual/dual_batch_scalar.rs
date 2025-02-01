@@ -1,31 +1,49 @@
+use core::{
+    borrow::Borrow,
+    fmt::Debug,
+    ops::{
+        Add,
+        AddAssign,
+        Div,
+        DivAssign,
+        Mul,
+        MulAssign,
+        Neg,
+        Sub,
+        SubAssign,
+    },
+    simd::{
+        LaneCount,
+        SupportedLaneCount,
+    },
+};
+
+use approx::{
+    AbsDiffEq,
+    RelativeEq,
+};
+use num_traits::{
+    One,
+    Zero,
+};
+
 use super::dual_scalar::DualScalar;
-pub use crate::dual::dual_batch_matrix::DualBatchMatrix;
-pub use crate::dual::dual_batch_vector::DualBatchVector;
-use crate::linalg::batch_mask::BatchMask;
-use crate::linalg::scalar::NumberCategory;
-use crate::linalg::BatchMatF64;
-use crate::linalg::BatchScalarF64;
-use crate::linalg::BatchVecF64;
-use crate::linalg::SVec;
-use crate::linalg::EPS_F64;
-use crate::prelude::*;
-use approx::AbsDiffEq;
-use approx::RelativeEq;
-use core::borrow::Borrow;
-use core::fmt::Debug;
-use core::ops::Add;
-use core::ops::AddAssign;
-use core::ops::Div;
-use core::ops::DivAssign;
-use core::ops::Mul;
-use core::ops::MulAssign;
-use core::ops::Neg;
-use core::ops::Sub;
-use core::ops::SubAssign;
-use core::simd::LaneCount;
-use core::simd::SupportedLaneCount;
-use num_traits::One;
-use num_traits::Zero;
+pub use crate::dual::{
+    dual_batch_matrix::DualBatchMatrix,
+    dual_batch_vector::DualBatchVector,
+};
+use crate::{
+    linalg::{
+        batch_mask::BatchMask,
+        scalar::NumberCategory,
+        BatchMatF64,
+        BatchScalarF64,
+        BatchVecF64,
+        SVec,
+        EPS_F64,
+    },
+    prelude::*,
+};
 
 extern crate alloc;
 

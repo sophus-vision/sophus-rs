@@ -27,12 +27,18 @@ pub fn recommened_eframe_native_options() -> eframe::NativeOptions {
 
 /// prelude
 pub mod prelude {
-    pub(crate) use alloc::boxed::Box;
-    pub(crate) use alloc::collections::btree_map::BTreeMap;
-    pub(crate) use alloc::collections::vec_deque::VecDeque;
-    pub(crate) use alloc::string::String;
-    pub(crate) use alloc::string::ToString;
-    pub(crate) use alloc::vec::Vec;
+    pub(crate) use alloc::{
+        boxed::Box,
+        collections::{
+            btree_map::BTreeMap,
+            vec_deque::VecDeque,
+        },
+        string::{
+            String,
+            ToString,
+        },
+        vec::Vec,
+    };
 
     pub use sophus_autodiff::prelude::*;
     pub use sophus_image::prelude::*;

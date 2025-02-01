@@ -26,6 +26,8 @@ pub use crate::dual::dual_batch_matrix::DualBatchMatrix;
 pub use crate::dual::dual_batch_scalar::DualBatchScalar;
 #[cfg(feature = "simd")]
 pub use crate::dual::dual_batch_vector::DualBatchVector;
-pub use crate::dual::dual_matrix::DualMatrix;
-pub use crate::dual::dual_scalar::DualScalar;
-pub use crate::dual::dual_vector::DualVector;
+pub use crate::dual::{
+    dual_matrix::DualMatrix,
+    dual_scalar::DualScalar,
+    dual_vector::DualVector,
+};

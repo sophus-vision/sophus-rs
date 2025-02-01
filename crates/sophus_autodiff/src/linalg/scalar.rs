@@ -1,25 +1,39 @@
-use crate::dual::dual_matrix::DualMatrix;
-use crate::dual::dual_scalar::DualScalar;
-use crate::dual::dual_vector::DualVector;
-use crate::linalg::MatF64;
-use crate::linalg::VecF64;
-use crate::linalg::EPS_F64;
-use crate::prelude::*;
-use approx::assert_abs_diff_eq;
-use approx::AbsDiffEq;
-use approx::RelativeEq;
-use core::borrow::Borrow;
-use core::fmt::Debug;
-use core::ops::Add;
-use core::ops::AddAssign;
-use core::ops::Div;
-use core::ops::DivAssign;
-use core::ops::Mul;
-use core::ops::MulAssign;
-use core::ops::Neg;
-use core::ops::Sub;
-use core::ops::SubAssign;
+use core::{
+    borrow::Borrow,
+    fmt::Debug,
+    ops::{
+        Add,
+        AddAssign,
+        Div,
+        DivAssign,
+        Mul,
+        MulAssign,
+        Neg,
+        Sub,
+        SubAssign,
+    },
+};
+
+use approx::{
+    assert_abs_diff_eq,
+    AbsDiffEq,
+    RelativeEq,
+};
 use nalgebra::SimdValue;
+
+use crate::{
+    dual::{
+        dual_matrix::DualMatrix,
+        dual_scalar::DualScalar,
+        dual_vector::DualVector,
+    },
+    linalg::{
+        MatF64,
+        VecF64,
+        EPS_F64,
+    },
+    prelude::*,
+};
 extern crate alloc;
 
 /// Number category

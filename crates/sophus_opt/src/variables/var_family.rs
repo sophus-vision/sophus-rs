@@ -1,4 +1,5 @@
 use core::fmt::Debug;
+
 use dyn_clone::DynClone;
 use sophus_autodiff::manifold::IsVariable;
 
@@ -8,7 +9,8 @@ extern crate alloc;
 
 /// A generic family of variables
 ///
-/// A list of variables of the same nature (e.g., a list of 3D points, a list of 2D isometries, etc.)
+/// A list of variables of the same nature (e.g., a list of 3D points, a list of 2D isometries,
+/// etc.)
 #[derive(Debug, Clone)]
 pub struct VarFamily<Var: IsVariable> {
     kind: VarKind,
@@ -25,7 +27,8 @@ impl<Var: IsVariable> VarFamily<Var> {
         Self::new_with_const_ids(kind, members, alloc::collections::BTreeMap::new())
     }
 
-    /// Create a new variable family a variable kind (free, conditioned, ...), a list of members and a list of constant members
+    /// Create a new variable family a variable kind (free, conditioned, ...), a list of members and
+    /// a list of constant members
     ///
     /// The constant members are not updated during optimization (no matter the variable kind)
     pub fn new_with_const_ids(

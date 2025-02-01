@@ -1,11 +1,19 @@
+use core::{
+    borrow::Borrow,
+    fmt::Debug,
+};
+
+use approx::assert_relative_eq;
+use sophus_autodiff::{
+    manifold::IsTangent,
+    params::{
+        HasParams,
+        IsParamsImpl,
+    },
+};
+
 use super::traits::IsLieGroupImpl;
 use crate::prelude::*;
-use approx::assert_relative_eq;
-use core::borrow::Borrow;
-use core::fmt::Debug;
-use sophus_autodiff::manifold::IsTangent;
-use sophus_autodiff::params::HasParams;
-use sophus_autodiff::params::IsParamsImpl;
 
 extern crate alloc;
 
@@ -147,8 +155,6 @@ impl<
         S2: IsScalar<BATCH, DM, DN>,
         G2: IsLieGroupImpl<S2, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
     > = LieGroup<S2, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G2>;
-    // type RealGroup = Self::GenGroup<S::RealScalar, G::RealG>;
-    // type DualGroup<const M: usize, const N: usize> = Self::GenGroup<S::DualScalar<M, N>, G::DualG<M,N>>;
 
     const DOF: usize = DOF;
 
@@ -187,7 +193,6 @@ impl<
     /// Interpolate between "(w-1) * self" and "w * other".
     ///
     /// w is typically in [0, 1]. If w=0, self is returned. If w=1 other is returned.
-    ///
     pub fn interpolate(&self, other: &Self, w: S) -> Self {
         self * &Self::exp((self.inverse() * other).log().scaled(w))
     }
@@ -407,7 +412,8 @@ impl<
 
     /// run all tests
     pub fn test_suite() {
-        // Most tests will trivially pass if there are no examples. So first we make sure we have at least three per group.
+        // Most tests will trivially pass if there are no examples. So first we make sure we have at
+        // least three per group.
         let group_examples: alloc::vec::Vec<_> = Self::element_examples();
         assert!(group_examples.len() >= 3);
         let tangent_examples: alloc::vec::Vec<S::Vector<DOF>> = G::tangent_examples();

@@ -1,7 +1,12 @@
-use crate::packets::plot_view_packet::ClearCondition;
-use crate::packets::plot_view_packet::CurveTrait;
-use crate::prelude::*;
 use sophus_renderer::renderables::color::Color;
+
+use crate::{
+    packets::plot_view_packet::{
+        ClearCondition,
+        CurveTrait,
+    },
+    prelude::*,
+};
 
 /// Vector of curves with confidence intervals
 #[derive(Clone, Debug)]

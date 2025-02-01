@@ -1,22 +1,37 @@
-use crate::nlls::functor_library::costs::isometry3_prior::Isometry3PriorCostTerm;
-use crate::nlls::functor_library::costs::pinhole_reprojection::PinholeCameraReprojectionCostTerm;
-use crate::nlls::optimize;
-use crate::nlls::quadratic_cost::cost_fn::CostFn;
-use crate::nlls::quadratic_cost::cost_term::CostTerms;
-use crate::nlls::LinearSolverType;
-use crate::nlls::OptParams;
-use crate::prelude::*;
-use crate::robust_kernel::HuberKernel;
-use crate::variables::var_builder::VarBuilder;
-use crate::variables::var_family::VarFamily;
-use crate::variables::VarKind;
-use sophus_autodiff::linalg::MatF64;
-use sophus_autodiff::linalg::VecF64;
+use sophus_autodiff::linalg::{
+    MatF64,
+    VecF64,
+};
 use sophus_image::ImageSize;
-use sophus_lie::Isometry3;
-use sophus_lie::Isometry3F64;
-use sophus_lie::Rotation3;
+use sophus_lie::{
+    Isometry3,
+    Isometry3F64,
+    Rotation3,
+};
 use sophus_sensor::camera_enum::perspective_camera::PinholeCameraF64;
+
+use crate::{
+    nlls::{
+        functor_library::costs::{
+            isometry3_prior::Isometry3PriorCostTerm,
+            pinhole_reprojection::PinholeCameraReprojectionCostTerm,
+        },
+        optimize,
+        quadratic_cost::{
+            cost_fn::CostFn,
+            cost_term::CostTerms,
+        },
+        LinearSolverType,
+        OptParams,
+    },
+    prelude::*,
+    robust_kernel::HuberKernel,
+    variables::{
+        var_builder::VarBuilder,
+        var_family::VarFamily,
+        VarKind,
+    },
+};
 
 extern crate alloc;
 
@@ -269,9 +284,11 @@ mod tests {
 
     #[test]
     fn simple_cam_tests() {
-        use crate::example_problems::cam_calib::CamCalibProblem;
-        use crate::nlls::LinearSolverType;
-        use crate::variables::VarKind;
+        use crate::{
+            example_problems::cam_calib::CamCalibProblem,
+            nlls::LinearSolverType,
+            variables::VarKind,
+        };
 
         for solver in LinearSolverType::sparse_solvers() {
             CamCalibProblem::new(true).optimize_with_two_poses_fixed(VarKind::Free, solver);

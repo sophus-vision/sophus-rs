@@ -1,11 +1,18 @@
-use crate::nlls::quadratic_cost::evaluated_term::EvaluatedCostTerm;
-use crate::prelude::*;
-use crate::robust_kernel::RobustKernel;
-use crate::variables::VarKind;
-use sophus_autodiff::dual::DualScalar;
-use sophus_autodiff::dual::DualVector;
-use sophus_autodiff::linalg::VecF64;
-use sophus_autodiff::maps::VectorValuedVectorMap;
+use sophus_autodiff::{
+    dual::{
+        DualScalar,
+        DualVector,
+    },
+    linalg::VecF64,
+    maps::VectorValuedVectorMap,
+};
+
+use crate::{
+    nlls::quadratic_cost::evaluated_term::EvaluatedCostTerm,
+    prelude::*,
+    robust_kernel::RobustKernel,
+    variables::VarKind,
+};
 
 /// Non-linear quadratic cost term
 #[derive(Clone, Debug)]

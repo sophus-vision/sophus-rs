@@ -1,13 +1,18 @@
-use crate::dyn_camera::DynCameraF64;
-use crate::prelude::*;
 use nalgebra::SVector;
 use sophus_autodiff::linalg::VecF64;
 use sophus_geo::region::Region;
-use sophus_image::arc_image::ArcImage2F32;
-use sophus_image::image_view::IsImageView;
-use sophus_image::interpolation::interpolate;
-use sophus_image::mut_image::MutImage2F32;
-use sophus_image::mut_image_view::IsMutImageView;
+use sophus_image::{
+    arc_image::ArcImage2F32,
+    image_view::IsImageView,
+    interpolation::interpolate,
+    mut_image::MutImage2F32,
+    mut_image_view::IsMutImageView,
+};
+
+use crate::{
+    dyn_camera::DynCameraF64,
+    prelude::*,
+};
 
 extern crate alloc;
 
@@ -101,14 +106,23 @@ pub fn distort_table(cam: &DynCameraF64) -> DistortTable {
 
 #[test]
 fn camera_distortion_table_tests() {
-    use crate::distortion_table::distort_table;
-    use crate::distortion_table::DistortTable;
-    use approx::assert_abs_diff_eq;
-    use approx::assert_relative_eq;
-    use sophus_autodiff::linalg::VecF64;
-    use sophus_autodiff::linalg::EPS_F64;
-    use sophus_autodiff::maps::vector_valued_maps::VectorValuedVectorMap;
+    use approx::{
+        assert_abs_diff_eq,
+        assert_relative_eq,
+    };
+    use sophus_autodiff::{
+        linalg::{
+            VecF64,
+            EPS_F64,
+        },
+        maps::vector_valued_maps::VectorValuedVectorMap,
+    };
     use sophus_image::ImageSize;
+
+    use crate::distortion_table::{
+        distort_table,
+        DistortTable,
+    };
 
     {
         let mut cameras: alloc::vec::Vec<DynCameraF64> = alloc::vec![];

@@ -1,12 +1,20 @@
-use sophus_autodiff::linalg::SVec;
-use sophus_autodiff::linalg::VecF64;
-use sophus_autodiff::prelude::IsVector;
-use sophus_image::arc_image::ArcImage4U8;
-use sophus_image::mut_image::MutImage4U8;
-use sophus_image::mut_image_view::IsMutImageView;
-use sophus_image::ImageSize;
-use sophus_renderer::camera::properties::RenderCameraProperties;
-use sophus_renderer::renderables::frame::ImageFrame;
+use sophus_autodiff::{
+    linalg::{
+        SVec,
+        VecF64,
+    },
+    prelude::IsVector,
+};
+use sophus_image::{
+    arc_image::ArcImage4U8,
+    mut_image::MutImage4U8,
+    mut_image_view::IsMutImageView,
+    ImageSize,
+};
+use sophus_renderer::{
+    camera::properties::RenderCameraProperties,
+    renderables::frame::ImageFrame,
+};
 use sophus_sensor::dyn_camera::DynCameraF64;
 
 /// Makes example image of image-size

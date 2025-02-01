@@ -1,17 +1,23 @@
-use crate::lie_group::LieGroup;
-use crate::prelude::*;
-use crate::traits::IsRealLieFactorGroupImpl;
-use crate::Rotation2;
-use crate::Rotation3;
-use approx::assert_relative_eq;
 use core::borrow::Borrow;
+
+use approx::assert_relative_eq;
 #[cfg(feature = "simd")]
 use sophus_autodiff::dual::DualBatchScalar;
-use sophus_autodiff::dual::DualScalar;
 #[cfg(feature = "simd")]
 use sophus_autodiff::linalg::BatchScalarF64;
-use sophus_autodiff::manifold::IsTangent;
-use sophus_autodiff::maps::MatrixValuedVectorMap;
+use sophus_autodiff::{
+    dual::DualScalar,
+    manifold::IsTangent,
+    maps::MatrixValuedVectorMap,
+};
+
+use crate::{
+    lie_group::LieGroup,
+    prelude::*,
+    traits::IsRealLieFactorGroupImpl,
+    Rotation2,
+    Rotation3,
+};
 
 impl<
         S: IsRealScalar<BATCH, RealScalar = S>,

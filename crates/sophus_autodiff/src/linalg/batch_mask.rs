@@ -1,9 +1,14 @@
+use core::{
+    fmt,
+    fmt::Debug,
+    simd::{
+        LaneCount,
+        Mask,
+        SupportedLaneCount,
+    },
+};
+
 use crate::prelude::IsBoolMask;
-use core::fmt;
-use core::fmt::Debug;
-use core::simd::LaneCount;
-use core::simd::Mask;
-use core::simd::SupportedLaneCount;
 
 /// Boolean mask - generalization of boolean comparison to SIMDs
 pub struct BatchMask<const N: usize>

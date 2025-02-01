@@ -1,10 +1,16 @@
-use crate::prelude::*;
-use crate::MutTensor;
-use crate::TensorView;
 use core::marker::PhantomData;
+
 use ndarray::Dimension;
-use sophus_autodiff::linalg::SMat;
-use sophus_autodiff::linalg::SVec;
+use sophus_autodiff::linalg::{
+    SMat,
+    SVec,
+};
+
+use crate::{
+    prelude::*,
+    MutTensor,
+    TensorView,
+};
 
 /// Arc tensor - a tensor with shared ownership
 ///
@@ -335,9 +341,11 @@ arc_tensor_is_tensor_view!(5, 2, 3);
 fn arc_tensor_tests() {
     //from_mut_tensor
 
-    use crate::mut_tensor::MutTensorDDDR;
-    use crate::mut_tensor::MutTensorDDR;
-    use crate::mut_tensor::MutTensorDR;
+    use crate::mut_tensor::{
+        MutTensorDDDR,
+        MutTensorDDR,
+        MutTensorDR,
+    };
 
     {
         let shape = [4];
@@ -425,10 +433,14 @@ fn arc_tensor_tests() {
 #[cfg(feature = "std")]
 fn arc_tensor_std_tests() {
     // multi_threading
-    use crate::arc_tensor::ArcTensorDDRC;
-    use crate::mut_tensor::MutTensorDDRC;
-    use log::info;
     use std::thread;
+
+    use log::info;
+
+    use crate::{
+        arc_tensor::ArcTensorDDRC,
+        mut_tensor::MutTensorDDRC,
+    };
 
     let shape = [4, 6];
     let mut_img = MutTensorDDRC::from_shape_and_val(shape, SVec::<u16, 3>::new(10, 20, 300));

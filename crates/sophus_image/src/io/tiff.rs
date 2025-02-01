@@ -1,27 +1,41 @@
-use crate::intensity_image::intensity_image_view::IsIntensityViewImageF32;
-use crate::mut_image::MutImage2F32;
-use crate::mut_image::MutImage2U16;
-use crate::mut_image::MutImage2U8;
-use crate::mut_image::MutImage3F32;
-use crate::mut_image::MutImage3U16;
-use crate::mut_image::MutImage3U8;
-use crate::mut_image::MutImage4F32;
-use crate::mut_image::MutImage4U16;
-use crate::mut_image::MutImage4U8;
-use crate::mut_image::MutImageF32;
-use crate::mut_image::MutImageU16;
-use crate::mut_image::MutImageU8;
-use crate::prelude::DynIntensityMutImage;
-use crate::ImageSize;
-use std::format;
-use std::fs::File;
-use std::string::ToString;
-use tiff::decoder::Decoder;
-use tiff::decoder::DecodingResult;
-use tiff::encoder::colortype::ColorType;
-use tiff::encoder::TiffEncoder;
-use tiff::encoder::TiffValue;
-use tiff::TiffError;
+use std::{
+    format,
+    fs::File,
+    string::ToString,
+};
+
+use tiff::{
+    decoder::{
+        Decoder,
+        DecodingResult,
+    },
+    encoder::{
+        colortype::ColorType,
+        TiffEncoder,
+        TiffValue,
+    },
+    TiffError,
+};
+
+use crate::{
+    intensity_image::intensity_image_view::IsIntensityViewImageF32,
+    mut_image::{
+        MutImage2F32,
+        MutImage2U16,
+        MutImage2U8,
+        MutImage3F32,
+        MutImage3U16,
+        MutImage3U8,
+        MutImage4F32,
+        MutImage4U16,
+        MutImage4U8,
+        MutImageF32,
+        MutImageU16,
+        MutImageU8,
+    },
+    prelude::DynIntensityMutImage,
+    ImageSize,
+};
 
 fn err_conv(e: TiffError) -> std::io::Error {
     match e {

@@ -7,17 +7,29 @@ pub mod plot_view;
 /// scene view
 pub mod scene_view;
 
-use crate::interactions::InteractionEnum;
-use crate::views::image_view::ImageView;
-use crate::views::plot_view::PlotView;
-use crate::views::scene_view::SceneView;
-use alloc::string::String;
-use alloc::string::ToString;
-use alloc::vec::Vec;
+use alloc::{
+    string::{
+        String,
+        ToString,
+    },
+    vec::Vec,
+};
+
 use linked_hash_map::LinkedHashMap;
 use sophus_image::ImageSize;
-use sophus_renderer::aspect_ratio::HasAspectRatio;
-use sophus_renderer::camera::properties::RenderCameraProperties;
+use sophus_renderer::{
+    aspect_ratio::HasAspectRatio,
+    camera::properties::RenderCameraProperties,
+};
+
+use crate::{
+    interactions::InteractionEnum,
+    views::{
+        image_view::ImageView,
+        plot_view::PlotView,
+        scene_view::SceneView,
+    },
+};
 
 extern crate alloc;
 

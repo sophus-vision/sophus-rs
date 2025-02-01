@@ -1,16 +1,28 @@
-use crate::dual::dual_vector::DualVector;
-use crate::linalg::MatF64;
-use crate::linalg::VecF64;
-use crate::prelude::*;
-use approx::AbsDiffEq;
-use approx::RelativeEq;
-use core::borrow::Borrow;
-use core::fmt::Debug;
-use core::ops::Add;
-use core::ops::Index;
-use core::ops::IndexMut;
-use core::ops::Neg;
-use core::ops::Sub;
+use core::{
+    borrow::Borrow,
+    fmt::Debug,
+    ops::{
+        Add,
+        Index,
+        IndexMut,
+        Neg,
+        Sub,
+    },
+};
+
+use approx::{
+    AbsDiffEq,
+    RelativeEq,
+};
+
+use crate::{
+    dual::dual_vector::DualVector,
+    linalg::{
+        MatF64,
+        VecF64,
+    },
+    prelude::*,
+};
 
 /// Vector - either a real (f64) or a dual number vector
 pub trait IsVector<

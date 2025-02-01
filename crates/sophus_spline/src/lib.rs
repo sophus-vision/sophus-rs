@@ -6,10 +6,13 @@
 /// Cubic B-Spline details
 pub mod spline_segment;
 
-use crate::spline_segment::CubicBSplineSegment;
-use crate::spline_segment::SegmentCase;
 use log::debug;
 use sophus_autodiff::prelude::*;
+
+use crate::spline_segment::{
+    CubicBSplineSegment,
+    SegmentCase,
+};
 
 extern crate alloc;
 

@@ -1,8 +1,12 @@
-use sophus_autodiff::linalg::MatF64;
-use sophus_autodiff::linalg::VecF64;
+use sophus_autodiff::linalg::{
+    MatF64,
+    VecF64,
+};
 
-use crate::block::block_jacobian::BlockJacobian;
-use crate::variables::VarKind;
+use crate::{
+    block::block_jacobian::BlockJacobian,
+    variables::VarKind,
+};
 
 /// Evaluated constraint
 #[derive(Debug, Clone)]
@@ -41,9 +45,9 @@ pub trait MakeEvaluatedConstraint<
     /// corresponding constraint given the following inputs:
     ///
     /// - `self`:          A tuple of functions that return the Jacobian of the constraint function
-    ///                    with respect to each argument.
+    ///   with respect to each argument.
     /// - `var_kinds`:     An array of `VarKind` for each argument of the cost function. A Jacobian
-    ///                    will be computed for each argument that is not `Conditioned`.
+    ///   will be computed for each argument that is not `Conditioned`.
     /// - `residual`:      The residual of the corresponding eq constraint.
     fn make_eq(
         self,

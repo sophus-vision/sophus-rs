@@ -1,8 +1,10 @@
 use sophus_autodiff::manifold::IsVariable;
 
-use super::var_families::VarFamilies;
-use super::var_family::VarFamily;
-use super::VarKind;
+use super::{
+    var_families::VarFamilies,
+    var_family::VarFamily,
+    VarKind,
+};
 
 extern crate alloc;
 

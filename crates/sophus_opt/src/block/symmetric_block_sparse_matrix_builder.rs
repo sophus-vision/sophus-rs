@@ -1,13 +1,17 @@
 use std::fmt::Debug;
 
-use super::grid::Grid;
-use super::PartitionSpec;
+use super::{
+    grid::Grid,
+    PartitionSpec,
+};
 use crate::debug_assert_le;
 
 /// A builder for a symmetric block sparse matrix.
 ///
 /// Internally, we chose the represent the symmetric matrix as a upper triangular matrix.
 /// In particular, the target block sparse matrix is has the following structure:
+///
+/// ```ascii
 ///
 ///  ---------------------------------------------------------
 ///  | AxA ... AxA | AxB ... AxB |             | AxZ ... AxZ |
@@ -30,11 +34,11 @@ use crate::debug_assert_le;
 ///  |             |             |             |      .   .  |
 ///  |             |             |             |         ZxZ |
 ///  ---------------------------------------------------------
+/// ```
 ///
-/// It ia split into a grid of regions and each region is split imto a grid of NxM block matrices.:
+/// It ia split into a grid of regions and each region is split into a grid of NxM block matrices.:
 /// Within each region, all block matrices have the same size. E.g., the first region contains only
 /// AxA-shaped blocks, the second region contains only AxB blocks, etc.
-///
 #[derive(Debug)]
 pub struct SymmetricBlockSparseMatrixBuilder {
     pub(crate) region_grid: Grid<BlockTripletRegion>,
@@ -52,11 +56,13 @@ pub(crate) struct BlockTriplet {
 }
 
 /// A homogeneous region in the block sparse matrix.
+/// ```ascii
 ///
-//   | AxB ... AxB |
+///  | AxB ... AxB |
 ///  |  .       .  |
 ///  |      .      |
 ///  | AxB ... AxB |
+/// ```
 ///
 /// It is represented by a list of index triplets, and a flattened storage of the blocks.
 ///

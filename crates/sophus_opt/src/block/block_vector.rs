@@ -15,8 +15,8 @@ pub struct BlockVector {
 }
 
 impl BlockVector {
-    /// Create zero block vector. Its shape and size is determined by the number of families as well as the
-    /// number of free variables in each family.
+    /// Create zero block vector. Its shape and size is determined by the number of families as well
+    /// as the number of free variables in each family.
     pub fn zero(partition_specs: &[PartitionSpec]) -> Self {
         let mut scalar_offsets = Vec::new();
         let mut offset = 0;

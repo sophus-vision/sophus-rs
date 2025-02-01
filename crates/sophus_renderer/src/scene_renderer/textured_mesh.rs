@@ -1,13 +1,20 @@
-use crate::pipeline_builder::PipelineBuilder;
-use crate::pipeline_builder::TexturedMeshVertex3;
-use crate::prelude::*;
-use crate::renderables::scene_renderable::TexturedTriangleMesh3;
-use crate::uniform_buffers::VertexShaderUniformBuffers;
-use crate::RenderContext;
-use sophus_image::arc_image::ArcImage4U8;
-use sophus_image::image_view::IsImageView;
+use sophus_image::{
+    arc_image::ArcImage4U8,
+    image_view::IsImageView,
+};
 use sophus_lie::Isometry3F64;
 use wgpu::util::DeviceExt;
+
+use crate::{
+    pipeline_builder::{
+        PipelineBuilder,
+        TexturedMeshVertex3,
+    },
+    prelude::*,
+    renderables::scene_renderable::TexturedTriangleMesh3,
+    uniform_buffers::VertexShaderUniformBuffers,
+    RenderContext,
+};
 
 /// mesh entity
 pub struct TexturedMeshEntity {

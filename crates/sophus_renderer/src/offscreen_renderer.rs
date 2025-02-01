@@ -1,26 +1,41 @@
-use crate::camera::intrinsics::RenderIntrinsics;
-use crate::camera::properties::RenderCameraProperties;
-use crate::pixel_renderer::pixel_line::Line2dEntity;
-use crate::pixel_renderer::pixel_point::Point2dEntity;
-use crate::pixel_renderer::PixelRenderer;
-use crate::prelude::*;
-use crate::renderables::pixel_renderable::PixelRenderable;
-use crate::renderables::scene_renderable::SceneRenderable;
-use crate::scene_renderer::distortion::DistortionRenderer;
-use crate::scene_renderer::line::Line3dEntity;
-use crate::scene_renderer::mesh::Mesh3dEntity;
-use crate::scene_renderer::point::Point3dEntity;
-use crate::scene_renderer::SceneRenderer;
-use crate::textures::Textures;
-use crate::types::RenderResult;
-use crate::types::SceneFocusMarker;
-use crate::types::TranslationAndScaling;
-use crate::uniform_buffers::VertexShaderUniformBuffers;
-use crate::RenderContext;
-use sophus_image::arc_image::ArcImage4U8;
-use sophus_image::image_view::IsImageView;
-use sophus_image::ImageSize;
+use sophus_image::{
+    arc_image::ArcImage4U8,
+    image_view::IsImageView,
+    ImageSize,
+};
 use sophus_lie::Isometry3F64;
+
+use crate::{
+    camera::{
+        intrinsics::RenderIntrinsics,
+        properties::RenderCameraProperties,
+    },
+    pixel_renderer::{
+        pixel_line::Line2dEntity,
+        pixel_point::Point2dEntity,
+        PixelRenderer,
+    },
+    prelude::*,
+    renderables::{
+        pixel_renderable::PixelRenderable,
+        scene_renderable::SceneRenderable,
+    },
+    scene_renderer::{
+        distortion::DistortionRenderer,
+        line::Line3dEntity,
+        mesh::Mesh3dEntity,
+        point::Point3dEntity,
+        SceneRenderer,
+    },
+    textures::Textures,
+    types::{
+        RenderResult,
+        SceneFocusMarker,
+        TranslationAndScaling,
+    },
+    uniform_buffers::VertexShaderUniformBuffers,
+    RenderContext,
+};
 
 /// Offscreen renderer
 pub struct OffscreenRenderer {
