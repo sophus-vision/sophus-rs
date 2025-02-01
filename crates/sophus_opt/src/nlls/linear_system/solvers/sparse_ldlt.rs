@@ -27,18 +27,18 @@ impl Default for SparseLdltParams {
 ///
 /// Sparse LDLt decomposition - based on an example from the faer crate.
 #[derive(Default, Debug)]
-pub struct SparseLDLt {
+pub struct SparseLdlt {
     params: SparseLdltParams,
 }
 
-impl SparseLDLt {
+impl SparseLdlt {
     /// Create a new sparse LDLt solver
     pub fn new(params: SparseLdltParams) -> Self {
         Self { params }
     }
 }
 
-impl IsSparseSymmetricLinearSystem for SparseLDLt {
+impl IsSparseSymmetricLinearSystem for SparseLdlt {
     fn solve(
         &self,
         upper_triangular: &SymmetricBlockSparseMatrixBuilder,
@@ -53,7 +53,15 @@ impl IsSparseSymmetricLinearSystem for SparseLDLt {
             .solve(b)
             {
                 Ok(x) => x,
-                Err(e) => return Err(SolveError::SparseLdltError { details: e }),
+                Err(e) => {
+                    return Err(SolveError::SparseLdltError {
+                        details: match e {
+                            FaerError::IndexOverflow => super::SparseSolverError::IndexOverflow,
+                            FaerError::OutOfMemory => super::SparseSolverError::OutOfMemory,
+                            _ => super::SparseSolverError::Unspecific,
+                        },
+                    })
+                }
             },
         )
     }

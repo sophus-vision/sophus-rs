@@ -1,10 +1,10 @@
 use eq_system::EqSystem;
-use linear_solvers::{
-    sparse_lu::SparseLU,
-    sparse_qr::SparseQR,
+use quadratic_cost_system::CostSystem;
+use solvers::{
+    sparse_lu::SparseLu,
+    sparse_qr::SparseQr,
     SolveError,
 };
-use quadratic_cost_system::CostSystem;
 
 use crate::{
     block::{
@@ -13,9 +13,9 @@ use crate::{
         PartitionSpec,
     },
     nlls::{
-        linear_system::linear_solvers::{
-            dense_lu::DenseLU,
-            sparse_ldlt::SparseLDLt,
+        linear_system::solvers::{
+            dense_lu::DenseLu,
+            sparse_ldlt::SparseLdlt,
             IsSparseSymmetricLinearSystem,
         },
         LinearSolverType,
@@ -30,10 +30,10 @@ extern crate alloc;
 
 /// KKT sub-system for the equality-constraints
 pub mod eq_system;
-/// Linear solvers
-pub mod linear_solvers;
 /// Normal equation system for the non-linear least squares cost
 pub mod quadratic_cost_system;
+/// Linear solvers
+pub mod solvers;
 
 /// Evaluation mode
 #[derive(Clone, Debug, Copy, PartialEq)]
@@ -48,7 +48,7 @@ pub enum EvalMode {
 pub struct LinearSystem {
     pub(crate) sparse_hessian_plus_damping: SymmetricBlockSparseMatrixBuilder,
     pub(crate) neg_gradient: BlockVector,
-    pub(crate) linear_solver: LinearSolverType,
+    pub(crate) solver: LinearSolverType,
 }
 
 impl LinearSystem {
@@ -56,9 +56,10 @@ impl LinearSystem {
     /// and >= constraints is given by the following KKT system:
     ///
     /// ```ascii
-    ///
-    ///   J'J + nuI      G'     | dx              /  -J'r + G'lambda \
-    ///      G           0      | -d lambda       \  -c              /
+    /// --------------------------------------------------------------
+    /// | J'J + nuI      G'     | dx              |  -J'r + G'lambda |
+    /// |    G           0      | -d lambda       |  -c              |
+    /// --------------------------------------------------------------
     /// ```
     ///
     /// where r is the residual, J is the Jacobian of the cost function, c is the residual and G
@@ -67,23 +68,25 @@ impl LinearSystem {
     /// First, the normal equation system for the cost function is populated:
     ///
     /// ```ascii
-    ///
-    ///   J'J + nuI      *    | dx        /  -J'r   \
-    ///       *          *    | *         \   *     /
+    /// --------------------------------------------------------------
+    /// | J'J + nuI      *      | dx              |  -J'r + *        |
+    /// |     *          *      | *               |   *              |
+    /// --------------------------------------------------------------
     /// ```
     ///
     /// Then, the normal equation system for the equality constraints is populated:
     ///
     /// ```ascii
-    ///
-    ///      *           G'          *          | *               /  * + G'lambda  \
-    ///      G           0           *          | -d lambda  =    \ -c             /
+    /// --------------------------------------------------------------
+    /// |    *           G'     |  *              |   * + G'lambda   |
+    /// |    G           0      | -d lambda       |  -c              |
+    /// --------------------------------------------------------------
     /// ```
     pub fn from_families_costs_and_constraints(
         variables: &VarFamilies,
         cost_system: &CostSystem,
         eq_system: &EqSystem,
-        linear_solver: LinearSolverType,
+        solver: LinearSolverType,
     ) -> LinearSystem {
         assert!(variables.num_of_kind(VarKind::Marginalized) == 0);
         assert!(variables.num_of_kind(VarKind::Free) >= 1);
@@ -130,25 +133,25 @@ impl LinearSystem {
         Self {
             sparse_hessian_plus_damping: block_triplets,
             neg_gradient: neg_grad,
-            linear_solver,
+            solver,
         }
     }
 
     pub(crate) fn solve(&mut self) -> Result<nalgebra::DVector<f64>, SolveError> {
-        match self.linear_solver {
-            LinearSolverType::SparseLDLt(ldlt_params) => SparseLDLt::new(ldlt_params).solve(
+        match self.solver {
+            LinearSolverType::SparseLdlt(ldlt_params) => SparseLdlt::new(ldlt_params).solve(
                 &self.sparse_hessian_plus_damping,
                 self.neg_gradient.scalar_vector_mut(),
             ),
-            LinearSolverType::DenseLU => DenseLU {}.solve(
+            LinearSolverType::DenseLu => DenseLu {}.solve(
                 &self.sparse_hessian_plus_damping,
                 self.neg_gradient.scalar_vector(),
             ),
-            LinearSolverType::SparseLU => SparseLU {}.solve(
+            LinearSolverType::SparseLu => SparseLu {}.solve(
                 &self.sparse_hessian_plus_damping,
                 self.neg_gradient.scalar_vector(),
             ),
-            LinearSolverType::SparseQR => SparseQR {}.solve(
+            LinearSolverType::SparseQr => SparseQr {}.solve(
                 &self.sparse_hessian_plus_damping,
                 self.neg_gradient.scalar_vector(),
             ),

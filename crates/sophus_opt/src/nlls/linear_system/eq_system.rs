@@ -75,8 +75,10 @@ impl EqSystem {
 }
 
 /// ```ascii
-///      *           G'          *          | *         /  * + G'l  \
-///      G           0           *          | -dl  =    \ -c        /
+/// --------------------------------------------------------------
+/// |    *           G'     |  *              |   * + G'lambda   |
+/// |    G           0      | -d lambda       |  -c              |
+/// --------------------------------------------------------------
 /// ```
 ///
 /// where c is the residual of the equality constraints, G is the Jacobian of the equality
@@ -149,7 +151,7 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const NUM_ARGS: usize>
                 let mat_g_times_lambda =
                     constraint.jacobian.block(arg_id_alpha).transpose() * lambda;
 
-                // + G'l
+                // + G'lambda
                 block_vec.add_block(
                     family_alpha,
                     block_start_idx_alpha,

@@ -11,6 +11,19 @@ pub mod sparse_lu;
 /// sparse qr
 pub mod sparse_qr;
 
+/// Sparse solver error - forwarded from faer error enums.
+#[derive(Snafu, Debug)]
+pub enum SparseSolverError {
+    /// An index exceeding the maximum value
+    IndexOverflow,
+    /// Memory allocation failed.
+    OutOfMemory,
+    /// LU decomposition specific error
+    SymbolicSingular,
+    /// unspecific - to be forward compatible
+    Unspecific,
+}
+
 /// Linear solver error
 #[derive(Snafu, Debug)]
 pub enum SolveError {
@@ -18,19 +31,19 @@ pub enum SolveError {
     #[snafu(display("sparse LDLt error {}", details))]
     SparseLdltError {
         /// details
-        details: faer::sparse::FaerError,
+        details: SparseSolverError,
     },
     /// Sparse LU error
     #[snafu(display("sparse LU error {}", details))]
     SparseLuError {
         /// details
-        details: faer::sparse::LuError,
+        details: SparseSolverError,
     },
     /// Sparse QR error
     #[snafu(display("sparse QR error {}", details))]
     SparseQrError {
         /// details
-        details: faer::sparse::FaerError,
+        details: SparseSolverError,
     },
     /// Dense LU error
     #[snafu(display("dense LU solve failed"))]
@@ -58,7 +71,7 @@ pub trait IsDenseLinearSystem {
 }
 
 #[test]
-fn linear_solver_tests() {
+fn solver_tests() {
     use log::info;
     use nalgebra::DMatrix;
     use sophus_autodiff::{
@@ -67,11 +80,11 @@ fn linear_solver_tests() {
     };
 
     use crate::nlls::linear_system::{
-        DenseLU,
+        DenseLu,
         PartitionSpec,
-        SparseLDLt,
-        SparseLU,
-        SparseQR,
+        SparseLdlt,
+        SparseLu,
+        SparseQr,
     };
 
     pub fn from_triplets_nxn(n: usize, triplets: &[(usize, usize, f64)]) -> DMatrix<f64> {
@@ -128,10 +141,10 @@ fn linear_solver_tests() {
         "symmetric_matrix_builder. {:?}",
         symmetric_matrix_builder.to_symmetric_scalar_triplets()
     );
-    let x_dense_lu = DenseLU {}.solve(&symmetric_matrix_builder, &b).unwrap();
-    let x_sparse_qr = SparseQR {}.solve(&symmetric_matrix_builder, &b).unwrap();
-    let x_sparse_lu = SparseLU {}.solve(&symmetric_matrix_builder, &b).unwrap();
-    let x_sparse_ldlt = SparseLDLt::default()
+    let x_dense_lu = DenseLu {}.solve(&symmetric_matrix_builder, &b).unwrap();
+    let x_sparse_qr = SparseQr {}.solve(&symmetric_matrix_builder, &b).unwrap();
+    let x_sparse_lu = SparseLu {}.solve(&symmetric_matrix_builder, &b).unwrap();
+    let x_sparse_ldlt = SparseLdlt::default()
         .solve(&symmetric_matrix_builder, &b)
         .unwrap();
 

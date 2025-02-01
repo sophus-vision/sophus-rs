@@ -80,7 +80,7 @@ impl SimpleIso2PriorProblem {
                 num_iterations: 1,
                 initial_lm_damping: EPS_F64, // if lm prior param is tiny
                 parallelize: true,
-                linear_solver: solver,
+                solver,
             },
         )
         .unwrap();
@@ -144,7 +144,7 @@ impl SimpleIso3PriorProblem {
                 num_iterations: 1,
                 initial_lm_damping: EPS_F64, // if lm prior param is tiny
                 parallelize: true,
-                linear_solver: solver,
+                solver,
             },
         )
         .unwrap();

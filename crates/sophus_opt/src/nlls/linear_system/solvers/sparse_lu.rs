@@ -1,4 +1,7 @@
-use faer::prelude::SpSolver;
+use faer::{
+    prelude::SpSolver,
+    sparse::FaerError,
+};
 
 use super::{
     IsSparseSymmetricLinearSystem,
@@ -9,9 +12,9 @@ use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMat
 /// Sparse LU solver
 ///
 /// Sparse LU decomposition - wrapper around faer's sp_lu implementation.
-pub struct SparseLU;
+pub struct SparseLu;
 
-impl IsSparseSymmetricLinearSystem for SparseLU {
+impl IsSparseSymmetricLinearSystem for SparseLu {
     fn solve(
         &self,
         upper_triangular: &SymmetricBlockSparseMatrixBuilder,
@@ -33,7 +36,18 @@ impl IsSparseSymmetricLinearSystem for SparseLU {
                 lu.solve_in_place(faer::reborrow::ReborrowMut::rb_mut(&mut x_ref));
                 Ok(x)
             }
-            Err(e) => Err(SolveError::SparseLuError { details: e }),
+            Err(e) => Err(SolveError::SparseLuError {
+                details: match e {
+                    faer::sparse::LuError::Generic(faer_error) => match faer_error {
+                        FaerError::IndexOverflow => super::SparseSolverError::IndexOverflow,
+                        FaerError::OutOfMemory => super::SparseSolverError::OutOfMemory,
+                        _ => super::SparseSolverError::Unspecific,
+                    },
+                    faer::sparse::LuError::SymbolicSingular(_) => {
+                        super::SparseSolverError::SymbolicSingular
+                    }
+                },
+            }),
         }
     }
 }

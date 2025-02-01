@@ -43,8 +43,10 @@ impl CostSystem {
 }
 
 /// ```ascii
-///   J'J + nuI      *    | dx        /  -J'r   \
-///      *           *    | *         \   *     /
+/// --------------------------------------------------------------
+/// | J'J + nuI      *      | dx              |  -J'r + *        |
+/// |     *          *      | *               |   *              |
+/// --------------------------------------------------------------
 /// ```
 ///
 /// where r is the residual, J is the Jacobian, dx is the incremental update for the

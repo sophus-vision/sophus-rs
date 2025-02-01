@@ -1,4 +1,7 @@
-use faer::prelude::SpSolver;
+use faer::{
+    prelude::SpSolver,
+    sparse::FaerError,
+};
 
 use super::{
     IsSparseSymmetricLinearSystem,
@@ -9,9 +12,9 @@ use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMat
 /// Sparse QR solver
 ///
 /// Sparse QR decomposition - wrapper around faer's sp_qr implementation.
-pub struct SparseQR;
+pub struct SparseQr;
 
-impl IsSparseSymmetricLinearSystem for SparseQR {
+impl IsSparseSymmetricLinearSystem for SparseQr {
     fn solve(
         &self,
         upper_triangular: &SymmetricBlockSparseMatrixBuilder,
@@ -33,7 +36,13 @@ impl IsSparseSymmetricLinearSystem for SparseQR {
                 qr.solve_in_place(faer::reborrow::ReborrowMut::rb_mut(&mut x_ref));
                 Ok(x)
             }
-            Err(e) => Err(SolveError::SparseQrError { details: e }),
+            Err(e) => Err(SolveError::SparseQrError {
+                details: match e {
+                    FaerError::IndexOverflow => super::SparseSolverError::IndexOverflow,
+                    FaerError::OutOfMemory => super::SparseSolverError::OutOfMemory,
+                    _ => super::SparseSolverError::Unspecific,
+                },
+            }),
         }
     }
 }

@@ -149,7 +149,7 @@ impl PoseCircleProblem {
                 num_iterations: 16,
                 initial_lm_damping: 1.0,
                 parallelize: true,
-                linear_solver: solver,
+                solver,
             },
         )
         .unwrap();
