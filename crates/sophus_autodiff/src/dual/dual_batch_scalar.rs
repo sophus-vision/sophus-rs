@@ -297,6 +297,15 @@ where
         }
     }
 
+    fn exp(&self) -> DualBatchScalar<BATCH, DM, DN> {
+        Self {
+            real_part: self.real_part.cos(),
+            infinitesimal_part: self
+                .infinitesimal_part
+                .map(|dij_val| dij_val * self.real_part.exp()),
+        }
+    }
+
     fn real_part(&self) -> BatchScalarF64<BATCH> {
         self.real_part
     }

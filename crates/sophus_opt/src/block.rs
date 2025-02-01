@@ -2,6 +2,16 @@
 pub mod block_gradient;
 /// Block Hessian matrix
 pub mod block_hessian;
+/// Block jacobian
+pub mod block_jacobian;
+/// Block vector
+pub mod block_vector;
+/// Generic grid
+pub mod grid;
+/// Block sparse matrix
+pub mod symmetric_block_sparse_matrix;
+/// Block triplets
+pub mod symmetric_block_sparse_matrix_builder;
 
 /// Range of a block
 #[derive(Clone, Debug, Copy, Default)]
@@ -10,4 +20,13 @@ pub struct BlockRange {
     pub index: i64,
     /// Dimension of the block
     pub dim: usize,
+}
+
+/// Additional region
+#[derive(Debug, Clone)]
+pub struct PartitionSpec {
+    /// num blocks
+    pub num_blocks: usize,
+    /// block dim
+    pub block_dim: usize,
 }

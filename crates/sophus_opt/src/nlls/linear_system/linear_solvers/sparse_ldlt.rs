@@ -1,12 +1,12 @@
+use super::IsSparseSymmetricLinearSystem;
+use super::SolveError;
+use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 use faer::sparse::FaerError;
-use nalgebra::DMatrix;
-
-use super::normal_equation::SymmetricTripletMatrix;
 
 extern crate alloc;
 
 /// sparse LDLT factorization parameters
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct SparseLdltParams {
     /// Regularization for LDLT factorization
     pub regularization_eps: f64,
@@ -20,8 +20,43 @@ impl Default for SparseLdltParams {
     }
 }
 
-/// A matrix in triplet format for sparse LDLT factorization / using faer crate
-pub struct SimplicalSparseLdlt {
+/// Sparse LDLt solver
+///
+/// Sparse LDLt decomposition - based on an example from the faer crate.
+#[derive(Default, Debug)]
+pub struct SparseLDLt {
+    params: SparseLdltParams,
+}
+
+impl SparseLDLt {
+    /// Create a new sparse LDLt solver
+    pub fn new(params: SparseLdltParams) -> Self {
+        Self { params }
+    }
+}
+
+impl IsSparseSymmetricLinearSystem for SparseLDLt {
+    fn solve(
+        &self,
+        upper_triangular: &SymmetricBlockSparseMatrixBuilder,
+        b: &nalgebra::DVector<f64>,
+    ) -> Result<nalgebra::DVector<f64>, SolveError> {
+        Ok(
+            match SimplicalSparseLdlt::from_triplets(
+                &upper_triangular.to_upper_triangular_scalar_triplets(),
+                upper_triangular.scalar_dimension(),
+                self.params,
+            )
+            .solve(b)
+            {
+                Ok(x) => x,
+                Err(e) => return Err(SolveError::SparseLdltError { details: e }),
+            },
+        )
+    }
+}
+
+struct SimplicalSparseLdlt {
     upper_ccs: faer::sparse::SparseColMat<usize, f64>,
     params: SparseLdltParams,
 }
@@ -82,7 +117,6 @@ impl SparseLdltPerm {
     }
 }
 
-/// Symbolic LDLT factorization and permutation
 struct SparseLdltPermSymb {
     permutation: SparseLdltPerm,
     symbolic: faer::sparse::linalg::cholesky::simplicial::SymbolicSimplicialCholesky<usize>,
@@ -238,61 +272,20 @@ impl SimplicalSparseLdlt {
         Ok(x)
     }
 
-    /// Create a sparse LDLT factorization from a symmetric triplet matrix
-    pub fn from_triplets(sym_tri_mat: &SymmetricTripletMatrix, params: SparseLdltParams) -> Self {
+    fn from_triplets(
+        sym_tri_mat: &[(usize, usize, f64)],
+        size: usize,
+        params: SparseLdltParams,
+    ) -> Self {
         SimplicalSparseLdlt {
-            upper_ccs: faer::sparse::SparseColMat::try_new_from_triplets(
-                sym_tri_mat.size,
-                sym_tri_mat.size,
-                &sym_tri_mat.triplets,
-            )
-            .unwrap(),
+            upper_ccs: faer::sparse::SparseColMat::try_new_from_triplets(size, size, sym_tri_mat)
+                .unwrap(),
             params,
         }
     }
 
-    /// convert to dense matrix (for testing purposes)
-    pub fn to_dense(&self) -> nalgebra::DMatrix<f64> {
-        let upper_dense = self.upper_ccs.to_dense();
-        let mut nalgebra_mat = DMatrix::<f64>::zeros(upper_dense.nrows(), upper_dense.ncols());
-        for row in 0..upper_dense.nrows() {
-            for col in row..upper_dense.ncols() {
-                let value = *upper_dense.get(row, col);
-                *nalgebra_mat.get_mut((row, col)).unwrap() = value;
-                *nalgebra_mat.get_mut((col, row)).unwrap() = value;
-            }
-        }
-        nalgebra_mat
-    }
-
-    /// Solve the linear system `Ax = b`
-    ///
-    /// TODO: Consider a more efficient API where the symbolic factorization is
-    ///       computed once and then reused for multiple solves.
-    pub fn solve(&self, b: &nalgebra::DVector<f64>) -> Result<nalgebra::DVector<f64>, FaerError> {
+    fn solve(&self, b: &nalgebra::DVector<f64>) -> Result<nalgebra::DVector<f64>, FaerError> {
         let symbolic_perm = self.symbolic_and_perm()?;
         self.solve_from_symbolic(b, &symbolic_perm)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use nalgebra::DVector;
-
-    use super::*;
-
-    #[test]
-    fn ldlt() {
-        let sym_tri_mat = SymmetricTripletMatrix::upper_diagonal_example();
-        assert!(sym_tri_mat.is_semi_positive_definite());
-        let dense_mat = sym_tri_mat.to_dense();
-
-        let sparse_ldlt = SimplicalSparseLdlt::from_triplets(&sym_tri_mat, Default::default());
-        assert_eq!(sparse_ldlt.to_dense(), dense_mat);
-
-        let b = DVector::from_element(8, 1.0);
-        let x = sparse_ldlt.solve(&b).unwrap();
-
-        approx::assert_abs_diff_eq!(dense_mat * x, b);
     }
 }

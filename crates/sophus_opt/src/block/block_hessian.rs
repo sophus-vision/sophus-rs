@@ -2,7 +2,7 @@ use sophus_autodiff::linalg::MatF64;
 
 use super::BlockRange;
 
-/// Block Hessian matrix
+/// Hessian matrix, split in several blocks
 #[derive(Clone, Debug)]
 pub struct BlockHessian<const NUM: usize, const NUM_ARGS: usize> {
     /// matrix storage

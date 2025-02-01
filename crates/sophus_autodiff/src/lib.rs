@@ -7,12 +7,12 @@
 //!      * such as [linalg::VecF64], and [linalg::MatF64]
 //!      * batch types such as [linalg::BatchScalarF64], [linalg::BatchVecF64],
 //!        [linalg::BatchMatF64] - require the `simd` feature
-//!  - dual numbers: [calculus::dual::DualScalar], [calculus::dual::DualVector],
-//!        [calculus::dual::DualMatrix]
-//!      * [calculus::maps::curves] f: ℝ -> ℝ,   f: ℝ -> ℝʳ,   f: ℝ -> ℝʳ x ℝᶜ
-//!      * [calculus::maps::scalar_valued_maps]: f: ℝᵐ -> ℝ,   f: ℝᵐ x ℝⁿ -> ℝ
-//!      * [calculus::maps::vector_valued_maps]: f: ℝᵐ -> ℝᵖ,   f: ℝᵐ x ℝⁿ -> ℝᵖ
-//!      * [calculus::maps::matrix_valued_maps]: f: ℝᵐ -> ℝʳ x ℝᶜ,   f: ℝᵐ x ℝⁿ -> ℝʳ x ℝᶜ
+//!  - dual numbers: [dual::DualScalar], [dual::DualVector],
+//!        [dual::DualMatrix]
+//!      * [maps::curves] f: ℝ -> ℝ,   f: ℝ -> ℝʳ,   f: ℝ -> ℝʳ x ℝᶜ
+//!      * [maps::scalar_valued_maps]: f: ℝᵐ -> ℝ,   f: ℝᵐ x ℝⁿ -> ℝ
+//!      * [maps::vector_valued_maps]: f: ℝᵐ -> ℝᵖ,   f: ℝᵐ x ℝⁿ -> ℝᵖ
+//!      * [maps::matrix_valued_maps]: f: ℝᵐ -> ℝʳ x ℝᶜ,   f: ℝᵐ x ℝⁿ -> ℝʳ x ℝᶜ
 
 #[cfg(feature = "std")]
 extern crate std;
