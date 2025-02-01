@@ -42,48 +42,48 @@ extern crate alloc;
 #[derive(Copy, Clone, Debug)]
 pub enum LinearSolverType {
     /// Sparse LDLT solver (using faer crate)
-    SparseLDLt(SparseLdltParams),
+    SparseLdlt(SparseLdltParams),
     /// Sparse partial pivoting LU solver (using faer crate)
-    SparseLU,
+    SparseLu,
     /// Sparse QR solver (using faer crate)
-    SparseQR,
+    SparseQr,
     /// Dense full-pivot. LU solver (using nalgebra crate)
-    DenseLU,
+    DenseLu,
 }
 
 impl LinearSolverType {
     /// Get all available solvers
     pub fn all_solvers() -> Vec<LinearSolverType> {
         vec![
-            LinearSolverType::SparseLDLt(Default::default()),
-            LinearSolverType::SparseLU,
-            LinearSolverType::SparseQR,
-            LinearSolverType::DenseLU,
+            LinearSolverType::SparseLdlt(Default::default()),
+            LinearSolverType::SparseLu,
+            LinearSolverType::SparseQr,
+            LinearSolverType::DenseLu,
         ]
     }
 
     /// Get all sparse solvers
     pub fn sparse_solvers() -> Vec<LinearSolverType> {
         vec![
-            LinearSolverType::SparseLDLt(Default::default()),
-            LinearSolverType::SparseLU,
-            LinearSolverType::SparseQR,
+            LinearSolverType::SparseLdlt(Default::default()),
+            LinearSolverType::SparseLu,
+            LinearSolverType::SparseQr,
         ]
     }
 
     /// Get solvers which can be used for indefinite systems
     pub fn indefinite_solvers() -> Vec<LinearSolverType> {
         vec![
-            LinearSolverType::SparseLU,
-            LinearSolverType::SparseQR,
-            LinearSolverType::DenseLU,
+            LinearSolverType::SparseLu,
+            LinearSolverType::SparseQr,
+            LinearSolverType::DenseLu,
         ]
     }
 }
 
 impl Default for LinearSolverType {
     fn default() -> Self {
-        LinearSolverType::SparseLDLt(Default::default())
+        LinearSolverType::SparseLdlt(Default::default())
     }
 }
 

@@ -10,9 +10,9 @@ use crate::{
 /// Dense LU solver
 ///
 /// LU decomposition with full pivoting - wrapper around nalgebra's full_piv_lu.
-pub struct DenseLU;
+pub struct DenseLu;
 
-impl IsSparseSymmetricLinearSystem for DenseLU {
+impl IsSparseSymmetricLinearSystem for DenseLu {
     fn solve(
         &self,
         triplets: &SymmetricBlockSparseMatrixBuilder,
@@ -22,7 +22,7 @@ impl IsSparseSymmetricLinearSystem for DenseLU {
     }
 }
 
-impl IsDenseLinearSystem for DenseLU {
+impl IsDenseLinearSystem for DenseLu {
     fn solve_dense(
         &self,
         mat_a: nalgebra::DMatrix<f64>,

@@ -12,7 +12,7 @@ use crate::debug_assert_le;
 /// In particular, the target block sparse matrix is has the following structure:
 ///
 /// ```ascii
-///
+/// 
 ///  ---------------------------------------------------------
 ///  | AxA ... AxA | AxB ... AxB |             | AxZ ... AxZ |
 ///  |   .         |  .       .  |             |  .       .  |
@@ -57,7 +57,7 @@ pub(crate) struct BlockTriplet {
 
 /// A homogeneous region in the block sparse matrix.
 /// ```ascii
-///
+/// 
 ///  | AxB ... AxB |
 ///  |  .       .  |
 ///  |      .      |

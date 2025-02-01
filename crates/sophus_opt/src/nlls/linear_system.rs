@@ -1,7 +1,7 @@
 use eq_system::EqSystem;
 use linear_solvers::{
-    sparse_lu::SparseLU,
-    sparse_qr::SparseQR,
+    sparse_lu::SparseLu,
+    sparse_qr::SparseQr,
     SolveError,
 };
 use quadratic_cost_system::CostSystem;
@@ -14,8 +14,8 @@ use crate::{
     },
     nlls::{
         linear_system::linear_solvers::{
-            dense_lu::DenseLU,
-            sparse_ldlt::SparseLDLt,
+            dense_lu::DenseLu,
+            sparse_ldlt::SparseLdlt,
             IsSparseSymmetricLinearSystem,
         },
         LinearSolverType,
@@ -56,7 +56,7 @@ impl LinearSystem {
     /// and >= constraints is given by the following KKT system:
     ///
     /// ```ascii
-    ///
+    /// 
     ///   J'J + nuI      G'     | dx              /  -J'r + G'lambda \
     ///      G           0      | -d lambda       \  -c              /
     /// ```
@@ -67,7 +67,7 @@ impl LinearSystem {
     /// First, the normal equation system for the cost function is populated:
     ///
     /// ```ascii
-    ///
+    /// 
     ///   J'J + nuI      *    | dx        /  -J'r   \
     ///       *          *    | *         \   *     /
     /// ```
@@ -75,7 +75,7 @@ impl LinearSystem {
     /// Then, the normal equation system for the equality constraints is populated:
     ///
     /// ```ascii
-    ///
+    /// 
     ///      *           G'          *          | *               /  * + G'lambda  \
     ///      G           0           *          | -d lambda  =    \ -c             /
     /// ```
@@ -136,19 +136,19 @@ impl LinearSystem {
 
     pub(crate) fn solve(&mut self) -> Result<nalgebra::DVector<f64>, SolveError> {
         match self.linear_solver {
-            LinearSolverType::SparseLDLt(ldlt_params) => SparseLDLt::new(ldlt_params).solve(
+            LinearSolverType::SparseLdlt(ldlt_params) => SparseLdlt::new(ldlt_params).solve(
                 &self.sparse_hessian_plus_damping,
                 self.neg_gradient.scalar_vector_mut(),
             ),
-            LinearSolverType::DenseLU => DenseLU {}.solve(
+            LinearSolverType::DenseLu => DenseLu {}.solve(
                 &self.sparse_hessian_plus_damping,
                 self.neg_gradient.scalar_vector(),
             ),
-            LinearSolverType::SparseLU => SparseLU {}.solve(
+            LinearSolverType::SparseLu => SparseLu {}.solve(
                 &self.sparse_hessian_plus_damping,
                 self.neg_gradient.scalar_vector(),
             ),
-            LinearSolverType::SparseQR => SparseQR {}.solve(
+            LinearSolverType::SparseQr => SparseQr {}.solve(
                 &self.sparse_hessian_plus_damping,
                 self.neg_gradient.scalar_vector(),
             ),
