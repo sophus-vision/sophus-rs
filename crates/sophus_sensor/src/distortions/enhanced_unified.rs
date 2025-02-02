@@ -19,9 +19,9 @@ use crate::{
 
 extern crate alloc;
 
-/// Unified Extended distortion implementation
+/// Enhanced unified distortion implementation
 #[derive(Debug, Clone, Copy)]
-pub struct UnifiedDistortionImpl<
+pub struct EnhancedUnifiedDistortionImpl<
     S: IsScalar<BATCH, DM, DN>,
     const BATCH: usize,
     const DM: usize,
@@ -31,7 +31,7 @@ pub struct UnifiedDistortionImpl<
 }
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
-    IsParamsImpl<S, 6, BATCH, DM, DN> for UnifiedDistortionImpl<S, BATCH, DM, DN>
+    IsParamsImpl<S, 6, BATCH, DM, DN> for EnhancedUnifiedDistortionImpl<S, BATCH, DM, DN>
 {
     fn are_params_valid<P>(_params: P) -> S::Mask
     where
@@ -54,9 +54,10 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     }
 }
 
-/// unified extended for z==1
+/// enhanced unified for z==1
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
-    IsCameraDistortionImpl<S, 2, 6, BATCH, DM, DN> for UnifiedDistortionImpl<S, BATCH, DM, DN>
+    IsCameraDistortionImpl<S, 2, 6, BATCH, DM, DN>
+    for EnhancedUnifiedDistortionImpl<S, BATCH, DM, DN>
 {
     fn distort<PA, PO>(params: PA, proj_point_in_camera_z1_plane: PO) -> S::Vector<2>
     where
@@ -67,15 +68,15 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let proj_point_in_camera_z1_plane = proj_point_in_camera_z1_plane.borrow();
 
         // https://gitlab.com/VladyslavUsenko/basalt-headers/-/blob/master/include/basalt/camera/extended_camera.hpp?ref_type=heads#L125
-        let fx = params.get_elem(0);
-        let fy = params.get_elem(1);
-        let cx = params.get_elem(2);
-        let cy = params.get_elem(3);
-        let alpha = params.get_elem(4);
-        let beta = params.get_elem(5);
+        let fx = params.elem(0);
+        let fy = params.elem(1);
+        let cx = params.elem(2);
+        let cy = params.elem(3);
+        let alpha = params.elem(4);
+        let beta = params.elem(5);
 
-        let x = proj_point_in_camera_z1_plane.get_elem(0);
-        let y = proj_point_in_camera_z1_plane.get_elem(1);
+        let x = proj_point_in_camera_z1_plane.elem(0);
+        let y = proj_point_in_camera_z1_plane.elem(1);
 
         let r2 = x * x + y * y;
         let rho2 = beta * r2 + S::from_f64(1.0);
@@ -96,15 +97,15 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     {
         let params = params.borrow();
         let distorted_point = distorted_point.borrow();
-        let fx = params.get_elem(0);
-        let fy = params.get_elem(1);
-        let cx = params.get_elem(2);
-        let cy = params.get_elem(3);
-        let alpha = params.get_elem(4);
-        let beta = params.get_elem(5);
+        let fx = params.elem(0);
+        let fy = params.elem(1);
+        let cx = params.elem(2);
+        let cy = params.elem(3);
+        let alpha = params.elem(4);
+        let beta = params.elem(5);
 
-        let mx = (distorted_point.get_elem(0) - cx) / fx;
-        let my = (distorted_point.get_elem(1) - cy) / fy;
+        let mx = (distorted_point.elem(0) - cx) / fx;
+        let my = (distorted_point.elem(1) - cy) / fy;
 
         let r2 = mx * mx + my * my;
         let gamma = S::from_f64(1.0) - alpha;
@@ -124,13 +125,13 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let params = params.borrow();
         let proj_point_in_camera_z1_plane = proj_point_in_camera_z1_plane.borrow();
 
-        let fx = params.get_elem(0);
-        let fy = params.get_elem(1);
-        let alpha = params.get_elem(4);
-        let beta = params.get_elem(5);
+        let fx = params.elem(0);
+        let fy = params.elem(1);
+        let alpha = params.elem(4);
+        let beta = params.elem(5);
 
-        let x = proj_point_in_camera_z1_plane.get_elem(0);
-        let y = proj_point_in_camera_z1_plane.get_elem(1);
+        let x = proj_point_in_camera_z1_plane.elem(0);
+        let y = proj_point_in_camera_z1_plane.elem(1);
 
         let r2 = x * x + y * y;
         let rho2 = beta * r2 + S::from_f64(1.0);
@@ -165,13 +166,13 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let params = params.borrow();
         let proj_point_in_camera_z1_plane = proj_point_in_camera_z1_plane.borrow();
 
-        let fx = params.get_elem(0);
-        let fy = params.get_elem(1);
-        let alpha = params.get_elem(4);
-        let beta = params.get_elem(5);
+        let fx = params.elem(0);
+        let fy = params.elem(1);
+        let alpha = params.elem(4);
+        let beta = params.elem(5);
 
-        let x = proj_point_in_camera_z1_plane.get_elem(0);
-        let y = proj_point_in_camera_z1_plane.get_elem(1);
+        let x = proj_point_in_camera_z1_plane.elem(0);
+        let y = proj_point_in_camera_z1_plane.elem(1);
 
         let r2 = x * x + y * y;
         let rho2 = beta * r2 + S::from_f64(1.0);
@@ -217,8 +218,8 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 
     fn identity_params() -> S::Vector<6> {
         let mut params = S::Vector::<6>::zeros();
-        params.set_elem(0, <S>::ones());
-        params.set_elem(1, <S>::ones());
+        *params.elem_mut(0) = <S>::ones();
+        *params.elem_mut(1) = <S>::ones();
         params
     }
 }

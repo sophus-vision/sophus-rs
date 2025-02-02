@@ -7,7 +7,7 @@ use sophus_autodiff::params::IsParamsImpl;
 use sophus_image::ImageSize;
 
 use crate::{
-    camera_enum::perspective_camera::UnifiedCamera,
+    camera_enum::perspective_camera::EnhancedUnifiedCamera,
     prelude::*,
     BrownConradyCamera,
     KannalaBrandtCamera,
@@ -27,8 +27,8 @@ pub trait IsCameraDistortionImpl<
     /// identity parameters
     fn identity_params() -> S::Vector<PARAMS> {
         let mut params = S::Vector::<PARAMS>::zeros();
-        params.set_elem(0, S::ones());
-        params.set_elem(1, S::ones());
+        *params.elem_mut(0) = S::ones();
+        *params.elem_mut(1) = S::ones();
         params
     }
 
@@ -104,8 +104,8 @@ pub trait IsCamera<
     fn new_brown_conrady<P>(params: P, image_size: ImageSize) -> Self
     where
         P: Borrow<S::Vector<12>>;
-    /// Creates a new Unified Extended camera
-    fn new_unified<P>(params: P, image_size: ImageSize) -> Self
+    /// Creates a new Enhanced Unified camera
+    fn new_enhanced_unified<P>(params: P, image_size: ImageSize) -> Self
     where
         P: Borrow<S::Vector<6>>;
 
@@ -142,8 +142,8 @@ pub trait IsCamera<
     /// Returns the pinhole camera
     fn try_get_pinhole(self) -> Option<PinholeCamera<S, BATCH, DM, DN>>;
 
-    /// Returns the unified extended camera
-    fn try_get_unified_extended(self) -> Option<UnifiedCamera<S, BATCH, DM, DN>>;
+    /// Returns the enhanced unified camera
+    fn try_get_enhanced_unified(self) -> Option<EnhancedUnifiedCamera<S, BATCH, DM, DN>>;
 }
 
 /// Dynamic camera trait

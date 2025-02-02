@@ -33,8 +33,8 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     {
         let point_in_camera = point_in_camera.borrow();
         S::Vector::<2>::from_array([
-            point_in_camera.get_elem(0) / point_in_camera.get_elem(2),
-            point_in_camera.get_elem(1) / point_in_camera.get_elem(2),
+            point_in_camera.elem(0) / point_in_camera.elem(2),
+            point_in_camera.elem(1) / point_in_camera.elem(2),
         ])
     }
 
@@ -45,8 +45,8 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let point_in_camera = point_in_camera.borrow();
 
         S::Vector::<3>::from_array([
-            point_in_camera.get_elem(0) * extension,
-            point_in_camera.get_elem(1) * extension,
+            point_in_camera.elem(0) * extension,
+            point_in_camera.elem(1) * extension,
             extension,
         ])
     }
@@ -59,16 +59,14 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 
         S::Matrix::<2, 3>::from_array2([
             [
-                S::ones() / point_in_camera.get_elem(2),
+                S::ones() / point_in_camera.elem(2),
                 S::zeros(),
-                -point_in_camera.get_elem(0)
-                    / (point_in_camera.get_elem(2) * point_in_camera.get_elem(2)),
+                -point_in_camera.elem(0) / (point_in_camera.elem(2) * point_in_camera.elem(2)),
             ],
             [
                 S::zeros(),
-                S::ones() / point_in_camera.get_elem(2),
-                -point_in_camera.get_elem(1)
-                    / (point_in_camera.get_elem(2) * point_in_camera.get_elem(2)),
+                S::ones() / point_in_camera.elem(2),
+                -point_in_camera.elem(1) / (point_in_camera.elem(2) * point_in_camera.elem(2)),
             ],
         ])
     }

@@ -55,9 +55,9 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 {
     fn disambiguate(params: S::Vector<4>) -> S::Vector<4> {
         // make sure real component is always positive
-        let is_positive = S::from_f64(0.0).less_equal(&params.get_elem(0));
+        let is_positive = S::from_f64(0.0).less_equal(&params.elem(0));
 
-        params.clone().select(&is_positive, -params)
+        params.select(&is_positive, -params)
     }
 }
 
@@ -242,14 +242,14 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let theta_sq = omega.squared_norm();
 
         let theta_po4 = theta_sq * theta_sq;
-        let theta = theta_sq.clone().sqrt();
+        let theta = theta_sq.sqrt();
         let half_theta: S = S::from_f64(0.5) * theta;
 
         let near_zero = theta_sq.less_equal(&S::from_f64(EPS * EPS));
 
         let imag_factor = (S::from_f64(0.5) - S::from_f64(1.0 / 48.0) * theta_sq
             + S::from_f64(1.0 / 3840.0) * theta_po4)
-            .select(&near_zero, half_theta.clone().sin() / theta);
+            .select(&near_zero, half_theta.sin() / theta);
 
         let real_factor = (S::from_f64(1.0) - S::from_f64(1.0 / 8.0) * theta_sq
             + S::from_f64(1.0 / 384.0) * theta_po4)
@@ -257,9 +257,9 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 
         S::Vector::<4>::from_array([
             real_factor,
-            imag_factor * omega.get_elem(0),
-            imag_factor * omega.get_elem(1),
-            imag_factor * omega.get_elem(2),
+            imag_factor * omega.elem(0),
+            imag_factor * omega.elem(1),
+            imag_factor * omega.elem(2),
         ])
     }
 
@@ -268,7 +268,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let ivec: S::Vector<3> = params.get_fixed_subvec::<3>(1);
 
         let squared_n = ivec.squared_norm();
-        let w = params.get_elem(0);
+        let w = params.elem(0);
 
         let near_zero = squared_n.less_equal(&S::from_f64(EPS * EPS));
 
@@ -288,9 +288,9 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     }
 
     fn hat(omega: &S::Vector<3>) -> S::Matrix<3, 3> {
-        let o0 = omega.get_elem(0);
-        let o1 = omega.get_elem(1);
-        let o2 = omega.get_elem(2);
+        let o0 = omega.elem(0);
+        let o1 = omega.elem(1);
+        let o2 = omega.elem(2);
 
         S::Matrix::from_array2([
             [S::zero(), -o2, o1],
@@ -301,18 +301,18 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 
     fn vee(omega_hat: &S::Matrix<3, 3>) -> S::Vector<3> {
         S::Vector::<3>::from_array([
-            omega_hat.get_elem([2, 1]),
-            omega_hat.get_elem([0, 2]),
-            omega_hat.get_elem([1, 0]),
+            omega_hat.elem([2, 1]),
+            omega_hat.elem([0, 2]),
+            omega_hat.elem([1, 0]),
         ])
     }
 
     fn inverse(params: &S::Vector<4>) -> S::Vector<4> {
         S::Vector::from_array([
-            params.get_elem(0),
-            -params.get_elem(1),
-            -params.get_elem(2),
-            -params.get_elem(3),
+            params.elem(0),
+            -params.elem(1),
+            -params.elem(2),
+            -params.elem(3),
         ])
     }
 
@@ -330,7 +330,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 
     fn matrix(params: &S::Vector<4>) -> S::Matrix<3, 3> {
         let ivec = params.get_fixed_subvec::<3>(1);
-        let re = &params.get_elem(0);
+        let re = &params.elem(0);
 
         let unit_x = S::Vector::from_f64_array([1.0, 0.0, 0.0]);
         let unit_y = S::Vector::from_f64_array([0.0, 1.0, 0.0]);
@@ -361,8 +361,8 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     type DualG<const M: usize, const N: usize> = Rotation3Impl<S::DualScalar<M, N>, BATCH, M, N>;
 
     fn group_mul(lhs_params: &S::Vector<4>, rhs_params: &S::Vector<4>) -> S::Vector<4> {
-        let lhs_re = lhs_params.get_elem(0);
-        let rhs_re = rhs_params.get_elem(0);
+        let lhs_re = lhs_params.elem(0);
+        let rhs_re = rhs_params.elem(0);
 
         let lhs_ivec = lhs_params.get_fixed_subvec::<3>(1);
         let rhs_ivec = rhs_params.get_fixed_subvec::<3>(1);
@@ -399,8 +399,8 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
     }
 
     fn da_a_mul_b(a: &S::Vector<4>, b: &S::Vector<4>) -> S::Matrix<4, 4> {
-        let lhs_re = a.get_elem(0);
-        let rhs_re = b.get_elem(0);
+        let lhs_re = a.elem(0);
+        let rhs_re = b.elem(0);
 
         let lhs_ivec = a.get_fixed_subvec::<3>(1);
         let rhs_ivec = b.get_fixed_subvec::<3>(1);
@@ -409,10 +409,10 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
 
         let is_positive = S::from_f64(0.0).less_equal(&re);
 
-        let b_real = b.get_elem(0);
-        let b_imag0 = b.get_elem(1);
-        let b_imag1 = b.get_elem(2);
-        let b_imag2 = b.get_elem(3);
+        let b_real = b.elem(0);
+        let b_imag0 = b.elem(1);
+        let b_imag1 = b.elem(2);
+        let b_imag2 = b.elem(3);
 
         S::Matrix::<4, 4>::from_array2([
             [b_real, -b_imag0, -b_imag1, -b_imag2],
@@ -432,17 +432,17 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
     }
 
     fn db_a_mul_b(a: &S::Vector<4>, b: &S::Vector<4>) -> S::Matrix<4, 4> {
-        let lhs_re = a.get_elem(0);
-        let rhs_re = b.get_elem(0);
+        let lhs_re = a.elem(0);
+        let rhs_re = b.elem(0);
         let lhs_ivec = a.get_fixed_subvec::<3>(1);
         let rhs_ivec = b.get_fixed_subvec::<3>(1);
         let re = lhs_re * rhs_re - lhs_ivec.dot(rhs_ivec);
         let is_positive = S::from_f64(0.0).less_equal(&re);
 
-        let a_real = a.get_elem(0);
-        let a_imag0 = a.get_elem(1);
-        let a_imag1 = a.get_elem(2);
-        let a_imag2 = a.get_elem(3);
+        let a_real = a.elem(0);
+        let a_imag0 = a.elem(1);
+        let a_imag1 = a.elem(2);
+        let a_imag2 = a.elem(3);
 
         S::Matrix::<4, 4>::from_array2([
             [a_real, -a_imag0, -a_imag1, -a_imag2],
@@ -472,9 +472,9 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
 
         let dx0 = Self::dx_exp_x_at_0();
 
-        let omega_0 = omega.get_elem(0);
-        let omega_1 = omega.get_elem(1);
-        let omega_2 = omega.get_elem(2);
+        let omega_0 = omega.elem(0);
+        let omega_1 = omega.elem(1);
+        let omega_2 = omega.elem(2);
         let theta = theta_sq.sqrt();
         let a = (S::from_f64(0.5) * theta).sin() / theta;
         let b = (S::from_f64(0.5) * theta).cos() / (theta_sq)
@@ -504,7 +504,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
 
     fn dx_log_x(params: &S::Vector<4>) -> S::Matrix<3, 4> {
         let ivec: S::Vector<3> = params.get_fixed_subvec::<3>(1);
-        let w = params.get_elem(0);
+        let w = params.elem(0);
         let squared_n = ivec.squared_norm();
 
         let near_zero = squared_n.less_equal(&S::from_f64(EPS_F64));
@@ -540,10 +540,10 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
     }
 
     fn dparams_matrix(params: &<S>::Vector<4>, col_idx: usize) -> <S>::Matrix<3, 4> {
-        let re = params.get_elem(0);
-        let i = params.get_elem(1);
-        let j = params.get_elem(2);
-        let k = params.get_elem(3);
+        let re = params.elem(0);
+        let i = params.elem(1);
+        let j = params.elem(2);
+        let k = params.elem(3);
 
         //  helper lambda:
         let scaled = |val: S, factor: f64| -> S { val * S::from_f64(factor) };
@@ -654,8 +654,8 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 
         let theta = theta_sq.sqrt();
         let mat_v = S::Matrix::<3, 3>::identity()
-            + mat_omega.scaled((S::from_f64(1.0) - theta.clone().cos()) / theta_sq)
-            + mat_omega_sq.scaled((theta - theta.clone().sin()) / (theta_sq * theta));
+            + mat_omega.scaled((S::from_f64(1.0) - theta.cos()) / theta_sq)
+            + mat_omega_sq.scaled((theta - theta.sin()) / (theta_sq * theta));
 
         mat_v0.select(&near_zero, mat_v)
     }
@@ -676,7 +676,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let mat_v_inv = S::Matrix::<3, 3>::identity() - mat_omega.scaled(S::from_f64(0.5))
             + mat_omega_sq.scaled(
                 (S::from_f64(1.0)
-                    - (S::from_f64(0.5) * theta * half_theta.clone().cos()) / half_theta.sin())
+                    - (S::from_f64(0.5) * theta * half_theta.cos()) / half_theta.sin())
                     / (theta * theta),
             );
 
@@ -707,9 +707,9 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
         let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH, 0, 0>::hat(omega);
         let mat_omega_sq = mat_omega.mat_mul(mat_omega);
 
-        let omega_x = omega.get_elem(0);
-        let omega_y = omega.get_elem(1);
-        let omega_z = omega.get_elem(2);
+        let omega_x = omega.elem(0);
+        let omega_y = omega.elem(1);
+        let omega_z = omega.elem(2);
 
         let theta = theta_sq.sqrt();
         let domega_theta =
@@ -745,17 +745,17 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
         let a = S::from_f64(0.5).select(&near_zero, a);
 
         let set = |i| {
-            let tmp0 = mat_omega.clone().scaled(dt_a * domega_theta.get_elem(i));
+            let tmp0 = mat_omega.scaled(dt_a * domega_theta.elem(i));
             let tmp1 = dt_mat_omega_sq[i].scaled(b);
-            let tmp2 = mat_omega_sq.scaled(dt_b * domega_theta.get_elem(i));
+            let tmp2 = mat_omega_sq.scaled(dt_b * domega_theta.elem(i));
 
             let mut l_i: S::Matrix<3, 3> =
                 S::Matrix::zeros().select(&near_zero, tmp0 + tmp1 + tmp2);
             let pos_idx = dt_mat_omega_pos_idx[i];
-            l_i.set_elem(pos_idx, a + l_i.get_elem(pos_idx));
+            *l_i.elem_mut(pos_idx) = a + l_i.elem(pos_idx);
 
             let neg_idx = dt_mat_omega_neg_idx[i];
-            l_i.set_elem(neg_idx, -a + l_i.get_elem(neg_idx));
+            *l_i.elem_mut(neg_idx) = -a + l_i.elem(neg_idx);
             l_i
         };
 
@@ -765,14 +765,14 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
     }
 
     fn dparams_matrix_times_point(params: &S::Vector<4>, point: &S::Vector<3>) -> S::Matrix<3, 4> {
-        let r = params.get_elem(0);
-        let ivec0 = params.get_elem(1);
-        let ivec1 = params.get_elem(2);
-        let ivec2 = params.get_elem(3);
+        let r = params.elem(0);
+        let ivec0 = params.elem(1);
+        let ivec1 = params.elem(2);
+        let ivec2 = params.elem(3);
 
-        let p0 = point.get_elem(0);
-        let p1 = point.get_elem(1);
-        let p2 = point.get_elem(2);
+        let p0 = point.elem(0);
+        let p1 = point.elem(1);
+        let p2 = point.elem(2);
 
         S::Matrix::from_array2([
             [
@@ -812,9 +812,9 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
         let dt_mat_omega_pos_idx = [[2, 1], [0, 2], [1, 0]];
         let dt_mat_omega_neg_idx = [[1, 2], [2, 0], [0, 1]];
 
-        let omega_x = omega.get_elem(0);
-        let omega_y = omega.get_elem(1);
-        let omega_z = omega.get_elem(2);
+        let omega_x = omega.elem(0);
+        let omega_y = omega.elem(1);
+        let omega_z = omega.elem(2);
 
         let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
 
@@ -852,14 +852,14 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
             let dt_mat_omega_sq_i: &S::Matrix<3, 3> = &dt_mat_omega_sq[i];
             let mut l_i: S::Matrix<3, 3> = S::Matrix::zeros().select(
                 &near_zero,
-                dt_mat_omega_sq_i.scaled(c) + mat_omega_sq.scaled(domega_theta.get_elem(i) * dt_c),
+                dt_mat_omega_sq_i.scaled(c) + mat_omega_sq.scaled(domega_theta.elem(i) * dt_c),
             );
 
             let pos_idx = dt_mat_omega_pos_idx[i];
-            l_i.set_elem(pos_idx, S::from_f64(-0.5) + l_i.get_elem(pos_idx));
+            *l_i.elem_mut(pos_idx) = S::from_f64(-0.5) + l_i.elem(pos_idx);
 
             let neg_idx = dt_mat_omega_neg_idx[i];
-            l_i.set_elem(neg_idx, S::from_f64(0.5) + l_i.get_elem(neg_idx));
+            *l_i.elem_mut(neg_idx) = S::from_f64(0.5) + l_i.elem(neg_idx);
             l_i
         };
 
@@ -937,7 +937,7 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
         // R = | 2*x*y + 2*z*w      1 - 2*x^2 - 2*z^2  2*y*z - 2*x*w |
         //     | 2*x*z - 2*y*w      2*y*z + 2*x*w      1 - 2*x^2 - 2*y^2 |
 
-        let trace = mat_r.get_elem([0, 0]) + mat_r.get_elem([1, 1]) + mat_r.get_elem([2, 2]);
+        let trace = mat_r.elem([0, 0]) + mat_r.elem([1, 1]) + mat_r.elem([2, 2]);
 
         let q_params = if trace > S::from_f64(0.0) {
             // Calculate w first:
@@ -978,18 +978,18 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
 
             S::Vector::<4>::from_array([
                 w,
-                factor * (mat_r.get_elem([2, 1]) - mat_r.get_elem([1, 2])),
-                factor * (mat_r.get_elem([0, 2]) - mat_r.get_elem([2, 0])),
-                factor * (mat_r.get_elem([1, 0]) - mat_r.get_elem([0, 1])),
+                factor * (mat_r.elem([2, 1]) - mat_r.elem([1, 2])),
+                factor * (mat_r.elem([0, 2]) - mat_r.elem([2, 0])),
+                factor * (mat_r.elem([1, 0]) - mat_r.elem([0, 1])),
             ])
         } else {
             // Let us assume that R00 is the largest diagonal entry.
             // If not, we will change the order of the indices accordingly.
             let mut i = 0;
-            if mat_r.get_elem([1, 1]) > mat_r.get_elem([0, 0]) {
+            if mat_r.elem([1, 1]) > mat_r.elem([0, 0]) {
                 i = 1;
             }
-            if mat_r.get_elem([2, 2]) > mat_r.get_elem([i, i]) {
+            if mat_r.elem([2, 2]) > mat_r.elem([i, i]) {
                 i = 2;
             }
             let j = (i + 1) % 3;
@@ -1008,11 +1008,11 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
             //
             // (Note: Since the trace is negative, and R00 is the largest diagonal entry,
             //        R00 - R11 - R22 + 1 is always positive.)
-            let sqrt = (mat_r.get_elem([i, i]) - mat_r.get_elem([j, j]) - mat_r.get_elem([k, k])
+            let sqrt = (mat_r.elem([i, i]) - mat_r.elem([j, j]) - mat_r.elem([k, k])
                 + S::from_f64(1.0))
             .sqrt();
             let mut q = S::Vector::<4>::zeros();
-            q.set_elem(i + 1, S::from_f64(0.5) * sqrt);
+            *q.elem_mut(i + 1) = S::from_f64(0.5) * sqrt;
 
             // For w:
             //
@@ -1025,10 +1025,7 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
             //   = (R21 - R12) / (2*sqrt(R00 - R11 - R22 + 1))
 
             let one_over_two_s = S::from_f64(0.5) / sqrt;
-            q.set_elem(
-                0,
-                (mat_r.get_elem([k, j]) - mat_r.get_elem([j, k])) * one_over_two_s,
-            );
+            *q.elem_mut(0) = (mat_r.elem([k, j]) - mat_r.elem([j, k])) * one_over_two_s;
 
             // For y:
             //
@@ -1039,16 +1036,10 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
             //
             // y = (R01 + R10) / 4*x
             //   = (R01 + R10) / (2*sqrt(R00 - R11 - R22 + 1))
-            q.set_elem(
-                j + 1,
-                (mat_r.get_elem([j, i]) + mat_r.get_elem([i, j])) * one_over_two_s,
-            );
+            *q.elem_mut(j + 1) = (mat_r.elem([j, i]) + mat_r.elem([i, j])) * one_over_two_s;
 
             // For z ...
-            q.set_elem(
-                k + 1,
-                (mat_r.get_elem([k, i]) + mat_r.get_elem([i, k])) * one_over_two_s,
-            );
+            *q.elem_mut(k + 1) = (mat_r.elem([k, i]) + mat_r.elem([i, k])) * one_over_two_s;
             q
         };
 

@@ -32,11 +32,8 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> ScalarValuedVectorMap<S, BATCH>
             let mut a_minus = a;
             a_minus[r] -= S::RealScalar::from_f64(eps);
 
-            out.set_elem(
-                r,
-                (scalar_valued(a_plus) - scalar_valued(a_minus))
-                    / S::RealScalar::from_f64(2.0 * eps),
-            );
+            *out.elem_mut(r) = (scalar_valued(a_plus) - scalar_valued(a_minus))
+                / S::RealScalar::from_f64(2.0 * eps);
         }
         out
     }
@@ -144,11 +141,11 @@ fn scalar_valued_map_tests() {
                     >(
                         mat: S::Matrix<3, 2>,
                     ) -> S {
-                        let a = mat.get_elem([0, 0]);
-                        let b = mat.get_elem([0, 1]);
+                        let a = mat.elem([0, 0]);
+                        let b = mat.elem([0, 1]);
 
-                        let c = mat.get_elem([1, 0]);
-                        let d = mat.get_elem([1, 1]);
+                        let c = mat.elem([1, 0]);
+                        let d = mat.elem([1, 1]);
 
                         (a * d) - (b * c)
                     }

@@ -58,8 +58,8 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let params = params.borrow();
         let proj_point_in_camera_z1_plane = proj_point_in_camera_z1_plane.borrow();
         S::Vector::<2>::from_array([
-            proj_point_in_camera_z1_plane.get_elem(0) * params.get_elem(0) + params.get_elem(2),
-            proj_point_in_camera_z1_plane.get_elem(1) * params.get_elem(1) + params.get_elem(3),
+            proj_point_in_camera_z1_plane.elem(0) * params.elem(0) + params.elem(2),
+            proj_point_in_camera_z1_plane.elem(1) * params.elem(1) + params.elem(3),
         ])
     }
 
@@ -72,8 +72,8 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let distorted_point = distorted_point.borrow();
 
         S::Vector::<2>::from_array([
-            (distorted_point.get_elem(0) - params.get_elem(2)) / params.get_elem(0),
-            (distorted_point.get_elem(1) - params.get_elem(3)) / params.get_elem(1),
+            (distorted_point.elem(0) - params.elem(2)) / params.elem(0),
+            (distorted_point.elem(1) - params.elem(3)) / params.elem(1),
         ])
     }
 
@@ -84,10 +84,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     {
         let params = params.borrow();
 
-        S::Matrix::<2, 2>::from_array2([
-            [params.get_elem(0), S::zeros()],
-            [S::zeros(), params.get_elem(1)],
-        ])
+        S::Matrix::<2, 2>::from_array2([[params.elem(0), S::zeros()], [S::zeros(), params.elem(1)]])
     }
 
     fn dx_distort_params<PA, PO>(_params: PA, proj_point_in_camera_z1_plane: PO) -> S::Matrix<2, 4>
@@ -99,14 +96,14 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 
         S::Matrix::<2, 4>::from_array2([
             [
-                proj_point_in_camera_z1_plane.get_elem(0),
+                proj_point_in_camera_z1_plane.elem(0),
                 S::zeros(),
                 S::ones(),
                 S::zeros(),
             ],
             [
                 S::zeros(),
-                proj_point_in_camera_z1_plane.get_elem(1),
+                proj_point_in_camera_z1_plane.elem(1),
                 S::zeros(),
                 S::ones(),
             ],

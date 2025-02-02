@@ -109,8 +109,8 @@ pub fn example_points<
     for p4 in points4 {
         let mut v = S::Vector::<POINT>::zeros();
         for i in 0..POINT.min(4) {
-            let val = p4.get_elem(i);
-            v.set_elem(i, val);
+            let val = p4.elem(i);
+            *v.elem_mut(i) = val;
         }
         out.push(v)
     }

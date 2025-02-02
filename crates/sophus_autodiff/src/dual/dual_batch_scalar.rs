@@ -185,6 +185,17 @@ where
     }
 }
 
+impl<const BATCH: usize> IsDualScalarFromCurve<DualBatchScalar<BATCH, 1, 1>, BATCH>
+    for DualBatchScalar<BATCH, 1, 1>
+where
+    BatchScalarF64<BATCH>: IsCoreScalar,
+    LaneCount<BATCH>: SupportedLaneCount,
+{
+    fn curve_derivative(&self) -> BatchScalarF64<BATCH> {
+        self.derivative()[0]
+    }
+}
+
 impl<const BATCH: usize, const DM: usize, const DN: usize> DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,

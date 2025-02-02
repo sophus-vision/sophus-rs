@@ -48,7 +48,7 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
         // Midpoint coordinates
         let m = self.center + dir.scaled(a / d);
 
-        let ortho_dir = S::Vector::from_array([dir.get_elem(1), dir.get_elem(0)]);
+        let ortho_dir = S::Vector::from_array([dir.elem(1), dir.elem(0)]);
 
         let up = ortho_dir.scaled(h / d);
 
@@ -97,8 +97,8 @@ impl<
     ) -> Option<[S; 2]> {
         let oc = ray.origin - self.center;
         let a = ray.dir.vector().dot(ray.dir.vector());
-        let b = S::from_f64(2.0) * oc.clone().dot(ray.dir.vector());
-        let c = oc.clone().dot(oc) - self.radius * self.radius;
+        let b = S::from_f64(2.0) * oc.dot(ray.dir.vector());
+        let c = oc.dot(oc) - self.radius * self.radius;
 
         // Compute the discriminant
         let discriminant = b * b - S::from_f64(4.0) * a * c;
@@ -175,12 +175,10 @@ impl<
         let t0 = t[0];
         let t1 = t[1];
         if (t0 - t1).abs().single_real_scalar() < eps {
-            return Some(LineHypersphereIntersection::TangentPoint(
-                ray.clone().at(t0),
-            ));
+            return Some(LineHypersphereIntersection::TangentPoint(ray.at(t0)));
         }
         Some(LineHypersphereIntersection::Points([
-            ray.clone().at(t0),
+            ray.at(t0),
             ray.at(t1),
         ]))
     }

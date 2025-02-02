@@ -113,14 +113,12 @@ fn curve_test() {
                         >(
                             x: S,
                         ) -> S {
-                            x.clone() * x
+                            x * x
                         }
                         let finite_diff = ScalarValuedCurve::<$scalar, $batch>::sym_diff_quotient(
-                            square_fn,
-                            a.clone(),
-                            EPS_F64,
+                            square_fn, a, EPS_F64,
                         );
-                        let auto_grad = square_fn(<$dual_scalar>::var(a)).derivative()[0];
+                        let auto_grad = square_fn(<$dual_scalar>::var(a)).curve_derivative();
                         approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0002);
                     }
 
@@ -140,11 +138,9 @@ fn curve_test() {
                         }
 
                         let finite_diff = VectorValuedCurve::<$scalar, $batch>::sym_diff_quotient(
-                            trig_fn,
-                            a.clone(),
-                            EPS_F64,
+                            trig_fn, a, EPS_F64,
                         );
-                        let auto_grad = trig_fn(<$dual_scalar>::var(a)).jacobian();
+                        let auto_grad = trig_fn(<$dual_scalar>::var(a)).curve_derivative();
 
                         approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0003);
                     }
@@ -162,22 +158,20 @@ fn curve_test() {
                         >(
                             x: S,
                         ) -> S::Matrix<2, 3> {
-                            let sin = x.clone().sin();
-                            let cos = x.clone().cos();
+                            let sin = x.sin();
+                            let cos = x.cos();
 
                             S::Matrix::from_array2([
-                                [cos.clone(), sin.clone(), S::from_f64(0.0)],
+                                [cos, sin, S::from_f64(0.0)],
                                 [-sin, cos, S::from_f64(0.0)],
                             ])
                         }
 
                         let finite_diff =
                             MatrixValuedCurve::<$scalar, $batch, 0, 0>::sym_diff_quotient(
-                                fn_x,
-                                a.clone(),
-                                EPS_F64,
+                                fn_x, a, EPS_F64,
                             );
-                        let auto_grad = fn_x(<$dual_scalar>::var(a)).scalarfield_derivative();
+                        let auto_grad = fn_x(<$dual_scalar>::var(a)).curve_derivative();
                         approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
                     }
                 }

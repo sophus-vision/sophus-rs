@@ -26,6 +26,7 @@ use num_traits::{
 use super::{
     dual_matrix::DualMatrix,
     dual_vector::DualVector,
+    scalar::IsDualScalarFromCurve,
 };
 use crate::{
     linalg::{
@@ -149,6 +150,12 @@ impl<const DM: usize, const DN: usize> IsDualScalar<1, DM, DN> for DualScalar<DM
 
     fn derivative(&self) -> MatF64<DM, DN> {
         self.infinitesimal_part.unwrap_or(MatF64::<DM, DN>::zeros())
+    }
+}
+
+impl IsDualScalarFromCurve<DualScalar<1, 1>, 1> for DualScalar<1, 1> {
+    fn curve_derivative(&self) -> f64 {
+        self.derivative()[0]
     }
 }
 

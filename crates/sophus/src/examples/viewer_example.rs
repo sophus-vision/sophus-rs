@@ -44,7 +44,7 @@ pub fn make_distorted_frame() -> ImageFrame {
     let cx = 320.0;
     let cy = 240.0;
 
-    let unified_cam = DynCameraF64::new_unified(
+    let unified_cam = DynCameraF64::new_enhanced_unified(
         VecF64::from_array([focal_length, focal_length, cx, cy, 0.629, 1.22]),
         image_size,
     );

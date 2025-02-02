@@ -4,7 +4,7 @@ use sophus_image::ImageSize;
 
 use crate::{
     camera_enum::{
-        perspective_camera::UnifiedCamera,
+        perspective_camera::EnhancedUnifiedCamera,
         GeneralCameraEnum,
         PerspectiveCameraEnum,
     },
@@ -114,9 +114,9 @@ impl<
         Self::from_model(CameraType::new_brown_conrady(params, image_size))
     }
 
-    /// Create a unified camera instance
-    pub fn new_unified(params: impl Borrow<S::Vector<6>>, image_size: ImageSize) -> Self {
-        Self::from_model(CameraType::new_unified(params, image_size))
+    /// Create a enhanced unified camera instance
+    pub fn new_enhanced_unified(params: impl Borrow<S::Vector<6>>, image_size: ImageSize) -> Self {
+        Self::from_model(CameraType::new_enhanced_unified(params, image_size))
     }
 
     /// Projects a 3D point in the camera frame to a pixel in the image
@@ -173,9 +173,9 @@ impl<
         self.camera_type.try_get_pinhole()
     }
 
-    /// Returns the Unified Extended camera
-    pub fn try_get_unified_extended(self) -> Option<UnifiedCamera<S, BATCH, DM, DN>> {
-        self.camera_type.try_get_unified_extended()
+    /// Returns the enhanced unified camera
+    pub fn try_get_enhanced_unified(self) -> Option<EnhancedUnifiedCamera<S, BATCH, DM, DN>> {
+        self.camera_type.try_get_enhanced_unified()
     }
 
     /// Returns the camera model enum
@@ -212,8 +212,8 @@ fn dyn_camera_tests() {
     use crate::{
         distortions::{
             affine::AffineDistortionImpl,
+            enhanced_unified::EnhancedUnifiedDistortionImpl,
             kannala_brandt::KannalaBrandtDistortionImpl,
-            unified::UnifiedDistortionImpl,
         },
         traits::IsCameraDistortionImpl,
     };
@@ -228,7 +228,7 @@ fn dyn_camera_tests() {
             },
         ));
 
-        cameras.push(DynCamera::new_unified(
+        cameras.push(DynCamera::new_enhanced_unified(
             VecF64::<6>::from_vec(alloc::vec![998.0, 1000.0, 320.0, 280.0, 0.5, 1.2]),
             ImageSize {
                 width: 640,
@@ -350,12 +350,14 @@ fn dyn_camera_tests() {
                         // );
                         // assert_relative_eq!(dx_params, numeric_dx_params, epsilon = 1e-4);
                     }
-                    PerspectiveCameraEnum::UnifiedExtended(camera) => {
+                    PerspectiveCameraEnum::EnhancedUnified(camera) => {
                         let dx_params = camera.dx_distort_params(pixel);
 
                         let params = camera.params();
                         let numeric_dx_params = VectorValuedVectorMap::sym_diff_quotient_jacobian(
-                            |p: VecF64<6>| UnifiedDistortionImpl::<f64, 1, 0, 0>::distort(p, pixel),
+                            |p: VecF64<6>| {
+                                EnhancedUnifiedDistortionImpl::<f64, 1, 0, 0>::distort(p, pixel)
+                            },
                             *params,
                             EPS_F64,
                         );

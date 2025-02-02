@@ -40,11 +40,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         P: Borrow<S::Vector<2>>,
     {
         let point_in_camera = point_in_camera.borrow();
-        S::Vector::<3>::from_array([
-            point_in_camera.get_elem(0),
-            point_in_camera.get_elem(1),
-            extension,
-        ])
+        S::Vector::<3>::from_array([point_in_camera.elem(0), point_in_camera.elem(1), extension])
     }
 
     fn dx_proj_x<P>(_point_in_camera: P) -> S::Matrix<2, 3>

@@ -75,6 +75,18 @@ where
     }
 }
 
+impl<const ROWS: usize, const BATCH: usize>
+    IsDualVectorFromCurve<DualBatchScalar<BATCH, 1, 1>, ROWS, BATCH>
+    for DualBatchVector<ROWS, BATCH, 1, 1>
+where
+    BatchScalarF64<BATCH>: IsCoreScalar,
+    LaneCount<BATCH>: SupportedLaneCount,
+{
+    fn curve_derivative(&self) -> BatchVecF64<ROWS, BATCH> {
+        self.jacobian()
+    }
+}
+
 impl<const ROWS: usize, const BATCH: usize, const DM: usize>
     HasJacobian<DualBatchScalar<BATCH, DM, 1>, ROWS, BATCH, DM>
     for DualBatchVector<ROWS, BATCH, DM, 1>
@@ -218,15 +230,19 @@ where
     }
 
     fn norm(&self) -> DualBatchScalar<BATCH, DM, DN> {
-        self.clone().dot(*self).sqrt()
+        self.dot(*self).sqrt()
     }
 
     fn squared_norm(&self) -> DualBatchScalar<BATCH, DM, DN> {
-        self.clone().dot(*self)
+        self.dot(*self)
     }
 
-    fn get_elem(&self, idx: usize) -> DualBatchScalar<BATCH, DM, DN> {
+    fn elem(&self, idx: usize) -> DualBatchScalar<BATCH, DM, DN> {
         self.inner[idx]
+    }
+
+    fn elem_mut(&mut self, idx: usize) -> &mut DualBatchScalar<BATCH, DM, DN> {
+        &mut self.inner[idx]
     }
 
     fn from_array<A>(duals: A) -> Self
@@ -269,7 +285,7 @@ where
     fn real_vector(&self) -> BatchVecF64<ROWS, BATCH> {
         let mut r = BatchVecF64::<ROWS, BATCH>::zeros();
         for i in 0..ROWS {
-            r[i] = self.get_elem(i).real_part;
+            r[i] = self.elem(i).real_part;
         }
         r
     }
@@ -312,15 +328,14 @@ where
         let mut sum = <DualBatchScalar<BATCH, DM, DN>>::from_f64(0.0);
 
         for i in 0..ROWS {
-            sum += self.get_elem(i) * rhs.borrow().get_elem(i);
+            sum += self.elem(i) * rhs.borrow().elem(i);
         }
 
         sum
     }
 
     fn normalized(&self) -> Self {
-        self.clone()
-            .scaled(<DualBatchScalar<BATCH, DM, DN>>::from_f64(1.0) / self.norm())
+        self.scaled(<DualBatchScalar<BATCH, DM, DN>>::from_f64(1.0) / self.norm())
     }
 
     fn from_f64_array<A>(vals: A) -> Self
@@ -345,10 +360,6 @@ where
         }
     }
 
-    fn set_elem(&mut self, idx: usize, v: DualBatchScalar<BATCH, DM, DN>) {
-        self.inner[idx] = v;
-    }
-
     fn to_dual_const<const M: usize, const N: usize>(
         &self,
     ) -> <DualBatchScalar<BATCH, DM, DN> as IsScalar<BATCH, DM, DN>>::DualVector<ROWS, M, N> {
@@ -365,7 +376,7 @@ where
         let mut out = DualBatchMatrix::<ROWS, R2, BATCH, DM, DN>::zeros();
         for i in 0..ROWS {
             for j in 0..R2 {
-                out.set_elem([i, j], self.get_elem(i) * rhs.borrow().get_elem(j));
+                *out.elem_mut([i, j]) = self.elem(i) * rhs.borrow().elem(j);
             }
         }
         out
@@ -378,7 +389,7 @@ where
         let mut v = SVec::<DualBatchScalar<BATCH, DM, DN>, ROWS>::zeros();
         let other = other.borrow();
         for i in 0..ROWS {
-            v[i] = self.get_elem(i).select(mask, other.get_elem(i));
+            v[i] = self.elem(i).select(mask, other.elem(i));
         }
 
         Self { inner: v }

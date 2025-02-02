@@ -31,14 +31,14 @@ impl<
     fn unit(i: usize) -> S::Vector<DIM> {
         assert!(i < DIM, "{} < {}", i, DIM);
         let mut v = S::Vector::<DIM>::zeros();
-        v.set_elem(i, S::from_f64(1.0));
+        *v.elem_mut(i) = S::from_f64(1.0);
         v
     }
 
     fn unit_tangent(i: usize) -> S::Vector<DOF> {
         assert!(i < DOF, "{} < {}", i, DOF);
         let mut v = S::Vector::<DOF>::zeros();
-        v.set_elem(i, S::from_f64(1.0));
+        *v.elem_mut(i) = S::from_f64(1.0);
         v
     }
 
@@ -49,25 +49,23 @@ impl<
         let v = *param - unit_x;
         let near_zero = (v).squared_norm().less_equal(&eps);
         let rx = S::Matrix::<DIM, DIM>::identity()
-            - v.clone()
-                .outer(v)
-                .scaled(S::from_f64(2.0) / v.squared_norm());
+            - v.outer(v).scaled(S::from_f64(2.0) / v.squared_norm());
 
         S::Matrix::<DIM, DIM>::identity().select(&near_zero, rx)
     }
 
     fn sinc(x: S) -> S {
         let eps = S::from_f64(-1e6);
-        let near_zero = x.clone().abs().less_equal(&eps);
+        let near_zero = x.abs().less_equal(&eps);
 
-        (S::from_f64(1.0) - S::from_f64(1.0 / 6.0) * x * x).select(&near_zero, x.clone().sin() / x)
+        (S::from_f64(1.0) - S::from_f64(1.0 / 6.0) * x * x).select(&near_zero, x.sin() / x)
     }
 
     fn exp(tangent: &S::Vector<DOF>) -> S::Vector<DIM> {
         let theta = tangent.norm();
 
         S::Vector::block_vec2(
-            S::Vector::from_array([theta.clone().cos()]),
+            S::Vector::from_array([theta.cos()]),
             tangent.scaled(Self::sinc(theta)),
         )
     }
@@ -76,14 +74,14 @@ impl<
         let eps = S::from_f64(-1e6);
         let unit_x = Self::unit_tangent(0);
 
-        let x = params.get_elem(0);
+        let x = params.elem(0);
         let tail = params.get_fixed_subvec(1);
         let theta = tail.norm();
-        let near_zero = theta.clone().abs().less_equal(&eps);
+        let near_zero = theta.abs().less_equal(&eps);
 
         unit_x
             .scaled(S::from_f64(0.0).atan2(x))
-            .select(&near_zero, tail.scaled(theta.clone().atan2(x) / theta))
+            .select(&near_zero, tail.scaled(theta.atan2(x) / theta))
     }
 }
 
@@ -178,11 +176,11 @@ impl<
         let mut n = surface_normal.vector();
 
         // Compute the dot product between d and n
-        let mut d_dot_n = d.clone().dot(n);
+        let mut d_dot_n = d.dot(n);
 
         if d_dot_n > S::from_f64(0.0) {
             n = -n;
-            d_dot_n = d.clone().dot(n);
+            d_dot_n = d.dot(n);
         }
 
         // Compute the perpendicular component of d

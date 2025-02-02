@@ -8,8 +8,8 @@ use crate::debug_assert_le;
 
 /// A builder for a symmetric block sparse matrix.
 ///
-/// Internally, we chose the represent the symmetric matrix as a upper triangular matrix.
-/// In particular, the target block sparse matrix is has the following structure:
+/// Internally, we chose to represent the symmetric matrix as a upper triangular matrix.
+/// In particular, the target block sparse matrix has the following structure:
 ///
 /// ```ascii
 /// ---------------------------------------------------------
@@ -35,8 +35,8 @@ use crate::debug_assert_le;
 /// ---------------------------------------------------------
 /// ```
 ///
-/// It ia split into a grid of regions and each region is split into a grid of NxM block matrices.:
-/// Within each region, all block matrices have the same size. E.g., the first region contains only
+/// It ia split into a grid of regions and each region is split into a grid of block matrices.
+/// Within each region, all block matrices have the same shape. E.g., the first region contains only
 /// AxA-shaped blocks, the second region contains only AxB blocks, etc.
 #[derive(Debug)]
 pub struct SymmetricBlockSparseMatrixBuilder {

@@ -29,8 +29,8 @@ impl ExampleNonLinearQuadraticCost {
         z: Scalar::Vector<2>,
     ) -> Scalar::Vector<2> {
         Scalar::Vector::<2>::from_array([
-            x.get_elem(0) * x.get_elem(0) + x.get_elem(1),
-            x.get_elem(1) * x.get_elem(1) - x.get_elem(0),
+            x.elem(0) * x.elem(0) + x.elem(1),
+            x.elem(1) * x.elem(1) - x.elem(0),
         ]) - z
     }
 }

@@ -38,7 +38,7 @@ impl<
     }
 }
 
-/// Trait for scalar dual numbers
+/// Trait for dual vector
 pub trait IsDualVector<
     S: IsDualScalar<BATCH, DM, DN>,
     const ROWS: usize,
@@ -52,6 +52,14 @@ pub trait IsDualVector<
 
     /// Get the derivative
     fn derivative(&self) -> VectorValuedDerivative<S::RealScalar, ROWS, BATCH, DM, DN>;
+}
+
+/// Trait for dual vector as an output of a scalar field
+pub trait IsDualVectorFromCurve<S: IsDualScalar<BATCH, 1, 1>, const ROWS: usize, const BATCH: usize>:
+    IsDualVector<S, ROWS, BATCH, 1, 1>
+{
+    /// Get the derivative
+    fn curve_derivative(&self) -> S::RealVector<ROWS>;
 }
 
 /// Trait for scalar dual numbers
@@ -151,7 +159,7 @@ fn dual_vector_tests() {
                             let auto_grad =
                                     dot_fn::<$dual_scalar4_1, $batch,4,1>(
                                         <$dual_scalar4_1 as IsScalar<$batch,4,1>>::Vector::from_real_vector(p1),
-                                        <$dual_scalar4_1>::vector_var(p).get_elem(0)).jacobian();
+                                        <$dual_scalar4_1>::vector_var(p).elem(0)).jacobian();
 
                             approx::assert_abs_diff_eq!(
                                 finite_diff,

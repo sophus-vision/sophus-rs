@@ -4,8 +4,8 @@ use sophus_lie::prelude::IsVector;
 use sophus_sensor::{
     camera_enum::{
         perspective_camera::{
+            EnhancedUnifiedCameraF64,
             PinholeCameraF64,
-            UnifiedCameraF64,
         },
         PerspectiveCameraEnum,
     },
@@ -18,7 +18,7 @@ pub enum RenderIntrinsics {
     /// Pinhole camera model
     Pinhole(PinholeCameraF64),
     /// Unified camera model
-    UnifiedExtended(UnifiedCameraF64),
+    UnifiedExtended(EnhancedUnifiedCameraF64),
 }
 
 impl RenderIntrinsics {
@@ -28,7 +28,7 @@ impl RenderIntrinsics {
             PerspectiveCameraEnum::Pinhole(pinhole) => RenderIntrinsics::Pinhole(*pinhole),
             PerspectiveCameraEnum::KannalaBrandt(_camera) => todo!(),
             PerspectiveCameraEnum::BrownConrady(_camera) => todo!(),
-            PerspectiveCameraEnum::UnifiedExtended(camera) => {
+            PerspectiveCameraEnum::EnhancedUnified(camera) => {
                 RenderIntrinsics::UnifiedExtended(*camera)
             }
         }

@@ -191,10 +191,10 @@ fn vector_valued_map_from_vector_tests() {
                         >(
                             v: S::Vector<3>,
                         ) -> S::Vector<2> {
-                            let x = IsVector::get_elem(&v, 0);
-                            let y = IsVector::get_elem(&v, 1);
-                            let z = IsVector::get_elem(&v, 2);
-                            S::Vector::<2>::from_array([x / z.clone(), y / z])
+                            let x = IsVector::elem(&v, 0);
+                            let y = IsVector::elem(&v, 1);
+                            let z = IsVector::elem(&v, 2);
+                            S::Vector::<2>::from_array([x / z, y / z])
                         }
 
                         let sfinite_diff =
@@ -235,12 +235,12 @@ fn vector_valued_map_from_vector_tests() {
                     >(
                         x: S::Matrix<3, 2>,
                     ) -> S::Vector<4> {
-                        let a = x.get_elem([0, 0]);
-                        let b = x.get_elem([0, 1]);
-                        let c = x.get_elem([1, 0]);
-                        let d = x.get_elem([1, 1]);
-                        let e = x.get_elem([2, 0]);
-                        let f = x.get_elem([2, 1]);
+                        let a = x.elem([0, 0]);
+                        let b = x.elem([0, 1]);
+                        let c = x.elem([1, 0]);
+                        let d = x.elem([1, 1]);
+                        let e = x.elem([2, 0]);
+                        let f = x.elem([2, 1]);
 
                         S::Vector::<4>::from_array([a + b, c + d, e + f, S::from_f64(1.0)])
                     }

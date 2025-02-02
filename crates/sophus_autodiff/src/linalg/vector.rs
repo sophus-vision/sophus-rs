@@ -77,7 +77,10 @@ pub trait IsVector<
         A: Borrow<[f64; ROWS]>;
 
     /// get ith element
-    fn get_elem(&self, idx: usize) -> S;
+    fn elem(&self, idx: usize) -> S;
+
+    /// get ith element
+    fn elem_mut(&mut self, idx: usize) -> &mut S;
 
     /// Returns a fixed-size subvector starting at the given row
     fn get_fixed_subvec<const R: usize>(&self, start_r: usize) -> S::Vector<R>;
@@ -112,9 +115,6 @@ pub trait IsVector<
     fn scaled<U>(&self, v: U) -> Self
     where
         U: Borrow<S>;
-
-    /// set ith element to given scalar
-    fn set_elem(&mut self, idx: usize, v: S);
 
     /// squared norm
     fn squared_norm(&self) -> S;
@@ -227,8 +227,12 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1, 0, 0> for VecF64<ROWS> {
         VecF64::<ROWS>::from_row_slice(&vals.borrow()[..])
     }
 
-    fn get_elem(&self, idx: usize) -> f64 {
+    fn elem(&self, idx: usize) -> f64 {
         self[idx]
+    }
+
+    fn elem_mut(&mut self, idx: usize) -> &mut f64 {
+        &mut self[idx]
     }
 
     fn norm(&self) -> f64 {
@@ -237,10 +241,6 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1, 0, 0> for VecF64<ROWS> {
 
     fn real_vector(&self) -> Self {
         *self
-    }
-
-    fn set_elem(&mut self, idx: usize, v: f64) {
-        self[idx] = v;
     }
 
     fn squared_norm(&self) -> f64 {
@@ -307,13 +307,13 @@ pub fn cross<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, co
     lhs: &S::Vector<3>,
     rhs: &S::Vector<3>,
 ) -> S::Vector<3> {
-    let l0 = lhs.get_elem(0);
-    let l1 = lhs.get_elem(1);
-    let l2 = lhs.get_elem(2);
+    let l0 = lhs.elem(0);
+    let l1 = lhs.elem(1);
+    let l2 = lhs.elem(2);
 
-    let r0 = rhs.get_elem(0);
-    let r1 = rhs.get_elem(1);
-    let r2 = rhs.get_elem(2);
+    let r0 = rhs.elem(0);
+    let r1 = rhs.elem(1);
+    let r2 = rhs.elem(2);
 
     S::Vector::from_array([l1 * r2 - l2 * r1, l2 * r0 - l0 * r2, l0 * r1 - l1 * r0])
 }
