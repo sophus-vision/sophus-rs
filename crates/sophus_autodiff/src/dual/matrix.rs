@@ -48,16 +48,22 @@ pub trait IsDualMatrix<
 >: IsMatrix<S, ROWS, COLS, BATCH, DM, DN>
 {
     /// Create a new dual matrix from a real matrix for auto-differentiation with respect to self
-    ///
-    /// Typically this is not called directly, but through using a map auto-differentiation call:
-    ///
-    ///  - ScalarValueMatrixMap::fw_autodiff(...);
-    ///  - VectorValuedMatrixMap::fw_autodiff(...);
-    ///  - MatrixValuedMatrixMap::fw_autodiff(...);
     fn var(val: S::RealMatrix<ROWS, COLS>) -> Self;
 
     /// Get the derivative
     fn derivative(self) -> MatrixValuedDerivative<S::RealScalar, ROWS, COLS, BATCH, DM, DN>;
+}
+
+/// Trait for scalar dual numbers
+pub trait IsScalarFieldDualMatrix<
+    S: IsDualScalar<BATCH, 1, 1>,
+    const ROWS: usize,
+    const COLS: usize,
+    const BATCH: usize,
+>: IsDualMatrix<S, ROWS, COLS, BATCH, 1, 1>
+{
+    /// Get the derivative
+    fn scalarfield_derivative(&self) -> S::RealMatrix<ROWS, COLS>;
 }
 
 #[test]
@@ -84,16 +90,18 @@ fn dual_matrix_tests() {
             #[cfg(test)]
             impl Test for $scalar {
                 fn run() {
-                    let m_2x4 = <$scalar as IsScalar<$batch,0,0>>::Matrix::<2, 4>::from_f64_array2([
-                        [1.0, 2.0, 3.0, 4.0],
-                        [5.0, 6.0, 7.0, 8.0],
-                    ]);
-                    let m_4x1 = <$scalar as IsScalar<$batch,0,0>>::Matrix::<4, 1>::from_f64_array2([
-                        [1.0],
-                        [2.0],
-                        [3.0],
-                        [4.0],
-                    ]);
+                    let m_2x4 =
+                        <$scalar as IsScalar<$batch, 0, 0>>::Matrix::<2, 4>::from_f64_array2([
+                            [1.0, 2.0, 3.0, 4.0],
+                            [5.0, 6.0, 7.0, 8.0],
+                        ]);
+                    let m_4x1 =
+                        <$scalar as IsScalar<$batch, 0, 0>>::Matrix::<4, 1>::from_f64_array2([
+                            [1.0],
+                            [2.0],
+                            [3.0],
+                            [4.0],
+                        ]);
 
                     fn mat_mul_fn<
                         S: IsScalar<BATCH, DM, DN>,
@@ -106,21 +114,18 @@ fn dual_matrix_tests() {
                     ) -> S::Matrix<2, 1> {
                         x.mat_mul(y)
                     }
-                    let finite_diff =
-                        MatrixValuedMatrixMap::<$scalar, $batch,0,0>::sym_diff_quotient(
-                            |x| mat_mul_fn::<$scalar, $batch,0,0>(x, m_4x1),
-                            m_2x4,
-                            EPS_F64,
-                        );
-                    let auto_grad = MatrixValuedMatrixMap::<$dual_scalar_2_4, $batch, 2, 4>::fw_autodiff(
-                        |x| {
-                            mat_mul_fn::<$dual_scalar_2_4, $batch, 2, 4>(
-                                x,
-                                <$dual_scalar_2_4 as IsScalar<$batch, 2, 4>>::Matrix::from_real_matrix(m_4x1),
-                            )
-                        },
+                    let finite_diff = MatrixValuedMatrixMap::<$scalar, $batch>::sym_diff_quotient(
+                        |x| mat_mul_fn::<$scalar, $batch, 0, 0>(x, m_4x1),
                         m_2x4,
+                        EPS_F64,
                     );
+                    let auto_grad = mat_mul_fn::<$dual_scalar_2_4, $batch, 2, 4>(
+                        <$dual_scalar_2_4>::matrix_var(m_2x4),
+                        <$dual_scalar_2_4 as IsScalar<$batch, 2, 4>>::Matrix::from_real_matrix(
+                            m_4x1,
+                        ),
+                    )
+                    .derivative();
 
                     for i in 0..2 {
                         for j in 0..1 {
@@ -133,19 +138,17 @@ fn dual_matrix_tests() {
                     }
 
                     let finite_diff = MatrixValuedMatrixMap::sym_diff_quotient(
-                        |x| mat_mul_fn::<$scalar, $batch,0,0>(m_2x4, x),
+                        |x| mat_mul_fn::<$scalar, $batch, 0, 0>(m_2x4, x),
                         m_4x1,
                         EPS_F64,
                     );
-                    let auto_grad = MatrixValuedMatrixMap::<$dual_scalar_4_1, $batch, 4, 1>::fw_autodiff(
-                        |x| {
-                            mat_mul_fn::<$dual_scalar_4_1, $batch, 4, 1>(
-                                <$dual_scalar_4_1 as IsScalar<$batch, 4, 1>>::Matrix::from_real_matrix(m_2x4),
-                                x,
-                            )
-                        },
-                        m_4x1,
-                    );
+                    let auto_grad = mat_mul_fn::<$dual_scalar_4_1, $batch, 4, 1>(
+                        <$dual_scalar_4_1 as IsScalar<$batch, 4, 1>>::Matrix::from_real_matrix(
+                            m_2x4,
+                        ),
+                        <$dual_scalar_4_1>::matrix_var(m_4x1),
+                    )
+                    .derivative();
 
                     for i in 0..2 {
                         for j in 0..1 {
@@ -168,23 +171,23 @@ fn dual_matrix_tests() {
                         x.mat_mul(&x)
                     }
 
-                    let m_4x4 = <$scalar as IsScalar<$batch,0,0>>::Matrix::<4, 4>::from_f64_array2([
-                        [1.0, 2.0, 3.0, 4.0],
-                        [5.0, 6.0, 7.0, 8.0],
-                        [1.0, 2.0, 3.0, 4.0],
-                        [5.0, 6.0, 7.0, 8.0],
-                    ]);
+                    let m_4x4 =
+                        <$scalar as IsScalar<$batch, 0, 0>>::Matrix::<4, 4>::from_f64_array2([
+                            [1.0, 2.0, 3.0, 4.0],
+                            [5.0, 6.0, 7.0, 8.0],
+                            [1.0, 2.0, 3.0, 4.0],
+                            [5.0, 6.0, 7.0, 8.0],
+                        ]);
 
-                    let finite_diff =
-                        MatrixValuedMatrixMap::<$scalar, $batch,0,0>::sym_diff_quotient(
-                            mat_mul2_fn::<$scalar, $batch,0,0>,
-                            m_4x4,
-                            EPS_F64,
-                        );
-                    let auto_grad = MatrixValuedMatrixMap::<$dual_scalar_4_4, $batch,4, 4>::fw_autodiff(
-                        mat_mul2_fn::<$dual_scalar_4_4, $batch, 4 ,4>,
+                    let finite_diff = MatrixValuedMatrixMap::<$scalar, $batch>::sym_diff_quotient(
+                        mat_mul2_fn::<$scalar, $batch, 0, 0>,
                         m_4x4,
+                        EPS_F64,
                     );
+                    let auto_grad = mat_mul2_fn::<$dual_scalar_4_4, $batch, 4, 4>(
+                        <$dual_scalar_4_4>::matrix_var(m_4x4),
+                    )
+                    .derivative();
 
                     for i in 0..2 {
                         for j in 0..4 {
@@ -195,7 +198,6 @@ fn dual_matrix_tests() {
                             );
                         }
                     }
-
                 }
             }
         };

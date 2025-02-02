@@ -1,13 +1,9 @@
 use sophus_autodiff::{
-    dual::{
-        DualScalar,
-        DualVector,
-    },
+    dual::DualVector,
     linalg::{
         MatF64,
         VecF64,
     },
-    maps::VectorValuedVectorMap,
 };
 use sophus_lie::{
     Isometry3,
@@ -64,7 +60,7 @@ impl IsCostTerm<6, 1, (), Isometry3F64, (Isometry3F64, MatF64<6, 6>)> for Isomet
 
         let residual = Self::residual(isometry, isometry_prior.0);
         let dx_res_fn = |x: DualVector<6, 6, 1>| -> DualVector<6, 6, 1> {
-            let pp = Isometry3::<DualScalar<6, 1>, 1, 6, 1>::exp(x) * isometry.to_dual_c();
+            let pp = Isometry3::exp(x) * isometry.to_dual_c();
             Self::residual(
                 pp,
                 Isometry3::from_params(DualVector::from_real_vector(isometry_prior.0.params())),
@@ -73,17 +69,12 @@ impl IsCostTerm<6, 1, (), Isometry3F64, (Isometry3F64, MatF64<6, 6>)> for Isomet
 
         let zeros: VecF64<6> = VecF64::<6>::zeros();
 
-        (|| {
-            VectorValuedVectorMap::<DualScalar<6, 1>, 1, 6, 1>::fw_autodiff_jacobian(
-                dx_res_fn, zeros,
-            )
-        },)
-            .make(
-                idx,
-                var_kinds,
-                residual,
-                robust_kernel,
-                Some(isometry_prior.1),
-            )
+        (|| dx_res_fn(DualVector::var(zeros)).jacobian(),).make(
+            idx,
+            var_kinds,
+            residual,
+            robust_kernel,
+            Some(isometry_prior.1),
+        )
     }
 }

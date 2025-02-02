@@ -4,7 +4,6 @@ use sophus_autodiff::{
         DualVector,
     },
     linalg::VecF64,
-    maps::VectorValuedVectorMap,
 };
 
 use crate::{
@@ -71,16 +70,8 @@ impl IsEqConstraint<1, 2, 2, (), (VecF64<1>, VecF64<1>), f64> for LinearEqConstr
         };
 
         (
-            || {
-                VectorValuedVectorMap::<DualScalar<1, 1>, 1, 1, 1>::fw_autodiff_jacobian(
-                    dx0_res_fn, x0,
-                )
-            },
-            || {
-                VectorValuedVectorMap::<DualScalar<1, 1>, 1, 1, 1>::fw_autodiff_jacobian(
-                    dx1_res_fn, x1,
-                )
-            },
+            || dx0_res_fn(DualVector::var(x0)).jacobian(),
+            || dx1_res_fn(DualVector::var(x1)).jacobian(),
         )
             .make_eq(idx, var_kinds, residual)
     }

@@ -40,9 +40,15 @@ pub use crate::points::*;
 pub mod prelude {
     pub use crate::{
         dual::{
-            matrix::IsDualMatrix,
+            matrix::{
+                IsDualMatrix,
+                IsScalarFieldDualMatrix,
+            },
             scalar::IsDualScalar,
-            vector::IsDualVector,
+            vector::{
+                HasJacobian,
+                IsDualVector,
+            },
         },
         linalg::{
             bool_mask::IsBoolMask,

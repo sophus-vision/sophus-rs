@@ -221,7 +221,7 @@ macro_rules! def_real_group_test_template {
                             };
 
                             let num_diff_ad_a =
-                                VectorValuedVectorMap::<$scalar, $batch,0,0>
+                                VectorValuedVectorMap::<$scalar, $batch>
                                     ::sym_diff_quotient_jacobian
                                 (
                                     |x| {
@@ -242,19 +242,16 @@ macro_rules! def_real_group_test_template {
                                     a.clone()
                                 );
 
-                            let auto_diff_ad_a
-                                = VectorValuedVectorMap::<$dual_scalar, $batch, DOF, 1>::fw_autodiff_jacobian
-                                (
-                                    |x| {
-                                        let hat_x = <$dual_group>::hat(&x);
-                                        let hat_a = <$dual_group>::hat(&dual_a);
-                                        let mul = hat_a.mat_mul(hat_x.clone())
-                                            - hat_x.mat_mul(hat_a);
-                                        <$dual_group>::vee(&mul)
-                                    },
-                                    *b,
-                                );
+                             let ad_fn =   |x| {
+                                    let hat_x = <$dual_group>::hat(&x);
+                                    let hat_a = <$dual_group>::hat(&dual_a);
+                                    let mul = hat_a.mat_mul(hat_x.clone())
+                                        - hat_x.mat_mul(hat_a);
+                                    <$dual_group>::vee(&mul)
+                                };
 
+                            let auto_diff_ad_a
+                                = ad_fn(<$dual_scalar>::vector_var(*b)).jacobian();
 
 
                             assert_relative_eq!(
@@ -299,12 +296,7 @@ macro_rules! def_real_group_test_template {
 
                         let dx_exp_num_diff =
                             VectorValuedVectorMap::sym_diff_quotient_jacobian(exp_t, t, 0.0001);
-                        let dx_exp_auto_diff =
-                            VectorValuedVectorMap::<$dual_scalar, $batch, DOF, 1>::fw_autodiff_jacobian
-                            (
-                                dual_exp_t,
-                                t
-                            );
+                        let dx_exp_auto_diff = dual_exp_t(<$dual_scalar>::vector_var(t)).jacobian();
 
                         assert_relative_eq!(dx_exp_auto_diff, dx_exp_num_diff, epsilon = 0.001);
 
@@ -334,12 +326,8 @@ macro_rules! def_real_group_test_template {
                             <$scalar as IsScalar<$batch, 0, 0>>::Vector::zeros(),
                             0.0001
                         );
-                    let exp_auto_diff =
-                        VectorValuedVectorMap::<$dual_scalar, $batch, DOF, 1>::fw_autodiff_jacobian
-                        (
-                            dual_exp_t,
-                            <<$scalar as IsScalar<$batch, 0, 0>>::Vector<DOF>>::zeros()
-                        );
+                    let exp_auto_diff = dual_exp_t(<$dual_scalar>::vector_var(
+                        <<$scalar as IsScalar<$batch, 0, 0>>::Vector<DOF>>::zeros())).jacobian();
 
                     assert_relative_eq!(exp_auto_diff, num_diff, epsilon = 0.001);
                     assert_relative_eq!(analytic_diff, num_diff, epsilon = 0.001);
@@ -366,12 +354,8 @@ macro_rules! def_real_group_test_template {
                             <$scalar as IsScalar<$batch, 0, 0>>::Vector::zeros(),
                             0.0001
                         );
-                    let exp_times_auto_diff =
-                        VectorValuedVectorMap::<$dual_scalar, $batch, DOF, 1>::fw_autodiff_jacobian
-                        (
-                            dual_exp_t,
-                            <$scalar as IsScalar<$batch, 0, 0>>::Vector::zeros()
-                        );
+                    let exp_times_auto_diff = dual_exp_t(<$dual_scalar>::vector_var(
+                        <<$scalar as IsScalar<$batch, 0, 0>>::Vector<DOF>>::zeros())).jacobian();
                     assert_relative_eq!(exp_times_auto_diff, num_diff, epsilon = 0.001);
                     assert_relative_eq!(analytic_diff, num_diff, epsilon = 0.001);
                 }
@@ -406,11 +390,7 @@ macro_rules! def_real_group_test_template {
                         let num_diff =
                             VectorValuedVectorMap::sym_diff_quotient_jacobian(log_x, o, 0.0001);
                         let log_auto_diff =
-                            VectorValuedVectorMap::<$dual_scalar, $batch,DOF,1>::fw_autodiff_jacobian
-                            (
-                                dual_log_x,
-                                o
-                            );
+                             dual_log_x(<$dual_scalar>::vector_var(o)).jacobian();
                         assert_relative_eq!(log_auto_diff, num_diff, epsilon = 0.001);
 
                         let dual_log_x = |g: <$dual_scalar_p as IsScalar<$batch, PARAMS, 1>>::Vector<PARAMS>|
@@ -419,7 +399,7 @@ macro_rules! def_real_group_test_template {
                                 <$dual_group_p>::from_params(&g).log()
                             };
                         let auto_diff =
-                            VectorValuedVectorMap::<$dual_scalar_p, $batch, PARAMS, 1>::fw_autodiff_jacobian(dual_log_x, *g.params());
+                            dual_log_x(<$dual_scalar_p>::vector_var(*g.params())).jacobian();
 
                         let analytic_diff = Self::dx_log_x(g.params());
                         assert_relative_eq!(analytic_diff, auto_diff, epsilon = 0.001);
@@ -454,7 +434,8 @@ macro_rules! def_real_group_test_template {
 
                         let analytic_diff = Self::dx_log_a_exp_x_b_at_0(&a, &b);
                         let o = <$scalar as IsScalar<$batch, 0, 0>>::Vector::zeros();
-                        let auto_diff = VectorValuedVectorMap::<$dual_scalar, $batch, DOF, 1>::fw_autodiff_jacobian(dual_log_x, o);
+                        let auto_diff = dual_log_x(<$dual_scalar>::vector_var(o)).jacobian();
+
                         assert_relative_eq!(auto_diff, analytic_diff, epsilon = 0.001);
                     }
                 }
@@ -476,13 +457,11 @@ macro_rules! def_real_group_test_template {
 
                     // dx hat(x)
                     {
-                        let hat_x = |v: <$scalar as IsScalar<$batch,0,0>>::Vector<DOF>|
-                            -> <$scalar as IsScalar<$batch,0,0>>::Matrix<AMBIENT, AMBIENT>
+                        let hat_x = |v|
                         {
                             <$group>::hat(&v)
                         };
-                        let dual_hat_x = |vv: <$dual_scalar as IsScalar<$batch,DOF,1>>::Vector<DOF>|
-                            -> <$dual_scalar as IsScalar<$batch,DOF,1>>::Matrix<AMBIENT, AMBIENT>
+                        let dual_hat_x = |vv|
                         {
                             <$dual_group>::hat(&vv)
                         };
@@ -490,8 +469,8 @@ macro_rules! def_real_group_test_template {
                         let num_diff =
                             MatrixValuedVectorMap::sym_diff_quotient(hat_x, x, 0.0001);
                         let auto_diff =
-                            MatrixValuedVectorMap::<$dual_scalar, $batch, DOF, 1>::fw_autodiff(
-                                dual_hat_x, x);
+                             dual_hat_x( <$dual_scalar>::vector_var(x) ).derivative();
+
 
                         for i in 0..DOF {
                             assert_relative_eq!(
@@ -520,11 +499,8 @@ macro_rules! def_real_group_test_template {
                         let num_diff =
                             VectorValuedMatrixMap::sym_diff_quotient(vee_x, a, 0.0001);
                         let auto_diff =
-                            VectorValuedMatrixMap::<$dual_scalar_g, $batch, AMBIENT, AMBIENT>::fw_autodiff
-                            (
-                                dual_vee_x,
-                                a
-                            );
+                                 dual_vee_x(<$dual_scalar_g>::matrix_var(a)).derivative();
+
 
                         for i in 0..DOF {
 
@@ -555,11 +531,8 @@ macro_rules! def_real_group_test_template {
                             };
 
                         let auto_diff =
-                            VectorValuedVectorMap::<$dual_scalar_p, $batch, PARAMS, 1>::fw_autodiff_jacobian
-                            (
-                                dual_mul_x,
-                                *a.clone().params()
-                            );
+                            dual_mul_x(<$dual_scalar_p>::vector_var(*a.params())).jacobian();
+
                         let analytic_diff = Self::da_a_mul_b(&a, &b);
                         assert_relative_eq!(analytic_diff, auto_diff, epsilon = 0.001);
 
@@ -570,10 +543,8 @@ macro_rules! def_real_group_test_template {
                             };
 
                         let auto_diff =
-                            VectorValuedVectorMap::<$dual_scalar_p, $batch, PARAMS, 1>::fw_autodiff_jacobian
-                            (
-                                dual_mul_x, *b.clone().params()
-                            );
+                            dual_mul_x(<$dual_scalar_p>::vector_var(*b.params())).jacobian();
+
                         let analytic_diff = Self::db_a_mul_b(&a, &b);
                         assert_relative_eq!(analytic_diff, auto_diff, epsilon = 0.001);
                     }
@@ -598,8 +569,8 @@ macro_rules! def_real_group_test_template {
                             let m =  <$dual_group_p>::from_params(&v).compact();
                             m.get_col_vec(i)
                         };
-                        let auto_d = VectorValuedVectorMap::<$dual_scalar_p, $batch, PARAMS, 1>
-                        ::fw_autodiff_jacobian(dual_fn, params.clone());
+                        let auto_d =
+                            dual_fn(<$dual_scalar_p>::vector_var(params.clone())).jacobian();
 
                         approx::assert_relative_eq!(
                             auto_d,
@@ -615,8 +586,8 @@ macro_rules! def_real_group_test_template {
                                 m.get_col_vec(i)
                             };
                             let o = <$scalar as IsScalar<$batch, 0, 0>>::Vector::zeros();
-                            let auto_d = VectorValuedVectorMap::<$dual_scalar, $batch, DOF, 1>
-                            ::fw_autodiff_jacobian(dual_fn,o);
+                            let auto_d =
+                                dual_fn(<$dual_scalar>::vector_var(o)).jacobian();
 
                             approx::assert_relative_eq!(
                                 auto_d,

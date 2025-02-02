@@ -7,16 +7,11 @@ use crate::prelude::*;
 ///   f: ℝᵐ -> ℝ
 ///
 /// These functions are also called a scalar fields (on vector spaces).
-pub struct ScalarValuedVectorMap<
-    S: IsScalar<BATCH, DM, DN>,
-    const BATCH: usize,
-    const DM: usize,
-    const DN: usize,
-> {
+pub struct ScalarValuedVectorMap<S: IsScalar<BATCH, 0, 0>, const BATCH: usize> {
     phantom: core::marker::PhantomData<S>,
 }
 
-impl<S: IsRealScalar<BATCH>, const BATCH: usize> ScalarValuedVectorMap<S, BATCH, 0, 0> {
+impl<S: IsRealScalar<BATCH>, const BATCH: usize> ScalarValuedVectorMap<S, BATCH> {
     /// Finite difference quotient of the scalar-valued map.
     ///
     /// The derivative is a vector or rank-1 tensor of shape (Rᵢ).
@@ -42,24 +37,6 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> ScalarValuedVectorMap<S, BATCH,
                 (scalar_valued(a_plus) - scalar_valued(a_minus))
                     / S::RealScalar::from_f64(2.0 * eps),
             );
-        }
-        out
-    }
-}
-
-impl<D: IsDualScalar<BATCH, INROWS, 1>, const BATCH: usize, const INROWS: usize>
-    ScalarValuedVectorMap<D, BATCH, INROWS, 1>
-{
-    /// Auto differentiation of the scalar-valued map.
-    pub fn fw_autodiff<TFn>(scalar_valued: TFn, a: D::RealVector<INROWS>) -> D::RealVector<INROWS>
-    where
-        TFn: Fn(D::DualVector<INROWS, INROWS, 1>) -> D,
-    {
-        let jacobian = scalar_valued(D::vector_var(a)).derivative();
-        let mut out = D::RealVector::<INROWS>::zeros();
-
-        for r in 0..INROWS {
-            out[r] = jacobian[(r, 0)];
         }
         out
     }
@@ -108,25 +85,6 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> ScalarValuedMatrixMap<S, BATCH,
     }
 }
 
-impl<
-        D: IsDualScalar<BATCH, INROWS, INCOLS>,
-        const BATCH: usize,
-        const INROWS: usize,
-        const INCOLS: usize,
-    > ScalarValuedMatrixMap<D, BATCH, INROWS, INCOLS>
-{
-    /// Auto differentiation of the scalar-valued map.
-    pub fn fw_autodiff<TFn>(
-        scalar_valued: TFn,
-        a: D::RealMatrix<INROWS, INCOLS>,
-    ) -> D::RealMatrix<INROWS, INCOLS>
-    where
-        TFn: Fn(D::DualMatrix<INROWS, INCOLS, INROWS, INCOLS>) -> D,
-    {
-        scalar_valued(D::matrix_var(a)).derivative()
-    }
-}
-
 #[test]
 fn scalar_valued_map_tests() {
     #[cfg(feature = "simd")]
@@ -168,11 +126,10 @@ fn scalar_valued_map_tests() {
                     }
 
                     let finite_diff =
-                        ScalarValuedVectorMap::<$scalar, $batch, 0, 0>::sym_diff_quotient(
-                            f, a, EPS_F64,
-                        );
+                        ScalarValuedVectorMap::<$scalar, $batch>::sym_diff_quotient(f, a, EPS_F64);
                     let auto_grad =
-                        ScalarValuedVectorMap::<$dual_scalar, $batch, 2, 1>::fw_autodiff(f, a);
+                        f::<$dual_scalar, $batch, 2, 1>(<$dual_scalar>::vector_var(a)).derivative();
+
                     approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
                     //      [[ a,   b ]]
@@ -207,11 +164,10 @@ fn scalar_valued_map_tests() {
                             mat,
                             EPS_F64,
                         );
-                    let auto_grad =
-                        ScalarValuedMatrixMap::<$dual_scalar2, $batch, 3, 2>::fw_autodiff(
-                            determinant_fn,
-                            mat,
-                        );
+                    let auto_grad = determinant_fn::<$dual_scalar2, $batch, 3, 2>(
+                        <$dual_scalar2>::matrix_var(mat),
+                    )
+                    .derivative();
                     approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
                 }
             }

@@ -4,7 +4,6 @@ use sophus_autodiff::{
         DualVector,
     },
     linalg::VecF64,
-    maps::VectorValuedVectorMap,
 };
 
 use crate::{
@@ -62,11 +61,12 @@ impl IsCostTerm<2, 1, (), VecF64<2>, VecF64<2>> for Quadratic2CostTerm {
             Self::residual::<DualScalar<2, 1>, 2, 1>(x, DualVector::<2, 2, 1>::from_real_vector(z))
         };
 
-        (|| {
-            VectorValuedVectorMap::<DualScalar<2, 1>, 1, 2, 1>::fw_autodiff_jacobian(
-                dx_res_fn, args,
-            )
-        },)
-            .make(idx, var_kinds, residual, robust_kernel, None)
+        (|| dx_res_fn(DualVector::var(args)).jacobian(),).make(
+            idx,
+            var_kinds,
+            residual,
+            robust_kernel,
+            None,
+        )
     }
 }
