@@ -48,12 +48,6 @@ pub trait IsDualVector<
 >: IsVector<S, ROWS, BATCH, DM, DN>
 {
     /// Create a new dual vector from a real vector for auto-differentiation with respect to self
-    ///
-    /// Typically this is not called directly, but through using a map auto-differentiation call:
-    ///
-    ///  - ScalarValuedVectorMap::fw_autodiff(...);
-    ///  - VectorValuedVectorMap::fw_autodiff(...);
-    ///  - MatrixValuedVectorMap::fw_autodiff(...);
     fn var(val: S::RealVector<ROWS>) -> Self;
 
     /// Get the derivative
@@ -115,21 +109,15 @@ fn dual_vector_tests() {
                                     x.dot(y)
                                 }
                                 let finite_diff =
-                                    ScalarValuedVectorMap::<$scalar, $batch,0,0>::sym_diff_quotient(
+                                    ScalarValuedVectorMap::<$scalar, $batch>::sym_diff_quotient(
                                         |x| dot_fn(x, p1),
                                         p,
                                         EPS_F64,
                                     );
-                                let auto_grad =
-                                    ScalarValuedVectorMap::<$dual_scalar4_1, $batch,4,1>::fw_autodiff(
-                                        |x| {
-                                            dot_fn(
-                                                x,
+                                let auto_grad = dot_fn::<$dual_scalar4_1, $batch,4,1>(
+                                                <$dual_scalar4_1>::vector_var(p),
                                                 <$dual_scalar4_1 as IsScalar<$batch,4,1>>::Vector::<4>::from_real_vector(p1),
-                                            )
-                                        },
-                                        p,
-                                    );
+                                            ).derivative();
                                 approx::assert_abs_diff_eq!(
                                     finite_diff,
                                     auto_grad,
@@ -140,15 +128,14 @@ fn dual_vector_tests() {
                             fn dot_fn<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>(x: S::Vector<4>, s: S) -> S::Vector<4> {
                                 x.scaled(s)
                             }
-                            let finite_diff = VectorValuedVectorMap::<$scalar, $batch,0,0>::sym_diff_quotient_jacobian(
+                            let finite_diff = VectorValuedVectorMap::<$scalar, $batch>::sym_diff_quotient_jacobian(
                                 |x| dot_fn::<$scalar, $batch,0,0>(x, <$scalar>::from_f64(0.99)),
                                 p,
                                 EPS_F64,
                             );
-                            let auto_grad = VectorValuedVectorMap::<$dual_scalar4_1, $batch,4,1>::fw_autodiff_jacobian(
-                                |x| dot_fn::<$dual_scalar4_1, $batch,4,1>(x, <$dual_scalar4_1>::from_f64(0.99)),
-                                p,
-                            );
+                            let auto_grad =
+                                 dot_fn::<$dual_scalar4_1, $batch,4,1>(<$dual_scalar4_1>::vector_var(p), <$dual_scalar4_1>::from_f64(0.99)).jacobian();
+
                             approx::assert_abs_diff_eq!(
                                 finite_diff,
                                 auto_grad,
@@ -156,20 +143,16 @@ fn dual_vector_tests() {
                             );
 
 
-                            let finite_diff = VectorValuedVectorMap::<$scalar, $batch,0,0>::sym_diff_quotient_jacobian(
+                            let finite_diff = VectorValuedVectorMap::<$scalar, $batch>::sym_diff_quotient_jacobian(
                                 |x| dot_fn::<$scalar, $batch,0,0>(p1, x[0]),
                                 p,
                                 EPS_F64,
                             );
-                            let auto_grad = VectorValuedVectorMap::<$dual_scalar4_1, $batch,4,1>::fw_autodiff_jacobian(
-                                |x| {
+                            let auto_grad =
                                     dot_fn::<$dual_scalar4_1, $batch,4,1>(
                                         <$dual_scalar4_1 as IsScalar<$batch,4,1>>::Vector::from_real_vector(p1),
-                                        x.get_elem(0),
-                                    )
-                                },
-                                p,
-                            );
+                                        <$dual_scalar4_1>::vector_var(p).get_elem(0)).jacobian();
+
                             approx::assert_abs_diff_eq!(
                                 finite_diff,
                                 auto_grad,

@@ -4,7 +4,6 @@ use sophus_autodiff::{
         DualVector,
     },
     linalg::VecF64,
-    maps::VectorValuedVectorMap,
 };
 
 use crate::{
@@ -57,11 +56,6 @@ impl IsEqConstraint<1, 3, 1, (), VecF64<3>, f64> for SphericalConstraint {
             Self::residual::<DualScalar<3, 1>, 3, 1>(x, radius_dual)
         };
 
-        (|| {
-            VectorValuedVectorMap::<DualScalar<3, 1>, 1, 3, 1>::fw_autodiff_jacobian(
-                dx_res_fn, vec3,
-            )
-        },)
-            .make_eq(idx, var_kinds, residual)
+        (|| dx_res_fn(DualVector::var(vec3)).jacobian(),).make_eq(idx, var_kinds, residual)
     }
 }

@@ -110,7 +110,6 @@ macro_rules! def_real_group_test_template {
             fn test_mat_v_jacobian() {
                 use crate::traits::IsLieGroup;
                 use log::info;
-                use sophus_autodiff::maps::vector_valued_maps::VectorValuedVectorMap;
                 use sophus_autodiff::linalg::scalar::IsScalar;
                 use sophus_autodiff::linalg::vector::IsVector;
                 use sophus_autodiff::params::HasParams;
@@ -130,7 +129,7 @@ macro_rules! def_real_group_test_template {
                             };
 
                     let num_diff =
-                        MatrixValuedVectorMap::<$scalar, $batch, 0, 0>::sym_diff_quotient(
+                        MatrixValuedVectorMap::<$scalar, $batch>::sym_diff_quotient(
                             mat_v_x, t, 0.0001,
                         );
 
@@ -174,11 +173,7 @@ macro_rules! def_real_group_test_template {
                             };
 
                         let auto_diff =
-                            VectorValuedVectorMap::<$dual_scalar, $batch,PARAMS,1>::fw_autodiff_jacobian
-                            (
-                                dual_fn,
-                                *a.params(),
-                            );
+                            dual_fn(<$dual_scalar>::vector_var(*a.params())).jacobian();
                         let analytic_diff = Self::dparams_matrix_times_point(a.params(), &p);
                         assert_relative_eq!(analytic_diff, auto_diff, epsilon = 0.001);
                     }

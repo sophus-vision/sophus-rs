@@ -89,6 +89,25 @@ where
     }
 }
 
+impl<const ROWS: usize, const COLS: usize, const BATCH: usize>
+    IsScalarFieldDualMatrix<DualBatchScalar<BATCH, 1, 1>, ROWS, COLS, BATCH>
+    for DualBatchMatrix<ROWS, COLS, BATCH, 1, 1>
+where
+    BatchScalarF64<BATCH>: IsCoreScalar,
+    LaneCount<BATCH>: SupportedLaneCount,
+{
+    fn scalarfield_derivative(&self) -> BatchMatF64<ROWS, COLS, BATCH> {
+        let mut out = BatchMatF64::<ROWS, COLS, BATCH>::zeros();
+
+        for i in 0..ROWS {
+            for j in 0..COLS {
+                out.set_elem([i, j], self.inner[(i, j)].derivative()[(0, 0)]);
+            }
+        }
+        out
+    }
+}
+
 impl<
         const ROWS: usize,
         const COLS: usize,

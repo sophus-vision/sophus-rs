@@ -1,10 +1,6 @@
 use sophus_autodiff::{
-    dual::{
-        DualScalar,
-        DualVector,
-    },
+    dual::DualVector,
     linalg::VecF64,
-    maps::VectorValuedVectorMap,
 };
 use sophus_lie::{
     Isometry3,
@@ -79,12 +75,9 @@ impl IsCostTerm<13, 3, (), (PinholeCameraF64, Isometry3F64, VecF64<3>), VecF64<2
         );
 
         // calculate jacobian wrt intrinsics
-        let d0_res_fn = |x: DualVector<4, 4, 1>| -> DualVector<2, 4, 1> {
+        let d0_res_fn = |x: DualVector<4, 4, 1>| {
             Self::residual(
-                PinholeCamera::<DualScalar<4, 1>, 1, 4, 1>::from_params_and_size(
-                    x,
-                    intrinsics.image_size(),
-                ),
+                PinholeCamera::from_params_and_size(x, intrinsics.image_size()),
                 world_from_camera_pose.to_dual_c(),
                 DualVector::from_real_vector(point_in_world),
                 DualVector::from_real_vector(*uv_in_image),
@@ -93,11 +86,11 @@ impl IsCostTerm<13, 3, (), (PinholeCameraF64, Isometry3F64, VecF64<3>), VecF64<2
         // calculate jacobian wrt world_from_camera_pose
         let d1_res_fn = |x: DualVector<6, 6, 1>| -> DualVector<2, 6, 1> {
             Self::residual(
-                PinholeCamera::<DualScalar<6, 1>, 1, 6, 1>::from_params_and_size(
+                PinholeCamera::from_params_and_size(
                     DualVector::from_real_vector(*intrinsics.params()),
                     intrinsics.image_size(),
                 ),
-                Isometry3::<DualScalar<6, 1>, 1, 6, 1>::exp(x) * world_from_camera_pose.to_dual_c(),
+                Isometry3::exp(x) * world_from_camera_pose.to_dual_c(),
                 DualVector::from_real_vector(point_in_world),
                 DualVector::from_real_vector(*uv_in_image),
             )
@@ -105,7 +98,7 @@ impl IsCostTerm<13, 3, (), (PinholeCameraF64, Isometry3F64, VecF64<3>), VecF64<2
         // calculate jacobian wrt point_in_world
         let d2_res_fn = |x: DualVector<3, 3, 1>| -> DualVector<2, 3, 1> {
             Self::residual(
-                PinholeCamera::<DualScalar<3, 1>, 1, 3, 1>::from_params_and_size(
+                PinholeCamera::from_params_and_size(
                     DualVector::from_real_vector(*intrinsics.params()),
                     intrinsics.image_size(),
                 ),
@@ -116,24 +109,9 @@ impl IsCostTerm<13, 3, (), (PinholeCameraF64, Isometry3F64, VecF64<3>), VecF64<2
         };
 
         (
-            || {
-                VectorValuedVectorMap::<DualScalar<4, 1>, 1, 4, 1>::fw_autodiff_jacobian(
-                    d0_res_fn,
-                    *intrinsics.params(),
-                )
-            },
-            || {
-                VectorValuedVectorMap::<DualScalar<6, 1>, 1, 6, 1>::fw_autodiff_jacobian(
-                    d1_res_fn,
-                    VecF64::<6>::zeros(),
-                )
-            },
-            || {
-                VectorValuedVectorMap::<DualScalar<3, 1>, 1, 3, 1>::fw_autodiff_jacobian(
-                    d2_res_fn,
-                    point_in_world,
-                )
-            },
+            || d0_res_fn(DualVector::var(*intrinsics.params())).jacobian(),
+            || d1_res_fn(DualVector::var(VecF64::<6>::zeros())).jacobian(),
+            || d2_res_fn(DualVector::var(point_in_world)).jacobian(),
         )
             .make(idx, var_kinds, residual, robust_kernel, None)
     }

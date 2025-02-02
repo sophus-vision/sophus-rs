@@ -18,6 +18,7 @@ use num_traits::Zero;
 use super::matrix::MatrixValuedDerivative;
 use crate::{
     dual::{
+        matrix::IsScalarFieldDualMatrix,
         DualScalar,
         DualVector,
     },
@@ -75,6 +76,21 @@ impl<const ROWS: usize, const COLS: usize, const DM: usize, const DN: usize>
             }
         }
         MatrixValuedDerivative { out_mat: v }
+    }
+}
+
+impl<const ROWS: usize, const COLS: usize> IsScalarFieldDualMatrix<DualScalar<1, 1>, ROWS, COLS, 1>
+    for DualMatrix<ROWS, COLS, 1, 1>
+{
+    fn scalarfield_derivative(&self) -> MatF64<ROWS, COLS> {
+        let mut out = MatF64::<ROWS, COLS>::zeros();
+
+        for i in 0..ROWS {
+            for j in 0..COLS {
+                out.set_elem([i, j], self.inner[(i, j)].derivative()[(0, 0)]);
+            }
+        }
+        out
     }
 }
 

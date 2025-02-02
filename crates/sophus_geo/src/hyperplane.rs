@@ -187,7 +187,10 @@ impl PlaneF64 {
 #[test]
 fn plane_test() {
     use sophus_autodiff::{
-        dual::DualScalar,
+        dual::{
+            DualScalar,
+            DualVector,
+        },
         linalg::{
             VecF64,
             EPS_F64,
@@ -216,15 +219,12 @@ fn plane_test() {
             sophus_autodiff::nalgebra::Const<1>,
             sophus_autodiff::nalgebra::ArrayStorage<f64, 3, 1>,
         > = VecF64::<3>::new(1.0, 2.0, 3.0);
-        let finite_diff = VectorValuedVectorMap::<f64, 1, 0, 0>::sym_diff_quotient_jacobian(
+        let finite_diff = VectorValuedVectorMap::<f64, 1>::sym_diff_quotient_jacobian(
             proj_x_onto::<f64, 1, 0, 0>,
             a,
             EPS_F64,
         );
-        let auto_grad = VectorValuedVectorMap::<DualScalar<3, 1>, 1, 3, 1>::fw_autodiff_jacobian(
-            proj_x_onto::<DualScalar<3, 1>, 1, 3, 1>,
-            a,
-        );
+        let auto_grad = proj_x_onto::<DualScalar<3, 1>, 1, 3, 1>(DualVector::var(a)).jacobian();
 
         approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.00001);
         approx::assert_abs_diff_eq!(plane.dx_proj_x_onto(), auto_grad, epsilon = 0.00001);
@@ -245,10 +245,8 @@ fn plane_test() {
             }
 
             let auto_grad =
-                VectorValuedVectorMap::<DualScalar<6, 1>, 1, 6, 1>::fw_autodiff_jacobian(
-                    proj_x_onto::<DualScalar<6, 1>, 1, 6, 1>,
-                    VecF64::zeros(),
-                );
+                proj_x_onto::<DualScalar<6, 1>, 1, 6, 1>(DualVector::var(VecF64::zeros()))
+                    .jacobian();
 
             approx::assert_abs_diff_eq!(
                 Plane::dx_proj_onto_plane_at_0(
@@ -279,10 +277,8 @@ fn plane_test() {
             line.proj_onto(a)
         }
 
-        let auto_grad = VectorValuedVectorMap::<DualScalar<3, 1>, 1, 3, 1>::fw_autodiff_jacobian(
-            proj_x_onto::<DualScalar<3, 1>, 1, 3, 1>,
-            VecF64::zeros(),
-        );
+        let auto_grad =
+            proj_x_onto::<DualScalar<3, 1>, 1, 3, 1>(DualVector::var(VecF64::zeros())).jacobian();
 
         approx::assert_abs_diff_eq!(
             Line::dx_proj_onto_line_at_0(&Isometry2::rot(0.2), &VecF64::<2>::new(1.0, 2.0)),
