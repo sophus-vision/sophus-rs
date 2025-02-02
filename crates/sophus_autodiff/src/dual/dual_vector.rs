@@ -18,6 +18,7 @@ use super::{
     dual_scalar::DualScalar,
     vector::{
         HasJacobian,
+        IsDualVectorFromCurve,
         VectorValuedDerivative,
     },
 };
@@ -58,6 +59,14 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
             v[i] = self.inner[i].derivative();
         }
         VectorValuedDerivative { out_vec: v }
+    }
+}
+
+impl<const ROWS: usize> IsDualVectorFromCurve<DualScalar<1, 1>, ROWS, 1>
+    for DualVector<ROWS, 1, 1>
+{
+    fn curve_derivative(&self) -> VecF64<ROWS> {
+        self.jacobian()
     }
 }
 
@@ -171,14 +180,14 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
     }
 
     fn norm(&self) -> DualScalar<DM, DN> {
-        self.clone().dot(*self).sqrt()
+        self.dot(*self).sqrt()
     }
 
     fn squared_norm(&self) -> DualScalar<DM, DN> {
-        self.clone().dot(*self)
+        self.dot(*self)
     }
 
-    fn get_elem(&self, idx: usize) -> DualScalar<DM, DN> {
+    fn elem(&self, idx: usize) -> DualScalar<DM, DN> {
         self.inner[idx]
     }
 
@@ -220,7 +229,7 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
     fn real_vector(&self) -> VecF64<ROWS> {
         let mut r = VecF64::<ROWS>::zeros();
         for i in 0..ROWS {
-            r[i] = self.get_elem(i).real_part;
+            r[i] = self.elem(i).real_part;
         }
         r
     }
@@ -263,15 +272,14 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
         let mut sum = <DualScalar<DM, DN>>::from_f64(0.0);
 
         for i in 0..ROWS {
-            sum += self.get_elem(i) * rhs.borrow().get_elem(i);
+            sum += self.elem(i) * rhs.borrow().elem(i);
         }
 
         sum
     }
 
     fn normalized(&self) -> Self {
-        self.clone()
-            .scaled(<DualScalar<DM, DN>>::from_f64(1.0) / self.norm())
+        self.scaled(<DualScalar<DM, DN>>::from_f64(1.0) / self.norm())
     }
 
     fn from_f64_array<A>(vals: A) -> Self
@@ -296,8 +304,8 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
         }
     }
 
-    fn set_elem(&mut self, idx: usize, v: DualScalar<DM, DN>) {
-        self.inner[idx] = v;
+    fn elem_mut(&mut self, idx: usize) -> &mut DualScalar<DM, DN> {
+        &mut self.inner[idx]
     }
 
     fn to_dual_const<const M: usize, const N: usize>(
@@ -316,7 +324,7 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
         let mut out = DualMatrix::<ROWS, R2, DM, DN>::zeros();
         for i in 0..ROWS {
             for j in 0..R2 {
-                out.set_elem([i, j], self.get_elem(i) * rhs.borrow().get_elem(j));
+                *out.elem_mut([i, j]) = self.elem(i) * rhs.borrow().elem(j);
             }
         }
         out

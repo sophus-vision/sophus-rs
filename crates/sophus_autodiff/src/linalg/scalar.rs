@@ -257,8 +257,8 @@ pub trait IsScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     fn test_suite() {
         let examples = Self::scalar_examples();
         for a in &examples {
-            let sin_a = a.clone().sin();
-            let cos_a = a.clone().cos();
+            let sin_a = a.sin();
+            let cos_a = a.cos();
             let val = sin_a * sin_a + cos_a * cos_a;
             let one = Self::ones();
 

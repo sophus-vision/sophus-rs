@@ -37,7 +37,7 @@ impl<
     }
 }
 
-/// Trait for scalar dual numbers
+/// Trait for dual matrix
 pub trait IsDualMatrix<
     S: IsDualScalar<BATCH, DM, DN>,
     const ROWS: usize,
@@ -54,8 +54,8 @@ pub trait IsDualMatrix<
     fn derivative(self) -> MatrixValuedDerivative<S::RealScalar, ROWS, COLS, BATCH, DM, DN>;
 }
 
-/// Trait for scalar dual numbers
-pub trait IsScalarFieldDualMatrix<
+/// Trait for dual matrix as an output of a scalar field
+pub trait IsDualMatrixFromCurve<
     S: IsDualScalar<BATCH, 1, 1>,
     const ROWS: usize,
     const COLS: usize,
@@ -63,7 +63,7 @@ pub trait IsScalarFieldDualMatrix<
 >: IsDualMatrix<S, ROWS, COLS, BATCH, 1, 1>
 {
     /// Get the derivative
-    fn scalarfield_derivative(&self) -> S::RealMatrix<ROWS, COLS>;
+    fn curve_derivative(&self) -> S::RealMatrix<ROWS, COLS>;
 }
 
 #[test]

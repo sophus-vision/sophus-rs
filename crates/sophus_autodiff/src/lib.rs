@@ -42,12 +42,16 @@ pub mod prelude {
         dual::{
             matrix::{
                 IsDualMatrix,
-                IsScalarFieldDualMatrix,
+                IsDualMatrixFromCurve,
             },
-            scalar::IsDualScalar,
+            scalar::{
+                IsDualScalar,
+                IsDualScalarFromCurve,
+            },
             vector::{
                 HasJacobian,
                 IsDualVector,
+                IsDualVectorFromCurve,
             },
         },
         linalg::{

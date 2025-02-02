@@ -239,13 +239,13 @@ macro_rules! def_real_group_test_template {
                             let dual_a =
                                 <$dual_scalar as IsScalar<$batch, DOF,1>>::Vector::from_real_vector
                                 (
-                                    a.clone()
+                                    a
                                 );
 
                              let ad_fn =   |x| {
                                     let hat_x = <$dual_group>::hat(&x);
                                     let hat_a = <$dual_group>::hat(&dual_a);
-                                    let mul = hat_a.mat_mul(hat_x.clone())
+                                    let mul = hat_a.mat_mul(hat_x)
                                         - hat_x.mat_mul(hat_a);
                                     <$dual_group>::vee(&mul)
                                 };
@@ -411,7 +411,7 @@ macro_rules! def_real_group_test_template {
                         let dual_params_a =
                             <$dual_scalar as IsScalar<$batch, DOF, 1>>::Vector::from_real_vector
                             (
-                                *a.clone().params()
+                                *a.params()
                             );
                         let dual_a = <$dual_group>::from_params(&dual_params_a);
                         let dual_params_b =
@@ -520,8 +520,8 @@ macro_rules! def_real_group_test_template {
                 const PARAMS: usize = <$group>::PARAMS;
                 for a in Self::element_examples() {
                     for b in Self::element_examples() {
-                        let a_dual = a.clone().to_dual_c();
-                        let b_dual = b.clone().to_dual_c();
+                        let a_dual = a.to_dual_c();
+                        let b_dual = b.to_dual_c();
 
                         let dual_mul_x = |vv: <$dual_scalar_p as IsScalar<$batch,PARAMS,1>>::Vector<PARAMS>|
                             -> <$dual_scalar_p as IsScalar<$batch,PARAMS,1>>::Vector<PARAMS>

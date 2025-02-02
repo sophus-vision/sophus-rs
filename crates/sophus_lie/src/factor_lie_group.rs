@@ -164,12 +164,12 @@ macro_rules! def_real_group_test_template {
                 for p in example_points::<$scalar, POINT, $batch,0,0>() {
                     for a in Self::element_examples() {
                         let dual_p =
-                            <$dual_scalar as IsScalar<$batch,PARAMS,1>>::Vector::from_real_vector(p.clone());
+                            <$dual_scalar as IsScalar<$batch,PARAMS,1>>::Vector::from_real_vector(p);
 
                         let dual_fn = |x: <$dual_scalar as IsScalar<$batch,PARAMS,1>>::Vector<PARAMS>|
                             -> <$dual_scalar as IsScalar<$batch,PARAMS,1>>::Vector<POINT>
                             {
-                                <$dual_group>::from_params(&x).matrix() * dual_p.clone()
+                                <$dual_group>::from_params(&x).matrix() * dual_p
                             };
 
                         let auto_diff =

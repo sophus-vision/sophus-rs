@@ -4,8 +4,8 @@ use sophus_image::ImageSize;
 
 use crate::{
     camera_enum::perspective_camera::{
+        EnhancedUnifiedCamera,
         PerspectiveCameraEnum,
-        UnifiedCamera,
     },
     prelude::*,
     projections::orthographic::OrthographicCamera,
@@ -63,11 +63,13 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         Self::Perspective(PerspectiveCameraEnum::new_brown_conrady(params, image_size))
     }
 
-    fn new_unified<P>(params: P, image_size: ImageSize) -> Self
+    fn new_enhanced_unified<P>(params: P, image_size: ImageSize) -> Self
     where
         P: Borrow<S::Vector<6>>,
     {
-        Self::Perspective(PerspectiveCameraEnum::new_unified(params, image_size))
+        Self::Perspective(PerspectiveCameraEnum::new_enhanced_unified(
+            params, image_size,
+        ))
     }
 
     fn image_size(&self) -> ImageSize {
@@ -162,9 +164,9 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         }
     }
 
-    fn try_get_unified_extended(self) -> Option<UnifiedCamera<S, BATCH, DM, DN>> {
+    fn try_get_enhanced_unified(self) -> Option<EnhancedUnifiedCamera<S, BATCH, DM, DN>> {
         if let GeneralCameraEnum::Perspective(camera) = self {
-            camera.try_get_unified_extended()
+            camera.try_get_enhanced_unified()
         } else {
             None
         }

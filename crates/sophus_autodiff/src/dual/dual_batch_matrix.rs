@@ -90,18 +90,18 @@ where
 }
 
 impl<const ROWS: usize, const COLS: usize, const BATCH: usize>
-    IsScalarFieldDualMatrix<DualBatchScalar<BATCH, 1, 1>, ROWS, COLS, BATCH>
+    IsDualMatrixFromCurve<DualBatchScalar<BATCH, 1, 1>, ROWS, COLS, BATCH>
     for DualBatchMatrix<ROWS, COLS, BATCH, 1, 1>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
     LaneCount<BATCH>: SupportedLaneCount,
 {
-    fn scalarfield_derivative(&self) -> BatchMatF64<ROWS, COLS, BATCH> {
+    fn curve_derivative(&self) -> BatchMatF64<ROWS, COLS, BATCH> {
         let mut out = BatchMatF64::<ROWS, COLS, BATCH>::zeros();
 
         for i in 0..ROWS {
             for j in 0..COLS {
-                out.set_elem([i, j], self.inner[(i, j)].derivative()[(0, 0)]);
+                *out.elem_mut([i, j]) = self.inner[(i, j)].derivative()[(0, 0)];
             }
         }
         out
@@ -240,8 +240,12 @@ where
         DualBatchMatrix::from_real_matrix(BatchMatF64::<ROWS, COLS, BATCH>::identity())
     }
 
-    fn get_elem(&self, idx: [usize; 2]) -> DualBatchScalar<BATCH, DM, DN> {
+    fn elem(&self, idx: [usize; 2]) -> DualBatchScalar<BATCH, DM, DN> {
         self.inner[(idx[0], idx[1])]
+    }
+
+    fn elem_mut(&mut self, idx: [usize; 2]) -> &mut DualBatchScalar<BATCH, DM, DN> {
+        &mut self.inner[(idx[0], idx[1])]
     }
 
     fn from_array2<A>(duals: A) -> Self
@@ -405,15 +409,11 @@ where
         let other = other.borrow();
         for i in 0..ROWS {
             for j in 0..COLS {
-                v[(i, j)] = self.get_elem([i, j]).select(mask, other.get_elem([i, j]));
+                v[(i, j)] = self.elem([i, j]).select(mask, other.elem([i, j]));
             }
         }
 
         Self { inner: v }
-    }
-
-    fn set_elem(&mut self, idx: [usize; 2], val: DualBatchScalar<BATCH, DM, DN>) {
-        self.inner[(idx[0], idx[1])] = val;
     }
 
     fn transposed(

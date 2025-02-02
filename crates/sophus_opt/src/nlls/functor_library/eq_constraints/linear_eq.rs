@@ -27,7 +27,7 @@ impl LinearEqConstraint1 {
         x1: Scalar::Vector<1>,
         lhs: Scalar,
     ) -> Scalar::Vector<1> {
-        Scalar::Vector::<1>::from_array([(x0.get_elem(0) + x1.get_elem(0)) - lhs])
+        Scalar::Vector::<1>::from_array([(x0.elem(0) + x1.elem(0)) - lhs])
     }
 }
 

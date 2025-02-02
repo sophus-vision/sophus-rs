@@ -18,7 +18,7 @@ use num_traits::Zero;
 use super::matrix::MatrixValuedDerivative;
 use crate::{
     dual::{
-        matrix::IsScalarFieldDualMatrix,
+        matrix::IsDualMatrixFromCurve,
         DualScalar,
         DualVector,
     },
@@ -79,15 +79,15 @@ impl<const ROWS: usize, const COLS: usize, const DM: usize, const DN: usize>
     }
 }
 
-impl<const ROWS: usize, const COLS: usize> IsScalarFieldDualMatrix<DualScalar<1, 1>, ROWS, COLS, 1>
+impl<const ROWS: usize, const COLS: usize> IsDualMatrixFromCurve<DualScalar<1, 1>, ROWS, COLS, 1>
     for DualMatrix<ROWS, COLS, 1, 1>
 {
-    fn scalarfield_derivative(&self) -> MatF64<ROWS, COLS> {
+    fn curve_derivative(&self) -> MatF64<ROWS, COLS> {
         let mut out = MatF64::<ROWS, COLS>::zeros();
 
         for i in 0..ROWS {
             for j in 0..COLS {
-                out.set_elem([i, j], self.inner[(i, j)].derivative()[(0, 0)]);
+                *out.elem_mut([i, j]) = self.inner[(i, j)].derivative()[(0, 0)];
             }
         }
         out
@@ -193,8 +193,12 @@ impl<const ROWS: usize, const COLS: usize, const DM: usize, const DN: usize>
         DualMatrix::from_real_matrix(MatF64::<ROWS, COLS>::identity())
     }
 
-    fn get_elem(&self, idx: [usize; 2]) -> DualScalar<DM, DN> {
+    fn elem(&self, idx: [usize; 2]) -> DualScalar<DM, DN> {
         self.inner[(idx[0], idx[1])]
+    }
+
+    fn elem_mut(&mut self, idx: [usize; 2]) -> &mut DualScalar<DM, DN> {
+        &mut self.inner[(idx[0], idx[1])]
     }
 
     fn from_array2<A>(duals: A) -> Self
@@ -352,10 +356,6 @@ impl<const ROWS: usize, const COLS: usize, const DM: usize, const DN: usize>
         } else {
             *other.borrow()
         }
-    }
-
-    fn set_elem(&mut self, idx: [usize; 2], val: DualScalar<DM, DN>) {
-        self.inner[(idx[0], idx[1])] = val;
     }
 
     fn transposed(&self) -> <DualScalar<DM, DN> as IsScalar<1, DM, DN>>::Matrix<COLS, ROWS> {

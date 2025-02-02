@@ -26,7 +26,7 @@ impl SmallNonLinearEqConstraint {
         x: Scalar::Vector<2>,
         lhs: Scalar,
     ) -> Scalar::Vector<1> {
-        let r = x.get_elem(0) * x.get_elem(0) + x.get_elem(1) * x.get_elem(1) - lhs;
+        let r = x.elem(0) * x.elem(0) + x.elem(1) * x.elem(1) - lhs;
         Scalar::Vector::<1>::from_array([r])
     }
 }

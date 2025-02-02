@@ -155,15 +155,15 @@ fn matrix_valued_map_from_vector_tests() {
                         >(
                             v: S::Vector<6>,
                         ) -> S::Matrix<3, 4> {
-                            let i = v.get_elem(0);
-                            let j = v.get_elem(1);
-                            let k = v.get_elem(2);
-                            let ni = -i.clone();
-                            let nj = -j.clone();
-                            let nk = -k.clone();
-                            let x = v.get_elem(3);
-                            let y = v.get_elem(4);
-                            let z = v.get_elem(5);
+                            let i = v.elem(0);
+                            let j = v.elem(1);
+                            let k = v.elem(2);
+                            let ni = -i;
+                            let nj = -j;
+                            let nk = -k;
+                            let x = v.elem(3);
+                            let y = v.elem(4);
+                            let z = v.elem(5);
 
                             S::Matrix::<3, 4>::from_array2([
                                 [S::from_f64(0.0), nk, j, x],
@@ -211,19 +211,15 @@ fn matrix_valued_map_from_vector_tests() {
                     >(
                         m: S::Matrix<2, 2>,
                     ) -> S::Matrix<2, 2> {
-                        let a = m.get_elem([0, 0]);
-                        let b = m.get_elem([0, 1]);
+                        let a = m.elem([0, 0]);
+                        let b = m.elem([0, 1]);
 
-                        let c = m.get_elem([1, 0]);
-                        let d = m.get_elem([1, 1]);
+                        let c = m.elem([1, 0]);
+                        let d = m.elem([1, 1]);
 
-                        let det =
-                            S::from_f64(1.0) / (a.clone() * d.clone() - (b.clone() * c.clone()));
+                        let det = S::from_f64(1.0) / (a * d - (b * c));
 
-                        S::Matrix::from_array2([
-                            [det.clone() * d, -det.clone() * b],
-                            [-det.clone() * c, det * a],
-                        ])
+                        S::Matrix::from_array2([[det * d, -det * b], [-det * c, det * a]])
                     }
                     let a = <$scalar as IsScalar<$batch, 0, 0>>::Matrix::<2, 2>::new(
                         <$scalar>::from_f64(0.1),

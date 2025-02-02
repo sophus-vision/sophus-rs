@@ -121,7 +121,7 @@ fn create_tiny_image_view_packet() -> Packet {
 }
 
 fn create_scene(pinhole: bool) -> Vec<Packet> {
-    let unified_cam = DynCameraF64::new_unified(
+    let unified_cam = DynCameraF64::new_enhanced_unified(
         VecF64::from_array([500.0, 500.0, 320.0, 240.0, 0.629, 1.02]),
         ImageSize::new(639, 479),
     );

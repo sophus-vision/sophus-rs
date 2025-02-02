@@ -20,6 +20,14 @@ pub trait IsDualScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     fn derivative(&self) -> Self::RealMatrix<DM, DN>;
 }
 
+/// Trait for dual scalar as an output of a scalar field
+pub trait IsDualScalarFromCurve<S: IsDualScalar<BATCH, 1, 1>, const BATCH: usize>:
+    IsDualScalar<BATCH, 1, 1>
+{
+    /// Get the derivative
+    fn curve_derivative(&self) -> S::RealScalar;
+}
+
 #[test]
 fn dual_scalar_tests() {
     #[cfg(feature = "simd")]
@@ -45,7 +53,7 @@ fn dual_scalar_tests() {
 
                         let abs_finite_diff =
                             ScalarValuedCurve::sym_diff_quotient(|x| x.abs(), a, EPS_F64);
-                        let abs_auto_grad = <$dual_scalar>::var(a).abs().derivative()[0];
+                        let abs_auto_grad = <$dual_scalar>::var(a).abs().curve_derivative();
                         approx::assert_abs_diff_eq!(
                             abs_finite_diff,
                             abs_auto_grad,
@@ -54,7 +62,7 @@ fn dual_scalar_tests() {
 
                         let acos_finite_diff =
                             ScalarValuedCurve::sym_diff_quotient(|x| x.acos(), a, EPS_F64);
-                        let acos_auto_grad = <$dual_scalar>::var(a).acos().derivative()[0];
+                        let acos_auto_grad = <$dual_scalar>::var(a).acos().curve_derivative();
                         approx::assert_abs_diff_eq!(
                             acos_finite_diff,
                             acos_auto_grad,
@@ -63,7 +71,7 @@ fn dual_scalar_tests() {
 
                         let asin_finite_diff =
                             ScalarValuedCurve::sym_diff_quotient(|x| x.asin(), a, EPS_F64);
-                        let asin_auto_grad = <$dual_scalar>::var(a).asin().derivative()[0];
+                        let asin_auto_grad = <$dual_scalar>::var(a).asin().curve_derivative();
                         approx::assert_abs_diff_eq!(
                             asin_finite_diff,
                             asin_auto_grad,
@@ -72,7 +80,7 @@ fn dual_scalar_tests() {
 
                         let atan_finite_diff =
                             ScalarValuedCurve::sym_diff_quotient(|x| x.atan(), a, EPS_F64);
-                        let atan_auto_grad = <$dual_scalar>::var(a).atan().derivative()[0];
+                        let atan_auto_grad = <$dual_scalar>::var(a).atan().curve_derivative();
                         approx::assert_abs_diff_eq!(
                             atan_finite_diff,
                             atan_auto_grad,
@@ -81,7 +89,7 @@ fn dual_scalar_tests() {
 
                         let cos_finite_diff =
                             ScalarValuedCurve::sym_diff_quotient(|x| x.cos(), a, EPS_F64);
-                        let cos_auto_grad = <$dual_scalar>::var(a).cos().derivative()[0];
+                        let cos_auto_grad = <$dual_scalar>::var(a).cos().curve_derivative();
 
                         approx::assert_abs_diff_eq!(
                             cos_finite_diff,
@@ -91,7 +99,7 @@ fn dual_scalar_tests() {
 
                         let signum_finite_diff =
                             ScalarValuedCurve::sym_diff_quotient(|x| x.signum(), a, EPS_F64);
-                        let signum_auto_grad = <$dual_scalar>::var(a).signum().derivative()[0];
+                        let signum_auto_grad = <$dual_scalar>::var(a).signum().curve_derivative();
                         approx::assert_abs_diff_eq!(
                             signum_finite_diff,
                             signum_auto_grad,
@@ -100,7 +108,7 @@ fn dual_scalar_tests() {
 
                         let sin_finite_diff =
                             ScalarValuedCurve::sym_diff_quotient(|x| x.sin(), a, EPS_F64);
-                        let sin_auto_grad = <$dual_scalar>::var(a).sin().derivative()[0];
+                        let sin_auto_grad = <$dual_scalar>::var(a).sin().curve_derivative();
                         approx::assert_abs_diff_eq!(
                             sin_finite_diff,
                             sin_auto_grad,
@@ -109,7 +117,7 @@ fn dual_scalar_tests() {
 
                         let sqrt_finite_diff =
                             ScalarValuedCurve::sym_diff_quotient(|x| x.sqrt(), a, EPS_F64);
-                        let sqrt_auto_grad = <$dual_scalar>::var(a).sqrt().derivative()[0];
+                        let sqrt_auto_grad = <$dual_scalar>::var(a).sqrt().curve_derivative();
                         approx::assert_abs_diff_eq!(
                             sqrt_finite_diff,
                             sqrt_auto_grad,
@@ -118,7 +126,7 @@ fn dual_scalar_tests() {
 
                         let tan_finite_diff =
                             ScalarValuedCurve::sym_diff_quotient(|x| x.tan(), a, EPS_F64);
-                        let tan_auto_grad = <$dual_scalar>::var(a).tan().derivative()[0];
+                        let tan_auto_grad = <$dual_scalar>::var(a).tan().curve_derivative();
                         approx::assert_abs_diff_eq!(
                             tan_finite_diff,
                             tan_auto_grad,
@@ -127,14 +135,14 @@ fn dual_scalar_tests() {
 
                         // f(x) = x^2
                         fn square_fn(x: $scalar) -> $scalar {
-                            x.clone() * x
+                            x * x
                         }
                         fn dual_square_fn(x: $dual_scalar) -> $dual_scalar {
-                            x.clone() * x
+                            x * x
                         }
                         let finite_diff =
                             ScalarValuedCurve::sym_diff_quotient(square_fn, a, EPS_F64);
-                        let auto_grad = dual_square_fn(<$dual_scalar>::var(a)).derivative()[0];
+                        let auto_grad = dual_square_fn(<$dual_scalar>::var(a)).curve_derivative();
                         approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
                         {
@@ -151,7 +159,7 @@ fn dual_scalar_tests() {
                                 <$dual_scalar>::var(a),
                                 <$dual_scalar>::from_real_scalar(b),
                             )
-                            .derivative()[0];
+                            .curve_derivative();
 
                             approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
@@ -161,7 +169,7 @@ fn dual_scalar_tests() {
                                 <$dual_scalar>::from_real_scalar(b),
                                 <$dual_scalar>::var(a),
                             )
-                            .derivative()[0];
+                            .curve_derivative();
                             approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
                         }
 
@@ -178,7 +186,7 @@ fn dual_scalar_tests() {
                                 <$dual_scalar>::var(a),
                                 <$dual_scalar>::from_real_scalar(b),
                             )
-                            .derivative()[0];
+                            .curve_derivative();
                             approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
                             let finite_diff =
@@ -187,7 +195,7 @@ fn dual_scalar_tests() {
                                 <$dual_scalar>::from_real_scalar(b),
                                 <$dual_scalar>::var(a),
                             )
-                            .derivative()[0];
+                            .curve_derivative();
                             approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
                         }
 
@@ -204,7 +212,7 @@ fn dual_scalar_tests() {
                                 <$dual_scalar>::var(a),
                                 <$dual_scalar>::from_real_scalar(b),
                             )
-                            .derivative()[0];
+                            .curve_derivative();
                             approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
                             let finite_diff =
@@ -213,7 +221,7 @@ fn dual_scalar_tests() {
                                 <$dual_scalar>::from_real_scalar(b),
                                 <$dual_scalar>::var(a),
                             )
-                            .derivative()[0];
+                            .curve_derivative();
                             approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
                         }
 
@@ -229,7 +237,7 @@ fn dual_scalar_tests() {
                             <$dual_scalar>::var(a),
                             <$dual_scalar>::from_real_scalar(b),
                         )
-                        .derivative()[0];
+                        .curve_derivative();
                         approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
                         let finite_diff =
@@ -238,7 +246,7 @@ fn dual_scalar_tests() {
                             <$dual_scalar>::from_real_scalar(b),
                             <$dual_scalar>::var(a),
                         )
-                        .derivative()[0];
+                        .curve_derivative();
 
                         approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
@@ -248,7 +256,7 @@ fn dual_scalar_tests() {
                             <$dual_scalar>::from_real_scalar(b),
                             <$dual_scalar>::var(a),
                         )
-                        .derivative()[0];
+                        .curve_derivative();
                         approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
                         let finite_diff =
@@ -257,7 +265,7 @@ fn dual_scalar_tests() {
                             <$dual_scalar>::var(a),
                             <$dual_scalar>::from_real_scalar(b),
                         )
-                        .derivative()[0];
+                        .curve_derivative();
                         approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
                     }
                 }

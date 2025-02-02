@@ -69,9 +69,9 @@ impl<S: IsSingleScalar<DM, DN>, const DIMS: usize, const DM: usize, const DN: us
     ) -> S::SingleVector<DIMS> {
         let b = CubicBasisFunction::<S, DM, DN>::b(u);
         control_point
-            + control_points[0].scaled(b.get_elem(0))
-            + control_points[1].scaled(b.get_elem(1))
-            + control_points[2].scaled(b.get_elem(2))
+            + control_points[0].scaled(b.elem(0))
+            + control_points[1].scaled(b.elem(1))
+            + control_points[2].scaled(b.elem(2))
     }
 
     fn dxi_interpolate(u: S, quadruple_idx: usize) -> S::SingleMatrix<DIMS, DIMS> {
@@ -79,7 +79,7 @@ impl<S: IsSingleScalar<DM, DN>, const DIMS: usize, const DM: usize, const DN: us
         if quadruple_idx == 0 {
             S::SingleMatrix::<DIMS, DIMS>::identity()
         } else {
-            S::SingleMatrix::<DIMS, DIMS>::identity().scaled(b.get_elem(quadruple_idx - 1))
+            S::SingleMatrix::<DIMS, DIMS>::identity().scaled(b.elem(quadruple_idx - 1))
         }
     }
 }

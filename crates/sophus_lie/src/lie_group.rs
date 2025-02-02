@@ -352,7 +352,7 @@ impl<
 
             assert_relative_eq!(matrix_before, matrix_after, epsilon = 0.0001);
 
-            let t = g.clone().inverse().log().real_vector();
+            let t = g.inverse().log().real_vector();
             let t2 = -(g.log().real_vector());
             assert_relative_eq!(t, t2, epsilon = 0.0001);
         }

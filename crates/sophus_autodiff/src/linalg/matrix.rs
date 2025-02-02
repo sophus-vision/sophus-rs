@@ -108,7 +108,10 @@ pub trait IsMatrix<
     fn get_row_vec(&self, r: usize) -> S::Vector<COLS>;
 
     /// get element
-    fn get_elem(&self, idx: [usize; 2]) -> S;
+    fn elem(&self, idx: [usize; 2]) -> S;
+
+    /// get element
+    fn elem_mut(&mut self, idx: [usize; 2]) -> &mut S;
 
     /// get fixed submatrix
     fn get_fixed_submat<const R: usize, const C: usize>(
@@ -144,9 +147,6 @@ pub trait IsMatrix<
     fn select<Q>(&self, mask: &S::Mask, other: Q) -> Self
     where
         Q: Borrow<Self>;
-
-    /// set i-th element
-    fn set_elem(&mut self, idx: [usize; 2], val: S);
 
     /// set column vectors
     fn set_col_vec(&mut self, c: usize, v: S::Vector<ROWS>);
@@ -250,8 +250,12 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1, 0, 0>
         m
     }
 
-    fn get_elem(&self, idx: [usize; 2]) -> f64 {
+    fn elem(&self, idx: [usize; 2]) -> f64 {
         self[(idx[0], idx[1])]
+    }
+
+    fn elem_mut(&mut self, idx: [usize; 2]) -> &mut f64 {
+        &mut self[(idx[0], idx[1])]
     }
 
     fn identity() -> Self {
@@ -370,10 +374,6 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1, 0, 0>
         } else {
             *other.borrow()
         }
-    }
-
-    fn set_elem(&mut self, idx: [usize; 2], val: f64) {
-        self[(idx[0], idx[1])] = val;
     }
 
     fn transposed(&self) -> MatF64<COLS, ROWS> {

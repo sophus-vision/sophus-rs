@@ -62,14 +62,14 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let params = params.borrow();
         let proj_point_in_camera_z1_plane = proj_point_in_camera_z1_plane.borrow();
 
-        let k0 = params.get_elem(4);
-        let k1 = params.get_elem(5);
-        let k2 = params.get_elem(6);
-        let k3 = params.get_elem(7);
+        let k0 = params.elem(4);
+        let k1 = params.elem(5);
+        let k2 = params.elem(6);
+        let k3 = params.elem(7);
 
-        let radius_sq = proj_point_in_camera_z1_plane.get_elem(0)
-            * proj_point_in_camera_z1_plane.get_elem(0)
-            + proj_point_in_camera_z1_plane.get_elem(1) * proj_point_in_camera_z1_plane.get_elem(1);
+        let radius_sq = proj_point_in_camera_z1_plane.elem(0)
+            * proj_point_in_camera_z1_plane.elem(0)
+            + proj_point_in_camera_z1_plane.elem(1) * proj_point_in_camera_z1_plane.elem(1);
 
         let radius = radius_sq.clone().sqrt();
         let radius_inverse = S::from_f64(1.0) / radius;
@@ -88,10 +88,8 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let scaling = S::ones().select(&near_zero, scaling);
 
         S::Vector::<2>::from_array([
-            scaling * proj_point_in_camera_z1_plane.get_elem(0) * params.get_elem(0)
-                + params.get_elem(2),
-            scaling * proj_point_in_camera_z1_plane.get_elem(1) * params.get_elem(1)
-                + params.get_elem(3),
+            scaling * proj_point_in_camera_z1_plane.elem(0) * params.elem(0) + params.elem(2),
+            scaling * proj_point_in_camera_z1_plane.elem(1) * params.elem(1) + params.elem(3),
         ])
     }
 
@@ -102,18 +100,18 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     {
         let params = params.borrow();
         let distorted_point = distorted_point.borrow();
-        let fu = params.get_elem(0);
-        let fv = params.get_elem(1);
-        let u0 = params.get_elem(2);
-        let v0 = params.get_elem(3);
+        let fu = params.elem(0);
+        let fv = params.elem(1);
+        let u0 = params.elem(2);
+        let v0 = params.elem(3);
 
-        let k0 = params.get_elem(4);
-        let k1 = params.get_elem(5);
-        let k2 = params.get_elem(6);
-        let k3 = params.get_elem(7);
+        let k0 = params.elem(4);
+        let k1 = params.elem(5);
+        let k2 = params.elem(6);
+        let k3 = params.elem(7);
 
-        let un = (distorted_point.get_elem(0) - u0) / fu;
-        let vn = (distorted_point.get_elem(1) - v0) / fv;
+        let un = (distorted_point.elem(0) - u0) / fu;
+        let vn = (distorted_point.elem(1) - v0) / fv;
         let rth2 = un * un + vn * vn;
 
         let rth2_near_zero = rth2.less_equal(&S::from_f64(EPS_F64));
@@ -180,10 +178,10 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let params = params.borrow();
         let proj_point_in_camera_z1_plane = proj_point_in_camera_z1_plane.borrow();
 
-        let a = proj_point_in_camera_z1_plane.get_elem(0);
-        let b = proj_point_in_camera_z1_plane.get_elem(1);
-        let fx = params.get_elem(0);
-        let fy = params.get_elem(1);
+        let a = proj_point_in_camera_z1_plane.elem(0);
+        let b = proj_point_in_camera_z1_plane.elem(1);
+        let fx = params.elem(0);
+        let fy = params.elem(1);
 
         let k = params.get_fixed_subvec::<4>(4);
 
@@ -201,12 +199,12 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let c4 = c2 + S::from_f64(1.0);
         let c5 = c2_sqrt.clone().atan();
         let c6 = c5 * c5; // c5^2
-        let c7 = c6 * k.get_elem(0);
+        let c7 = c6 * k.elem(0);
         let c8 = c6 * c6; // c5^4
-        let c9 = c8 * k.get_elem(1);
+        let c9 = c8 * k.elem(1);
         let c10 = c8 * c6; // c5^6
-        let c11 = c10 * k.get_elem(2);
-        let c12 = c8 * c8 * k.get_elem(3); // c5^8 * k[3]
+        let c11 = c10 * k.elem(2);
+        let c12 = c8 * c8 * k.elem(3); // c5^8 * k[3]
         let c13 = S::from_f64(1.0) * c4 * c5 * (c11 + c12 + c7 + c9 + S::from_f64(1.0));
         let c14 = c13 * c3;
         let c15 = c2_sqrt * c2_sqrt * c2_sqrt;
@@ -215,10 +213,10 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
             + S::from_f64(1.0) * c12
             + S::from_f64(2.0)
                 * c6
-                * (S::from_f64(4.0) * c10 * k.get_elem(3)
-                    + S::from_f64(2.0) * c6 * k.get_elem(1)
-                    + S::from_f64(3.0) * c8 * k.get_elem(2)
-                    + k.get_elem(0))
+                * (S::from_f64(4.0) * c10 * k.elem(3)
+                    + S::from_f64(2.0) * c6 * k.elem(1)
+                    + S::from_f64(3.0) * c8 * k.elem(2)
+                    + k.elem(0))
             + S::from_f64(1.0) * c7
             + S::from_f64(1.0) * c9
             + S::from_f64(1.0);
@@ -243,14 +241,14 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let params = params.borrow();
         let proj_point_in_camera_z1_plane = proj_point_in_camera_z1_plane.borrow();
 
-        let x = proj_point_in_camera_z1_plane.get_elem(0);
-        let y = proj_point_in_camera_z1_plane.get_elem(1);
-        let fx = params.get_elem(0);
-        let fy = params.get_elem(1);
-        let k0 = params.get_elem(4);
-        let k1 = params.get_elem(5);
-        let k2 = params.get_elem(6);
-        let k3 = params.get_elem(7);
+        let x = proj_point_in_camera_z1_plane.elem(0);
+        let y = proj_point_in_camera_z1_plane.elem(1);
+        let fx = params.elem(0);
+        let fy = params.elem(1);
+        let k0 = params.elem(4);
+        let k1 = params.elem(5);
+        let k2 = params.elem(6);
+        let k3 = params.elem(7);
 
         let xx = x * x;
         let yy = y * y;
