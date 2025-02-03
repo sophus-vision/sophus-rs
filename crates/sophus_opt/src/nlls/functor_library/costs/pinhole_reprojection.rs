@@ -40,15 +40,9 @@ impl PinholeCameraReprojectionCostTerm {
     }
 }
 
-impl IsCostTerm<13, 3, (), (PinholeCameraF64, Isometry3F64, VecF64<3>), VecF64<2>>
+impl IsCostTerm<13, 3, (), (PinholeCameraF64, Isometry3F64, VecF64<3>)>
     for PinholeCameraReprojectionCostTerm
 {
-    type Constants = VecF64<2>;
-
-    fn c_ref(&self) -> &Self::Constants {
-        &self.uv_in_image
-    }
-
     fn idx_ref(&self) -> &[usize; 3] {
         &self.entity_indices
     }
@@ -64,14 +58,13 @@ impl IsCostTerm<13, 3, (), (PinholeCameraF64, Isometry3F64, VecF64<3>), VecF64<2
         ),
         var_kinds: [VarKind; 3],
         robust_kernel: Option<robust_kernel::RobustKernel>,
-        uv_in_image: &VecF64<2>,
     ) -> EvaluatedCostTerm<13, 3> {
         // calculate residual
         let residual = Self::residual(
             intrinsics,
             world_from_camera_pose,
             point_in_world,
-            *uv_in_image,
+            self.uv_in_image,
         );
 
         // calculate jacobian wrt intrinsics
@@ -80,7 +73,7 @@ impl IsCostTerm<13, 3, (), (PinholeCameraF64, Isometry3F64, VecF64<3>), VecF64<2
                 PinholeCamera::from_params_and_size(x, intrinsics.image_size()),
                 world_from_camera_pose.to_dual_c(),
                 DualVector::from_real_vector(point_in_world),
-                DualVector::from_real_vector(*uv_in_image),
+                DualVector::from_real_vector(self.uv_in_image),
             )
         };
         // calculate jacobian wrt world_from_camera_pose
@@ -92,7 +85,7 @@ impl IsCostTerm<13, 3, (), (PinholeCameraF64, Isometry3F64, VecF64<3>), VecF64<2
                 ),
                 Isometry3::exp(x) * world_from_camera_pose.to_dual_c(),
                 DualVector::from_real_vector(point_in_world),
-                DualVector::from_real_vector(*uv_in_image),
+                DualVector::from_real_vector(self.uv_in_image),
             )
         };
         // calculate jacobian wrt point_in_world
@@ -104,7 +97,7 @@ impl IsCostTerm<13, 3, (), (PinholeCameraF64, Isometry3F64, VecF64<3>), VecF64<2
                 ),
                 world_from_camera_pose.to_dual_c(),
                 x,
-                DualVector::from_real_vector(*uv_in_image),
+                DualVector::from_real_vector(self.uv_in_image),
             )
         };
 

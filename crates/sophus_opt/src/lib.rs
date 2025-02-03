@@ -29,7 +29,7 @@ pub mod prelude {
             constraint::{
                 eq_constraint::IsEqConstraint,
                 eq_constraint_fn::IsEqConstraintsFn,
-                evaluated_constraint::MakeEvaluatedConstraint,
+                evaluated_eq_constraint::MakeEvaluatedEqConstraint,
             },
             quadratic_cost::{
                 cost_fn::IsCostFn,

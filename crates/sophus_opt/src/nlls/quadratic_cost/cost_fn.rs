@@ -59,12 +59,11 @@ pub struct CostFn<
     const NUM: usize,
     const NUM_ARGS: usize,
     GlobalConstants: 'static + Send + Sync,
-    Constants: Debug,
-    Term: IsCostTerm<NUM, NUM_ARGS, GlobalConstants, VarTuple, Constants>,
+    Term: IsCostTerm<NUM, NUM_ARGS, GlobalConstants, VarTuple>,
     VarTuple: IsVarTuple<NUM_ARGS> + 'static,
 > {
     global_constants: GlobalConstants,
-    cost_terms: CostTerms<NUM, NUM_ARGS, GlobalConstants, VarTuple, Constants, Term>,
+    cost_terms: CostTerms<NUM, NUM_ARGS, GlobalConstants, VarTuple, Term>,
     robust_kernel: Option<RobustKernel>,
     phantom: PhantomData<VarTuple>,
 }
@@ -73,16 +72,14 @@ impl<
         const NUM: usize,
         const NUM_ARGS: usize,
         GlobalConstants: 'static + Send + Sync,
-        Constants: 'static + Debug + Send + Sync,
-        Term: IsCostTerm<NUM, NUM_ARGS, GlobalConstants, VarTuple, Constants, Constants = Constants>
-            + 'static,
+        Term: IsCostTerm<NUM, NUM_ARGS, GlobalConstants, VarTuple> + 'static,
         VarTuple: IsVarTuple<NUM_ARGS> + 'static,
-    > CostFn<NUM, NUM_ARGS, GlobalConstants, Constants, Term, VarTuple>
+    > CostFn<NUM, NUM_ARGS, GlobalConstants, Term, VarTuple>
 {
     /// create a new cost function from the cost terms and a residual function
     pub fn new_box(
         global_constants: GlobalConstants,
-        terms: CostTerms<NUM, NUM_ARGS, GlobalConstants, VarTuple, Constants, Term>,
+        terms: CostTerms<NUM, NUM_ARGS, GlobalConstants, VarTuple, Term>,
     ) -> alloc::boxed::Box<dyn IsCostFn> {
         alloc::boxed::Box::new(Self {
             global_constants,
@@ -96,7 +93,7 @@ impl<
     /// kernel
     pub fn new_robust(
         global_constants: GlobalConstants,
-        terms: CostTerms<NUM, NUM_ARGS, GlobalConstants, VarTuple, Constants, Term>,
+        terms: CostTerms<NUM, NUM_ARGS, GlobalConstants, VarTuple, Term>,
         robust_kernel: RobustKernel,
     ) -> alloc::boxed::Box<dyn IsCostFn> {
         alloc::boxed::Box::new(Self {
@@ -112,11 +109,9 @@ impl<
         const NUM: usize,
         const NUM_ARGS: usize,
         GlobalConstants: 'static + Send + Sync,
-        Constants: Debug + 'static + Send + Sync,
-        Term: IsCostTerm<NUM, NUM_ARGS, GlobalConstants, VarTuple, Constants, Constants = Constants>
-            + 'static,
+        Term: IsCostTerm<NUM, NUM_ARGS, GlobalConstants, VarTuple> + 'static,
         VarTuple: IsVarTuple<NUM_ARGS> + 'static,
-    > IsCostFn for CostFn<NUM, NUM_ARGS, GlobalConstants, Constants, Term, VarTuple>
+    > IsCostFn for CostFn<NUM, NUM_ARGS, GlobalConstants, Term, VarTuple>
 {
     fn eval(
         &self,
@@ -143,7 +138,6 @@ impl<
                 VarTuple::extract(&var_family_tuple, *term.idx_ref()),
                 var_kind_array,
                 self.robust_kernel,
-                term.c_ref(),
             )
         };
 

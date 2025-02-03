@@ -34,7 +34,7 @@ pub struct PoseCircleProblem {
     pub est_world_from_robot: alloc::vec::Vec<Isometry2F64>,
     /// pose-pose constraints
     pub obs_pose_a_from_pose_b_poses:
-        CostTerms<12, 2, (), (Isometry2F64, Isometry2F64), Isometry2F64, PoseGraphCostTerm>,
+        CostTerms<12, 2, (), (Isometry2F64, Isometry2F64), PoseGraphCostTerm>,
 }
 
 impl Default for PoseCircleProblem {

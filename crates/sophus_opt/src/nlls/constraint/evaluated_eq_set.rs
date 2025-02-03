@@ -2,7 +2,7 @@ use core::fmt::Debug;
 
 use dyn_clone::DynClone;
 
-use super::evaluated_constraint::EvaluatedConstraint;
+use super::evaluated_eq_constraint::EvaluatedEqConstraint;
 use crate::{
     block::{
         block_vector::BlockVector,
@@ -24,7 +24,7 @@ pub struct EvaluatedEqSet<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, con
     pub family_names: [String; NUM_ARGS],
     /// evaluated constraints
     pub evaluated_constraints:
-        alloc::vec::Vec<EvaluatedConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>>,
+        alloc::vec::Vec<EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>>,
 }
 
 impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const NUM_ARGS: usize>

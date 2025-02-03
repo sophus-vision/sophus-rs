@@ -14,7 +14,7 @@ use super::{
 use crate::{
     nlls::{
         constraint::{
-            evaluated_constraint::EvaluatedConstraint,
+            evaluated_eq_constraint::EvaluatedEqConstraint,
             evaluated_eq_set::EvaluatedEqSet,
         },
         linear_system::EvalMode,
@@ -39,20 +39,12 @@ pub struct EqConstraintFn<
     const INPUT_DIM: usize,
     const NUM_ARGS: usize,
     GlobalConstants: 'static + Send + Sync,
-    Constants: Debug,
-    Constraint: IsEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS, GlobalConstants, VarTuple, Constants>,
+    Constraint: IsEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS, GlobalConstants, VarTuple>,
     VarTuple: IsVarTuple<NUM_ARGS> + 'static,
 > {
     global_constants: GlobalConstants,
-    constraint: EqConstraints<
-        RESIDUAL_DIM,
-        INPUT_DIM,
-        NUM_ARGS,
-        GlobalConstants,
-        VarTuple,
-        Constants,
-        Constraint,
-    >,
+    constraint:
+        EqConstraints<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS, GlobalConstants, VarTuple, Constraint>,
     phantom: PhantomData<VarTuple>,
 }
 
@@ -61,27 +53,9 @@ impl<
         const INPUT_DIM: usize,
         const NUM_ARGS: usize,
         GlobalConstants: 'static + Send + Sync,
-        Constants: 'static + Debug,
-        Constraint: IsEqConstraint<
-            RESIDUAL_DIM,
-            INPUT_DIM,
-            NUM_ARGS,
-            GlobalConstants,
-            VarTuple,
-            Constants,
-            Constants = Constants,
-        >,
+        Constraint: IsEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS, GlobalConstants, VarTuple>,
         VarTuple: IsVarTuple<NUM_ARGS> + 'static,
-    >
-    EqConstraintFn<
-        RESIDUAL_DIM,
-        INPUT_DIM,
-        NUM_ARGS,
-        GlobalConstants,
-        Constants,
-        Constraint,
-        VarTuple,
-    >
+    > EqConstraintFn<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS, GlobalConstants, Constraint, VarTuple>
 {
     /// Create a new equality constraint function from the given eq-constrains and a
     /// eq-constraint functor.
@@ -93,7 +67,6 @@ impl<
             NUM_ARGS,
             GlobalConstants,
             VarTuple,
-            Constants,
             Constraint,
         >,
     ) -> alloc::boxed::Box<dyn IsEqConstraintsFn> {
@@ -129,27 +102,10 @@ impl<
         const INPUT_DIM: usize,
         const NUM_ARGS: usize,
         GlobalConstants: 'static + Send + Sync,
-        Constants: Debug,
-        Constraint: IsEqConstraint<
-            RESIDUAL_DIM,
-            INPUT_DIM,
-            NUM_ARGS,
-            GlobalConstants,
-            VarTuple,
-            Constants,
-            Constants = Constants,
-        >,
+        Constraint: IsEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS, GlobalConstants, VarTuple>,
         VarTuple: IsVarTuple<NUM_ARGS> + 'static,
     > IsEqConstraintsFn
-    for EqConstraintFn<
-        RESIDUAL_DIM,
-        INPUT_DIM,
-        NUM_ARGS,
-        GlobalConstants,
-        Constants,
-        Constraint,
-        VarTuple,
-    >
+    for EqConstraintFn<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS, GlobalConstants, Constraint, VarTuple>
 {
     fn eval(
         &self,
@@ -175,7 +131,6 @@ impl<
                 *term.idx_ref(),
                 VarTuple::extract(&var_family_tuple, *term.idx_ref()),
                 var_kind_array,
-                term.c_ref(),
             )
         };
 
@@ -186,7 +141,7 @@ impl<
             .reserve(reduction_ranges.len());
         for range in reduction_ranges.iter() {
             let mut evaluated_term_sum: Option<
-                EvaluatedConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>,
+                EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>,
             > = None;
 
             for term in self.constraint.collection[range.start..range.end].iter() {

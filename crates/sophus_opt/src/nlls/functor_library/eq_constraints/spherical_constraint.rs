@@ -31,13 +31,7 @@ impl SphericalConstraint {
     }
 }
 
-impl IsEqConstraint<1, 3, 1, (), VecF64<3>, f64> for SphericalConstraint {
-    type Constants = f64;
-
-    fn c_ref(&self) -> &Self::Constants {
-        &self.radius
-    }
-
+impl IsEqConstraint<1, 3, 1, (), VecF64<3>> for SphericalConstraint {
     fn idx_ref(&self) -> &[usize; 1] {
         &self.entity_indices
     }
@@ -48,11 +42,10 @@ impl IsEqConstraint<1, 3, 1, (), VecF64<3>, f64> for SphericalConstraint {
         idx: [usize; 1],
         vec3: VecF64<3>,
         var_kinds: [crate::variables::VarKind; 1],
-        constants: &f64,
-    ) -> crate::nlls::constraint::evaluated_constraint::EvaluatedConstraint<1, 3, 1> {
-        let residual = Self::residual(vec3, *constants);
+    ) -> crate::nlls::constraint::evaluated_eq_constraint::EvaluatedEqConstraint<1, 3, 1> {
+        let residual = Self::residual(vec3, self.radius);
         let dx_res_fn = |x: DualVector<3, 3, 1>| -> DualVector<1, 3, 1> {
-            let radius_dual = DualScalar::from_f64(*constants);
+            let radius_dual = DualScalar::from_f64(self.radius);
             Self::residual::<DualScalar<3, 1>, 3, 1>(x, radius_dual)
         };
 

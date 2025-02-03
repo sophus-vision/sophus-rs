@@ -36,13 +36,7 @@ impl Quadratic2CostTerm {
     }
 }
 
-impl IsCostTerm<2, 1, (), VecF64<2>, VecF64<2>> for Quadratic2CostTerm {
-    type Constants = VecF64<2>;
-
-    fn c_ref(&self) -> &Self::Constants {
-        &self.z
-    }
-
+impl IsCostTerm<2, 1, (), VecF64<2>> for Quadratic2CostTerm {
     fn idx_ref(&self) -> &[usize; 1] {
         &self.entity_indices
     }
@@ -54,11 +48,13 @@ impl IsCostTerm<2, 1, (), VecF64<2>, VecF64<2>> for Quadratic2CostTerm {
         args: VecF64<2>,
         var_kinds: [VarKind; 1],
         robust_kernel: Option<RobustKernel>,
-        z: &VecF64<2>,
     ) -> EvaluatedCostTerm<2, 1> {
-        let residual = Self::residual::<f64, 0, 0>(args, *z);
+        let residual = Self::residual::<f64, 0, 0>(args, self.z);
         let dx_res_fn = |x: DualVector<2, 2, 1>| -> DualVector<2, 2, 1> {
-            Self::residual::<DualScalar<2, 1>, 2, 1>(x, DualVector::<2, 2, 1>::from_real_vector(z))
+            Self::residual::<DualScalar<2, 1>, 2, 1>(
+                x,
+                DualVector::<2, 2, 1>::from_real_vector(self.z),
+            )
         };
 
         (|| dx_res_fn(DualVector::var(args)).jacobian(),).make(

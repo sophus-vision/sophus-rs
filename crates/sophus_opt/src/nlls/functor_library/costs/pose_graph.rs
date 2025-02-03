@@ -30,13 +30,7 @@ impl PoseGraphCostTerm {
     }
 }
 
-impl IsCostTerm<12, 2, (), (Isometry2F64, Isometry2F64), Isometry2F64> for PoseGraphCostTerm {
-    type Constants = Isometry2F64;
-
-    fn c_ref(&self) -> &Self::Constants {
-        &self.pose_a_from_pose_b
-    }
-
+impl IsCostTerm<12, 2, (), (Isometry2F64, Isometry2F64)> for PoseGraphCostTerm {
     fn idx_ref(&self) -> &[usize; 2] {
         &self.entity_indices
     }
@@ -48,24 +42,27 @@ impl IsCostTerm<12, 2, (), (Isometry2F64, Isometry2F64), Isometry2F64> for PoseG
         world_from_pose_x: (Isometry2F64, Isometry2F64),
         var_kinds: [VarKind; 2],
         robust_kernel: Option<robust_kernel::RobustKernel>,
-        obs: &Isometry2F64,
     ) -> EvaluatedCostTerm<12, 2> {
         let world_from_pose_a = world_from_pose_x.0;
         let world_from_pose_b = world_from_pose_x.1;
 
-        let residual = Self::residual(world_from_pose_a, world_from_pose_b, *obs);
+        let residual = Self::residual(
+            world_from_pose_a,
+            world_from_pose_b,
+            self.pose_a_from_pose_b,
+        );
 
         (
             || {
                 -Isometry2::dx_log_a_exp_x_b_at_0(
                     world_from_pose_a.inverse(),
-                    world_from_pose_b * obs.inverse(),
+                    world_from_pose_b * self.pose_a_from_pose_b.inverse(),
                 )
             },
             || {
                 Isometry2::dx_log_a_exp_x_b_at_0(
                     world_from_pose_a.inverse(),
-                    world_from_pose_b * obs.inverse(),
+                    world_from_pose_b * self.pose_a_from_pose_b.inverse(),
                 )
             },
         )

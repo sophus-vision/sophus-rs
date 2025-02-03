@@ -18,15 +18,8 @@ pub trait IsCostTerm<
     const NUM_ARGS: usize,
     GlobalConstants: 'static + Send + Sync,
     Args: IsVarTuple<NUM_ARGS>,
-    Constants,
 >: Send + Sync + 'static + Debug
 {
-    /// associated constants such as measurements, etc.
-    type Constants;
-
-    /// reference to the constants
-    fn c_ref(&self) -> &Self::Constants;
-
     /// one index (into the variable family) for each argument
     fn idx_ref(&self) -> &[usize; NUM_ARGS];
 
@@ -38,7 +31,6 @@ pub trait IsCostTerm<
         args: Args,
         derivatives: [VarKind; NUM_ARGS],
         robust_kernel: Option<RobustKernel>,
-        constants: &Constants,
     ) -> EvaluatedCostTerm<NUM, NUM_ARGS>;
 }
 
@@ -49,15 +41,14 @@ pub struct CostTerms<
     const NUM_ARGS: usize,
     GlobalConstants: 'static + Send + Sync,
     Args: IsVarTuple<NUM_ARGS>,
-    Constants,
-    Term: IsCostTerm<NUM, NUM_ARGS, GlobalConstants, Args, Constants>,
+    Term: IsCostTerm<NUM, NUM_ARGS, GlobalConstants, Args>,
 > {
     /// one variable family name for each argument
     pub family_names: [String; NUM_ARGS],
     /// collection of unevaluated terms
     pub collection: alloc::vec::Vec<Term>,
     pub(crate) reduction_ranges: Option<alloc::vec::Vec<Range<usize>>>,
-    phantom: core::marker::PhantomData<(GlobalConstants, Args, Constants)>,
+    phantom: core::marker::PhantomData<(GlobalConstants, Args)>,
 }
 
 impl<
@@ -65,9 +56,8 @@ impl<
         const NUM_ARGS: usize,
         GlobalConstants: 'static + Send + Sync,
         Args: IsVarTuple<NUM_ARGS>,
-        Constants,
-        Term: IsCostTerm<NUM, NUM_ARGS, GlobalConstants, Args, Constants>,
-    > CostTerms<NUM, NUM_ARGS, GlobalConstants, Args, Constants, Term>
+        Term: IsCostTerm<NUM, NUM_ARGS, GlobalConstants, Args>,
+    > CostTerms<NUM, NUM_ARGS, GlobalConstants, Args, Term>
 {
     /// Create a new set of terms
     pub fn new(family_names: [impl ToString; NUM_ARGS], terms: alloc::vec::Vec<Term>) -> Self {

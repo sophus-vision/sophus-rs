@@ -220,17 +220,13 @@ impl CamCalibProblem {
             alloc::vec![
                 Isometry3PriorCostTerm {
                     entity_indices: [0],
-                    isometry_prior_mean: (
-                        self.true_world_from_cameras[0],
-                        MatF64::<6, 6>::new_scaling(10000.0),
-                    ),
+                    isometry_prior_mean: self.true_world_from_cameras[0],
+                    isometry_prior_precision: MatF64::<6, 6>::new_scaling(10000.0),
                 },
                 Isometry3PriorCostTerm {
                     entity_indices: [1],
-                    isometry_prior_mean: (
-                        self.true_world_from_cameras[1],
-                        MatF64::<6, 6>::new_scaling(10000.0),
-                    ),
+                    isometry_prior_mean: self.true_world_from_cameras[1],
+                    isometry_prior_precision: MatF64::<6, 6>::new_scaling(10000.0),
                 },
             ],
         );

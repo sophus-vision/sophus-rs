@@ -10,7 +10,7 @@ use crate::{
 
 /// Evaluated constraint
 #[derive(Debug, Clone)]
-pub struct EvaluatedConstraint<
+pub struct EvaluatedEqConstraint<
     const RESIDUAL_DIM: usize,
     const INPUT_DIM: usize,
     const NUM_ARGS: usize,
@@ -24,16 +24,19 @@ pub struct EvaluatedConstraint<
 }
 
 impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const NUM_ARGS: usize>
-    EvaluatedConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>
+    EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>
 {
-    pub(crate) fn reduce(&mut self, other: EvaluatedConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>) {
+    pub(crate) fn reduce(
+        &mut self,
+        other: EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>,
+    ) {
         self.jacobian.mat += other.jacobian.mat;
         self.residual += other.residual;
     }
 }
 
 /// Trait for making n-ary constraint.
-pub trait MakeEvaluatedConstraint<
+pub trait MakeEvaluatedEqConstraint<
     const RESIDUAL_DIM: usize,
     const INPUT_DIM: usize,
     const NUM_ARGS: usize,
@@ -54,11 +57,11 @@ pub trait MakeEvaluatedConstraint<
         idx: [usize; NUM_ARGS],
         var_kinds: [VarKind; NUM_ARGS],
         residual: VecF64<RESIDUAL_DIM>,
-    ) -> EvaluatedConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>;
+    ) -> EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>;
 }
 
 impl<F0, const RESIDUAL_DIM: usize, const INPUT_DIM: usize>
-    MakeEvaluatedConstraint<RESIDUAL_DIM, INPUT_DIM, 1> for (F0,)
+    MakeEvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, 1> for (F0,)
 where
     F0: FnOnce() -> MatF64<RESIDUAL_DIM, INPUT_DIM>,
 {
@@ -67,12 +70,12 @@ where
         idx: [usize; 1],
         var_kinds: [VarKind; 1],
         residual: VecF64<RESIDUAL_DIM>,
-    ) -> EvaluatedConstraint<RESIDUAL_DIM, INPUT_DIM, 1> {
+    ) -> EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, 1> {
         let mut jacobian = BlockJacobian::new(&[INPUT_DIM]);
         if var_kinds[0] != VarKind::Conditioned {
             jacobian.set_block::<INPUT_DIM>(0, self.0());
         }
-        EvaluatedConstraint {
+        EvaluatedEqConstraint {
             residual,
             jacobian,
             idx,
@@ -87,7 +90,7 @@ impl<
         const C0: usize,
         const C1: usize,
         const INPUT_DIM: usize,
-    > MakeEvaluatedConstraint<RESIDUAL_DIM, INPUT_DIM, 2> for (F0, F1)
+    > MakeEvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, 2> for (F0, F1)
 where
     F0: FnOnce() -> MatF64<RESIDUAL_DIM, C0>,
     F1: FnOnce() -> MatF64<RESIDUAL_DIM, C1>,
@@ -97,7 +100,7 @@ where
         idx: [usize; 2],
         var_kinds: [VarKind; 2],
         residual: VecF64<RESIDUAL_DIM>,
-    ) -> EvaluatedConstraint<RESIDUAL_DIM, INPUT_DIM, 2> {
+    ) -> EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, 2> {
         let mut jacobian = BlockJacobian::new(&[C0, C1]);
         if var_kinds[0] != VarKind::Conditioned {
             jacobian.set_block::<C0>(0, self.0());
@@ -105,7 +108,7 @@ where
         if var_kinds[1] != VarKind::Conditioned {
             jacobian.set_block::<C1>(1, self.1());
         }
-        EvaluatedConstraint {
+        EvaluatedEqConstraint {
             residual,
             jacobian,
             idx,
@@ -122,7 +125,7 @@ impl<
         const C1: usize,
         const C2: usize,
         const INPUT_DIM: usize,
-    > MakeEvaluatedConstraint<RESIDUAL_DIM, INPUT_DIM, 3> for (F0, F1, F2)
+    > MakeEvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, 3> for (F0, F1, F2)
 where
     F0: FnOnce() -> MatF64<RESIDUAL_DIM, C0>,
     F1: FnOnce() -> MatF64<RESIDUAL_DIM, C1>,
@@ -133,7 +136,7 @@ where
         idx: [usize; 3],
         var_kinds: [VarKind; 3],
         residual: VecF64<RESIDUAL_DIM>,
-    ) -> EvaluatedConstraint<RESIDUAL_DIM, INPUT_DIM, 3> {
+    ) -> EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, 3> {
         let mut jacobian = BlockJacobian::new(&[C0, C1, C2]);
         if var_kinds[0] != VarKind::Conditioned {
             jacobian.set_block::<C0>(0, self.0());
@@ -144,7 +147,7 @@ where
         if var_kinds[2] != VarKind::Conditioned {
             jacobian.set_block::<C2>(1, self.2());
         }
-        EvaluatedConstraint {
+        EvaluatedEqConstraint {
             residual,
             jacobian,
             idx,
