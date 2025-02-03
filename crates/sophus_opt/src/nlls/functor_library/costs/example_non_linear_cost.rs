@@ -35,13 +35,7 @@ impl ExampleNonLinearQuadraticCost {
     }
 }
 
-impl IsCostTerm<2, 1, (), VecF64<2>, VecF64<2>> for ExampleNonLinearQuadraticCost {
-    type Constants = VecF64<2>;
-
-    fn c_ref(&self) -> &Self::Constants {
-        &self.z
-    }
-
+impl IsCostTerm<2, 1, (), VecF64<2>> for ExampleNonLinearQuadraticCost {
     fn idx_ref(&self) -> &[usize; 1] {
         &self.entity_indices
     }
@@ -53,11 +47,10 @@ impl IsCostTerm<2, 1, (), VecF64<2>, VecF64<2>> for ExampleNonLinearQuadraticCos
         args: VecF64<2>,
         var_kinds: [VarKind; 1],
         robust_kernel: Option<RobustKernel>,
-        z: &VecF64<2>,
     ) -> EvaluatedCostTerm<2, 1> {
-        let residual = Self::residual::<f64, 0, 0>(args, *z);
+        let residual = Self::residual::<f64, 0, 0>(args, self.z);
         let dx_res_fn =
-            |x| Self::residual::<DualScalar<2, 1>, 2, 1>(x, DualVector::from_real_vector(z));
+            |x| Self::residual::<DualScalar<2, 1>, 2, 1>(x, DualVector::from_real_vector(self.z));
 
         (|| dx_res_fn(DualVector::var(args)).jacobian(),).make(
             idx,

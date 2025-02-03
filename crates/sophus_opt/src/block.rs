@@ -4,13 +4,13 @@ pub mod block_gradient;
 pub mod block_hessian;
 /// Block jacobian
 pub mod block_jacobian;
+/// builder for a block sparse matrix
+pub mod block_sparse_matrix_builder;
 /// Block vector
 pub mod block_vector;
 /// Generic grid
 pub mod grid;
-/// Block sparse matrix
-pub mod symmetric_block_sparse_matrix;
-/// Block triplets
+/// builder for a symmetric block sparse matrix
 pub mod symmetric_block_sparse_matrix_builder;
 
 /// Range of a block

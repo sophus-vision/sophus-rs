@@ -21,8 +21,9 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct Isometry2PriorCostTerm {
     /// prior mean
-    pub isometry_prior_mean: (Isometry2F64, MatF64<3, 3>),
-
+    pub isometry_prior_mean: Isometry2F64,
+    /// prior precision
+    pub isometry_prior_precision: MatF64<3, 3>,
     /// entity index
     pub entity_indices: [usize; 1],
 }
@@ -37,13 +38,7 @@ impl Isometry2PriorCostTerm {
     }
 }
 
-impl IsCostTerm<3, 1, (), Isometry2F64, (Isometry2F64, MatF64<3, 3>)> for Isometry2PriorCostTerm {
-    type Constants = (Isometry2F64, MatF64<3, 3>);
-
-    fn c_ref(&self) -> &Self::Constants {
-        &self.isometry_prior_mean
-    }
-
+impl IsCostTerm<3, 1, (), Isometry2F64> for Isometry2PriorCostTerm {
     fn idx_ref(&self) -> &[usize; 1] {
         &self.entity_indices
     }
@@ -55,16 +50,14 @@ impl IsCostTerm<3, 1, (), Isometry2F64, (Isometry2F64, MatF64<3, 3>)> for Isomet
         args: Isometry2F64,
         var_kinds: [VarKind; 1],
         robust_kernel: Option<robust_kernel::RobustKernel>,
-        isometry_prior: &(Isometry2F64, MatF64<3, 3>),
     ) -> EvaluatedCostTerm<3, 1> {
         let isometry: Isometry2F64 = args;
 
-        let residual = Self::residual(isometry, isometry_prior.0);
+        let residual = Self::residual(isometry, self.isometry_prior_mean);
         let dx_res_fn = |x: DualVector<3, 3, 1>| -> DualVector<3, 3, 1> {
-            let pp = Isometry2::exp(x) * isometry.to_dual_c();
             Self::residual(
-                pp,
-                Isometry2::from_params(DualVector::from_real_vector(isometry_prior.0.params())),
+                Isometry2::exp(x) * isometry.to_dual_c(),
+                self.isometry_prior_mean.to_dual_c(),
             )
         };
 
@@ -75,7 +68,7 @@ impl IsCostTerm<3, 1, (), Isometry2F64, (Isometry2F64, MatF64<3, 3>)> for Isomet
             var_kinds,
             residual,
             robust_kernel,
-            None,
+            Some(self.isometry_prior_precision),
         )
     }
 }

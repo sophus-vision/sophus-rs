@@ -63,7 +63,8 @@ impl SimpleIso2PriorProblem {
         let obs_pose_a_from_pose_b_poses = CostTerms::new(
             [POSE],
             alloc::vec![Isometry2PriorCostTerm {
-                isometry_prior_mean: (self.true_world_from_robot, MatF64::<3, 3>::identity()),
+                isometry_prior_mean: self.true_world_from_robot,
+                isometry_prior_precision: MatF64::<3, 3>::identity(),
                 entity_indices: [0],
             }],
         );
@@ -127,7 +128,8 @@ impl SimpleIso3PriorProblem {
         let obs_pose_a_from_pose_b_poses = CostTerms::new(
             [POSE],
             alloc::vec![Isometry3PriorCostTerm {
-                isometry_prior_mean: (self.true_world_from_robot, MatF64::<6, 6>::identity()),
+                isometry_prior_mean: self.true_world_from_robot,
+                isometry_prior_precision: MatF64::<6, 6>::identity(),
                 entity_indices: [0],
             }],
         );

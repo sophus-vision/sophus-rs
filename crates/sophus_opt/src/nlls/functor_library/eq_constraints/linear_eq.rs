@@ -11,7 +11,7 @@ use crate::{
     prelude::*,
 };
 
-/// spherical equality constraint
+/// linear equality constraint
 #[derive(Clone, Debug)]
 pub struct LinearEqConstraint1 {
     /// sphere radius
@@ -31,13 +31,7 @@ impl LinearEqConstraint1 {
     }
 }
 
-impl IsEqConstraint<1, 2, 2, (), (VecF64<1>, VecF64<1>), f64> for LinearEqConstraint1 {
-    type Constants = f64;
-
-    fn c_ref(&self) -> &Self::Constants {
-        &self.lhs
-    }
-
+impl IsEqConstraint<1, 2, 2, (), (VecF64<1>, VecF64<1>)> for LinearEqConstraint1 {
     fn idx_ref(&self) -> &[usize; 2] {
         &self.entity_indices
     }
@@ -48,12 +42,11 @@ impl IsEqConstraint<1, 2, 2, (), (VecF64<1>, VecF64<1>), f64> for LinearEqConstr
         idx: [usize; 2],
         args: (VecF64<1>, VecF64<1>),
         var_kinds: [crate::variables::VarKind; 2],
-        constants: &f64,
-    ) -> crate::nlls::constraint::evaluated_constraint::EvaluatedConstraint<1, 2, 2> {
+    ) -> crate::nlls::constraint::evaluated_eq_constraint::EvaluatedEqConstraint<1, 2, 2> {
         let (x0, x1) = args;
-        let residual: VecF64<1> = Self::residual(x0, x1, *constants);
+        let residual: VecF64<1> = Self::residual(x0, x1, self.lhs);
         let dx0_res_fn = |x: DualVector<1, 1, 1>| -> DualVector<1, 1, 1> {
-            let radius_dual = DualScalar::from_f64(*constants);
+            let radius_dual = DualScalar::from_f64(self.lhs);
             Self::residual::<DualScalar<1, 1>, 1, 1>(
                 x,
                 DualVector::from_real_vector(x1),
@@ -61,7 +54,7 @@ impl IsEqConstraint<1, 2, 2, (), (VecF64<1>, VecF64<1>), f64> for LinearEqConstr
             )
         };
         let dx1_res_fn = |x: DualVector<1, 1, 1>| -> DualVector<1, 1, 1> {
-            let radius_dual = DualScalar::from_f64(*constants);
+            let radius_dual = DualScalar::from_f64(self.lhs);
             Self::residual::<DualScalar<1, 1>, 1, 1>(
                 DualVector::from_real_vector(x0),
                 x,
