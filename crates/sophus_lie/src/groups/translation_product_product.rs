@@ -9,13 +9,11 @@ use sophus_autodiff::{
 use crate::{
     lie_group::LieGroup,
     prelude::*,
-    traits::{
-        HasDisambiguate,
-        IsLieFactorGroupImpl,
-        IsLieGroupImpl,
-        IsRealLieFactorGroupImpl,
-        IsRealLieGroupImpl,
-    },
+    HasDisambiguate,
+    IsLieFactorGroupImpl,
+    IsLieGroupImpl,
+    IsRealLieFactorGroupImpl,
+    IsRealLieGroupImpl,
 };
 
 extern crate alloc;
@@ -548,7 +546,7 @@ impl<
         const BATCH: usize,
         const DM: usize,
         const DN: usize,
-        FactorImpl: crate::traits::IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
+        FactorImpl: crate::IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
     >
     IsTranslationProductGroup<
         S,
@@ -601,23 +599,16 @@ impl<
         FactorImpl,
     >;
 
-    fn from_translation_and_factor<P, F>(translation: P, factor: F) -> Self
+    fn from_translation_and_factor<F>(translation: S::Vector<POINT>, factor: F) -> Self
     where
-        P: Borrow<S::Vector<POINT>>,
         F: Borrow<LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, DM, DN, FactorImpl>>,
     {
-        let params = Self::Impl::params_from(translation.borrow(), factor.borrow().params());
+        let params = Self::Impl::params_from(&translation, factor.borrow().params());
         Self::from_params(params)
     }
 
-    fn set_translation<P>(&mut self, translation: P)
-    where
-        P: Borrow<<S as sophus_autodiff::prelude::IsScalar<BATCH, DM, DN>>::Vector<POINT>>,
-    {
-        self.set_params(Self::G::params_from(
-            translation.borrow(),
-            self.factor().params(),
-        ))
+    fn set_translation(&mut self, translation: S::Vector<POINT>) {
+        self.set_params(Self::G::params_from(&translation, self.factor().params()))
     }
 
     fn translation(&self) -> <S as IsScalar<BATCH, DM, DN>>::Vector<POINT> {

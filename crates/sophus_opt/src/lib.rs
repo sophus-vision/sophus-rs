@@ -31,7 +31,7 @@ pub mod prelude {
                 eq_constraint_fn::IsEqConstraintsFn,
                 evaluated_eq_constraint::MakeEvaluatedEqConstraint,
             },
-            quadratic_cost::{
+            cost::{
                 cost_fn::IsCostFn,
                 cost_term::IsCostTerm,
                 evaluated_cost::IsEvaluatedCost,

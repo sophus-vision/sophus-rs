@@ -6,12 +6,12 @@ use sophus_lie::{
 
 use crate::{
     nlls::{
-        functor_library::costs::pose_graph::PoseGraphCostTerm,
-        optimize,
-        quadratic_cost::{
+        cost::{
             cost_fn::CostFn,
             cost_term::CostTerms,
         },
+        functor_library::costs::pose_graph::PoseGraphCostTerm,
+        optimize_nlls,
         LinearSolverType,
         OptParams,
     },
@@ -139,7 +139,7 @@ impl PoseCircleProblem {
                 ),
             )
             .build();
-        let solution = optimize(
+        let solution = optimize_nlls(
             variables,
             alloc::vec![CostFn::new_box(
                 (),

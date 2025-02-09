@@ -1,11 +1,11 @@
+use cost_system::CostSystem;
 use eq_system::EqSystem;
-use quadratic_cost_system::CostSystem;
 use solvers::{
     sparse_lu::SparseLu,
     sparse_qr::SparseQr,
-    SolveError,
 };
 
+use super::NllsError;
 use crate::{
     block::{
         block_vector::BlockVector,
@@ -28,10 +28,10 @@ use crate::{
 
 extern crate alloc;
 
+/// Normal equation system for the non-linear least squares cost
+pub mod cost_system;
 /// KKT sub-system for the equality-constraints
 pub mod eq_system;
-/// Normal equation system for the non-linear least squares cost
-pub mod quadratic_cost_system;
 /// Linear solvers
 pub mod solvers;
 
@@ -137,7 +137,7 @@ impl LinearSystem {
         }
     }
 
-    pub(crate) fn solve(&mut self) -> Result<nalgebra::DVector<f64>, SolveError> {
+    pub(crate) fn solve(&mut self) -> Result<nalgebra::DVector<f64>, NllsError> {
         match self.solver {
             LinearSolverType::SparseLdlt(ldlt_params) => SparseLdlt::new(ldlt_params).solve(
                 &self.sparse_hessian_plus_damping,

@@ -1,6 +1,6 @@
 use nalgebra::SVector;
 use sophus_autodiff::linalg::VecF64;
-use sophus_geo::region::Region;
+use sophus_geo::region::box_region::BoxRegion;
 use sophus_image::{
     arc_image::ArcImage2F32,
     image_view::IsImageView,
@@ -22,7 +22,7 @@ pub struct DistortTable {
     /// The table of distortion values.
     pub table: ArcImage2F32,
     /// The x and y region of the values the table represents.
-    pub region: Region<2>,
+    pub region: BoxRegion<2>,
 }
 
 impl DistortTable {
@@ -36,7 +36,7 @@ impl DistortTable {
 
     /// Returns the offset of the table.
     pub fn offset(&self) -> VecF64<2> {
-        self.region.min()
+        self.region.try_lower().unwrap()
     }
 
     /// Looks up the distortion value for a given point - using bilinear interpolation.
@@ -55,7 +55,7 @@ pub fn distort_table(cam: &DynCameraF64) -> DistortTable {
     // First we find min and max values in the proj plane.
     // Just test the 4 corners might not be enough, so we will test the image boundary.
 
-    let mut region = Region::<2>::empty();
+    let mut region = BoxRegion::<2>::empty();
 
     let v_top = -0.5;
     let v_bottom = cam.image_size().height as f64 - 0.5;
@@ -66,22 +66,22 @@ pub fn distort_table(cam: &DynCameraF64) -> DistortTable {
     for i in 0..=cam.image_size().width {
         let u = i as f64 - 0.5;
         // top border
-        region.extend(&cam.undistort(VecF64::<2>::new(u, v_top)));
+        region.extend(cam.undistort(VecF64::<2>::new(u, v_top)));
         // bottom border
-        region.extend(&cam.undistort(VecF64::<2>::new(u, v_bottom)));
+        region.extend(cam.undistort(VecF64::<2>::new(u, v_bottom)));
     }
     for i in 0..=cam.image_size().height {
         let v = i as f64 - 0.5;
         // left border
-        region.extend(&cam.undistort(VecF64::<2>::new(u_left, v)));
+        region.extend(cam.undistort(VecF64::<2>::new(u_left, v)));
         // right border
-        region.extend(&cam.undistort(VecF64::<2>::new(u_right, v)));
+        region.extend(cam.undistort(VecF64::<2>::new(u_right, v)));
     }
 
-    let mid = region.mid();
+    let mid = region.try_center().unwrap();
     let range = region.range();
 
-    let larger_region = Region::<2>::from_min_max(mid - range, mid + range);
+    let larger_region = BoxRegion::<2>::from_bounds(mid - range, mid + range);
 
     let mut distort_table = DistortTable {
         table: ArcImage2F32::from_image_size_and_val(cam.image_size(), SVector::<f32, 2>::zeros()),

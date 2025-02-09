@@ -15,10 +15,8 @@ use crate::{
         LieGroup,
     },
     prelude::*,
-    traits::{
-        EmptySliceError,
-        HasAverage,
-    },
+    EmptySliceError,
+    HasAverage,
     Rotation3,
 };
 
@@ -48,19 +46,15 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     Isometry3<S, BATCH, DM, DN>
 {
     /// create isometry from translation and rotation
-    pub fn from_translation_and_rotation<P, F>(translation: P, rotation: F) -> Self
+    pub fn from_translation_and_rotation<F>(translation: S::Vector<3>, rotation: F) -> Self
     where
-        P: Borrow<S::Vector<3>>,
         F: Borrow<Rotation3<S, BATCH, DM, DN>>,
     {
         Self::from_translation_and_factor(translation, rotation)
     }
 
     /// create isometry from translation
-    pub fn from_translation<P>(translation: P) -> Self
-    where
-        P: Borrow<S::Vector<3>>,
-    {
+    pub fn from_translation(translation: S::Vector<3>) -> Self {
         Self::from_translation_and_factor(translation, Rotation3::identity())
     }
 

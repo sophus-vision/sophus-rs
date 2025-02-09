@@ -12,15 +12,15 @@ use sophus_sensor::camera_enum::perspective_camera::PinholeCameraF64;
 
 use crate::{
     nlls::{
+        cost::{
+            cost_fn::CostFn,
+            cost_term::CostTerms,
+        },
         functor_library::costs::{
             isometry3_prior::Isometry3PriorCostTerm,
             pinhole_reprojection::PinholeCameraReprojectionCostTerm,
         },
-        optimize,
-        quadratic_cost::{
-            cost_fn::CostFn,
-            cost_term::CostTerms,
-        },
+        optimize_nlls,
         LinearSolverType,
         OptParams,
     },
@@ -185,7 +185,7 @@ impl CamCalibProblem {
             )
             .build();
 
-        let solution = optimize(
+        let solution = optimize_nlls(
             variables,
             alloc::vec![
                 // robust kernel to deal with outliers
@@ -251,7 +251,7 @@ impl CamCalibProblem {
             )
             .build();
 
-        let solution = optimize(
+        let solution = optimize_nlls(
             var_pool,
             alloc::vec![
                 CostFn::new_box((), priors.clone()),

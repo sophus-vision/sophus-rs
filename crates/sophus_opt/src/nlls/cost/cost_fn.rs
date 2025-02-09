@@ -4,6 +4,8 @@ use core::{
 };
 use std::fmt::Debug;
 
+use snafu::Snafu;
+
 use super::{
     cost_term::{
         CostTerms,
@@ -13,8 +15,7 @@ use super::{
 };
 use crate::{
     nlls::{
-        linear_system::EvalMode,
-        quadratic_cost::{
+        cost::{
             compare_idx::{
                 c_from_var_kind,
                 CompareIdx,
@@ -22,10 +23,14 @@ use crate::{
             evaluated_cost::EvaluatedCost,
             evaluated_term::EvaluatedCostTerm,
         },
+        linear_system::EvalMode,
     },
     robust_kernel::RobustKernel,
     variables::{
-        var_families::VarFamilies,
+        var_families::{
+            VarFamilies,
+            VarFamilyError,
+        },
         var_tuple::IsVarTuple,
         VarKind,
     },
@@ -41,7 +46,7 @@ pub trait IsCostFn {
         var_pool: &VarFamilies,
         eval_mode: EvalMode,
         parallelize: bool,
-    ) -> alloc::boxed::Box<dyn IsEvaluatedCost>;
+    ) -> Result<alloc::boxed::Box<dyn IsEvaluatedCost>, CostError>;
 
     /// sort the terms of the cost function (to ensure more efficient evaluation and reduction over
     /// conditioned variables)
@@ -105,6 +110,17 @@ impl<
     }
 }
 
+/// Errors that can occur when working with variable families
+#[derive(Snafu, Debug)]
+pub enum CostError {
+    /// Variable family error
+    #[snafu(display("CostError({})", source))]
+    VariableFamilyError {
+        /// source
+        source: VarFamilyError,
+    },
+}
+
 impl<
         const NUM: usize,
         const NUM_ARGS: usize,
@@ -115,12 +131,12 @@ impl<
 {
     fn eval(
         &self,
-        var_pool: &VarFamilies,
+        variables: &VarFamilies,
         eval_mode: EvalMode,
         parallelize: bool,
-    ) -> alloc::boxed::Box<dyn IsEvaluatedCost> {
+    ) -> Result<alloc::boxed::Box<dyn IsEvaluatedCost>, CostError> {
         let mut var_kind_array =
-            VarTuple::var_kind_array(var_pool, self.cost_terms.family_names.clone());
+            VarTuple::var_kind_array(variables, self.cost_terms.family_names.clone());
 
         if eval_mode == EvalMode::DontCalculateDerivatives {
             var_kind_array = var_kind_array.map(|_x| VarKind::Conditioned)
@@ -129,7 +145,8 @@ impl<
         let mut evaluated_terms = EvaluatedCost::new(self.cost_terms.family_names.clone());
 
         let var_family_tuple =
-            VarTuple::ref_var_family_tuple(var_pool, self.cost_terms.family_names.clone());
+            VarTuple::ref_var_family_tuple(variables, self.cost_terms.family_names.clone())
+                .map_err(|e| CostError::VariableFamilyError { source: e })?;
 
         let eval_res = |term: &Term| {
             term.eval(
@@ -286,7 +303,7 @@ impl<
             }
         }
 
-        alloc::boxed::Box::new(evaluated_terms)
+        Ok(alloc::boxed::Box::new(evaluated_terms))
     }
 
     fn sort(&mut self, variables: &VarFamilies) {

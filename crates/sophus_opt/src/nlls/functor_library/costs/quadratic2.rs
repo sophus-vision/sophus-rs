@@ -7,15 +7,11 @@ use sophus_autodiff::{
 };
 
 use crate::{
-    nlls::quadratic_cost::evaluated_term::EvaluatedCostTerm,
+    nlls::cost::evaluated_term::EvaluatedCostTerm,
     prelude::*,
     robust_kernel::RobustKernel,
     variables::VarKind,
 };
-
-/// Quadratic cost functor
-#[derive(Copy, Clone)]
-pub struct Quadratic2CostFunctor {}
 
 /// Term of the quadratic cost function
 #[derive(Clone, Debug)]
@@ -32,7 +28,8 @@ impl Quadratic2CostTerm {
         x: Scalar::Vector<2>,
         z: Scalar::Vector<2>,
     ) -> Scalar::Vector<2> {
-        x - z
+        Scalar::Vector::<2>::from_array([x.elem(0) + x.elem(1), x.elem(0) * x.elem(0) + x.elem(1)])
+            - z
     }
 }
 

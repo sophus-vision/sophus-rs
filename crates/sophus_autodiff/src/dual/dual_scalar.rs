@@ -255,6 +255,15 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
         }
     }
 
+    fn ln(&self) -> DualScalar<DM, DN> {
+        Self {
+            real_part: self.real_part.ln(),
+            infinitesimal_part: self
+                .infinitesimal_part
+                .map(|dij_val| dij_val.map(|dij| dij / self.real_part)),
+        }
+    }
+
     fn sin(&self) -> DualScalar<DM, DN> {
         Self {
             real_part: self.real_part.sin(),

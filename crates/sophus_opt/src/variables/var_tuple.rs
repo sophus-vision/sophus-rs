@@ -1,7 +1,10 @@
 use sophus_autodiff::manifold::IsVariable;
 
 use super::{
-    var_families::VarFamilies,
+    var_families::{
+        VarFamilies,
+        VarFamilyError,
+    },
     var_family::VarFamily,
     VarKind,
 };
@@ -20,7 +23,7 @@ pub trait IsVarTuple<const NUM_ARGS: usize>: Send + Sync + 'static {
     fn ref_var_family_tuple(
         families: &VarFamilies,
         names: [String; NUM_ARGS],
-    ) -> Self::VarFamilyTupleRef<'_>;
+    ) -> Result<Self::VarFamilyTupleRef<'_>, VarFamilyError>;
 
     /// extract the variables from the family tuple
     fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; NUM_ARGS]) -> Self;
@@ -40,8 +43,8 @@ impl<M0: IsVariable + 'static + Send + Sync> IsVarTuple<1> for M0 {
     fn ref_var_family_tuple(
         families: &VarFamilies,
         names: [String; 1],
-    ) -> Self::VarFamilyTupleRef<'_> {
-        families.get::<VarFamily<M0>>(names[0].clone())
+    ) -> Result<Self::VarFamilyTupleRef<'_>, VarFamilyError> {
+        families.get::<VarFamily<M0>>(&names[0])
     }
 
     fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; 1]) -> Self {
@@ -65,11 +68,11 @@ impl<M0: IsVariable + 'static + Send + Sync, M1: IsVariable + 'static + Send + S
     fn ref_var_family_tuple(
         families: &VarFamilies,
         names: [String; 2],
-    ) -> Self::VarFamilyTupleRef<'_> {
-        (
-            families.get::<VarFamily<M0>>(names[0].clone()),
-            families.get::<VarFamily<M1>>(names[1].clone()),
-        )
+    ) -> Result<Self::VarFamilyTupleRef<'_>, VarFamilyError> {
+        Ok((
+            families.get::<VarFamily<M0>>(&names[0])?,
+            families.get::<VarFamily<M1>>(&names[1])?,
+        ))
     }
 
     fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; 2]) -> Self {
@@ -100,12 +103,12 @@ impl<
     fn ref_var_family_tuple(
         families: &VarFamilies,
         names: [String; 3],
-    ) -> Self::VarFamilyTupleRef<'_> {
-        (
-            families.get::<VarFamily<M0>>(names[0].clone()),
-            families.get::<VarFamily<M1>>(names[1].clone()),
-            families.get::<VarFamily<M2>>(names[2].clone()),
-        )
+    ) -> Result<Self::VarFamilyTupleRef<'_>, VarFamilyError> {
+        Ok((
+            families.get::<VarFamily<M0>>(&names[0].clone())?,
+            families.get::<VarFamily<M1>>(&names[1].clone())?,
+            families.get::<VarFamily<M2>>(&names[2].clone())?,
+        ))
     }
 
     fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; 3]) -> Self {
@@ -144,13 +147,13 @@ impl<
     fn ref_var_family_tuple(
         families: &VarFamilies,
         names: [String; 4],
-    ) -> Self::VarFamilyTupleRef<'_> {
-        (
-            families.get::<VarFamily<M0>>(names[0].clone()),
-            families.get::<VarFamily<M1>>(names[1].clone()),
-            families.get::<VarFamily<M2>>(names[2].clone()),
-            families.get::<VarFamily<M3>>(names[3].clone()),
-        )
+    ) -> Result<Self::VarFamilyTupleRef<'_>, VarFamilyError> {
+        Ok((
+            families.get::<VarFamily<M0>>(&names[0])?,
+            families.get::<VarFamily<M1>>(&names[1])?,
+            families.get::<VarFamily<M2>>(&names[2])?,
+            families.get::<VarFamily<M3>>(&names[3])?,
+        ))
     }
 
     fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; 4]) -> Self {
@@ -193,14 +196,14 @@ impl<
     fn ref_var_family_tuple(
         families: &VarFamilies,
         names: [String; 5],
-    ) -> Self::VarFamilyTupleRef<'_> {
-        (
-            families.get::<VarFamily<M0>>(names[0].clone()),
-            families.get::<VarFamily<M1>>(names[1].clone()),
-            families.get::<VarFamily<M2>>(names[2].clone()),
-            families.get::<VarFamily<M3>>(names[3].clone()),
-            families.get::<VarFamily<M4>>(names[4].clone()),
-        )
+    ) -> Result<Self::VarFamilyTupleRef<'_>, VarFamilyError> {
+        Ok((
+            families.get::<VarFamily<M0>>(&names[0])?,
+            families.get::<VarFamily<M1>>(&names[1])?,
+            families.get::<VarFamily<M2>>(&names[2])?,
+            families.get::<VarFamily<M3>>(&names[3])?,
+            families.get::<VarFamily<M4>>(&names[4])?,
+        ))
     }
 
     fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; 5]) -> Self {
@@ -247,15 +250,15 @@ impl<
     fn ref_var_family_tuple(
         families: &VarFamilies,
         names: [String; 6],
-    ) -> Self::VarFamilyTupleRef<'_> {
-        (
-            families.get::<VarFamily<M0>>(names[0].clone()),
-            families.get::<VarFamily<M1>>(names[1].clone()),
-            families.get::<VarFamily<M2>>(names[2].clone()),
-            families.get::<VarFamily<M3>>(names[3].clone()),
-            families.get::<VarFamily<M4>>(names[4].clone()),
-            families.get::<VarFamily<M5>>(names[5].clone()),
-        )
+    ) -> Result<Self::VarFamilyTupleRef<'_>, VarFamilyError> {
+        Ok((
+            families.get::<VarFamily<M0>>(&names[0])?,
+            families.get::<VarFamily<M1>>(&names[1])?,
+            families.get::<VarFamily<M2>>(&names[2])?,
+            families.get::<VarFamily<M3>>(&names[3])?,
+            families.get::<VarFamily<M4>>(&names[4])?,
+            families.get::<VarFamily<M5>>(&names[5])?,
+        ))
     }
 
     fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; 6]) -> Self {
@@ -314,16 +317,16 @@ impl<
     fn ref_var_family_tuple(
         families: &VarFamilies,
         names: [String; 7],
-    ) -> Self::VarFamilyTupleRef<'_> {
-        (
-            families.get::<VarFamily<M0>>(names[0].clone()),
-            families.get::<VarFamily<M1>>(names[1].clone()),
-            families.get::<VarFamily<M2>>(names[2].clone()),
-            families.get::<VarFamily<M3>>(names[3].clone()),
-            families.get::<VarFamily<M4>>(names[4].clone()),
-            families.get::<VarFamily<M5>>(names[5].clone()),
-            families.get::<VarFamily<M6>>(names[6].clone()),
-        )
+    ) -> Result<Self::VarFamilyTupleRef<'_>, VarFamilyError> {
+        Ok((
+            families.get::<VarFamily<M0>>(&names[0])?,
+            families.get::<VarFamily<M1>>(&names[1])?,
+            families.get::<VarFamily<M2>>(&names[2])?,
+            families.get::<VarFamily<M3>>(&names[3])?,
+            families.get::<VarFamily<M4>>(&names[4])?,
+            families.get::<VarFamily<M5>>(&names[5])?,
+            families.get::<VarFamily<M6>>(&names[6])?,
+        ))
     }
 
     fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; 7]) -> Self {

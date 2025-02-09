@@ -12,7 +12,7 @@ use sophus_sensor::{
 };
 
 use crate::{
-    nlls::quadratic_cost::evaluated_term::EvaluatedCostTerm,
+    nlls::cost::evaluated_term::EvaluatedCostTerm,
     prelude::*,
     robust_kernel,
     variables::VarKind,

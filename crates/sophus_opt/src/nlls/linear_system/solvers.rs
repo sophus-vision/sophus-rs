@@ -1,6 +1,9 @@
 use snafu::Snafu;
 
-use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
+use crate::{
+    block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
+    nlls::NllsError,
+};
 
 /// dense lu
 pub mod dense_lu;
@@ -24,32 +27,6 @@ pub enum SparseSolverError {
     Unspecific,
 }
 
-/// Linear solver error
-#[derive(Snafu, Debug)]
-pub enum SolveError {
-    /// Sparse LDLt error
-    #[snafu(display("sparse LDLt error {}", details))]
-    SparseLdltError {
-        /// details
-        details: SparseSolverError,
-    },
-    /// Sparse LU error
-    #[snafu(display("sparse LU error {}", details))]
-    SparseLuError {
-        /// details
-        details: SparseSolverError,
-    },
-    /// Sparse QR error
-    #[snafu(display("sparse QR error {}", details))]
-    SparseQrError {
-        /// details
-        details: SparseSolverError,
-    },
-    /// Dense LU error
-    #[snafu(display("dense LU solve failed"))]
-    DenseLuError,
-}
-
 /// Interface for linear sparse symmetric system
 pub trait IsSparseSymmetricLinearSystem {
     /// Solve the linear system
@@ -57,7 +34,7 @@ pub trait IsSparseSymmetricLinearSystem {
         &self,
         triplets: &SymmetricBlockSparseMatrixBuilder,
         b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, SolveError>;
+    ) -> Result<nalgebra::DVector<f64>, NllsError>;
 }
 
 /// Interface for solving a dense linear system
@@ -67,7 +44,7 @@ pub trait IsDenseLinearSystem {
         &self,
         mat_a: nalgebra::DMatrix<f64>,
         b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, SolveError>;
+    ) -> Result<nalgebra::DVector<f64>, NllsError>;
 }
 
 #[test]

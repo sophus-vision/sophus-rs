@@ -6,15 +6,15 @@ use crate::{
             eq_constraint::EqConstraints,
             eq_constraint_fn::EqConstraintFn,
         },
-        functor_library::{
-            costs::example_non_linear_cost::ExampleNonLinearQuadraticCost,
-            eq_constraints::small_non_linear_eq::SmallNonLinearEqConstraint,
-        },
-        optimize_with_eq_constraints,
-        quadratic_cost::{
+        cost::{
             cost_fn::CostFn,
             cost_term::CostTerms,
         },
+        functor_library::{
+            costs::example_non_linear_cost::ExampleNonLinearCost,
+            eq_constraints::small_non_linear_eq::SmallNonLinearEqConstraint,
+        },
+        optimize_nlls_with_eq_constraints,
         LinearSolverType,
         OptParams,
     },
@@ -54,7 +54,7 @@ impl NonLinearEqToyProblem {
             .build();
         let cost_terms = CostTerms::new(
             [VAR_X],
-            alloc::vec![ExampleNonLinearQuadraticCost {
+            alloc::vec![ExampleNonLinearCost {
                 z: VecF64::<2>::new(1.0, 1.0),
                 entity_indices: [0]
             },],
@@ -72,7 +72,7 @@ impl NonLinearEqToyProblem {
             SmallNonLinearEqConstraint::residual(initial_x, EQ_CONSTRAINT_RHS).norm() > EPS_F64
         );
 
-        let refined_variables = optimize_with_eq_constraints(
+        let refined_variables = optimize_nlls_with_eq_constraints(
             variables,
             alloc::vec![CostFn::new_box((), cost_terms.clone(),)],
             alloc::vec![EqConstraintFn::new_box((), eq_constraints,)],

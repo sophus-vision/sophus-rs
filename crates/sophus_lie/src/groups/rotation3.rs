@@ -27,14 +27,12 @@ use crate::{
         LieGroup,
     },
     prelude::*,
-    traits::{
-        EmptySliceError,
-        HasAverage,
-        HasDisambiguate,
-        IsLieGroupImpl,
-        IsRealLieFactorGroupImpl,
-        IsRealLieGroupImpl,
-    },
+    EmptySliceError,
+    HasAverage,
+    HasDisambiguate,
+    IsLieGroupImpl,
+    IsRealLieFactorGroupImpl,
+    IsRealLieGroupImpl,
 };
 
 extern crate alloc;
@@ -634,8 +632,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
 }
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
-    crate::traits::IsLieFactorGroupImpl<S, 3, 4, 3, BATCH, DM, DN>
-    for Rotation3Impl<S, BATCH, DM, DN>
+    crate::IsLieFactorGroupImpl<S, 3, 4, 3, BATCH, DM, DN> for Rotation3Impl<S, BATCH, DM, DN>
 {
     type GenFactorG<S2: IsScalar<BATCH, M, N>, const M: usize, const N: usize> =
         Rotation3Impl<S2, BATCH, M, N>;
@@ -1055,9 +1052,9 @@ fn rotation3_prop_tests() {
     #[cfg(feature = "simd")]
     use sophus_autodiff::linalg::BatchScalarF64;
 
-    use crate::{
+    use crate::lie_group::{
         factor_lie_group::RealFactorLieGroupTest,
-        lie_group::real_lie_group::RealLieGroupTest,
+        real_lie_group::RealLieGroupTest,
     };
 
     Rotation3F64::test_suite();

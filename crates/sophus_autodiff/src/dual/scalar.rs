@@ -106,6 +106,20 @@ fn dual_scalar_tests() {
                             epsilon = 0.0001
                         );
 
+                        let exp_finite_diff =
+                            ScalarValuedCurve::sym_diff_quotient(|x| x.exp(), a, EPS_F64);
+                        let exp_auto_grad = <$dual_scalar>::var(a).exp().curve_derivative();
+                        approx::assert_abs_diff_eq!(
+                            exp_finite_diff,
+                            exp_auto_grad,
+                            epsilon = 0.0001
+                        );
+
+                        let ln_finite_diff =
+                            ScalarValuedCurve::sym_diff_quotient(|x| x.ln(), a, EPS_F64);
+                        let ln_auto_grad = <$dual_scalar>::var(a).ln().curve_derivative();
+                        approx::assert_abs_diff_eq!(ln_finite_diff, ln_auto_grad, epsilon = 0.0001);
+
                         let sin_finite_diff =
                             ScalarValuedCurve::sym_diff_quotient(|x| x.sin(), a, EPS_F64);
                         let sin_auto_grad = <$dual_scalar>::var(a).sin().curve_derivative();

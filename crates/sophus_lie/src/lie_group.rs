@@ -12,13 +12,15 @@ use sophus_autodiff::{
     },
 };
 
-use super::traits::IsLieGroupImpl;
+use super::IsLieGroupImpl;
 use crate::prelude::*;
 
 extern crate alloc;
 
 /// Lie group average
 pub mod average;
+/// Lie groups
+pub mod factor_lie_group;
 /// Group multiplication
 pub mod group_mul;
 /// Lie group as a manifold

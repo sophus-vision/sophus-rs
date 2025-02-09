@@ -1,23 +1,17 @@
-/// equality/inequality constraints
-pub mod constraint;
-/// functor library
-pub mod functor_library;
-/// Linear system
-pub mod linear_system;
-/// Cost functions, terms, residuals etc.
-pub mod quadratic_cost;
-
 use core::fmt::Debug;
 
+use constraint::eq_constraint_fn::EqConstraintError;
+use cost::cost_fn::CostError;
 use linear_system::{
+    cost_system::CostSystem,
     eq_system::EqSystem,
-    quadratic_cost_system::CostSystem,
-    solvers::SolveError,
+    solvers::SparseSolverError,
 };
 use log::{
     debug,
     info,
 };
+use snafu::Snafu;
 
 use crate::{
     block::{
@@ -26,17 +20,26 @@ use crate::{
     },
     nlls::{
         constraint::eq_constraint_fn::IsEqConstraintsFn,
+        cost::cost_fn::IsCostFn,
         linear_system::{
             solvers::sparse_ldlt::SparseLdltParams,
             EvalMode,
             LinearSystem,
         },
-        quadratic_cost::cost_fn::IsCostFn,
     },
     variables::var_families::VarFamilies,
 };
 
 extern crate alloc;
+
+/// equality/inequality constraints
+pub mod constraint;
+/// Cost functions, terms, residuals etc.
+pub mod cost;
+/// functor library
+pub mod functor_library;
+/// Linear system
+pub mod linear_system;
 
 /// Linear solver type
 #[derive(Copy, Clone, Debug)]
@@ -119,17 +122,21 @@ fn evaluate_cost_and_build_linear_system(
     cost_system: &mut CostSystem,
     eq_system: &mut EqSystem,
     params: OptParams,
-) -> LinearSystem {
+) -> Result<LinearSystem, NllsError> {
     let eval_mode = EvalMode::CalculateDerivatives;
-    cost_system.eval(variables, eval_mode, params);
-    eq_system.eval(variables, eval_mode, params);
+    cost_system
+        .eval(variables, eval_mode, params)
+        .map_err(|e| NllsError::NllsCostSystemError { details: e })?;
+    eq_system
+        .eval(variables, eval_mode, params)
+        .map_err(|e| NllsError::NllsEqConstraintSystemError { details: e })?;
 
-    LinearSystem::from_families_costs_and_constraints(
+    Ok(LinearSystem::from_families_costs_and_constraints(
         variables,
         cost_system,
         eq_system,
         params.solver,
-    )
+    ))
 }
 
 /// Optimization solution
@@ -144,13 +151,52 @@ pub struct OptimizationSolution {
     pub final_hessian_plus_damping: SymmetricBlockSparseMatrixBuilder,
 }
 
+/// Linear solver error
+#[derive(Snafu, Debug)]
+pub enum NllsError {
+    /// Sparse LDLt error
+    #[snafu(display("sparse LDLt error {}", details))]
+    SparseLdltError {
+        /// details
+        details: SparseSolverError,
+    },
+    /// Sparse LU error
+    #[snafu(display("sparse LU error {}", details))]
+    SparseLuError {
+        /// details
+        details: SparseSolverError,
+    },
+    /// Sparse QR error
+    #[snafu(display("sparse QR error {}", details))]
+    SparseQrError {
+        /// details
+        details: SparseSolverError,
+    },
+    /// Dense LU error
+    #[snafu(display("dense LU solve failed"))]
+    DenseLuError,
+
+    /// Quadratic cost system error
+    #[snafu(display("{}", details))]
+    NllsCostSystemError {
+        /// details
+        details: CostError,
+    },
+    /// Eq constraint system error
+    #[snafu(display("{}", details))]
+    NllsEqConstraintSystemError {
+        /// details
+        details: EqConstraintError,
+    },
+}
+
 /// Non-linear least squares optimization
-pub fn optimize(
+pub fn optimize_nlls(
     variables: VarFamilies,
     cost_fns: alloc::vec::Vec<alloc::boxed::Box<dyn IsCostFn>>,
     params: OptParams,
-) -> Result<OptimizationSolution, SolveError> {
-    optimize_with_eq_constraints(variables, cost_fns, vec![], params)
+) -> Result<OptimizationSolution, NllsError> {
+    optimize_nlls_with_eq_constraints(variables, cost_fns, vec![], params)
 }
 
 // calculate the merit value - at this point just the cost
@@ -159,26 +205,30 @@ pub(crate) fn calc_merit(
     cost_system: &mut CostSystem,
     _eq_system: &mut EqSystem,
     params: OptParams,
-) -> f64 {
-    cost_system.eval(variables, EvalMode::DontCalculateDerivatives, params);
+) -> Result<f64, NllsError> {
+    cost_system
+        .eval(variables, EvalMode::DontCalculateDerivatives, params)
+        .map_err(|e| NllsError::NllsCostSystemError { details: e })?;
     let mut c = 0.0;
     for cost in cost_system.evaluated_costs.iter() {
         c += cost.calc_square_error();
     }
-    c
+    Ok(c)
 }
 
 /// Non-linear least squares optimization with equality constraints
-pub fn optimize_with_eq_constraints(
+pub fn optimize_nlls_with_eq_constraints(
     mut variables: VarFamilies,
     cost_fns: alloc::vec::Vec<alloc::boxed::Box<dyn IsCostFn>>,
     eq_constraints_fns: alloc::vec::Vec<alloc::boxed::Box<dyn IsEqConstraintsFn>>,
     params: OptParams,
-) -> Result<OptimizationSolution, SolveError> {
-    let mut cost_system = CostSystem::new(&variables, cost_fns, params);
-    let mut eq_system = EqSystem::new(&variables, eq_constraints_fns, params);
+) -> Result<OptimizationSolution, NllsError> {
+    let mut cost_system = CostSystem::new(&variables, cost_fns, params)
+        .map_err(|e| NllsError::NllsCostSystemError { details: e })?;
+    let mut eq_system = EqSystem::new(&variables, eq_constraints_fns, params)
+        .map_err(|e| NllsError::NllsEqConstraintSystemError { details: e })?;
 
-    let mut merit = calc_merit(&variables, &mut cost_system, &mut eq_system, params);
+    let mut merit = calc_merit(&variables, &mut cost_system, &mut eq_system, params)?;
     let initial_merit = merit;
 
     for i in 0..params.num_iterations {
@@ -188,13 +238,13 @@ pub fn optimize_with_eq_constraints(
             &mut cost_system,
             &mut eq_system,
             params,
-        );
+        )?;
 
         let delta = linear_system.solve()?;
         let updated_families = variables.update(&delta);
         let updated_lambdas = eq_system.update_lambdas(&variables, &delta);
 
-        let new_merit = calc_merit(&updated_families, &mut cost_system, &mut eq_system, params);
+        let new_merit = calc_merit(&updated_families, &mut cost_system, &mut eq_system, params)?;
 
         if new_merit < merit {
             cost_system.lm_damping *= 0.0333;
@@ -216,8 +266,12 @@ pub fn optimize_with_eq_constraints(
     // for debugging, and not too expensive.
     // TODO: Consider making this optional, i.e. only return the final gradient and hessian if
     // requested.
-    let final_linear_system =
-        evaluate_cost_and_build_linear_system(&variables, &mut cost_system, &mut eq_system, params);
+    let final_linear_system = evaluate_cost_and_build_linear_system(
+        &variables,
+        &mut cost_system,
+        &mut eq_system,
+        params,
+    )?;
 
     Ok(OptimizationSolution {
         variables,

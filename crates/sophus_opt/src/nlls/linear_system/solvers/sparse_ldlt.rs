@@ -2,7 +2,7 @@ use faer::sparse::FaerError;
 
 use super::{
     IsSparseSymmetricLinearSystem,
-    SolveError,
+    NllsError,
 };
 use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 
@@ -43,7 +43,7 @@ impl IsSparseSymmetricLinearSystem for SparseLdlt {
         &self,
         upper_triangular: &SymmetricBlockSparseMatrixBuilder,
         b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, SolveError> {
+    ) -> Result<nalgebra::DVector<f64>, NllsError> {
         Ok(
             match SimplicalSparseLdlt::from_triplets(
                 &upper_triangular.to_upper_triangular_scalar_triplets(),
@@ -54,7 +54,7 @@ impl IsSparseSymmetricLinearSystem for SparseLdlt {
             {
                 Ok(x) => x,
                 Err(e) => {
-                    return Err(SolveError::SparseLdltError {
+                    return Err(NllsError::SparseLdltError {
                         details: match e {
                             FaerError::IndexOverflow => super::SparseSolverError::IndexOverflow,
                             FaerError::OutOfMemory => super::SparseSolverError::OutOfMemory,

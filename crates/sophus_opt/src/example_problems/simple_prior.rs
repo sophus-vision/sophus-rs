@@ -9,15 +9,15 @@ use sophus_lie::{
 
 use crate::{
     nlls::{
+        cost::{
+            cost_fn::CostFn,
+            cost_term::CostTerms,
+        },
         functor_library::costs::{
             isometry2_prior::Isometry2PriorCostTerm,
             isometry3_prior::Isometry3PriorCostTerm,
         },
-        optimize,
-        quadratic_cost::{
-            cost_fn::CostFn,
-            cost_term::CostTerms,
-        },
+        optimize_nlls,
         LinearSolverType,
         OptParams,
     },
@@ -74,7 +74,7 @@ impl SimpleIso2PriorProblem {
                 VarFamily::new(VarKind::Free, alloc::vec![self.est_world_from_robot]),
             )
             .build();
-        let solution = optimize(
+        let solution = optimize_nlls(
             variables,
             alloc::vec![CostFn::new_box((), obs_pose_a_from_pose_b_poses.clone(),)],
             OptParams {
@@ -139,7 +139,7 @@ impl SimpleIso3PriorProblem {
                 VarFamily::new(VarKind::Free, alloc::vec![self.est_world_from_robot]),
             )
             .build();
-        let solution = optimize(
+        let solution = optimize_nlls(
             variables,
             alloc::vec![CostFn::new_box((), obs_pose_a_from_pose_b_poses.clone(),)],
             OptParams {
