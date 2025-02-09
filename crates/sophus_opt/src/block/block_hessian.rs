@@ -2,7 +2,19 @@ use sophus_autodiff::linalg::MatF64;
 
 use super::BlockRange;
 
-/// Hessian matrix, split in several blocks
+/// Hessian matrix, partitioned into several blocks
+///
+/// ```ascii
+/// |    H_0,0             ...         H_0,{NUM_ARGS-1}      |
+/// |      .         .                        .              |
+/// |      .                  .               .              |
+/// | H_{NUM_ARGS-1},{0}   ...   H_{NUM_ARGS-1},{NUM_ARGS-1} |
+/// ```
+///
+/// The (NUM x NUM) symmetric matrix is partitioned into NUM_ARGS blocks horizontally and
+/// vertically. The shape of each of are specified by the `ranges` array.
+///
+/// Hence, the Hessian sub-block H_i,j is a (ranges(i).dim x ranges(j).dim) matrix.
 #[derive(Clone, Debug)]
 pub struct BlockHessian<const NUM: usize, const NUM_ARGS: usize> {
     /// matrix storage

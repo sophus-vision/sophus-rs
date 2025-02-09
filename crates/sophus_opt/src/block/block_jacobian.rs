@@ -2,7 +2,16 @@ use sophus_autodiff::linalg::MatF64;
 
 use crate::block::BlockRange;
 
-/// Jacobian matrix, split in several blocks
+/// Jacobian matrix, split into several blocks
+///
+/// ```ascii
+/// | J_0   ...   J_{NUM_ARGS-1} |
+/// ```
+///
+/// The (RESIDUAL_DIM x INPUT_DIM) matrix is partitioned into NUM_ARGS blocks horizontally.
+/// The shape of each of are specified by the `ranges` array.
+///
+/// Hence, the Jacobian sub-block J_i is a (RESIDUAL_DIM x ranges(i).dim) matrix.
 #[derive(Clone, Debug)]
 pub struct BlockJacobian<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const NUM_ARGS: usize> {
     /// matrix storage
