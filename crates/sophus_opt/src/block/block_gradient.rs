@@ -4,6 +4,18 @@ use sophus_autodiff::linalg::VecF64;
 use super::BlockRange;
 
 /// Block gradient vector
+///
+/// ```ascii
+/// | g_0            |
+/// |   .            |
+/// |   .            |
+/// | g_{NUM_ARGS-1} |
+/// ```
+///
+/// The NUM-dimensional vector is partitioned into NUM_ARGS blocks, each of
+/// which has an offset and dimension specified by the `ranges` array.
+///
+/// Hence, the gradient sub-block g_i has a dimensionality of ranges(i).dim.
 #[derive(Debug, Clone)]
 pub struct BlockGradient<const NUM: usize, const NUM_ARGS: usize> {
     /// vector storage

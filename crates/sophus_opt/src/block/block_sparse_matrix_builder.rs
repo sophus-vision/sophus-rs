@@ -44,7 +44,7 @@ pub struct BlockSparseMatrixBuilder {
     pub(crate) scalar_shape: [usize; 2],
 }
 
-/// A single block "AxB" in the sparse upper triangular matrix.
+/// A single block "AxB" in a region of the block sparse matrix.
 #[derive(Debug, Clone)]
 pub(crate) struct BlockTriplet {
     // index (row, column) of block within the region
