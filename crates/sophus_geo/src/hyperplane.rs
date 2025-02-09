@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-
 use sophus_autodiff::linalg::{
     MatF64,
     VecF64,
@@ -42,10 +40,9 @@ impl<
     ///
     /// Given a N-d point, this function is projecting the point onto the hyperplane (along the
     /// planar normal) and returning the result.
-    pub fn proj_onto<B: Borrow<S::Vector<DIM>>>(&self, point: B) -> S::Vector<DIM> {
-        let point = point.borrow();
-        let diff = *point - self.origin;
-        *point - self.normal.vector().scaled(diff.dot(self.normal.vector()))
+    pub fn proj_onto(&self, point: S::Vector<DIM>) -> S::Vector<DIM> {
+        let diff = point - self.origin;
+        point - self.normal.vector().scaled(diff.dot(self.normal.vector()))
     }
 
     /// Returns the Jacobian of `proj_onto(point)` w.r.t. `point` itself.
@@ -60,9 +57,8 @@ impl<
     }
 
     /// Distance of a point to the hyperplane.
-    pub fn distance<B: Borrow<S::Vector<DIM>>>(&self, point: B) -> S {
-        let point = point.borrow();
-        (self.proj_onto(point) - *point).norm()
+    pub fn distance(&self, point: S::Vector<DIM>) -> S {
+        (self.proj_onto(point) - point).norm()
     }
 }
 
@@ -70,7 +66,7 @@ impl<
 pub type Line<S, const B: usize, const DM: usize, const DN: usize> = HyperPlane<S, 1, 2, B, DM, DN>;
 /// A line in 2D - for f64.
 pub type LineF64 = Line<f64, 1, 0, 0>;
-// A plane in 3D - represented as a 3d hyperplane.
+/// A plane in 3D - represented as a 3d hyperplane.
 pub type Plane<S, const B: usize, const DM: usize, const DN: usize> =
     HyperPlane<S, 2, 3, B, DM, DN>;
 /// A plane in 3D - for f64.
@@ -84,10 +80,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     /// Given an isometry "parent_from_line_origin", this function creates a line spanned by the
     /// X axis of the "line_origin" frame. The line is specified relative to the "parent"
     /// frame.
-    pub fn from_isometry2<B: Borrow<Isometry2<S, BATCH, DM, DN>>>(
-        parent_from_line_origin: B,
-    ) -> Self {
-        let parent_from_line_origin = parent_from_line_origin.borrow();
+    pub fn from_isometry2(parent_from_line_origin: Isometry2<S, BATCH, DM, DN>) -> Self {
         Line {
             origin: parent_from_line_origin.translation(),
             normal: UnitVector::from_vector_and_normalize(
@@ -105,10 +98,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     /// Given an isometry "parent_from_plane_origin", this function creates a plane spanned by the
     /// X-Y axis of the "plane_origin" frame. The plane is specified relative to the "parent"
     /// frame.
-    pub fn from_isometry3<B: Borrow<Isometry3<S, BATCH, DM, DN>>>(
-        parent_from_plane_origin: B,
-    ) -> Self {
-        let parent_from_plane_origin = parent_from_plane_origin.borrow();
+    pub fn from_isometry3(parent_from_plane_origin: Isometry3<S, BATCH, DM, DN>) -> Self {
         Plane {
             origin: parent_from_plane_origin.translation(),
             normal: UnitVector::from_vector_and_normalize(

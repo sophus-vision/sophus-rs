@@ -23,7 +23,7 @@ impl EqSystem {
         variables: &VarFamilies,
         mut eq_constraints_fns: Vec<alloc::boxed::Box<dyn IsEqConstraintsFn>>,
         params: OptParams,
-    ) -> EqSystem {
+    ) -> Result<EqSystem, crate::nlls::constraint::eq_constraint_fn::EqConstraintError> {
         for eq_functors in eq_constraints_fns.iter_mut() {
             // sort to achieve more efficient evaluation and reduction
             eq_functors.sort(variables);
@@ -43,8 +43,8 @@ impl EqSystem {
             evaluated_eq_constraints: vec![],
             partitions,
         };
-        eq_system.eval(variables, EvalMode::DontCalculateDerivatives, params);
-        eq_system
+        eq_system.eval(variables, EvalMode::DontCalculateDerivatives, params)?;
+        Ok(eq_system)
     }
 
     pub(crate) fn eval(
@@ -52,12 +52,13 @@ impl EqSystem {
         variables: &VarFamilies,
         eval_mode: EvalMode,
         _params: OptParams,
-    ) {
+    ) -> Result<(), crate::nlls::constraint::eq_constraint_fn::EqConstraintError> {
         self.evaluated_eq_constraints.clear();
         for eq_constraint_fn in self.eq_constraints_fns.iter() {
             self.evaluated_eq_constraints
-                .push(eq_constraint_fn.eval(variables, eval_mode));
+                .push(eq_constraint_fn.eval(variables, eval_mode)?);
         }
+        Ok(())
     }
 
     // update lambdas

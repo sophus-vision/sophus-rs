@@ -89,6 +89,9 @@ pub trait IsVarFamily: as_any::AsAny + Debug + DynClone {
 
     /// variable kind (free, conditioned, ...)
     fn get_var_kind(&self) -> VarKind;
+
+    /// concrete type name
+    fn concrete_type_name(&self) -> &'static str;
 }
 
 impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
@@ -228,6 +231,10 @@ impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
 
     fn update_i(&mut self, i: usize, delta: nalgebra::DVector<f64>) {
         self.members[i].update(delta.as_view());
+    }
+
+    fn concrete_type_name(&self) -> &'static str {
+        std::any::type_name::<Var>()
     }
 }
 

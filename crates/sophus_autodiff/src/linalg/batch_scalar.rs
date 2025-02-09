@@ -302,6 +302,12 @@ where
         }
     }
 
+    fn ln(&self) -> Self {
+        BatchScalarF64 {
+            0: sleef::Sleef::ln(self.0),
+        }
+    }
+
     fn sin(&self) -> Self {
         BatchScalarF64 {
             0: sleef::Sleef::sin(self.0),

@@ -6,7 +6,7 @@ use sophus_image::{
     ImageSize,
 };
 use sophus_lie::{
-    traits::IsTranslationProductGroup,
+    IsTranslationProductGroup,
     Isometry3,
     Isometry3F64,
 };

@@ -7,15 +7,15 @@ use crate::{
             eq_constraint::EqConstraints,
             eq_constraint_fn::EqConstraintFn,
         },
-        functor_library::{
-            costs::quadratic1::QuadraticCostTerm,
-            eq_constraints::linear_eq::LinearEqConstraint1,
-        },
-        optimize_with_eq_constraints,
-        quadratic_cost::{
+        cost::{
             cost_fn::CostFn,
             cost_term::CostTerms,
         },
+        functor_library::{
+            costs::quadratic1::Quadratic1CostTerm,
+            eq_constraints::linear_eq::LinearEqConstraint1,
+        },
+        optimize_nlls_with_eq_constraints,
         LinearSolverType,
         OptParams,
     },
@@ -61,12 +61,12 @@ impl LinearEqToyProblem {
         let cost_terms = CostTerms::new(
             [VAR_X],
             alloc::vec![
-                QuadraticCostTerm {
+                Quadratic1CostTerm {
                     z: VecF64::<1>::new(1.0),
                     entity_indices: [0]
                 },
-                QuadraticCostTerm {
-                    z: VecF64::<1>::new(EQ_CONSTRAINT_RHS),
+                Quadratic1CostTerm {
+                    z: VecF64::<1>::new(2.0),
                     entity_indices: [1]
                 }
             ],
@@ -85,7 +85,7 @@ impl LinearEqToyProblem {
                 > EPS_F64
         );
 
-        let solution = optimize_with_eq_constraints(
+        let solution = optimize_nlls_with_eq_constraints(
             variables,
             alloc::vec![CostFn::new_box((), cost_terms.clone(),)],
             alloc::vec![EqConstraintFn::new_box((), eq_constraints,)],

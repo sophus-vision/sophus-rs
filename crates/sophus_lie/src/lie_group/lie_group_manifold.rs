@@ -8,7 +8,7 @@ use sophus_autodiff::{
 use crate::{
     lie_group::LieGroup,
     prelude::*,
-    traits::IsLieGroupImpl,
+    IsLieGroupImpl,
 };
 
 extern crate alloc;

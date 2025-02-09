@@ -4,6 +4,8 @@ use std::{
     ops::Range,
 };
 
+use snafu::Snafu;
+
 use super::{
     eq_constraint::{
         EqConstraints,
@@ -17,14 +19,17 @@ use crate::{
             evaluated_eq_constraint::EvaluatedEqConstraint,
             evaluated_eq_set::EvaluatedEqSet,
         },
-        linear_system::EvalMode,
-        quadratic_cost::compare_idx::{
+        cost::compare_idx::{
             c_from_var_kind,
             CompareIdx,
         },
+        linear_system::EvalMode,
     },
     variables::{
-        var_families::VarFamilies,
+        var_families::{
+            VarFamilies,
+            VarFamilyError,
+        },
         var_tuple::IsVarTuple,
         VarKind,
     },
@@ -43,7 +48,7 @@ pub struct EqConstraintFn<
     VarTuple: IsVarTuple<NUM_ARGS> + 'static,
 > {
     global_constants: GlobalConstants,
-    constraint:
+    constraints:
         EqConstraints<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS, GlobalConstants, VarTuple, Constraint>,
     phantom: PhantomData<VarTuple>,
 }
@@ -72,7 +77,7 @@ impl<
     ) -> alloc::boxed::Box<dyn IsEqConstraintsFn> {
         alloc::boxed::Box::new(Self {
             global_constants,
-            constraint: terms,
+            constraints: terms,
             phantom: PhantomData,
         })
     }
@@ -85,7 +90,7 @@ pub trait IsEqConstraintsFn {
         &self,
         var_pool: &VarFamilies,
         eval_mode: EvalMode,
-    ) -> alloc::boxed::Box<dyn IsEvaluatedEqConstraintSet>;
+    ) -> Result<alloc::boxed::Box<dyn IsEvaluatedEqConstraintSet>, EqConstraintError>;
 
     /// Sort the constraints.
     fn sort(&mut self, variables: &VarFamilies);
@@ -95,6 +100,17 @@ pub trait IsEqConstraintsFn {
 
     /// residual dimension
     fn residual_dim(&self) -> usize;
+}
+
+/// Errors that can occur when working with variable families
+#[derive(Snafu, Debug)]
+pub enum EqConstraintError {
+    /// Error when working with variable families
+    #[snafu(display("EqConstraintError( {} )", source))]
+    VariableFamilyError {
+        /// The source of the error
+        source: VarFamilyError,
+    },
 }
 
 impl<
@@ -109,21 +125,22 @@ impl<
 {
     fn eval(
         &self,
-        var_pool: &VarFamilies,
+        variables: &VarFamilies,
         eval_mode: EvalMode,
-    ) -> alloc::boxed::Box<dyn IsEvaluatedEqConstraintSet> {
+    ) -> Result<alloc::boxed::Box<dyn IsEvaluatedEqConstraintSet>, EqConstraintError> {
         let mut var_kind_array =
-            VarTuple::var_kind_array(var_pool, self.constraint.family_names.clone());
+            VarTuple::var_kind_array(variables, self.constraints.family_names.clone());
 
         if eval_mode == EvalMode::DontCalculateDerivatives {
             var_kind_array = var_kind_array.map(|_x| VarKind::Conditioned)
         }
 
         let mut evaluated_eq_constraints =
-            EvaluatedEqSet::new(self.constraint.family_names.clone());
+            EvaluatedEqSet::new(self.constraints.family_names.clone());
 
         let var_family_tuple =
-            VarTuple::ref_var_family_tuple(var_pool, self.constraint.family_names.clone());
+            VarTuple::ref_var_family_tuple(variables, self.constraints.family_names.clone())
+                .map_err(|e| EqConstraintError::VariableFamilyError { source: e })?;
 
         let eval_res = |term: &Constraint| {
             term.eval(
@@ -134,7 +151,7 @@ impl<
             )
         };
 
-        let reduction_ranges = self.constraint.reduction_ranges.as_ref().unwrap();
+        let reduction_ranges = self.constraints.reduction_ranges.as_ref().unwrap();
 
         evaluated_eq_constraints
             .evaluated_constraints
@@ -144,7 +161,7 @@ impl<
                 EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>,
             > = None;
 
-            for term in self.constraint.collection[range.start..range.end].iter() {
+            for term in self.constraints.collection[range.start..range.end].iter() {
                 match evaluated_term_sum {
                     Some(mut sum) => {
                         sum.reduce(eval_res(term));
@@ -159,41 +176,41 @@ impl<
                 .push(evaluated_term_sum.unwrap());
         }
 
-        alloc::boxed::Box::new(evaluated_eq_constraints)
+        Ok(alloc::boxed::Box::new(evaluated_eq_constraints))
     }
 
     fn sort(&mut self, variables: &VarFamilies) {
         let var_kind_array =
-            &VarTuple::var_kind_array(variables, self.constraint.family_names.clone());
+            &VarTuple::var_kind_array(variables, self.constraints.family_names.clone());
 
         let c_array = c_from_var_kind(var_kind_array);
 
         let less = CompareIdx::new(&c_array);
 
-        assert!(!self.constraint.collection.is_empty());
+        assert!(!self.constraints.collection.is_empty());
 
-        self.constraint
+        self.constraints
             .collection
             .sort_by(|a, b| less.le_than(*a.idx_ref(), *b.idx_ref()));
 
-        for t in 0..self.constraint.collection.len() - 1 {
+        for t in 0..self.constraints.collection.len() - 1 {
             assert!(
                 less.le_than(
-                    *self.constraint.collection[t].idx_ref(),
-                    *self.constraint.collection[t + 1].idx_ref()
+                    *self.constraints.collection[t].idx_ref(),
+                    *self.constraints.collection[t + 1].idx_ref()
                 ) != core::cmp::Ordering::Greater
             );
         }
 
         let mut reduction_ranges: alloc::vec::Vec<Range<usize>> = alloc::vec![];
         let mut i = 0;
-        while i < self.constraint.collection.len() {
-            let outer_term = &self.constraint.collection[i];
+        while i < self.constraints.collection.len() {
+            let outer_term = &self.constraints.collection[i];
             let outer_term_idx = i;
-            while i < self.constraint.collection.len()
+            while i < self.constraints.collection.len()
                 && less.free_vars_equal(
                     outer_term.idx_ref(),
-                    self.constraint.collection[i].idx_ref(),
+                    self.constraints.collection[i].idx_ref(),
                 )
             {
                 i += 1;
@@ -201,7 +218,7 @@ impl<
             reduction_ranges.push(outer_term_idx..i);
         }
 
-        self.constraint.reduction_ranges = Some(reduction_ranges);
+        self.constraints.reduction_ranges = Some(reduction_ranges);
     }
 
     fn num_args(&self) -> usize {

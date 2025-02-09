@@ -1,5 +1,8 @@
 use core::fmt::Debug;
+use std::any::type_name;
 
+use as_any::Downcast;
+use snafu::Snafu;
 use sophus_autodiff::manifold::IsVariable;
 
 use super::{
@@ -15,6 +18,30 @@ extern crate alloc;
 #[derive(Debug, Clone)]
 pub struct VarFamilies {
     pub(crate) collection: alloc::collections::BTreeMap<String, alloc::boxed::Box<dyn IsVarFamily>>,
+}
+
+/// Errors that can occur when working with variable families
+#[derive(Snafu, Debug)]
+pub enum VarFamilyError {
+    /// Tried to retrieve a variable family as the wrong type
+    #[snafu(display(
+        "Tried to retrieve `{family_name}` as type '{requested_type}',
+                     but actual type is '{actual_type}"
+    ))]
+    TypeError {
+        /// The name of the variable family
+        family_name: String,
+        /// The type that was requested
+        requested_type: String,
+        /// The actual type of the variable family
+        actual_type: String,
+    },
+    /// Variable family not found in collection
+    #[snafu(display("Variable family '{family_name}' not found in collection."))]
+    UnknownFamily {
+        /// The name of the variable family
+        family_name: String,
+    },
 }
 
 impl VarFamilies {
@@ -97,21 +124,47 @@ impl VarFamilies {
     }
 
     /// retrieve a variable family by name
-    ///
-    /// Panics if the family does not exist, or the specified type is not correct
-    pub fn get<T: IsVarFamily>(&self, name: String) -> &T {
-        as_any::Downcast::downcast_ref::<T>(self.collection.get(&name).unwrap().as_ref()).unwrap()
+    pub fn get<T: IsVarFamily>(&self, name: &str) -> Result<&T, VarFamilyError> {
+        // 1) Look up the family in the map:
+        let family = self
+            .collection
+            .get(name)
+            .ok_or_else(|| VarFamilyError::UnknownFamily {
+                family_name: name.to_string(),
+            })?;
+
+        // 2) Attempt downcast:
+        family
+            .as_ref()
+            .downcast_ref::<T>()
+            .ok_or_else(|| VarFamilyError::TypeError {
+                family_name: name.to_string(),
+                requested_type: type_name::<T>().to_owned(),
+                actual_type: family.concrete_type_name().to_owned(),
+            })
     }
 
     /// retrieve family members by family name
     ///
     /// Panics if the family does not exist, or the specified type is not correct
-    pub fn get_members<T: IsVariable + 'static>(&self, name: impl ToString) -> alloc::vec::Vec<T> {
-        as_any::Downcast::downcast_ref::<VarFamily<T>>(
-            self.collection.get(&name.to_string()).unwrap().as_ref(),
-        )
-        .unwrap()
-        .members
-        .clone()
+    pub fn get_members<T: IsVariable + 'static>(&self, name: &str) -> alloc::vec::Vec<T> {
+        let family = self
+            .collection
+            .get(name)
+            .ok_or_else(|| VarFamilyError::UnknownFamily {
+                family_name: name.to_string(),
+            })
+            .unwrap();
+        family
+            .as_ref()
+            .downcast_ref::<VarFamily<T>>()
+            .ok_or_else(|| VarFamilyError::TypeError {
+                family_name: name.to_string(),
+                requested_type: type_name::<T>().to_owned(),
+                actual_type: family.concrete_type_name().to_owned(),
+            })
+            .unwrap()
+            .members
+            .clone()
     }
 }

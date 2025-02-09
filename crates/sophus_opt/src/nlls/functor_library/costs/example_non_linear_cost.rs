@@ -7,7 +7,7 @@ use sophus_autodiff::{
 };
 
 use crate::{
-    nlls::quadratic_cost::evaluated_term::EvaluatedCostTerm,
+    nlls::cost::evaluated_term::EvaluatedCostTerm,
     prelude::*,
     robust_kernel::RobustKernel,
     variables::VarKind,
@@ -15,14 +15,14 @@ use crate::{
 
 /// Non-linear quadratic cost term
 #[derive(Clone, Debug)]
-pub struct ExampleNonLinearQuadraticCost {
+pub struct ExampleNonLinearCost {
     /// 2d measurement
     pub z: VecF64<2>,
     /// entity index
     pub entity_indices: [usize; 1],
 }
 
-impl ExampleNonLinearQuadraticCost {
+impl ExampleNonLinearCost {
     /// Compute the residual
     pub fn residual<Scalar: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize>(
         x: Scalar::Vector<2>,
@@ -35,7 +35,7 @@ impl ExampleNonLinearQuadraticCost {
     }
 }
 
-impl IsCostTerm<2, 1, (), VecF64<2>> for ExampleNonLinearQuadraticCost {
+impl IsCostTerm<2, 1, (), VecF64<2>> for ExampleNonLinearCost {
     fn idx_ref(&self) -> &[usize; 1] {
         &self.entity_indices
     }

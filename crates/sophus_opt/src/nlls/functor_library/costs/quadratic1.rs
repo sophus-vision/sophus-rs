@@ -7,7 +7,7 @@ use sophus_autodiff::{
 };
 
 use crate::{
-    nlls::quadratic_cost::evaluated_term::EvaluatedCostTerm,
+    nlls::cost::evaluated_term::EvaluatedCostTerm,
     prelude::*,
     robust_kernel::RobustKernel,
     variables::VarKind,
@@ -15,18 +15,18 @@ use crate::{
 
 /// Quadratic cost functor
 #[derive(Copy, Clone)]
-pub struct QuadraticCostFunctor {}
+pub struct CostFunctor {}
 
 /// Term of the quadratic cost function
 #[derive(Clone, Debug)]
-pub struct QuadraticCostTerm {
+pub struct Quadratic1CostTerm {
     /// Measurement
     pub z: VecF64<1>,
     /// entity index
     pub entity_indices: [usize; 1],
 }
 
-impl QuadraticCostTerm {
+impl Quadratic1CostTerm {
     /// Compute the residual
     pub fn residual<Scalar: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize>(
         x: Scalar::Vector<1>,
@@ -36,7 +36,7 @@ impl QuadraticCostTerm {
     }
 }
 
-impl IsCostTerm<1, 1, (), VecF64<1>> for QuadraticCostTerm {
+impl IsCostTerm<1, 1, (), VecF64<1>> for Quadratic1CostTerm {
     fn idx_ref(&self) -> &[usize; 1] {
         &self.entity_indices
     }

@@ -4,7 +4,7 @@ use sophus_autodiff::prelude::IsScalar;
 
 use crate::{
     lie_group::LieGroup,
-    traits::IsLieGroupImpl,
+    IsLieGroupImpl,
 };
 
 // a * b

@@ -12,7 +12,7 @@ use crate::{
         rotation2::Rotation2F64,
         rotation3::Rotation3F64,
     },
-    traits::IsLieGroupImpl,
+    IsLieGroupImpl,
     Isometry2F64,
     Isometry3F64,
     LieGroup,
@@ -98,7 +98,7 @@ macro_rules! def_average_test_template {
                 use approx::assert_relative_eq;
                 use sophus_autodiff::linalg::VecF64;
 
-                use crate::traits::HasAverage;
+                use crate::HasAverage;
 
                 // test: empty slice
                 assert!(Self::average(&[]).is_err());

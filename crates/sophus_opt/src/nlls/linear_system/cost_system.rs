@@ -5,7 +5,10 @@ use crate::{
         symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
     },
     nlls::{
-        quadratic_cost::evaluated_cost::EvaluatedCost,
+        cost::{
+            cost_fn::CostError,
+            evaluated_cost::EvaluatedCost,
+        },
         OptParams,
     },
     prelude::*,
@@ -19,7 +22,7 @@ impl CostSystem {
         variables: &VarFamilies,
         mut cost_fns: Vec<alloc::boxed::Box<dyn IsCostFn>>,
         params: OptParams,
-    ) -> Self {
+    ) -> Result<Self, CostError> {
         for cost_functors in cost_fns.iter_mut() {
             // sort to achieve more efficient evaluation and reduction
             cost_functors.sort(variables);
@@ -29,16 +32,25 @@ impl CostSystem {
             cost_fns,
             evaluated_costs: vec![],
         };
-        cost_system.eval(variables, EvalMode::DontCalculateDerivatives, params);
-        cost_system
+        cost_system.eval(variables, EvalMode::DontCalculateDerivatives, params)?;
+        Ok(cost_system)
     }
 
-    pub(crate) fn eval(&mut self, variables: &VarFamilies, eval_mode: EvalMode, params: OptParams) {
+    pub(crate) fn eval(
+        &mut self,
+        variables: &VarFamilies,
+        eval_mode: EvalMode,
+        params: OptParams,
+    ) -> Result<(), CostError> {
         self.evaluated_costs.clear();
         for cost_functors in self.cost_fns.iter() {
-            self.evaluated_costs
-                .push(cost_functors.eval(variables, eval_mode, params.parallelize));
+            self.evaluated_costs.push(cost_functors.eval(
+                variables,
+                eval_mode,
+                params.parallelize,
+            )?);
         }
+        Ok(())
     }
 }
 

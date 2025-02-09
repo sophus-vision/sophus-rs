@@ -4,10 +4,11 @@ use core::{
 };
 
 use log::warn;
-use sophus_geo::region::{
-    Interval,
-    IsRegion,
+use sophus_geo::{
+    prelude::*,
+    region::interval::Interval,
 };
+
 extern crate alloc;
 
 /// has time_stamp method
@@ -198,7 +199,7 @@ impl<T: HasTimeStamp> TimeSeries<T> {
         if self.is_empty() {
             return Interval::empty();
         }
-        Interval::from_min_max(
+        Interval::from_bounds(
             self.oldest().unwrap().time_stamp(),
             self.newest().unwrap().time_stamp(),
         )
@@ -538,8 +539,8 @@ mod tests {
         });
 
         let interval = series.time_interval();
-        assert_eq!(interval.min(), 1.0);
-        assert_eq!(interval.max(), 3.0);
+        assert_eq!(interval.try_lower().unwrap(), 1.0);
+        assert_eq!(interval.try_upper().unwrap(), 3.0);
     }
     #[test]
     fn test_find_nearest_empty_series() {
@@ -840,7 +841,7 @@ mod tests {
         }
 
         let interval = series.time_interval();
-        assert_eq!(interval, Interval::from_min_max(5.0, 15.0));
+        assert_eq!(interval, Interval::from_bounds(5.0, 15.0));
     }
 
     #[test]

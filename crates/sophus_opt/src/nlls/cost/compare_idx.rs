@@ -400,7 +400,7 @@ mod test {
             [3, 2, 1],
         ];
 
-        let less = crate::nlls::quadratic_cost::compare_idx::CompareIdx::new(c);
+        let less = crate::nlls::cost::compare_idx::CompareIdx::new(c);
         l.sort_by(|a, b| less.le_than(*a, *b));
     }
 }

@@ -24,10 +24,8 @@ use sophus_autodiff::{
 use crate::{
     lie_group::LieGroup,
     prelude::*,
-    traits::{
-        IsLieGroupImpl,
-        IsRealLieGroupImpl,
-    },
+    IsLieGroupImpl,
+    IsRealLieGroupImpl,
     Isometry2,
     Isometry2F64,
     Isometry3,
@@ -202,7 +200,7 @@ macro_rules! def_real_group_test_template {
         impl RealLieGroupTest for $group {
 
             fn adjoint_jacobian_tests() {
-                use crate::traits::IsLieGroup;
+                use crate::IsLieGroup;
                 const DOF: usize = <$group>::DOF;
                 use sophus_autodiff::manifold::IsTangent;
 
@@ -266,7 +264,7 @@ macro_rules! def_real_group_test_template {
             }
 
             fn exp_log_jacobians_tests(){
-                use crate::traits::IsLieGroup;
+                use crate::IsLieGroup;
                 const DOF: usize = <$group>::DOF;
                 const POINT: usize = <$group>::POINT;
                 const PARAMS: usize = <$group>::PARAMS;
@@ -443,7 +441,7 @@ macro_rules! def_real_group_test_template {
 
 
             fn hat_jacobians_tests() {
-                use crate::traits::IsLieGroup;
+                use crate::IsLieGroup;
                 use sophus_autodiff::manifold::IsTangent;
                 const DOF: usize = <$group>::DOF;
                 const AMBIENT: usize = <$group>::AMBIENT;
@@ -516,7 +514,7 @@ macro_rules! def_real_group_test_template {
             }
 
             fn mul_jacobians_tests() {
-                use crate::traits::IsLieGroup;
+                use crate::IsLieGroup;
                 const PARAMS: usize = <$group>::PARAMS;
                 for a in Self::element_examples() {
                     for b in Self::element_examples() {
@@ -552,7 +550,7 @@ macro_rules! def_real_group_test_template {
             }
 
             fn matrix_jacobians_tests() {
-                use crate::traits::IsLieGroup;
+                use crate::IsLieGroup;
                 let group_examples: alloc::vec::Vec<_> = Self::element_examples();
                 const PARAMS: usize = <$group>::PARAMS;
                 const POINT: usize = <$group>::POINT;

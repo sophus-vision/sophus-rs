@@ -1,3 +1,5 @@
+use core::f64;
+
 use nalgebra::SVector;
 use num_traits::Bounded;
 
@@ -26,6 +28,15 @@ pub trait IsPoint<const D: usize>: Copy + Bounded {
     fn is_less_equal(&self, rhs: Self) -> bool;
 }
 
+/// Traits for points - including +infinity / -infinity
+pub trait IsUnboundedPoint<const D: usize>: IsPoint<D> {
+    /// +infinity
+    fn infinity() -> Self::Point;
+
+    /// -infinity
+    fn neg_infinity() -> Self::Point;
+}
+
 impl IsPoint<1> for f64 {
     type Point = f64;
 
@@ -35,6 +46,16 @@ impl IsPoint<1> for f64 {
 
     fn is_less_equal(&self, rhs: f64) -> bool {
         self <= &rhs
+    }
+}
+
+impl IsUnboundedPoint<1> for f64 {
+    fn infinity() -> Self::Point {
+        f64::INFINITY
+    }
+
+    fn neg_infinity() -> Self::Point {
+        f64::NEG_INFINITY
     }
 }
 
@@ -65,6 +86,16 @@ impl<const D: usize> IsPoint<D> for SVector<f64, D> {
         self.iter()
             .zip(rhs.iter())
             .all(|(a, b)| a.is_less_equal(*b))
+    }
+}
+
+impl<const D: usize> IsUnboundedPoint<D> for SVector<f64, D> {
+    fn infinity() -> Self::Point {
+        SVector::<f64, D>::repeat(f64::INFINITY)
+    }
+
+    fn neg_infinity() -> Self::Point {
+        SVector::<f64, D>::repeat(f64::NEG_INFINITY)
     }
 }
 

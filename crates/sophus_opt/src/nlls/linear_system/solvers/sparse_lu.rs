@@ -5,7 +5,7 @@ use faer::{
 
 use super::{
     IsSparseSymmetricLinearSystem,
-    SolveError,
+    NllsError,
 };
 use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 
@@ -19,7 +19,7 @@ impl IsSparseSymmetricLinearSystem for SparseLu {
         &self,
         upper_triangular: &SymmetricBlockSparseMatrixBuilder,
         b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, SolveError> {
+    ) -> Result<nalgebra::DVector<f64>, NllsError> {
         let dim = upper_triangular.scalar_dimension();
         let csr = faer::sparse::SparseColMat::try_new_from_triplets(
             dim,
@@ -36,7 +36,7 @@ impl IsSparseSymmetricLinearSystem for SparseLu {
                 lu.solve_in_place(faer::reborrow::ReborrowMut::rb_mut(&mut x_ref));
                 Ok(x)
             }
-            Err(e) => Err(SolveError::SparseLuError {
+            Err(e) => Err(NllsError::SparseLuError {
                 details: match e {
                     faer::sparse::LuError::Generic(faer_error) => match faer_error {
                         FaerError::IndexOverflow => super::SparseSolverError::IndexOverflow,

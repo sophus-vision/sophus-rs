@@ -171,6 +171,9 @@ pub trait IsScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     /// exponential
     fn exp(&self) -> Self;
 
+    /// logarithm
+    fn ln(&self) -> Self;
+
     /// Returns value of single lane
     fn extract_single(&self, i: usize) -> Self::SingleScalar;
 
@@ -346,6 +349,10 @@ impl IsScalar<1, 0, 0> for f64 {
 
     fn exp(&self) -> f64 {
         f64::exp(*self)
+    }
+
+    fn ln(&self) -> Self {
+        f64::ln(*self)
     }
 
     fn eps() -> f64 {
