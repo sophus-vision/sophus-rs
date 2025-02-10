@@ -4,6 +4,20 @@
 #![no_std]
 //! Lie groups crate - part of the sophus-rs project
 
+/// Lie group implementations
+pub mod groups;
+/// Lie groups
+pub mod lie_group;
+/// sophus_lie prelude
+pub mod prelude {
+    pub use sophus_autodiff::prelude::*;
+
+    pub use crate::{
+        IsLieGroup,
+        IsTranslationProductGroup,
+    };
+}
+
 use core::{
     borrow::Borrow,
     fmt::Debug,
@@ -32,21 +46,6 @@ pub use crate::{
     },
     lie_group::LieGroup,
 };
-
-/// Lie group implementations
-pub mod groups;
-/// Lie groups
-pub mod lie_group;
-
-/// sophus_lie prelude
-pub mod prelude {
-    pub use sophus_autodiff::prelude::*;
-
-    pub use crate::{
-        IsLieGroup,
-        IsTranslationProductGroup,
-    };
-}
 
 /// Disambiguate the parameters.
 pub trait HasDisambiguate<

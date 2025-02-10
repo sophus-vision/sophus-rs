@@ -26,7 +26,22 @@ use crate::{
 
 extern crate alloc;
 
-/// 2D rotation group implementation struct - SO(2)
+/// 2d rotation - special orthogonal group SO(2)
+///
+///  * BATCH
+///     - batch dimension. If S is f64 or [sophus_autodiff::dual::DualScalar] then BATCH=1.
+///  * DM, DN
+///     - DM x DN is the static shape of the Jacobian to be computed if S == DualScalar<DM,DN>. If S
+///       == f64, then DM==0, DN==0.
+pub type Rotation2<S, const B: usize, const DM: usize, const DN: usize> =
+    LieGroup<S, 1, 2, 2, 2, B, DM, DN, Rotation2Impl<S, B, DM, DN>>;
+
+/// 2d rotation with f64 scalar type - special orthogonal group SO(2)
+///
+/// See [Rotation2] for details.a
+pub type Rotation2F64 = Rotation2<f64, 1, 0, 0>;
+
+/// 2d rotation implementation details
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Rotation2Impl<
     S: IsScalar<BATCH, DM, DN>,
@@ -223,13 +238,6 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 1, 2, 2, 
         }
     }
 }
-
-/// 2d rotation group - SO(2)
-pub type Rotation2<S, const B: usize, const DM: usize, const DN: usize> =
-    LieGroup<S, 1, 2, 2, 2, B, DM, DN, Rotation2Impl<S, B, DM, DN>>;
-
-/// 2d rotation group with f64 scalar type
-pub type Rotation2F64 = Rotation2<f64, 1, 0, 0>;
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     Rotation2<S, BATCH, DM, DN>
