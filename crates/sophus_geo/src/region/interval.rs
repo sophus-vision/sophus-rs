@@ -1,19 +1,21 @@
 use sophus_autodiff::linalg::VecF64;
 
 use super::{
-    box_region::{
-        BoxRegion,
-        NonEmptyBoxRegion,
-    },
-    IsNonEmptyRegion,
-    IsRegion,
-    IsRegionBase,
+    box_region::{BoxRegion, NonEmptyBoxRegion},
+    IsNonEmptyRegion, IsRegion, IsRegionBase,
 };
 
 /// Floating-point interval
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct NonEmptyInterval {
     pub(crate) region1: NonEmptyBoxRegion<1>,
+}
+
+impl NonEmptyInterval {
+    /// Convert to interval
+    pub fn to_box_region(self) -> NonEmptyBoxRegion<1> {
+        self.region1
+    }
 }
 
 impl IsRegionBase<1, f64> for NonEmptyInterval {
@@ -105,6 +107,13 @@ impl IsNonEmptyRegion<1, f64> for NonEmptyInterval {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Interval {
     pub(crate) region1: BoxRegion<1>,
+}
+
+impl Interval {
+    /// Convert to interval
+    pub fn to_box_region(self) -> BoxRegion<1> {
+        self.region1
+    }
 }
 
 impl IsRegionBase<1, f64> for Interval {

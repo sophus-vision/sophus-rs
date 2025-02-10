@@ -52,6 +52,7 @@ log = "0.4"
 nalgebra = { version = "0.33.2", features = ["rand", "bytemuck"] }
 ndarray = { version = "0.15", features = ["approx-0_5"] }
 num-traits = "0.2"
+osqp = "0.6.3"
 rand = "0.8"
 snafu = "0.8.5"
 typenum = { version = "1.17", features = ["const-generics"] }

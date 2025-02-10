@@ -12,6 +12,7 @@ version.workspace = true
 
 [dependencies]
 sophus_autodiff.workspace = true
+sophus_geo.workspace = true
 sophus_image.workspace = true
 sophus_lie.workspace = true
 sophus_sensor.workspace = true
@@ -23,6 +24,7 @@ faer.workspace = true
 log.workspace = true
 nalgebra.workspace = true
 ndarray.workspace = true
+osqp.workspace = true
 rand.workspace = true
 rayon = "1.10"
 snafu.workspace = true

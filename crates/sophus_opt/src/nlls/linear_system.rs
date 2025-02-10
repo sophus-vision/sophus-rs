@@ -32,6 +32,8 @@ extern crate alloc;
 pub mod cost_system;
 /// KKT sub-system for the equality-constraints
 pub mod eq_system;
+/// linear sub-system for the inequality-constraints
+pub mod ineq_system;
 /// Linear solvers
 pub mod solvers;
 

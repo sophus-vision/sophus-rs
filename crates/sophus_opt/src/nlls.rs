@@ -1,6 +1,8 @@
 use core::fmt::Debug;
 
-use constraint::eq_constraint_fn::EqConstraintError;
+use constraint::
+    eq_constraint_fn::EqConstraintError
+;
 use cost::cost_fn::CostError;
 use linear_system::{
     cost_system::CostSystem,
@@ -12,7 +14,6 @@ use log::{
     info,
 };
 use snafu::Snafu;
-
 use crate::{
     block::{
         block_vector::BlockVector,
@@ -40,6 +41,8 @@ pub mod cost;
 pub mod functor_library;
 /// Linear system
 pub mod linear_system;
+/// Sequential quadratic programming
+pub mod experimental_sqp;
 
 /// Linear solver type
 #[derive(Copy, Clone, Debug)]

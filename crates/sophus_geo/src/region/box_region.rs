@@ -148,7 +148,7 @@ impl<const D: usize> IsNonEmptyRegion<D, SVec<f64, D>> for NonEmptyBoxRegion<D> 
 /// Region - n-dimensional interval
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct BoxRegion<const D: usize> {
-    non_empty_region: Option<NonEmptyBoxRegion<D>>,
+    pub(crate) non_empty_region: Option<NonEmptyBoxRegion<D>>,
 }
 
 impl BoxRegion<1> {
