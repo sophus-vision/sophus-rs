@@ -20,7 +20,22 @@ use crate::{
     Rotation3,
 };
 
-/// 3D isometry group implementation struct - SE(3)
+/// 3d isometry - special Euclidean group SE(3)
+///
+///  * BATCH
+///     - batch dimension. If S is f64 or [sophus_autodiff::dual::DualScalar] then BATCH=1.
+///  * DM, DN
+///     - DM x DN is the static shape of the Jacobian to be computed if S == DualScalar<DM,DN>. If S
+///       == f64, then DM==0, DN==0.
+pub type Isometry3<S, const BATCH: usize, const DM: usize, const DN: usize> =
+    LieGroup<S, 6, 7, 3, 4, BATCH, DM, DN, Isometry3Impl<S, BATCH, DM, DN>>;
+
+/// 3d isometry with f64 scalar type - special Euclidean group SE(3)
+///
+/// See [Isometry3] for details.
+pub type Isometry3F64 = Isometry3<f64, 1, 0, 0>;
+
+/// 3d isometry implementation details
 pub type Isometry3Impl<S, const BATCH: usize, const DM: usize, const DN: usize> =
     TranslationProductGroupImpl<
         S,
@@ -35,12 +50,6 @@ pub type Isometry3Impl<S, const BATCH: usize, const DM: usize, const DN: usize> 
         DN,
         Rotation3Impl<S, BATCH, DM, DN>,
     >;
-/// 3d isometry group - SE(3)
-pub type Isometry3<S, const BATCH: usize, const DM: usize, const DN: usize> =
-    LieGroup<S, 6, 7, 3, 4, BATCH, DM, DN, Isometry3Impl<S, BATCH, DM, DN>>;
-
-/// 3D isometry group with f64 scalar type
-pub type Isometry3F64 = Isometry3<f64, 1, 0, 0>;
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     Isometry3<S, BATCH, DM, DN>

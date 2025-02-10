@@ -20,7 +20,22 @@ use crate::{
     Rotation2,
 };
 
-/// 2D isometry group implementation struct - SE(2)
+/// 2d isometry - special Euclidean group SE(2)
+///
+///  * BATCH
+///     - batch dimension. If S is f64 or [sophus_autodiff::dual::DualScalar] then BATCH=1.
+///  * DM, DN
+///     - DM x DN is the static shape of the Jacobian to be computed if S == DualScalar<DM,DN>. If S
+///       == f64, then DM==0, DN==0.
+pub type Isometry2<S, const BATCH: usize, const DM: usize, const DN: usize> =
+    LieGroup<S, 3, 4, 2, 3, BATCH, DM, DN, Isometry2Impl<S, BATCH, DM, DN>>;
+
+/// 2d isometry with f64 scalar type - special Euclidean group SE(2)
+///
+/// See [Isometry2] for details.
+pub type Isometry2F64 = Isometry2<f64, 1, 0, 0>;
+
+/// 2d isometry implementation details
 pub type Isometry2Impl<S, const BATCH: usize, const DM: usize, const DN: usize> =
     TranslationProductGroupImpl<
         S,
@@ -35,13 +50,6 @@ pub type Isometry2Impl<S, const BATCH: usize, const DM: usize, const DN: usize> 
         DN,
         Rotation2Impl<S, BATCH, DM, DN>,
     >;
-
-/// 2D isometry group - SE(2)
-pub type Isometry2<S, const BATCH: usize, const DM: usize, const DN: usize> =
-    LieGroup<S, 3, 4, 2, 3, BATCH, DM, DN, Isometry2Impl<S, BATCH, DM, DN>>;
-
-/// 2D isometry group with f64 scalar type
-pub type Isometry2F64 = Isometry2<f64, 1, 0, 0>;
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     Isometry2<S, BATCH, DM, DN>

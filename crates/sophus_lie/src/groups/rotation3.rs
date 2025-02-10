@@ -37,7 +37,22 @@ use crate::{
 
 extern crate alloc;
 
-/// 3d rotation implementation - SO(3)
+/// 3d rotations - special orthogonal group SO(3)
+///
+///  * BATCH
+///     - batch dimension. If S is f64 or [sophus_autodiff::dual::DualScalar] then BATCH=1.
+///  * DM, DN
+///     - DM x DN is the static shape of the Jacobian to be computed if S == DualScalar<DM,DN>. If S
+///       == f64, then DM==0, DN==0.
+pub type Rotation3<S, const BATCH: usize, const DM: usize, const DN: usize> =
+    LieGroup<S, 3, 4, 3, 3, BATCH, DM, DN, Rotation3Impl<S, BATCH, DM, DN>>;
+
+/// 3d rotation with f64 scalar type a - special orthogonal group SO(3)
+///
+/// See [Rotation3] for details.
+pub type Rotation3F64 = Rotation3<f64, 1, 0, 0>;
+
+/// 3d rotation implementation details
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Rotation3Impl<
     S: IsScalar<BATCH, DM, DN>,
@@ -865,13 +880,6 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
         l
     }
 }
-
-/// 3d rotation group - SO(3)
-pub type Rotation3<S, const BATCH: usize, const DM: usize, const DN: usize> =
-    LieGroup<S, 3, 4, 3, 3, BATCH, DM, DN, Rotation3Impl<S, BATCH, DM, DN>>;
-
-/// 3d rotation group - SO(3) with f64 scalar type
-pub type Rotation3F64 = Rotation3<f64, 1, 0, 0>;
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     Rotation3<S, BATCH, DM, DN>
