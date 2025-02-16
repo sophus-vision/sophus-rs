@@ -2,9 +2,9 @@ use core::borrow::Borrow;
 
 use sophus_autodiff::{
     linalg::{
-        matrix::IsMatrix,
-        scalar::IsScalar,
-        vector::IsVector,
+        IsMatrix,
+        IsScalar,
+        IsVector,
     },
     prelude::IsSingleScalar,
 };

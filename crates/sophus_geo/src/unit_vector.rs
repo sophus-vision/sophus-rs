@@ -4,6 +4,7 @@ use core::{
     ops::Neg,
 };
 
+use sophus_autodiff::linalg::EPS_F64;
 use sophus_lie::prelude::*;
 extern crate alloc;
 
@@ -44,7 +45,7 @@ impl<
 
     fn mat_rx(param: &S::Vector<DIM>) -> S::Matrix<DIM, DIM> {
         let unit_x = Self::unit(0);
-        let eps = S::from_f64(-1e6);
+        let eps = S::from_f64(EPS_F64);
 
         let v = *param - unit_x;
         let near_zero = (v).squared_norm().less_equal(&eps);
@@ -55,7 +56,7 @@ impl<
     }
 
     fn sinc(x: S) -> S {
-        let eps = S::from_f64(-1e6);
+        let eps = S::from_f64(1e-6);
         let near_zero = x.abs().less_equal(&eps);
 
         (S::from_f64(1.0) - S::from_f64(1.0 / 6.0) * x * x).select(&near_zero, x.sin() / x)
@@ -71,7 +72,7 @@ impl<
     }
 
     fn log(params: &S::Vector<DIM>) -> S::Vector<DOF> {
-        let eps = S::from_f64(-1e6);
+        let eps = S::from_f64(EPS_F64);
         let unit_x = Self::unit_tangent(0);
 
         let x = params.elem(0);
@@ -112,7 +113,7 @@ impl<
     where
         P: Borrow<S::Vector<DIM>>,
     {
-        let eps = S::from_f64(-1e6);
+        let eps = S::from_f64(EPS_F64);
         (params.borrow().squared_norm() - S::from_f64(1.0))
             .abs()
             .less_equal(&eps)
@@ -127,7 +128,22 @@ impl<
     }
 }
 
-/// Unit vector
+/// A unit vector.
+///
+/// ## Generic parameters:
+///
+///  * S
+///    - the underlying scalar such as [f64] or [sophus_autodiff::dual::DualScalar].
+///  * DOF
+///    - Degrees of freedom of the unit vector. A n-dimensional unit vector has n-1 degrees of
+///      freedom.
+///  * DIM
+///    - Dimension of the unit vector. It holds that DIM == DOF + 1.
+///  * BATCH
+///     - Batch dimension. If S is [f64] or [sophus_autodiff::dual::DualScalar] then BATCH=1.
+///  * DM, DN
+///    - DM x DN is the static shape of the Jacobian to be computed if S == DualScalar<DM, DN>. If S
+///      == f64, then DM==0, DN==0.
 #[derive(Clone, Debug)]
 pub struct UnitVector<
     S: IsScalar<BATCH, DM, DN>,
@@ -167,6 +183,12 @@ impl<
     > UnitVector<S, DOF, DIM, 1, DM, DN>
 {
     /// Function to calculate the refracted direction.
+    ///
+    /// Given the incident direction self, the surface_normal, and refraction_ratio, this
+    /// function calculates the refracted direction.
+    ///
+    /// If the refracted direction is not possible (i.e. total internal reflection), then None is
+    /// returned.
     pub fn refract(
         &self,
         surface_normal: UnitVector<S, DOF, DIM, 1, DM, DN>,
@@ -186,7 +208,7 @@ impl<
         // Compute the perpendicular component of d
         let d_perp = d - n.scaled(d_dot_n);
 
-        //  Calculate the component of the refracted vector parallel to the surface
+        // Calculate the component of the refracted vector parallel to the surface
         let d_perp_refracted = d_perp.scaled(refraction_ratio);
 
         // Calculate the magnitude of the parallel component of the refracted vector
@@ -208,19 +230,19 @@ impl<
     }
 }
 
-/// 2d unit vector
+/// 2d unit vector.
 pub type UnitVector2<S, const B: usize, const DM: usize, const DN: usize> =
     UnitVector<S, 1, 2, B, DM, DN>;
-/// 3d unit vector
+/// 3d unit vector.
 pub type UnitVector3<S, const B: usize, const DM: usize, const DN: usize> =
     UnitVector<S, 2, 3, B, DM, DN>;
 
-/// Vector is near zero.
+/// Error type for near zero direction vector.
 #[derive(Clone, Debug)]
 
-pub struct NearZeroUnitVector;
+pub struct NearZeroDirectionVectorError;
 
-impl core::fmt::Display for NearZeroUnitVector {
+impl core::fmt::Display for NearZeroDirectionVectorError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Vector is near zero")
     }
@@ -235,42 +257,40 @@ impl<
         const DN: usize,
     > UnitVector<S, DOF, DIM, BATCH, DM, DN>
 {
-    /// Tries to create new unit vector from vector.
+    /// Tries to create new unit vector from direction vector.
     ///
-    /// Returns None if vector has not unit length.
+    /// Returns [None] if vector has not unit length.
     pub fn try_from(vector: &S::Vector<DIM>) -> Option<Self> {
-        if Self::are_params_valid(vector).all() {
+        if !Self::are_params_valid(vector).all() {
             return None;
         }
         Some(Self { params: *vector })
     }
 
-    /// Creates unit vector from non-zero vector by normalizing it.
+    /// Creates unit vector from non-zero direction vector by normalizing it.
     ///
     /// Panics if input vector is close to zero.
     pub fn from_vector_and_normalize(vector: &S::Vector<DIM>) -> Self {
         Self::try_from_vector_and_normalize(vector).unwrap()
     }
 
-    /// Creates unit vector from non-zero vector by normalizing it.
-    ///
-    /// Panics if input vector is close to zero.
+    /// Tries to create unit vector from non-zero direction vector by normalizing it.
     pub fn try_from_vector_and_normalize(
         vector: &S::Vector<DIM>,
-    ) -> Result<Self, NearZeroUnitVector> {
-        let eps = S::from_f64(-1e6);
+    ) -> Result<Self, NearZeroDirectionVectorError> {
+        let eps = S::from_f64(EPS_F64);
         if vector.squared_norm().less_equal(&eps).any() {
-            return Err(NearZeroUnitVector);
+            return Err(NearZeroDirectionVectorError);
         }
         Ok(Self::from_params(vector.normalized()))
     }
 
-    /// Returns self as vector
+    /// Returns self as vector.
     pub fn vector(&self) -> S::Vector<DIM> {
         self.params
     }
 
-    /// angle vector
+    /// Returns the angle between self and other unit vector.
     pub fn angle(&self, other: &Self) -> S {
         self.vector().dot(other.vector()).acos()
     }

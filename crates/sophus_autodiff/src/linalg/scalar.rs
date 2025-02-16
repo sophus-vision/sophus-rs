@@ -19,13 +19,12 @@ use approx::{
     AbsDiffEq,
     RelativeEq,
 };
-use nalgebra::SimdValue;
 
 use crate::{
     dual::{
-        dual_matrix::DualMatrix,
-        dual_scalar::DualScalar,
-        dual_vector::DualVector,
+        DualMatrix,
+        DualScalar,
+        DualVector,
     },
     linalg::{
         MatF64,
@@ -36,25 +35,30 @@ use crate::{
 };
 extern crate alloc;
 
-/// Number category
+/// Specifies the general “kind” of a numeric type, e.g. real, signed integer, or unsigned integer.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum NumberCategory {
-    /// Real number such as f32 or f64
+    /// A real number (e.g., `f32` or `f64`).
     Real,
-    /// Unsigned integer such as u8, u16, u32, or u64
+    /// An unsigned integer (e.g., `u8`, `u16`, `u32`, `u64`).
     Unsigned,
-    /// Signed integer such as i8, i16, i32, or i64
+    /// A signed integer (e.g., `i8`, `i16`, `i32`, `i64`).
     Signed,
 }
 
-/// Trait for scalar and batch scalar linalg
+/// A trait for core scalar types, which may be integers, floats, or batch variants thereof.
+/// This is a low-level building block in the library, providing minimal numeric requirements
+/// such as zero-initialization and debug printing.
+///
+/// Common implementors include `f64`, `i32`, and batch types via `portable_simd`.
 pub trait IsCoreScalar:
     Clone + Debug + nalgebra::Scalar + num_traits::Zero + core::ops::AddAssign
 {
-    /// Get the number category
+    /// Indicates whether the scalar is Real, Unsigned, or Signed integer.
     fn number_category() -> NumberCategory;
 }
 
+// Implement `IsCoreScalar` for native Rust scalars:
 macro_rules! def_is_tensor_scalar_single {
     ($scalar:ty, $cat:expr) => {
         impl IsCoreScalar for $scalar {
@@ -76,10 +80,15 @@ def_is_tensor_scalar_single!(i64, NumberCategory::Signed);
 def_is_tensor_scalar_single!(f32, NumberCategory::Real);
 def_is_tensor_scalar_single!(f64, NumberCategory::Real);
 
-/// Scalar trait
+/// The main scalar trait used by sophus-rs, supporting both real and dual-number types,
+/// in single or batch (SIMD) form.
 ///
-///  - either a real (f64) or a dual number
-///  - either a single scalar or a batch scalar
+/// # Generic Parameters
+/// - `BATCH`: Number of lanes for batch usage, or 1 for single-scalar usage.
+/// - `DM`, `DN`: Dimensions of the derivative if the scalar is dual-based (otherwise 0 for real).
+///
+/// This trait unifies the behavior of scalars so that higher-level crates can
+/// write generic code that handles f64, dual scalars, or batch variations.
 pub trait IsScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     PartialEq
     + Debug
@@ -102,21 +111,24 @@ pub trait IsScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     + Send
     + Sync
 {
-    /// Scalar type
+    /// The same type as `Self`, used to unify generic signatures.
     type Scalar: IsScalar<BATCH, DM, DN>;
-    /// Vector type
+
+    /// The vector type associated with this scalar, e.g. `VecF64<ROWS>` or `DualVector<ROWS>`.
     type Vector<const ROWS: usize>: IsVector<Self, ROWS, BATCH, DM, DN>;
-    /// Matrix type
+    /// The matrix type associated with this scalar, e.g. `MatF64<ROWS, COLS>` or `DualMatrix<ROWS,
+    /// COLS>`.
     type Matrix<const ROWS: usize, const COLS: usize>: IsMatrix<Self, ROWS, COLS, BATCH, DM, DN>;
 
-    /// Single scalar type
+    /// A “single” form of this scalar, used if we need to drop batch or partial-derivative
+    /// components.
     type SingleScalar: IsSingleScalar<DM, DN>;
 
-    /// Real scalar type
+    /// The real scalar type corresponding to `Self`.
     type RealScalar: IsRealScalar<BATCH>;
-    /// Real vector type
+    /// The real vector type corresponding to `Self`'s vector form.
     type RealVector<const ROWS: usize>: IsRealVector<Self::RealScalar, ROWS, BATCH>;
-    /// Vector type
+    /// The real matrix type corresponding to `Self`'s matrix form.
     type RealMatrix<const ROWS: usize, const COLS: usize>: IsRealMatrix<
         Self::RealScalar,
         ROWS,
@@ -124,9 +136,9 @@ pub trait IsScalar<const BATCH: usize, const DM: usize, const DN: usize>:
         BATCH,
     >;
 
-    /// Dual scalar type
+    /// A dual scalar type for forward-mode AD.
     type DualScalar<const M: usize, const N: usize>: IsDualScalar<BATCH, M, N>;
-    /// Dual vector type
+    /// The corresponding dual vector type.
     type DualVector<const ROWS: usize, const M: usize, const N: usize>: IsDualVector<
         Self::DualScalar<M, N>,
         ROWS,
@@ -134,129 +146,109 @@ pub trait IsScalar<const BATCH: usize, const DM: usize, const DN: usize>:
         M,
         N,
     >;
-    /// Dual matrix type
-    type DualMatrix<const ROWS: usize, const COLS: usize,const M: usize, const N: usize>: IsDualMatrix<
-        Self::DualScalar<M,N>,
-        ROWS,
-        COLS,
-        BATCH,M,N
-    >;
+    /// The corresponding dual matrix type.
+    type DualMatrix<const ROWS: usize, const COLS: usize, const M: usize, const N: usize>:
+        IsDualMatrix<Self::DualScalar<M, N>, ROWS, COLS, BATCH, M, N>;
 
-    /// Mask type
+    /// A boolean mask type for lane-wise operations (`true`/`false` per-lane).
     type Mask: IsBoolMask;
 
-    /// absolute value
+    /// Absolute value of the scalar.
     fn abs(&self) -> Self;
 
-    /// arccosine
+    /// Arc-cosine (inverse cosine).
     fn acos(&self) -> Self;
 
-    /// arcsine
+    /// Arc-sine (inverse sine).
     fn asin(&self) -> Self;
 
-    /// arctangent
+    /// Arc-tangent.
     fn atan(&self) -> Self;
 
-    /// arctangent2
+    /// Arc-tangent of `self` / `x`.
     fn atan2<S>(&self, x: S) -> Self
     where
         S: Borrow<Self>;
 
-    /// cosine
+    /// Cosine.
     fn cos(&self) -> Self;
 
-    /// eps
+    /// Returns the machine epsilon or small tolerance for this scalar.
     fn eps() -> Self;
 
-    /// exponential
+    /// Exponential function.
     fn exp(&self) -> Self;
 
-    /// logarithm
+    /// Natural logarithm.
     fn ln(&self) -> Self;
 
-    /// Returns value of single lane
+    /// Extracts a single-lane scalar, used when `BATCH > 1`.
     fn extract_single(&self, i: usize) -> Self::SingleScalar;
 
-    /// floor
+    /// Returns the floor of the scalar as a real scalar (not necessarily preserving derivative
+    /// info).
     fn floor(&self) -> Self::RealScalar;
 
-    /// fractional part
+    /// Returns the fractional part of the scalar.
     fn fract(&self) -> Self;
 
-    /// Creates a scalar with all real lanes set the given value
-    ///
-    /// If self is a dual number, the infinitesimal part is set to zero
+    /// Creates a new scalar from an `f64` value, zeroing out any dual/batch parts.
     fn from_f64(val: f64) -> Self;
 
-    /// Creates a scalar from an array of real values
-    ///
-    ///  - If self is a single scalar, the array must have one element
-    ///  - If self is a batch scalar, the array must have BATCH elements
-    ///  - If self is a dual number, the infinitesimal part is set to zero
+    /// Creates a new scalar from an array of real `f64`, used in batch contexts or single-lane.
     fn from_real_array(arr: [f64; BATCH]) -> Self;
 
-    /// creates scalar from real scalar
-    ///
-    /// for dual numbers, the infinitesimal part is set to zero
+    /// Converts a real scalar into `Self`, zeroing out any dual/batch parts.
     fn from_real_scalar(val: Self::RealScalar) -> Self;
 
-    /// Greater or equal comparison
+    /// Greater-or-equal comparison, returning a boolean mask.
     fn greater_equal(&self, rhs: &Self) -> Self::Mask;
 
-    /// Less or equal comparison
+    /// Less-or-equal comparison, returning a boolean mask.
     fn less_equal(&self, rhs: &Self) -> Self::Mask;
 
-    /// ones
+    /// Creates a “ones” scalar (the numeric value 1.0).
     fn ones() -> Self {
         Self::from_f64(1.0)
     }
 
-    /// return the real part
+    /// Returns just the “real part” of the scalar, discarding any derivative or batch info.
     fn real_part(&self) -> Self::RealScalar;
 
-    /// return examples of scalar values
+    /// Returns example scalar values for testing or demonstration.
     fn scalar_examples() -> alloc::vec::Vec<Self>;
 
-    /// Return the self if the mask is true, otherwise the other value
-    ///
-    /// This is a lane-wise operation
+    /// Selects lane-wise from `self` or `other` based on the given `mask`.
     fn select(&self, mask: &Self::Mask, other: Self) -> Self;
 
-    /// Return the sign of the scalar
-    ///
-    /// -1 if negative including -0,
-    /// 1 if positive, including +0,
-    /// NaN if NaN
+    /// Returns the sign of the scalar, ignoring derivative parts.
     fn signum(&self) -> Self;
 
-    /// sine
+    /// Sine.
     fn sin(&self) -> Self;
 
-    /// square root
+    /// Square root.
     fn sqrt(&self) -> Self;
 
-    /// Returns constant dual number representation
-    ///
-    /// The infinitesimal part will be zero.
+    /// Converts `self` to a dual scalar with zero derivative, or merges existing derivatives if
+    /// relevant.
     fn to_dual_const<const M: usize, const N: usize>(&self) -> Self::DualScalar<M, N>;
 
-    /// Return as a real array
-    ///
-    /// If self is a dual number, the infinitesimal part is omitted
+    /// Returns an array of real values for each lane in a batch. If single-lane, returns `[self]`.
     fn to_real_array(&self) -> [f64; BATCH];
 
-    /// tangent
+    /// Tangent.
     fn tan(&self) -> Self;
 
-    /// return as a vector
+    /// Interprets `self` as a single-element vector (1D).
     fn to_vec(&self) -> Self::Vector<1>;
 
-    /// zeros
+    /// Creates a “zeros” scalar (the numeric value 0.0).
     fn zeros() -> Self {
         Self::from_f64(0.0)
     }
 
-    /// test suite
+    /// A basic test suite verifying certain trig identities, etc.
     fn test_suite() {
         let examples = Self::scalar_examples();
         for a in &examples {
@@ -272,17 +264,18 @@ pub trait IsScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     }
 }
 
-/// Real scalar
+/// Marker trait for real scalars (`f32`, `f64`, or batch forms thereof).
 pub trait IsRealScalar<const BATCH: usize>: IsScalar<BATCH, 0, 0> + Copy {}
 
-/// Scalar
+/// A trait for single-lane scalars (BATCH=1). This trait ensures certain
+/// single-scalar operations like floor, integer casting, etc.
 pub trait IsSingleScalar<const DM: usize, const DN: usize>:
     IsScalar<1, DM, DN> + PartialEq + Div<Output = Self>
 {
-    /// Scalar vector type
+    /// The vector type that works with single-lane scalars.
     type SingleVector<const ROWS: usize>: IsSingleVector<Self, ROWS, DM, DN>;
 
-    /// Matrix type
+    /// The matrix type that works with single-lane scalars.
     type SingleMatrix<const ROWS: usize, const COLS: usize>: IsSingleMatrix<
         Self,
         ROWS,
@@ -291,24 +284,29 @@ pub trait IsSingleScalar<const DM: usize, const DN: usize>:
         DN,
     >;
 
-    /// returns single real scalar
+    /// Returns the real “f64” part if any. For non-real types, you might keep partial derivative
+    /// out.
     fn single_real_scalar(&self) -> f64;
 
-    /// returns single real scalar
+    /// Returns a copy of self as a scalar.
     fn single_scalar(&self) -> Self;
 
-    /// get element
+    /// Floors this scalar and returns it as an `i64`.
     fn i64_floor(&self) -> i64;
 }
 
-/// Batch scalar
+/// A trait for batch scalars (BATCH > 1) that can store multiple lanes of real or dual values.
+/// Typically used with Rust’s portable SIMD or similar.
+#[cfg(feature = "simd")]
 pub trait IsBatchScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     IsScalar<BATCH, DM, DN>
 {
 }
 
+// Mark `f64` as real single-lane scalar:
 impl IsRealScalar<1> for f64 {}
 
+/// Example `IsScalar` implementation for `f64`.
 impl IsScalar<1, 0, 0> for f64 {
     type Scalar = f64;
     type Vector<const ROWS: usize> = VecF64<ROWS>;
@@ -422,8 +420,9 @@ impl IsScalar<1, 0, 0> for f64 {
         f64::floor(*self)
     }
 
-    fn extract_single(&self, i: usize) -> f64 {
-        self.extract(i)
+    fn extract_single(&self, _i: usize) -> f64 {
+        // For BATCH=1, we only have one lane, so ignore `i`:
+        *self
     }
 
     fn signum(&self) -> Self {
@@ -442,22 +441,16 @@ impl IsScalar<1, 0, 0> for f64 {
         }
     }
 
-    fn ones() -> Self {
-        Self::from_f64(1.0)
-    }
-
-    fn zeros() -> Self {
-        Self::from_f64(0.0)
-    }
-
     fn test_suite() {
+        // Basic test verifying sin^2 + cos^2 = 1, etc.
         let examples = Self::scalar_examples();
         for a in &examples {
-            let sin_a = (*a).sin();
-            let cos_a = (*a).cos();
+            let sin_a = a.sin();
+            let cos_a = a.cos();
             let val = sin_a * sin_a + cos_a * cos_a;
             let one = Self::ones();
 
+            // Only 1 lane, so:
             for i in 0..1 {
                 assert_abs_diff_eq!(val.extract_single(i), one.extract_single(i));
             }
@@ -467,7 +460,6 @@ impl IsScalar<1, 0, 0> for f64 {
 
 impl IsSingleScalar<0, 0> for f64 {
     type SingleMatrix<const ROWS: usize, const COLS: usize> = MatF64<ROWS, COLS>;
-
     type SingleVector<const ROWS: usize> = VecF64<ROWS>;
 
     fn single_real_scalar(&self) -> f64 {
@@ -488,12 +480,14 @@ fn scalar_prop_tests() {
     #[cfg(feature = "simd")]
     use crate::linalg::BatchScalarF64;
 
+    // Test the f64 suite:
     f64::test_suite();
 
+    // If simd is enabled, also test batch forms:
     #[cfg(feature = "simd")]
-    BatchScalarF64::<2>::test_suite();
-    #[cfg(feature = "simd")]
-    BatchScalarF64::<4>::test_suite();
-    #[cfg(feature = "simd")]
-    BatchScalarF64::<8>::test_suite();
+    {
+        BatchScalarF64::<2>::test_suite();
+        BatchScalarF64::<4>::test_suite();
+        BatchScalarF64::<8>::test_suite();
+    }
 }

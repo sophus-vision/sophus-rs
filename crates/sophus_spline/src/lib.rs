@@ -1,6 +1,7 @@
 #![deny(missing_docs)]
 #![allow(clippy::needless_range_loop)]
 #![no_std]
+#![cfg_attr(nightly, feature(doc_auto_cfg))]
 //! # Spline module
 
 /// Cubic B-Spline details
@@ -249,7 +250,7 @@ impl<S: IsSingleScalar<DM, DN> + 'static, const DIMS: usize, const DM: usize, co
 #[test]
 fn test_pline() {
     use log::info;
-    use sophus_autodiff::example_points;
+    use sophus_autodiff::points::example_points;
 
     let points = example_points::<f64, 2, 1, 0, 0>();
     for (t0, delta_t) in [(0.0, 1.0)] {

@@ -1,5 +1,5 @@
 use crate::{
-    dual::vector::VectorValuedDerivative,
+    dual::VectorValuedDerivative,
     linalg::SVec,
     prelude::*,
 };
@@ -17,8 +17,6 @@ pub struct VectorValuedVectorMap<S: IsScalar<BATCH, 0, 0>, const BATCH: usize> {
 
 impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize> VectorValuedVectorMap<S, BATCH> {
     /// Finite difference quotient of the vector-valued map.
-    ///
-    /// The derivative is a matrix or rank-2 tensor with shape (Rₒ x Rᵢ).
     pub fn sym_diff_quotient_jacobian<TFn, const OUTROWS: usize, const INROWS: usize>(
         vector_valued: TFn,
         a: S::RealVector<INROWS>,
@@ -28,10 +26,8 @@ impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize> VectorValuedVec
         TFn: Fn(S::RealVector<INROWS>) -> SVec<S, OUTROWS>,
         SVec<S, OUTROWS>: IsVector<S, OUTROWS, BATCH, 0, 0>,
     {
-        //let jac = Self::sym_diff_quotient(vector_valued, a, eps);
         let mut sjac = S::RealMatrix::<OUTROWS, INROWS>::zeros();
 
-        //  let mut out = MutTensorDR::<S, OUTROWS>::from_shape([INROWS]);
         let eps_v = S::RealScalar::from_f64(eps);
 
         for r in 0..INROWS {
@@ -62,10 +58,8 @@ impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize> VectorValuedVec
         TFn: Fn(S::RealVector<INROWS>) -> SVec<S, OUTROWS>,
         SVec<S, OUTROWS>: IsVector<S, OUTROWS, BATCH, 0, 0>,
     {
-        //let jac = Self::sym_diff_quotient(vector_valued, a, eps);
         let mut sjac = VectorValuedDerivative::<S, OUTROWS, BATCH, INROWS, 1>::zeros();
 
-        //  let mut out = MutTensorDR::<S, OUTROWS>::from_shape([INROWS]);
         let eps_v = S::RealScalar::from_f64(eps);
 
         for r in 0..INROWS {
@@ -91,7 +85,7 @@ impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize> VectorValuedVec
 ///
 /// This is a function which takes a matrix and returns a vector:
 ///
-///  f: ℝᵐ x ℝⁿ -> ℝʳ
+///  f: ℝᵐˣⁿ -> ℝʳ
 ///
 /// This type of function is also called a vector field (on product spaces).
 pub struct VectorValuedMatrixMap<
@@ -107,10 +101,6 @@ impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize>
     VectorValuedMatrixMap<S, BATCH, 0, 0>
 {
     /// Finite difference quotient of the vector-valued map.
-    ///
-    /// The derivative is a matrix or rank-3 tensor with shape (Rₒ x Rᵢ x Cᵢ).
-    ///
-    /// For efficiency reasons, we return Rᵢ x Cᵢ x (Rₒ)
     pub fn sym_diff_quotient<TFn, const OUTROWS: usize, const INROWS: usize, const INCOLS: usize>(
         vector_valued: TFn,
         a: S::RealMatrix<INROWS, INCOLS>,
@@ -151,9 +141,9 @@ fn vector_valued_map_from_vector_tests() {
     #[cfg(feature = "simd")]
     use crate::linalg::BatchScalarF64;
     use crate::{
-        dual::dual_scalar::DualScalar,
+        dual::DualScalar,
         linalg::{
-            vector::IsVector,
+            IsVector,
             EPS_F64,
         },
         maps::vector_valued_maps::{

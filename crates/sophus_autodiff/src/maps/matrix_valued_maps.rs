@@ -1,7 +1,7 @@
 use nalgebra::SMatrix;
 
 use crate::{
-    dual::matrix::MatrixValuedDerivative,
+    dual::MatrixValuedDerivative,
     prelude::*,
 };
 
@@ -9,17 +9,13 @@ use crate::{
 ///
 /// This is a function which takes a vector and returns a matrix:
 ///
-///  f: ℝᵐ -> ℝʳ x ℝᶜ
+///  f: ℝᵐ -> ℝʳˣᶜ
 pub struct MatrixValuedVectorMap<S, const BATCH: usize> {
     phantom: core::marker::PhantomData<S>,
 }
 
 impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize> MatrixValuedVectorMap<S, BATCH> {
     /// Finite difference quotient of the matrix-valued map.
-    ///
-    /// The derivative is a rank-3 tensor with shape (Rₒ x Cₒ x Rᵢ).
-    ///
-    /// For efficiency reasons, we return Rᵢ x [Rₒ x Cₒ]
     pub fn sym_diff_quotient<TFn, const OUTROWS: usize, const OUTCOLS: usize, const INROWS: usize>(
         matrix_valued: TFn,
         a: S::RealVector<INROWS>,
@@ -57,17 +53,13 @@ impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize> MatrixValuedVec
 ///
 /// This is a function which takes a matrix and returns a matrix:
 ///
-///  f: ℝᵐ x ℝⁿ -> ℝʳ x ℝᶜ
+///  f: ℝᵐˣⁿ -> ℝʳˣᶜ
 pub struct MatrixValuedMatrixMap<S: IsScalar<BATCH, 0, 0>, const BATCH: usize> {
     phantom: core::marker::PhantomData<S>,
 }
 
 impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize> MatrixValuedMatrixMap<S, BATCH> {
     /// Finite difference quotient of the matrix-valued map.
-    ///
-    /// The derivative is a rank-4 tensor with shape (Rₒ x Cₒ x Rᵢ x Cᵢ).
-    ///
-    /// For efficiency reasons, we return Rᵢ x Cᵢ x [Rₒ x Cₒ]
     pub fn sym_diff_quotient<
         TFn,
         const OUTROWS: usize,
@@ -115,13 +107,13 @@ fn matrix_valued_map_from_vector_tests() {
     #[cfg(feature = "simd")]
     use crate::linalg::BatchScalarF64;
     use crate::{
-        dual::dual_scalar::DualScalar,
+        dual::DualScalar,
         linalg::{
-            scalar::IsScalar,
-            vector::IsVector,
+            IsScalar,
+            IsVector,
             EPS_F64,
         },
-        maps::matrix_valued_maps::MatrixValuedVectorMap,
+        maps::MatrixValuedVectorMap,
     };
 
     #[cfg(test)]

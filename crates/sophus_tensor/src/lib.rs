@@ -1,5 +1,6 @@
 #![deny(missing_docs)]
 #![allow(clippy::needless_range_loop)]
+#![cfg_attr(nightly, feature(doc_auto_cfg))]
 //! # Tensor module
 
 /// Arc tensor

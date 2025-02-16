@@ -3,10 +3,6 @@ use core::borrow::Borrow;
 use log::warn;
 
 use crate::{
-    groups::{
-        rotation2::Rotation2Impl,
-        translation_product_product::TranslationProductGroupImpl,
-    },
     lie_group::{
         average::{
             iterative_average,
@@ -18,6 +14,8 @@ use crate::{
     EmptySliceError,
     HasAverage,
     Rotation2,
+    Rotation2Impl,
+    TranslationProductGroupImpl,
 };
 
 /// 2d isometry - special Euclidean group SE(2)
@@ -154,8 +152,8 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
 #[test]
 fn isometry2_prop_tests() {
     #[cfg(feature = "simd")]
-    use sophus_autodiff::dual::dual_batch_scalar::DualBatchScalar;
-    use sophus_autodiff::dual::dual_scalar::DualScalar;
+    use sophus_autodiff::dual::DualBatchScalar;
+    use sophus_autodiff::dual::DualScalar;
     #[cfg(feature = "simd")]
     use sophus_autodiff::linalg::BatchScalarF64;
 

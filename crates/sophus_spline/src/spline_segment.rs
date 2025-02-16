@@ -190,12 +190,12 @@ mod test {
         use num_traits::Zero;
         use sophus_autodiff::{
             dual::{
-                dual_scalar::DualScalar,
-                dual_vector::DualVector,
+                DualScalar,
+                DualVector,
             },
             linalg::{
-                scalar::IsScalar,
-                vector::IsVector,
+                IsScalar,
+                IsVector,
                 VecF64,
             },
             points::example_points,
@@ -263,15 +263,15 @@ mod test {
         use num_traits::Zero;
         use sophus_autodiff::{
             dual::{
-                dual_scalar::DualScalar,
-                dual_vector::DualVector,
+                DualScalar,
+                DualVector,
             },
             linalg::{
-                scalar::IsScalar,
-                vector::IsVector,
+                IsScalar,
+                IsVector,
                 VecF64,
             },
-            maps::vector_valued_maps::VectorValuedVectorMap,
+            maps::VectorValuedVectorMap,
             points::example_points,
             prelude::*,
         };

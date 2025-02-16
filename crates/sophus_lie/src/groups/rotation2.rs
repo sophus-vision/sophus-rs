@@ -382,9 +382,9 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
 
 #[test]
 fn rotation2_prop_tests() {
-    use sophus_autodiff::dual::dual_scalar::DualScalar;
     #[cfg(feature = "simd")]
     use sophus_autodiff::dual::DualBatchScalar;
+    use sophus_autodiff::dual::DualScalar;
     #[cfg(feature = "simd")]
     use sophus_autodiff::linalg::BatchScalarF64;
 

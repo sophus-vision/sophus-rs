@@ -52,7 +52,7 @@ impl<
             + 'static,
     > IsVariable for LieGroup<f64, DOF, PARAMS, POINT, AMBIENT, 1, 0, 0, G>
 {
-    const DOF: usize = DOF;
+    const NUM_DOF: usize = DOF;
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
         assert_eq!(delta.len(), DOF);

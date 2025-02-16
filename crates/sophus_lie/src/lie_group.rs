@@ -1,13 +1,8 @@
-/// Lie group average
-pub mod average;
-/// Factor Lie groups
-pub mod factor_lie_group;
-/// Group multiplication
-pub mod group_mul;
-/// Lie group as a manifold
-pub mod lie_group_manifold;
-/// Real lie group
-pub mod real_lie_group;
+pub(crate) mod average;
+pub(crate) mod factor_lie_group;
+pub(crate) mod group_mul;
+pub(crate) mod lie_group_manifold;
+pub(crate) mod real_lie_group;
 
 use core::{
     borrow::Borrow,
@@ -64,7 +59,7 @@ extern crate alloc;
 ///        dimension is AMBIENT x AMBIENT. Note that either AMBIENT==POINT or AMBIENT==POINT+1. In
 ///        the latter case, the matrix acts on homogeneous points.
 ///  * BATCH
-///     - batch dimension. If S is f64 or [sophus_autodiff::dual::DualScalar] then BATCH=1.
+///     - Batch dimension. If S is f64 or [sophus_autodiff::dual::DualScalar] then BATCH=1.
 ///  * DM, DN
 ///    - DM x DN is the static shape of the Jacobian to be computed if S == DualScalar<DM, DN>. If S
 ///      == f64, then DM==0, DN==0.

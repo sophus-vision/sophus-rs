@@ -85,7 +85,7 @@ fn curve_test() {
     use crate::{
         dual::DualScalar,
         linalg::{
-            scalar::IsScalar,
+            IsScalar,
             EPS_F64,
         },
     };
@@ -99,7 +99,7 @@ fn curve_test() {
     ) => {
             impl CurveTest for $dual_scalar {
                 fn run_curve_test() {
-                    use crate::linalg::vector::IsVector;
+                    use crate::linalg::IsVector;
 
                     for i in 0..10 {
                         let a = <$scalar>::from_f64(0.1 * (i as f64));

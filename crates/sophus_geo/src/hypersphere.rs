@@ -3,7 +3,9 @@ use sophus_lie::prelude::*;
 
 use crate::ray::Ray;
 
-/// N-Sphere
+/// n-Sphere in ℝ^{n+1}.
+///
+/// A 1-sphere is a circle, a 2-sphere is a sphere, etc.
 pub struct HyperSphere<
     S: IsScalar<BATCH, DM, DN>,
     const DIM: usize,
@@ -11,22 +13,22 @@ pub struct HyperSphere<
     const DM: usize,
     const DN: usize,
 > {
-    /// center
+    /// Hyper-sphere center.
     pub center: S::Vector<DIM>,
-    /// radius
+    /// Hyper-sphere radius.
     pub radius: S,
 }
 
-/// Circle
+/// Circle in ℝ².
 pub type Circle<S, const B: usize, const DM: usize, const DN: usize> = HyperSphere<S, 2, B, DM, DN>;
 
-/// Circle
+/// Circle in ℝ² with f64 scalar type.
 pub type CircleF64 = Circle<f64, 1, 0, 0>;
 
 impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
     Circle<S, 1, DM, DN>
 {
-    /// circle-circle intersection
+    /// Circle-circle intersection.
     pub fn intersect_circle(&self, other: &Circle<S, 1, DM, DN>) -> Option<[S::Vector<2>; 2]> {
         let dir = other.center - self.center;
         let d = dir.norm();
@@ -56,19 +58,16 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
     }
 }
 
-/// Ray-hyperphere intersection
-pub struct HypersphereRayIntersection {}
-
-/// Line-hypersphere intersection
+/// Line-hypersphere intersection.
 pub enum LineHypersphereIntersection<
     S: IsSingleScalar<DM, DN>,
     const DIM: usize,
     const DM: usize,
     const DN: usize,
 > {
-    /// point pair
+    /// Point pair.
     Points([S::Vector<DIM>; 2]),
-    /// tangent point
+    /// Tangent point.
     TangentPoint(S::Vector<DIM>),
 }
 
@@ -120,7 +119,7 @@ impl<
     /// the sphere.
     ///
     /// Intersection points for t<eps are ignored. If all intersection points are needed,
-    /// use Self::line_intersect_parameters directly.
+    /// use [Self::line_intersect_parameters] directly.
     pub fn ray_intersect_with_eps<const DOF: usize>(
         &self,
         ray: &Ray<S, DOF, DIM, 1, DM, DN>,
@@ -149,7 +148,7 @@ impl<
         Some(ray.at(t?))
     }
 
-    /// Self::ray_intersect_with_eps with default eps.
+    /// [Self::ray_intersect_with_eps] with default eps.
     pub fn ray_intersect<const DOF: usize>(
         &self,
         ray: &Ray<S, DOF, DIM, 1, DM, DN>,
@@ -157,15 +156,7 @@ impl<
         self.ray_intersect_with_eps(ray, EPS_F64)
     }
 
-    /// calculates line intersection
-    pub fn line_intersect<const DOF: usize>(
-        &self,
-        ray: &Ray<S, DOF, DIM, 1, DM, DN>,
-    ) -> Option<LineHypersphereIntersection<S, DIM, DM, DN>> {
-        self.line_intersect_with_eps(ray, EPS_F64)
-    }
-
-    /// calculates line intersection
+    /// Calculates line intersection
     pub fn line_intersect_with_eps<const DOF: usize>(
         &self,
         ray: &Ray<S, DOF, DIM, 1, DM, DN>,
@@ -181,5 +172,13 @@ impl<
             ray.at(t0),
             ray.at(t1),
         ]))
+    }
+
+    /// Calculates line intersection with default eps.
+    pub fn line_intersect<const DOF: usize>(
+        &self,
+        ray: &Ray<S, DOF, DIM, 1, DM, DN>,
+    ) -> Option<LineHypersphereIntersection<S, DIM, DM, DN>> {
+        self.line_intersect_with_eps(ray, EPS_F64)
     }
 }

@@ -77,7 +77,7 @@ impl<
         Proj: IsProjection<f64, 1, 0, 0>,
     > IsVariable for Camera<f64, DISTORT, PARAMS, 1, 0, 0, Distort, Proj>
 {
-    const DOF: usize = PARAMS;
+    const NUM_DOF: usize = PARAMS;
 
     fn update(&mut self, delta: nalgebra::DVectorView<f64>) {
         let new_params = *self.params() + delta;

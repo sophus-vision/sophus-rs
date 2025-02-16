@@ -10,11 +10,26 @@ use core::{
 
 use crate::prelude::IsBoolMask;
 
-/// Boolean mask - generalization of boolean comparison to SIMDs
+/// A lane-wise boolean mask for batch (SIMD) operations.
+///
+/// This struct wraps a [`Mask<i64, N>`][core::simd::Mask], storing a boolean value
+/// for each of `N` lanes. It implements [`IsBoolMask`] for:
+///
+/// - Checking whether all or any lanes are `true`.
+/// - Counting the number of `true` lanes.
+/// - Creating a fully `true` or fully `false` mask.
+///
+/// # Generic Parameters
+/// - `N`: The number of lanes in the SIMD mask. Must implement [`SupportedLaneCount`].
+///
+/// # Feature
+/// This type is only available when the `"simd"` feature is enabled.
+#[cfg(feature = "simd")]
 pub struct BatchMask<const N: usize>
 where
     LaneCount<N>: SupportedLaneCount,
 {
+    // The underlying lane-wise mask storing `true` or `false` for each lane.
     pub(crate) inner: Mask<i64, N>,
 }
 
@@ -23,6 +38,7 @@ where
     LaneCount<N>: SupportedLaneCount,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Displays the mask in a user-friendly way.
         write!(f, "BatchMask({:?})", self.inner)
     }
 }

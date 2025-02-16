@@ -2,7 +2,7 @@ use core::fmt::Debug;
 
 use sophus_autodiff::{
     linalg::{
-        scalar::NumberCategory,
+        NumberCategory,
         SMat,
         SVec,
     },
@@ -155,15 +155,15 @@ impl STensorFormat {
 fn test_elements() {
     use approx::assert_abs_diff_eq;
     #[cfg(feature = "simd")]
-    use sophus_autodiff::linalg::scalar::IsScalar;
-    #[cfg(feature = "simd")]
     use sophus_autodiff::linalg::BatchScalar;
     #[cfg(feature = "simd")]
     use sophus_autodiff::linalg::BatchScalarF64;
     #[cfg(feature = "simd")]
     use sophus_autodiff::linalg::BatchVecF64;
+    #[cfg(feature = "simd")]
+    use sophus_autodiff::linalg::IsScalar;
     use sophus_autodiff::linalg::{
-        scalar::NumberCategory,
+        NumberCategory,
         VecF32,
     };
 

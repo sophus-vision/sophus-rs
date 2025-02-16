@@ -19,7 +19,7 @@ pub trait IsVarTuple<const NUM_ARGS: usize>: Send + Sync + 'static {
     /// Tuple variable families
     type VarFamilyTupleRef<'a>: Send + Sync;
 
-    /// reference to the variable family tuple
+    /// reference to the variable   family tuple
     fn ref_var_family_tuple(
         families: &VarFamilies,
         names: [String; NUM_ARGS],
@@ -33,7 +33,7 @@ pub trait IsVarTuple<const NUM_ARGS: usize>: Send + Sync + 'static {
 }
 
 impl<M0: IsVariable + 'static + Send + Sync> IsVarTuple<1> for M0 {
-    const DOF_T: [usize; 1] = [M0::DOF];
+    const DOF_T: [usize; 1] = [M0::NUM_DOF];
     type VarFamilyTupleRef<'a> = &'a VarFamily<M0>;
 
     fn var_kind_array(families: &VarFamilies, names: [String; 1]) -> [VarKind; 1] {
@@ -55,7 +55,7 @@ impl<M0: IsVariable + 'static + Send + Sync> IsVarTuple<1> for M0 {
 impl<M0: IsVariable + 'static + Send + Sync, M1: IsVariable + 'static + Send + Sync> IsVarTuple<2>
     for (M0, M1)
 {
-    const DOF_T: [usize; 2] = [M0::DOF, M1::DOF];
+    const DOF_T: [usize; 2] = [M0::NUM_DOF, M1::NUM_DOF];
     type VarFamilyTupleRef<'a> = (&'a VarFamily<M0>, &'a VarFamily<M1>);
 
     fn var_kind_array(families: &VarFamilies, names: [String; 2]) -> [VarKind; 2] {
@@ -89,7 +89,7 @@ impl<
         M2: IsVariable + 'static + Send + Sync,
     > IsVarTuple<3> for (M0, M1, M2)
 {
-    const DOF_T: [usize; 3] = [M0::DOF, M1::DOF, M2::DOF];
+    const DOF_T: [usize; 3] = [M0::NUM_DOF, M1::NUM_DOF, M2::NUM_DOF];
     type VarFamilyTupleRef<'a> = (&'a VarFamily<M0>, &'a VarFamily<M1>, &'a VarFamily<M2>);
 
     fn var_kind_array(families: &VarFamilies, names: [String; 3]) -> [VarKind; 3] {
@@ -127,7 +127,7 @@ impl<
         M3: IsVariable + 'static + Send + Sync,
     > IsVarTuple<4> for (M0, M1, M2, M3)
 {
-    const DOF_T: [usize; 4] = [M0::DOF, M1::DOF, M2::DOF, M3::DOF];
+    const DOF_T: [usize; 4] = [M0::NUM_DOF, M1::NUM_DOF, M2::NUM_DOF, M3::NUM_DOF];
     type VarFamilyTupleRef<'a> = (
         &'a VarFamily<M0>,
         &'a VarFamily<M1>,
@@ -174,7 +174,13 @@ impl<
         M4: IsVariable + 'static + Send + Sync,
     > IsVarTuple<5> for (M0, M1, M2, M3, M4)
 {
-    const DOF_T: [usize; 5] = [M0::DOF, M1::DOF, M2::DOF, M3::DOF, M4::DOF];
+    const DOF_T: [usize; 5] = [
+        M0::NUM_DOF,
+        M1::NUM_DOF,
+        M2::NUM_DOF,
+        M3::NUM_DOF,
+        M4::NUM_DOF,
+    ];
     type VarFamilyTupleRef<'a> = (
         &'a VarFamily<M0>,
         &'a VarFamily<M1>,
@@ -226,7 +232,14 @@ impl<
         M5: IsVariable + 'static + Send + Sync,
     > IsVarTuple<6> for (M0, M1, M2, M3, M4, M5)
 {
-    const DOF_T: [usize; 6] = [M0::DOF, M1::DOF, M2::DOF, M3::DOF, M4::DOF, M5::DOF];
+    const DOF_T: [usize; 6] = [
+        M0::NUM_DOF,
+        M1::NUM_DOF,
+        M2::NUM_DOF,
+        M3::NUM_DOF,
+        M4::NUM_DOF,
+        M5::NUM_DOF,
+    ];
     type VarFamilyTupleRef<'a> = (
         &'a VarFamily<M0>,
         &'a VarFamily<M1>,
@@ -284,13 +297,13 @@ impl<
     > IsVarTuple<7> for (M0, M1, M2, M3, M4, M5, M6)
 {
     const DOF_T: [usize; 7] = [
-        M0::DOF,
-        M1::DOF,
-        M2::DOF,
-        M3::DOF,
-        M4::DOF,
-        M5::DOF,
-        M6::DOF,
+        M0::NUM_DOF,
+        M1::NUM_DOF,
+        M2::NUM_DOF,
+        M3::NUM_DOF,
+        M4::NUM_DOF,
+        M5::NUM_DOF,
+        M6::NUM_DOF,
     ];
     type VarFamilyTupleRef<'a> = (
         &'a VarFamily<M0>,

@@ -4,8 +4,8 @@ use core::{
 };
 
 use sophus_autodiff::linalg::{
-    scalar::IsScalar,
-    vector::IsVector,
+    IsScalar,
+    IsVector,
 };
 
 use crate::{

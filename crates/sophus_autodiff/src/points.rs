@@ -3,37 +3,44 @@ use core::f64;
 use nalgebra::SVector;
 use num_traits::Bounded;
 
-use crate::prelude::*;
+use crate::{
+    linalg::VecF64,
+    prelude::*,
+};
 extern crate alloc;
 
-/// Traits for points
+/// Trait for a point.
+///
+/// In particular, this is implemented for [nalgebra::SVector] and [core::f64].
 pub trait IsPoint<const D: usize>: Copy + Bounded {
-    /// Point type
+    /// The point type.
     type Point: Bounded;
 
-    /// smallest point
+    /// Each component contains the smallest finite value, e.g. [core::f64::MIN].
     fn smallest() -> Self::Point {
         Bounded::min_value()
     }
 
-    /// largest point
+    /// Each component contains the smallest finite value, e.g. [core::f64::MAX].
     fn largest() -> Self::Point {
         Bounded::max_value()
     }
 
-    /// clamp point
+    /// Clamp point to min and max.
     fn clamp(&self, min: Self, max: Self) -> Self::Point;
 
-    /// check if point is less or equal to another point
+    /// Check if point is less or equal to another point.
     fn is_less_equal(&self, rhs: Self) -> bool;
 }
 
-/// Traits for points - including +infinity / -infinity
+/// Trait for floating point - with +infinity / -infinity.
+///
+/// In particular, this is implemented for [crate::linalg::VecF64] and [core::f64].
 pub trait IsUnboundedPoint<const D: usize>: IsPoint<D> {
-    /// +infinity
+    /// Each component contains the +infinity value, e.g. [core::f64::INFINITY].
     fn infinity() -> Self::Point;
 
-    /// -infinity
+    /// Each component contains the -infinity value, e.g. [core::f64::NEG_INFINITY].
     fn neg_infinity() -> Self::Point;
 }
 
@@ -89,13 +96,13 @@ impl<const D: usize> IsPoint<D> for SVector<f64, D> {
     }
 }
 
-impl<const D: usize> IsUnboundedPoint<D> for SVector<f64, D> {
+impl<const D: usize> IsUnboundedPoint<D> for VecF64<D> {
     fn infinity() -> Self::Point {
-        SVector::<f64, D>::repeat(f64::INFINITY)
+        VecF64::<D>::repeat(f64::INFINITY)
     }
 
     fn neg_infinity() -> Self::Point {
-        SVector::<f64, D>::repeat(f64::NEG_INFINITY)
+        VecF64::<D>::repeat(f64::NEG_INFINITY)
     }
 }
 

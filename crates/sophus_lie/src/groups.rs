@@ -1,10 +1,5 @@
-/// 2d isometry
-pub mod isometry2;
-/// 3d  isometry
-pub mod isometry3;
-/// 2d rotation
-pub mod rotation2;
-/// 3d rotation
-pub mod rotation3;
-/// semi-direct product
-pub mod translation_product_product;
+pub(crate) mod isometry2;
+pub(crate) mod isometry3;
+pub(crate) mod rotation2;
+pub(crate) mod rotation3;
+pub(crate) mod translation_product_product;
