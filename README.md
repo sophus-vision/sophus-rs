@@ -120,12 +120,12 @@ sophus-rs builds on stable.
 
 ```toml
 [dependencies]
-sophus = "0.12.0"
+sophus = "0.13.0"
 ```
 
 ```toml
 [dependencies]
-sophus = { version = "0.12.0", features = ["simd"] }
+sophus = { version = "0.13.0", features = ["simd"] }
 ```
 
 To allow for batch types, such as BatchScalarF64, the 'simd' feature is required. This feature
