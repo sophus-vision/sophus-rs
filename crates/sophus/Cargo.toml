@@ -37,6 +37,9 @@ thingbuf.workspace = true
 tokio = { version = "1", features = ["full"] }
 wgpu.workspace = true
 
+[build-dependencies]
+rustc_version.workspace = true
+
 
 [features]
 simd = [

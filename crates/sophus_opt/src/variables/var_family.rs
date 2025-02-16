@@ -124,7 +124,7 @@ impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
 
     fn num_free_scalars(&self) -> usize {
         match self.get_var_kind() {
-            VarKind::Free => (self.members.len() - self.constant_members.len()) * Var::DOF,
+            VarKind::Free => (self.members.len() - self.constant_members.len()) * Var::NUM_DOF,
             VarKind::Conditioned => 0,
             VarKind::Marginalized => 0,
         }
@@ -134,7 +134,9 @@ impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
         match self.get_var_kind() {
             VarKind::Free => 0,
             VarKind::Conditioned => 0,
-            VarKind::Marginalized => (self.members.len() - self.constant_members.len()) * Var::DOF,
+            VarKind::Marginalized => {
+                (self.members.len() - self.constant_members.len()) * Var::NUM_DOF
+            }
         }
     }
 
@@ -166,7 +168,7 @@ impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
                     } else {
                         scalar_indices.push(scalar_idx as i64);
                         block_indices.push(block_idx as i64);
-                        scalar_idx += Var::DOF;
+                        scalar_idx += Var::NUM_DOF;
                         block_idx += 1;
                     }
                 }
@@ -211,9 +213,9 @@ impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
 
     fn free_or_marg_dof(&self) -> usize {
         match self.get_var_kind() {
-            VarKind::Free => Var::DOF,
+            VarKind::Free => Var::NUM_DOF,
             VarKind::Conditioned => 0,
-            VarKind::Marginalized => Var::DOF,
+            VarKind::Marginalized => Var::NUM_DOF,
         }
     }
 

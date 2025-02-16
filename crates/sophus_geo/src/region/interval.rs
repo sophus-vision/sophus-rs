@@ -10,7 +10,9 @@ use super::{
     IsRegionBase,
 };
 
-/// Floating-point interval
+/// A non-empty interval [a, b] in ℝ.
+///
+/// See [IsRegionBase] and [IsNonEmptyRegion] for details about the (non-empty) region concept.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct NonEmptyInterval {
     pub(crate) region1: NonEmptyBoxRegion<1>,
@@ -54,8 +56,8 @@ impl IsRegionBase<1, f64> for NonEmptyInterval {
         self.region1.extend(VecF64::<1>::new(point));
     }
 
-    fn clamp(&self, p: f64) -> f64 {
-        self.region1.clamp(VecF64::<1>::new(p))[0]
+    fn clamp_point(&self, p: f64) -> f64 {
+        self.region1.clamp_point(VecF64::<1>::new(p))[0]
     }
 
     fn intersect(self, other: Self) -> Self::Region {
@@ -101,7 +103,9 @@ impl IsNonEmptyRegion<1, f64> for NonEmptyInterval {
     }
 }
 
-/// Floating-point interval - might be empty
+/// A interval [a, b] in ℝ which might be empty.
+///
+/// See [IsRegionBase] for details about the region concept.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Interval {
     pub(crate) region1: BoxRegion<1>,
@@ -132,8 +136,8 @@ impl IsRegionBase<1, f64> for Interval {
         self.region1.extend(VecF64::<1>::new(point));
     }
 
-    fn clamp(&self, p: f64) -> f64 {
-        self.region1.clamp(VecF64::<1>::new(p))[0]
+    fn clamp_point(&self, p: f64) -> f64 {
+        self.region1.clamp_point(VecF64::<1>::new(p))[0]
     }
 
     fn intersect(self, other: Self) -> Self::Region {
@@ -280,17 +284,17 @@ mod tests {
         let interval = Interval::from_bounds(0.0, 10.0);
 
         // inside => remain
-        assert_eq!(interval.clamp(5.0), 5.0);
+        assert_eq!(interval.clamp_point(5.0), 5.0);
 
         // below => clamp to lower
-        assert_eq!(interval.clamp(-2.0), 0.0);
+        assert_eq!(interval.clamp_point(-2.0), 0.0);
 
         // above => clamp to upper
-        assert_eq!(interval.clamp(30.0), 10.0);
+        assert_eq!(interval.clamp_point(30.0), 10.0);
 
         // empty => return input as-is
         let empty = Interval::empty();
-        assert_eq!(empty.clamp(42.0), 42.0);
+        assert_eq!(empty.clamp_point(42.0), 42.0);
     }
 
     /// Test that from_bounds reorders if a > b

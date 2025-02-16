@@ -7,7 +7,7 @@ use core::{
 use log::warn;
 use sophus_autodiff::{
     linalg::{
-        vector::cross,
+        cross,
         MatF64,
         EPS_F64,
     },
@@ -351,13 +351,13 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 
         let two = &S::from_f64(2.0);
 
-        let uv_x: S::Vector<3> = cross::<S, BATCH, DM, DN>(&ivec, &unit_x).scaled(two);
-        let uv_y: S::Vector<3> = cross::<S, BATCH, DM, DN>(&ivec, &unit_y).scaled(two);
-        let uv_z: S::Vector<3> = cross::<S, BATCH, DM, DN>(&ivec, &unit_z).scaled(two);
+        let uv_x: S::Vector<3> = cross::<S, BATCH, DM, DN>(ivec, unit_x).scaled(two);
+        let uv_y: S::Vector<3> = cross::<S, BATCH, DM, DN>(ivec, unit_y).scaled(two);
+        let uv_z: S::Vector<3> = cross::<S, BATCH, DM, DN>(ivec, unit_z).scaled(two);
 
-        let col_x = unit_x + cross::<S, BATCH, DM, DN>(&ivec, &uv_x) + uv_x.scaled(re);
-        let col_y = unit_y + cross::<S, BATCH, DM, DN>(&ivec, &uv_y) + uv_y.scaled(re);
-        let col_z = unit_z + cross::<S, BATCH, DM, DN>(&ivec, &uv_z) + uv_z.scaled(re);
+        let col_x = unit_x + cross::<S, BATCH, DM, DN>(ivec, uv_x) + uv_x.scaled(re);
+        let col_y = unit_y + cross::<S, BATCH, DM, DN>(ivec, uv_y) + uv_y.scaled(re);
+        let col_z = unit_z + cross::<S, BATCH, DM, DN>(ivec, uv_z) + uv_z.scaled(re);
 
         S::Matrix::block_mat1x2::<1, 2>(
             col_x.to_mat(),
@@ -383,7 +383,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let re = lhs_re * rhs_re - lhs_ivec.dot(rhs_ivec);
         let ivec = rhs_ivec.scaled(lhs_re)
             + lhs_ivec.scaled(rhs_re)
-            + cross::<S, BATCH, DM, DN>(&lhs_ivec, &rhs_ivec);
+            + cross::<S, BATCH, DM, DN>(lhs_ivec, rhs_ivec);
 
         let mut params = S::Vector::block_vec2(re.to_vec(), ivec);
 
@@ -1054,9 +1054,9 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
 
 #[test]
 fn rotation3_prop_tests() {
-    use sophus_autodiff::dual::dual_scalar::DualScalar;
     #[cfg(feature = "simd")]
     use sophus_autodiff::dual::DualBatchScalar;
+    use sophus_autodiff::dual::DualScalar;
     #[cfg(feature = "simd")]
     use sophus_autodiff::linalg::BatchScalarF64;
 

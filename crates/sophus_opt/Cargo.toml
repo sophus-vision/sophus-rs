@@ -27,6 +27,9 @@ rand.workspace = true
 rayon = "1.10"
 snafu.workspace = true
 
+[build-dependencies]
+rustc_version.workspace = true
+
 [features]
 simd = [
   "sophus_autodiff/simd",

@@ -7,7 +7,12 @@ use crate::{
     },
 };
 
-/// Derivative of a matrix-valued map.
+/// A structure that holds the derivative of a matrix-valued map with respect to its inputs.
+///
+/// For a function f: X -> ℝʳ, or similarly a batch variant in SIMD,
+/// this structure stores each output dimension’s derivative block.
+///
+/// - `out_vec[i]` contains a derivative matrix (for dimension `i` of the output).
 pub struct MatrixValuedDerivative<
     S,
     const OUTROWS: usize,
@@ -16,7 +21,8 @@ pub struct MatrixValuedDerivative<
     const DM: usize,
     const DN: usize,
 > {
-    /// output matrix of input matrices
+    /// The OUTROWS x OUTCOLS output matrix, where each element is a
+    /// matrix of shape `[DM × DN]` storing the derivative for that output lane.
     pub out_mat: SMat<SMat<S, DM, DN>, OUTROWS, OUTCOLS>,
 }
 
@@ -29,7 +35,7 @@ impl<
         const DN: usize,
     > MatrixValuedDerivative<S, OUTROWS, OUTCOLS, BATCH, DM, DN>
 {
-    /// zero
+    /// Creates a new instance set to all zeros.
     pub fn zeros() -> Self {
         MatrixValuedDerivative {
             out_mat: SMat::zeros(),
@@ -37,7 +43,18 @@ impl<
     }
 }
 
-/// Trait for dual matrix
+/// A trait for a *dual matrix*, supporting forward-mode AD on matrix quantities.
+///
+/// A dual matrix is a matrix whose entries are themselves dual scalars
+/// (with partial derivatives). This trait extends [`IsMatrix`] with AD-specific methods:
+///
+/// - Constructing a "variable" matrix from a real matrix (marking it for differentiation).
+/// - Retrieving the entire derivative as a [`MatrixValuedDerivative`].
+///
+/// # Generic Parameters
+/// - `S`: A type implementing [`IsDualScalar`].
+/// - `ROWS`, `COLS`: Matrix dimensions.
+/// - `BATCH`, `DM`, `DN`: Additional parameters for batch usage and the derivative shape.
 pub trait IsDualMatrix<
     S: IsDualScalar<BATCH, DM, DN>,
     const ROWS: usize,
@@ -47,14 +64,20 @@ pub trait IsDualMatrix<
     const DN: usize,
 >: IsMatrix<S, ROWS, COLS, BATCH, DM, DN>
 {
-    /// Create a new dual matrix from a real matrix for auto-differentiation with respect to self
+    /// Creates a new dual matrix from a purely *real* matrix, marking its entries as variables
+    /// for auto-differentiation.is turned into a dual scalar with derivative
+    /// identity relative to that component.
     fn var(val: S::RealMatrix<ROWS, COLS>) -> Self;
 
-    /// Get the derivative
+    /// Returns the derivative as a [`MatrixValuedDerivative`].
+    ///
+    /// If the matrix has an `ROWS` x `COLS` shape, each element’s derivative is a matrix of shape
+    /// `[DM × DN]`, so the overall derivative is `ROWS` x `COLS` grid of those matrices.
     fn derivative(self) -> MatrixValuedDerivative<S::RealScalar, ROWS, COLS, BATCH, DM, DN>;
 }
 
-/// Trait for dual matrix as an output of a scalar field
+/// A helper trait marking that this dual matrix is the result of a *curve* f: ℝ -> ℝʳˣᶜ, letting
+/// you retrieve a simpler derivative form for each dimension of the output.
 pub trait IsDualMatrixFromCurve<
     S: IsDualScalar<BATCH, 1, 1>,
     const ROWS: usize,
@@ -62,7 +85,10 @@ pub trait IsDualMatrixFromCurve<
     const BATCH: usize,
 >: IsDualMatrix<S, ROWS, COLS, BATCH, 1, 1>
 {
-    /// Get the derivative
+    /// Returns the derivative of this matrix w.r.t. the single scalar input,
+    /// as a real matrix of shape `ROWS` x `COLS`.
+    ///
+    /// For example, if `f: ℝ -> ℝ³ˣ²`, then `curve_derivative()` is a 3x2 real matrix.
     fn curve_derivative(&self) -> S::RealMatrix<ROWS, COLS>;
 }
 
@@ -75,7 +101,7 @@ fn dual_matrix_tests() {
     use crate::{
         dual::DualScalar,
         linalg::EPS_F64,
-        maps::matrix_valued_maps::MatrixValuedMatrixMap,
+        maps::MatrixValuedMatrixMap,
         prelude::IsScalar,
     };
 

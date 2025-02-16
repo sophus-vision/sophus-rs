@@ -1,6 +1,6 @@
 use nalgebra::SVector;
 use sophus_autodiff::linalg::VecF64;
-use sophus_geo::region::box_region::BoxRegion;
+use sophus_geo::region::BoxRegion;
 use sophus_image::{
     arc_image::ArcImage2F32,
     image_view::IsImageView,
@@ -115,7 +115,7 @@ fn camera_distortion_table_tests() {
             VecF64,
             EPS_F64,
         },
-        maps::vector_valued_maps::VectorValuedVectorMap,
+        maps::VectorValuedVectorMap,
     };
     use sophus_image::ImageSize;
 

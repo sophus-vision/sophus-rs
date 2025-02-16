@@ -1,30 +1,89 @@
 use crate::prelude::IsScalar;
 
-/// Trait for scalar dual numbers
+/// A trait for scalar types that store both a real part and an infinitesimal part,
+/// enabling **forward-mode automatic differentiation** (AD) of scalar functions.
+///
+/// Typical implementations include [`DualScalar<DM, DN>`][crate::dual::DualScalar]
+/// for single-lane usage (`BATCH=1`), or [`DualBatchScalar<BATCH, DM,
+/// DN>`][crate::dual::DualBatchScalar] when using SIMD-based batch derivatives.
+///
+/// # Const Parameters
+/// - `BATCH`: Number of lanes (1 if non-SIMD).
+/// - `DM`, `DN`: Dimensions of the derivative. For example, `DM=3, DN=1` indicates storing partial
+///   derivatives w.r.t. a 3D input, resulting in a 3×1 Jacobian for each scalar.
 pub trait IsDualScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     IsScalar<BATCH, DM, DN>
 {
-    /// Create a new dual scalar from real scalar for auto-differentiation with respect to self
+    /// Creates a dual scalar from a “real” scalar, marking it as a variable for AD.
+    ///
+    /// The newly created dual scalar will have derivative = identity w.r.t. this variable,
+    /// meaning the real part is `val` and the infinitesimal part is a unit derivative.
+    ///
+    /// # Example
+    /// ```rust
+    /// use sophus_autodiff::{
+    ///     dual::DualScalar,
+    ///     prelude::*,
+    /// };
+    ///
+    /// // Suppose we want to differentiate f(x) = x² at x = 0.1
+    /// // First, create the variable as a dual:
+    /// let x_dual = DualScalar::<1, 1>::var(0.1);
+    /// // Then define f in terms of the dual variable:
+    /// let f_dual = x_dual * x_dual;
+    /// // We can now get the derivative with respect to x:
+    /// let dfdx = f_dual.curve_derivative(); // Should be 2 * 0.1 = 0.2
+    /// ```
     fn var(val: Self::RealScalar) -> Self;
 
-    /// Create a new dual vector from a real vector for auto-differentiation with respect to self
+    /// Creates a dual vector of dimension `ROWS` from a purely real vector,
+    /// establishing each component as a variable for AD.
     fn vector_var<const ROWS: usize>(val: Self::RealVector<ROWS>)
         -> Self::DualVector<ROWS, DM, DN>;
 
-    /// Create a new dual matrix from a real matrix for auto-differentiation with respect to self
+    /// Creates a dual matrix of size `[ROWS, COLS]` from a purely real matrix,
+    /// establishing each element as a variable for AD.
     fn matrix_var<const ROWS: usize, const COLS: usize>(
         val: Self::RealMatrix<ROWS, COLS>,
     ) -> Self::DualMatrix<ROWS, COLS, DM, DN>;
 
-    /// Get the derivative
+    /// Returns the infinitesimal part (derivative) of this scalar, as a real matrix
+    /// of shape `[DM, DN]`.
+    ///
+    /// # Interpretation
+    /// - If `DM=1, DN=1`, this corresponds to a scalar derivative in ℝ.
+    /// - If `DM>1, DN=1`, it corresponds to a vector derivative in ℝ^DM.
+    /// - For more complex shapes, it can represent Jacobians or Hessians as needed.
     fn derivative(&self) -> Self::RealMatrix<DM, DN>;
 }
 
-/// Trait for dual scalar as an output of a scalar field
+/// A trait extension indicating the scalar is the result of a curve `f: ℝ -> ℝ`,
+/// enabling a simpler interface to retrieve the 1D derivative.
+///
+/// # Const Parameter
+/// - `BATCH`: Number of lanes (e.g., 1 for single-lane or >1 for SIMD).
+///
+/// Implementors typically return a real scalar via `curve_derivative()`.
 pub trait IsDualScalarFromCurve<S: IsDualScalar<BATCH, 1, 1>, const BATCH: usize>:
     IsDualScalar<BATCH, 1, 1>
 {
-    /// Get the derivative
+    /// Returns the derivative as a single real number, since `f: ℝ -> ℝ`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use sophus_autodiff::{
+    ///     dual::DualScalar,
+    ///     prelude::*,
+    /// };
+    /// // Suppose we want to differentiate f(x)=x³ at x=2:
+    /// // First, we wrap x=2 as a dual variable:
+    /// let x_dual = DualScalar::<1, 1>::var(2.0);
+    /// // Then compute f(x):
+    /// let f_dual = x_dual * x_dual * x_dual;
+    /// // The derivative is 3 * x² = 12:
+    /// let derivative = f_dual.curve_derivative();
+    /// assert_eq!(derivative, 12.0);
+    /// ```
     fn curve_derivative(&self) -> S::RealScalar;
 }
 
@@ -37,16 +96,21 @@ fn dual_scalar_tests() {
     use crate::{
         dual::DualScalar,
         linalg::EPS_F64,
-        maps::curves::ScalarValuedCurve,
+        maps::ScalarValuedCurve,
     };
 
     trait DualScalarTest {
         fn run_dual_scalar_test();
     }
+
+    // This macro defines a template that implements test logic for each pair of
+    // (regular scalar, dual scalar) and for a given BATCH lane size.
     macro_rules! def_dual_scalar_test_template {
         ($batch:literal, $scalar: ty, $dual_scalar: ty) => {
             impl DualScalarTest for $dual_scalar {
                 fn run_dual_scalar_test() {
+                    // We'll test various math functions with a finite-difference approach
+                    // and compare it to the dual-based derivative.
                     let b = <$scalar>::from_f64(12.0);
                     for i in 1..10 {
                         let a: $scalar = <$scalar>::from_f64(0.1 * (i as f64));
@@ -90,7 +154,6 @@ fn dual_scalar_tests() {
                         let cos_finite_diff =
                             ScalarValuedCurve::sym_diff_quotient(|x| x.cos(), a, EPS_F64);
                         let cos_auto_grad = <$dual_scalar>::var(a).cos().curve_derivative();
-
                         approx::assert_abs_diff_eq!(
                             cos_finite_diff,
                             cos_auto_grad,
@@ -159,6 +222,7 @@ fn dual_scalar_tests() {
                         let auto_grad = dual_square_fn(<$dual_scalar>::var(a)).curve_derivative();
                         approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
 
+                        // Additional tests for arithmetic ops (add, sub, mul, div)
                         {
                             fn add_fn(x: $scalar, y: $scalar) -> $scalar {
                                 x + y
@@ -239,54 +303,56 @@ fn dual_scalar_tests() {
                             approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
                         }
 
-                        fn div_fn(x: $scalar, y: $scalar) -> $scalar {
-                            x / y
+                        {
+                            fn div_fn(x: $scalar, y: $scalar) -> $scalar {
+                                x / y
+                            }
+                            fn dual_div_fn(x: $dual_scalar, y: $dual_scalar) -> $dual_scalar {
+                                x / y
+                            }
+                            let finite_diff =
+                                ScalarValuedCurve::sym_diff_quotient(|x| div_fn(x, b), a, EPS_F64);
+                            let auto_grad = dual_div_fn(
+                                <$dual_scalar>::var(a),
+                                <$dual_scalar>::from_real_scalar(b),
+                            )
+                            .curve_derivative();
+                            approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
+
+                            let finite_diff =
+                                ScalarValuedCurve::sym_diff_quotient(|x| div_fn(b, x), a, EPS_F64);
+                            let auto_grad = dual_div_fn(
+                                <$dual_scalar>::from_real_scalar(b),
+                                <$dual_scalar>::var(a),
+                            )
+                            .curve_derivative();
+                            approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
+
+                            let finite_diff =
+                                ScalarValuedCurve::sym_diff_quotient(|x| div_fn(b, x), a, EPS_F64);
+                            let auto_grad = dual_div_fn(
+                                <$dual_scalar>::from_real_scalar(b),
+                                <$dual_scalar>::var(a),
+                            )
+                            .curve_derivative();
+                            approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
+
+                            let finite_diff =
+                                ScalarValuedCurve::sym_diff_quotient(|x| div_fn(x, b), a, EPS_F64);
+                            let auto_grad = dual_div_fn(
+                                <$dual_scalar>::var(a),
+                                <$dual_scalar>::from_real_scalar(b),
+                            )
+                            .curve_derivative();
+                            approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
                         }
-                        fn dual_div_fn(x: $dual_scalar, y: $dual_scalar) -> $dual_scalar {
-                            x / y
-                        }
-                        let finite_diff =
-                            ScalarValuedCurve::sym_diff_quotient(|x| div_fn(x, b), a, EPS_F64);
-                        let auto_grad = dual_div_fn(
-                            <$dual_scalar>::var(a),
-                            <$dual_scalar>::from_real_scalar(b),
-                        )
-                        .curve_derivative();
-                        approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
-
-                        let finite_diff =
-                            ScalarValuedCurve::sym_diff_quotient(|x| div_fn(b, x), a, EPS_F64);
-                        let auto_grad = dual_div_fn(
-                            <$dual_scalar>::from_real_scalar(b),
-                            <$dual_scalar>::var(a),
-                        )
-                        .curve_derivative();
-
-                        approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
-
-                        let finite_diff =
-                            ScalarValuedCurve::sym_diff_quotient(|x| div_fn(b, x), a, EPS_F64);
-                        let auto_grad = dual_div_fn(
-                            <$dual_scalar>::from_real_scalar(b),
-                            <$dual_scalar>::var(a),
-                        )
-                        .curve_derivative();
-                        approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
-
-                        let finite_diff =
-                            ScalarValuedCurve::sym_diff_quotient(|x| div_fn(x, b), a, EPS_F64);
-                        let auto_grad = dual_div_fn(
-                            <$dual_scalar>::var(a),
-                            <$dual_scalar>::from_real_scalar(b),
-                        )
-                        .curve_derivative();
-                        approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.0001);
                     }
                 }
             }
         };
     }
 
+    // Expand the test template for each combination of (batch, real scalar, dual scalar).
     def_dual_scalar_test_template!(1, f64, DualScalar<1,1>);
     #[cfg(feature = "simd")]
     def_dual_scalar_test_template!(2, BatchScalarF64<2>, DualBatchScalar<2,1,1>);
@@ -295,6 +361,7 @@ fn dual_scalar_tests() {
     #[cfg(feature = "simd")]
     def_dual_scalar_test_template!(8, BatchScalarF64<8>, DualBatchScalar<8,1,1>);
 
+    // Now run the test suites:
     DualScalar::run_dual_scalar_test();
     #[cfg(feature = "simd")]
     DualBatchScalar::<2, 1, 1>::run_dual_scalar_test();

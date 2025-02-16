@@ -1,6 +1,7 @@
 #![cfg_attr(feature = "simd", feature(portable_simd))]
 #![deny(missing_docs)]
 #![no_std]
+#![cfg_attr(nightly, feature(doc_auto_cfg))]
 //! image crate - part of the sophus-rs project
 
 #[cfg(feature = "std")]

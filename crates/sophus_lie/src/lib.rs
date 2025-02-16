@@ -2,13 +2,26 @@
 #![deny(missing_docs)]
 #![allow(clippy::needless_range_loop)]
 #![no_std]
+#![cfg_attr(nightly, feature(doc_auto_cfg))]
 //! Lie groups crate - part of the sophus-rs project
 
-/// Lie group implementations
-pub mod groups;
-/// Lie groups
-pub mod lie_group;
-/// sophus_lie prelude
+mod groups;
+mod lie_group;
+/// sophus_lie prelude.
+///
+/// It is recommended to import this prelude when working with `sophus_lie` types:
+///
+/// ```
+/// use sophus_lie::prelude::*;
+/// ```
+///
+/// or
+///
+/// ```ignore
+/// use sophus::prelude::*;
+/// ```
+///
+/// to import all preludes when using the `sophus` umbrella crate.
 pub mod prelude {
     pub use sophus_autodiff::prelude::*;
 
@@ -27,24 +40,18 @@ use sophus_autodiff::prelude::*;
 
 pub use crate::{
     groups::{
-        isometry2::{
-            Isometry2,
-            Isometry2F64,
-        },
-        isometry3::{
-            Isometry3,
-            Isometry3F64,
-        },
-        rotation2::{
-            Rotation2,
-            Rotation2F64,
-        },
-        rotation3::{
-            Rotation3,
-            Rotation3F64,
-        },
+        isometry2::*,
+        isometry3::*,
+        rotation2::*,
+        rotation3::*,
+        translation_product_product::*,
     },
-    lie_group::LieGroup,
+    lie_group::{
+        average::*,
+        factor_lie_group::*,
+        real_lie_group::*,
+        LieGroup,
+    },
 };
 
 /// Disambiguate the parameters.

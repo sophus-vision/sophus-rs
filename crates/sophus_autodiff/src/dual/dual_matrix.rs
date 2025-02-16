@@ -29,7 +29,21 @@ use crate::{
     prelude::*,
 };
 
-/// DualScalarLike matrix
+/// A dual vector, storing a set of dual scalars (with partial derivatives) for each row.
+///
+/// Conceptually, this is the forward-mode AD version of a ROWSxCOLS matrix, where each element is a
+/// where each element is a [`DualScalar<DM, DN>`], i.e., each element carries its own infinitesimal
+/// part.
+///
+/// # Fields
+/// - `inner`: A [`SMat`] of [`DualScalar<DM, DN>`].
+///
+/// # Generic Parameters
+/// - `ROWS`, `COLS`: Matrix dimensions.
+/// - `DM`, `DN`: Dimensions for each component’s derivative (infinitesimal) matrix. For example,
+///   `DM=3, DN=1` might store partial derivatives w.r.t. a 3D input for each element.
+///
+/// See [crate::dual::IsDualMatrix] for more details.
 #[derive(Clone, Debug, Copy)]
 pub struct DualMatrix<const ROWS: usize, const COLS: usize, const DM: usize, const DN: usize> {
     pub(crate) inner: SMat<DualScalar<DM, DN>, ROWS, COLS>,

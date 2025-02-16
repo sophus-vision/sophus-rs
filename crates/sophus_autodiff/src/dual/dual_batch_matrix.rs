@@ -22,11 +22,11 @@ use num_traits::Zero;
 use super::matrix::MatrixValuedDerivative;
 use crate::{
     dual::{
-        dual_batch_scalar::DualBatchScalar,
+        DualBatchScalar,
         DualBatchVector,
     },
     linalg::{
-        batch_mask::BatchMask,
+        BatchMask,
         BatchMatF64,
         BatchScalarF64,
         SMat,
@@ -34,7 +34,24 @@ use crate::{
     prelude::*,
 };
 
-/// DualScalarLike matrix
+/// A batch dual matrix, whose elements are [DualBatchScalar] (forward-mode AD) across multiple
+/// lanes.
+///
+/// This implements vector functionality for ℝʳ *with* partial derivatives,
+/// in parallel lanes (SIMD). Each element is a `DualBatchScalar<BATCH, DM, DN>` storing:
+///
+/// - `BATCH`: The number of SIMD lanes.
+/// - `DM`, `DN`: The shape of each element’s derivative.
+///
+/// # Fields
+/// - `inner`: A fixed-size vector (`SVec`) of length `ROWS`, each item a `DualBatchScalar`.
+///
+/// # Example
+/// For `ROWS=3, COLS=2, BATCH=4, DM=3, DN=1`, you have 3x2 elements, each storing 4-lane real parts
+/// plus a 3×1 derivative for each lane, i.e. 4-lane forward-mode AD on a 3x2 matrix input.
+///
+/// See [crate::dual::IsDualMatrix] for more details.
+#[cfg(feature = "simd")]
 #[derive(Clone, Debug, Copy)]
 pub struct DualBatchMatrix<
     const ROWS: usize,

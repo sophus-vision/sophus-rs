@@ -3,8 +3,10 @@ use sophus_autodiff::{
         SVec,
         VecF64,
     },
-    IsPoint,
-    IsUnboundedPoint,
+    points::{
+        IsPoint,
+        IsUnboundedPoint,
+    },
 };
 
 use super::{
@@ -17,36 +19,41 @@ use super::{
     IsRegionBase,
 };
 
-/// Region - n-dimensional "box" interval
+/// A non-empty n-dimensional "box" interval.
+///
+/// A box region is a Cartesian product of non-empty intervals or, in other words, an axis-aligned
+/// bounding box.
+///
+/// See [IsRegionBase] and [IsNonEmptyRegion] for details about the (non-empty) region concept.
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct NonEmptyBoxRegion<const D: usize> {
-    pub(crate) lower: SVec<f64, D>,
-    pub(crate) upper: SVec<f64, D>,
+pub struct NonEmptyBoxRegion<const N: usize> {
+    pub(crate) lower: SVec<f64, N>,
+    pub(crate) upper: SVec<f64, N>,
 }
 
 impl NonEmptyBoxRegion<1> {
-    /// Convert to interval
+    /// Convert one-dimensional region to the [Interval] type.
     pub fn to_interval(self) -> NonEmptyInterval {
         NonEmptyInterval { region1: self }
     }
 }
 
-impl<const D: usize> IsRegionBase<D, SVec<f64, D>> for NonEmptyBoxRegion<D> {
-    type Region = BoxRegion<D>;
-    type NonEmptyRegion = NonEmptyBoxRegion<D>;
+impl<const N: usize> IsRegionBase<N, SVec<f64, N>> for NonEmptyBoxRegion<N> {
+    type Region = BoxRegion<N>;
+    type NonEmptyRegion = NonEmptyBoxRegion<N>;
 
-    fn intersect(self, other: Self) -> BoxRegion<D> {
+    fn intersect(self, other: Self) -> BoxRegion<N> {
         // Step 1: compute the intersection bounds
         let mut new_lower = VecF64::zeros();
         let mut new_upper = VecF64::zeros();
 
-        for i in 0..D {
+        for i in 0..N {
             new_lower[i] = self.lower[i].max(other.lower[i]);
             new_upper[i] = self.upper[i].min(other.upper[i]);
         }
 
         // Step 2: check if valid intersection
-        for i in 0..D {
+        for i in 0..N {
             // if any dimension does not overlap, return an empty Region
             if new_lower[i] > new_upper[i] {
                 return BoxRegion {
@@ -63,13 +70,13 @@ impl<const D: usize> IsRegionBase<D, SVec<f64, D>> for NonEmptyBoxRegion<D> {
         .to_region()
     }
 
-    fn contains(&self, p: SVec<f64, D>) -> bool {
+    fn contains(&self, p: SVec<f64, N>) -> bool {
         self.lower.is_less_equal(p) && p.is_less_equal(self.upper)
     }
 
     fn unbounded() -> Self {
-        let l: SVec<f64, D> = SVec::<f64, D>::neg_infinity();
-        let u: SVec<f64, D> = SVec::<f64, D>::infinity();
+        let l: SVec<f64, N> = SVec::<f64, N>::neg_infinity();
+        let u: SVec<f64, N> = SVec::<f64, N>::infinity();
         Self::from_bounds(l, u)
     }
 
@@ -78,14 +85,14 @@ impl<const D: usize> IsRegionBase<D, SVec<f64, D>> for NonEmptyBoxRegion<D> {
     }
 
     fn is_unbounded(&self) -> bool {
-        self.lower == SVec::<f64, D>::neg_infinity() && self.upper == SVec::<f64, D>::infinity()
+        self.lower == SVec::<f64, N>::neg_infinity() && self.upper == SVec::<f64, N>::infinity()
     }
 
-    fn from_bounds(bound_a: SVec<f64, D>, bound_b: SVec<f64, D>) -> Self {
+    fn from_bounds(bound_a: SVec<f64, N>, bound_b: SVec<f64, N>) -> Self {
         let mut lower = VecF64::zeros();
         let mut upper = VecF64::zeros();
 
-        for i in 0..D {
+        for i in 0..N {
             lower[i] = bound_a[i].min(bound_b[i]);
             upper[i] = bound_a[i].max(bound_b[i]);
         }
@@ -93,16 +100,16 @@ impl<const D: usize> IsRegionBase<D, SVec<f64, D>> for NonEmptyBoxRegion<D> {
         Self { lower, upper }
     }
 
-    fn clamp(&self, p: SVec<f64, D>) -> SVec<f64, D> {
+    fn clamp_point(&self, p: SVec<f64, N>) -> SVec<f64, N> {
         p.clamp(self.lower, self.upper)
     }
 
-    fn range(&self) -> SVec<f64, D> {
+    fn range(&self) -> SVec<f64, N> {
         self.upper - self.lower
     }
 
-    fn extend(&mut self, point: SVec<f64, D>) {
-        for i in 0..D {
+    fn extend(&mut self, point: SVec<f64, N>) {
+        for i in 0..N {
             self.lower[i] = self.lower[i].min(point[i]);
             self.upper[i] = self.upper[i].max(point[i]);
         }
@@ -118,49 +125,54 @@ impl<const D: usize> IsRegionBase<D, SVec<f64, D>> for NonEmptyBoxRegion<D> {
         Some(self)
     }
 
-    fn from_point(point: SVec<f64, D>) -> Self {
+    fn from_point(point: SVec<f64, N>) -> Self {
         Self::from_bounds(point, point)
     }
 }
 
-impl<const D: usize> IsNonEmptyRegion<D, SVec<f64, D>> for NonEmptyBoxRegion<D> {
-    fn center(&self) -> SVec<f64, D> {
+impl<const N: usize> IsNonEmptyRegion<N, SVec<f64, N>> for NonEmptyBoxRegion<N> {
+    fn center(&self) -> SVec<f64, N> {
         self.lower + 0.5 * self.range()
     }
 
-    fn lower(&self) -> SVec<f64, D> {
+    fn lower(&self) -> SVec<f64, N> {
         self.lower
     }
 
-    fn upper(&self) -> SVec<f64, D> {
+    fn upper(&self) -> SVec<f64, N> {
         self.upper
     }
 
-    fn set_lower(&mut self, l: SVec<f64, D>) {
+    fn set_lower(&mut self, l: SVec<f64, N>) {
         self.lower = l;
     }
 
-    fn set_upper(&mut self, u: SVec<f64, D>) {
+    fn set_upper(&mut self, u: SVec<f64, N>) {
         self.upper = u;
     }
 }
 
-/// Region - n-dimensional interval
+/// A n-dimensional "box" interval which might be empty.
+///
+/// A box region is a Cartesian product of intervals or, in other words, an axis-aligned bounding
+/// box.
+///
+/// See [IsRegionBase] and [IsRegion] for details about the region concept.
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct BoxRegion<const D: usize> {
-    non_empty_region: Option<NonEmptyBoxRegion<D>>,
+pub struct BoxRegion<const N: usize> {
+    non_empty_region: Option<NonEmptyBoxRegion<N>>,
 }
 
 impl BoxRegion<1> {
-    /// Convert to interval
+    /// Convert one-dimensional region to the [Interval] type.
     pub fn to_interval(self) -> Interval {
         Interval { region1: self }
     }
 }
 
-impl<const D: usize> IsRegionBase<D, SVec<f64, D>> for BoxRegion<D> {
-    type Region = BoxRegion<D>;
-    type NonEmptyRegion = NonEmptyBoxRegion<D>;
+impl<const N: usize> IsRegionBase<N, SVec<f64, N>> for BoxRegion<N> {
+    type Region = BoxRegion<N>;
+    type NonEmptyRegion = NonEmptyBoxRegion<N>;
 
     fn unbounded() -> Self {
         Self {
@@ -168,7 +180,7 @@ impl<const D: usize> IsRegionBase<D, SVec<f64, D>> for BoxRegion<D> {
         }
     }
 
-    fn from_bounds(bound_a: SVec<f64, D>, bound_b: SVec<f64, D>) -> Self {
+    fn from_bounds(bound_a: SVec<f64, N>, bound_b: SVec<f64, N>) -> Self {
         Self {
             non_empty_region: Some(NonEmptyBoxRegion::from_bounds(bound_a, bound_b)),
         }
@@ -188,7 +200,7 @@ impl<const D: usize> IsRegionBase<D, SVec<f64, D>> for BoxRegion<D> {
         false
     }
 
-    fn extend(&mut self, point: SVec<f64, D>) {
+    fn extend(&mut self, point: SVec<f64, N>) {
         match &mut self.non_empty_region {
             Some(nz) => nz.extend(point),
             None => {
@@ -197,9 +209,9 @@ impl<const D: usize> IsRegionBase<D, SVec<f64, D>> for BoxRegion<D> {
         }
     }
 
-    fn clamp(&self, p: SVec<f64, D>) -> SVec<f64, D> {
+    fn clamp_point(&self, p: SVec<f64, N>) -> SVec<f64, N> {
         if let Some(non_empty) = self.non_empty_region {
-            return non_empty.clamp(p);
+            return non_empty.clamp_point(p);
         }
         p
     }
@@ -211,14 +223,14 @@ impl<const D: usize> IsRegionBase<D, SVec<f64, D>> for BoxRegion<D> {
         }
     }
 
-    fn contains(&self, p: SVec<f64, D>) -> bool {
+    fn contains(&self, p: SVec<f64, N>) -> bool {
         if let Some(non_empty) = self.non_empty_region {
             return non_empty.contains(p);
         }
         false
     }
 
-    fn range(&self) -> SVec<f64, D> {
+    fn range(&self) -> SVec<f64, N> {
         if let Some(non_empty) = self.non_empty_region {
             return non_empty.range();
         }
@@ -236,26 +248,26 @@ impl<const D: usize> IsRegionBase<D, SVec<f64, D>> for BoxRegion<D> {
         None
     }
 
-    fn from_point(point: SVec<f64, D>) -> Self {
+    fn from_point(point: SVec<f64, N>) -> Self {
         Self::from_bounds(point, point)
     }
 }
 
-impl<const D: usize> IsRegion<D, SVec<f64, D>> for BoxRegion<D> {
+impl<const N: usize> IsRegion<N, SVec<f64, N>> for BoxRegion<N> {
     fn empty() -> Self {
         BoxRegion {
             non_empty_region: None,
         }
     }
 
-    fn try_lower(&self) -> Option<SVec<f64, D>> {
+    fn try_lower(&self) -> Option<SVec<f64, N>> {
         if let Some(non_empty) = self.non_empty_region {
             return Some(non_empty.lower);
         }
         None
     }
 
-    fn try_upper(&self) -> Option<SVec<f64, D>> {
+    fn try_upper(&self) -> Option<SVec<f64, N>> {
         if let Some(non_empty) = self.non_empty_region {
             return Some(non_empty.upper);
         }
@@ -266,7 +278,7 @@ impl<const D: usize> IsRegion<D, SVec<f64, D>> for BoxRegion<D> {
         self.non_empty_region.is_none()
     }
 
-    fn try_center(&self) -> Option<SVec<f64, D>> {
+    fn try_center(&self) -> Option<SVec<f64, N>> {
         if let Some(non_empty) = self.non_empty_region {
             return Some(non_empty.center());
         }
@@ -372,22 +384,22 @@ mod tests {
         let region = BoxRegion::<2>::from_bounds(SVec::from([0.0, 0.0]), SVec::from([10.0, 10.0]));
         // 1) Point inside => should remain unchanged
         let inside = SVec::from([5.0, 5.0]);
-        let clamped_inside = region.clamp(inside);
+        let clamped_inside = region.clamp_point(inside);
         assert_eq!(clamped_inside, inside);
 
         // 2) Point below => clamp to lower
         let below = SVec::from([-1.0, -2.0]);
-        let clamped_below = region.clamp(below);
+        let clamped_below = region.clamp_point(below);
         assert_eq!(clamped_below, SVec::from([0.0, 0.0]));
 
         // 3) Point above => clamp to upper
         let above = SVec::from([20.0, 30.0]);
-        let clamped_above = region.clamp(above);
+        let clamped_above = region.clamp_point(above);
         assert_eq!(clamped_above, SVec::from([10.0, 10.0]));
 
         // 4) If region is empty, clamp should just return the input
         let empty = BoxRegion::<2>::empty();
-        let clamped_empty = empty.clamp(above);
+        let clamped_empty = empty.clamp_point(above);
         assert_eq!(clamped_empty, above, "Empty region clamps to input");
     }
 
@@ -557,17 +569,17 @@ mod tests {
         let reg = BoxRegion::<2>::from_bounds(SVec::from([0.0, 10.0]), SVec::from([5.0, 20.0]));
         // clamp a point exactly on the lower bound
         let p_lower = SVec::from([0.0, 10.0]);
-        let clamp_lower = reg.clamp(p_lower);
+        let clamp_lower = reg.clamp_point(p_lower);
         assert_eq!(clamp_lower, p_lower);
 
         // clamp a point exactly on the upper bound
         let p_upper = SVec::from([5.0, 20.0]);
-        let clamp_upper = reg.clamp(p_upper);
+        let clamp_upper = reg.clamp_point(p_upper);
         assert_eq!(clamp_upper, p_upper);
 
         // clamp a point in the "corner" (x=0, y=20)
         let p_corner = SVec::from([0.0, 25.0]);
-        let clamp_corner = reg.clamp(p_corner);
+        let clamp_corner = reg.clamp_point(p_corner);
         assert_eq!(clamp_corner, SVec::from([0.0, 20.0]));
     }
 }

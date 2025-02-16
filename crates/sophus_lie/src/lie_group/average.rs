@@ -8,14 +8,12 @@ use sophus_autodiff::{
 };
 
 use crate::{
-    groups::{
-        rotation2::Rotation2F64,
-        rotation3::Rotation3F64,
-    },
     IsLieGroupImpl,
     Isometry2F64,
     Isometry3F64,
     LieGroup,
+    Rotation2F64,
+    Rotation3F64,
 };
 
 /// error of iterative_average

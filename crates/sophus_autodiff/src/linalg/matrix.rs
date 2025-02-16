@@ -17,7 +17,7 @@ use approx::{
 };
 
 use crate::{
-    dual::dual_matrix::DualMatrix,
+    dual::DualMatrix,
     linalg::{
         MatF64,
         VecF64,
@@ -25,9 +25,19 @@ use crate::{
     prelude::*,
 };
 
-/// Matrix trait
-///  - either a real (f64) or a dual number matrix
-///  - either a single matrix or a batch matrix
+/// A trait for matrix types whose elements can be either real scalars (`f64`) or dual numbers,
+/// in single (BATCH=1) or batch (`portable_simd`) form. It provides core matrix operations,
+/// including block composition, element access, multiplication, and transformations.
+///
+/// # Generic Parameters
+/// - `S`: The scalar type implementing [`IsScalar`].
+/// - `ROWS`, `COLS`: Dimensions of the matrix.
+/// - `BATCH`: Number of lanes if using batch scalars; otherwise 1.
+/// - `DM`, `DN`: Dimensions for dual-number derivatives (0 if purely real).
+///
+/// # Implementations
+/// For instance, `MatF64<ROWS, COLS>` implements `IsMatrix<f64, ROWS, COLS, 1, 0, 0>`,
+/// while dual or batch variations implement their specialized forms.
 pub trait IsMatrix<
     S: IsScalar<BATCH, DM, DN>,
     const ROWS: usize,
@@ -44,129 +54,146 @@ pub trait IsMatrix<
     + Neg<Output = Self>
     + Add<Output = Self>
     + Sub<Output = Self>
-    + Neg
     + AbsDiffEq<Epsilon = f64>
     + RelativeEq<Epsilon = f64>
 {
-    /// creates matrix from a left and right block columns
+    /// Combines two matrices side-by-side along columns into one.
+    ///
+    /// ```text
+    /// [left_col | righ_col]
+    /// ```
     fn block_mat1x2<const C0: usize, const C1: usize>(
         left_col: S::Matrix<ROWS, C0>,
         righ_col: S::Matrix<ROWS, C1>,
     ) -> Self;
 
-    /// creates matrix from a top and bottom block rows
+    /// Stacks two matrices vertically into one.
+    ///
+    /// ```text
+    /// [top_row]
+    /// [-------]
+    /// [bot_row]
+    /// ```
     fn block_mat2x1<const R0: usize, const R1: usize>(
         top_row: S::Matrix<R0, COLS>,
         bot_row: S::Matrix<R1, COLS>,
     ) -> Self;
 
-    /// creates matrix from a 2x2 block of matrices
+    /// Creates a new `[ROWS, COLS]` matrix by stitching together a 2×2 grid of blocks.
+    ///
+    /// ```text
+    /// [top_left | top_right]
+    /// [---------|----------]
+    /// [bot_left | bot_right]
+    /// ```
     fn block_mat2x2<const R0: usize, const R1: usize, const C0: usize, const C1: usize>(
         top_row: (S::Matrix<R0, C0>, S::Matrix<R0, C1>),
         bot_row: (S::Matrix<R1, C0>, S::Matrix<R1, C1>),
     ) -> Self;
 
-    /// creates matrix from a 2d array of scalars
+    /// Constructs a new matrix from a 2D array of scalar elements.
     fn from_array2<A>(vals: A) -> Self
     where
         A: Borrow<[[S; COLS]; ROWS]>;
 
-    /// creates matrix with all real elements (and lanes) set to the given value
+    /// Constructs a new matrix with all elements set to the given `f64`.
     ///
-    /// (for dual numbers, the infinitesimal part is set to zero)
+    /// If `S` is a dual scalar, the dual part is zeroed out.
+    /// If `S` is a batch scalar, all lanes are set to `val`.
     fn from_f64(val: f64) -> Self;
 
-    /// creates matrix from a 2d array of real values
-    ///
-    ///  - all lanes are set to the same value
-    ///  - for dual numbers, the infinitesimal part is set to zero
+    /// Constructs a matrix from a 2D array of `f64` values, zeroing out any dual part.
     fn from_f64_array2<A>(vals: A) -> Self
     where
         A: Borrow<[[f64; COLS]; ROWS]>;
 
-    /// creates matrix from a 2d array of real scalars
-    ///
-    /// (for dual numbers, the infinitesimal part is set to zero)
+    /// Constructs a matrix from a 2D array of real scalars `S::RealScalar`,
+    /// zeroing out derivative as needed.
     fn from_real_scalar_array2<A>(vals: A) -> Self
     where
         A: Borrow<[[S::RealScalar; COLS]; ROWS]>;
 
-    /// create a constant matrix
+    /// Constructs a matrix from a real matrix type (e.g. `MatF64<ROWS, COLS>`).
     fn from_real_matrix<A>(val: A) -> Self
     where
         A: Borrow<S::RealMatrix<ROWS, COLS>>;
 
-    /// create a constant scalar
+    /// Constructs a new matrix by replicating a single scalar value `val` across all elements.
+    ///
+    /// If `val` is dual, it preserves its dual parts. If it's real, the matrix is purely real.
     fn from_scalar<Q>(val: Q) -> Self
     where
         Q: Borrow<S>;
 
-    /// extract column vector
+    /// Returns the `c`-th column of the matrix as a `[ROWS]` vector.
     fn get_col_vec(&self, c: usize) -> S::Vector<ROWS>;
 
-    /// extract row vector
+    /// Returns the `r`-th row of the matrix as a `[COLS]` vector.
     fn get_row_vec(&self, r: usize) -> S::Vector<COLS>;
 
-    /// get element
+    /// Accesses the element in row `idx[0]`, column `idx[1]`.
     fn elem(&self, idx: [usize; 2]) -> S;
 
-    /// get element
+    /// Returns a mutable reference to the element in row `idx[0]`, column `idx[1]`.
     fn elem_mut(&mut self, idx: [usize; 2]) -> &mut S;
 
-    /// get fixed submatrix
+    /// Extracts a fixed submatrix of size `[R, C]`, starting at `(start_r, start_c)`.
     fn get_fixed_submat<const R: usize, const C: usize>(
         &self,
         start_r: usize,
         start_c: usize,
     ) -> S::Matrix<R, C>;
 
-    /// create an identity matrix
+    /// Returns the identity matrix of size `[ROWS, COLS]`. Usually only valid if `ROWS == COLS`.
     fn identity() -> Self;
 
-    /// matrix multiplication
+    /// Matrix multiplication with another `[COLS, C2]` matrix, returning `[ROWS, C2]`.
     fn mat_mul<const C2: usize, M>(&self, other: M) -> S::Matrix<ROWS, C2>
     where
         M: Borrow<S::Matrix<COLS, C2>>;
 
-    /// ones
+    /// Creates a matrix of all ones, i.e., with numeric value 1.0 in every element.
     fn ones() -> Self {
         Self::from_f64(1.0)
     }
 
-    /// Return a real matrix
+    /// Returns the underlying real matrix form, discarding derivative or batch info if present.
     fn real_matrix(&self) -> S::RealMatrix<ROWS, COLS>;
 
-    /// return scaled matrix
+    /// Scales the matrix by a scalar `v` (elementwise `*v`).
     fn scaled<Q>(&self, v: Q) -> Self
     where
         Q: Borrow<S>;
 
-    /// Returns self if mask is true, otherwise returns other
-    ///
-    /// For batch matrices, this is a lane-wise operation
+    /// Lane-wise select operation: picks from `self` where `mask` is true, or from `other`
+    /// otherwise.
     fn select<Q>(&self, mask: &S::Mask, other: Q) -> Self
     where
         Q: Borrow<Self>;
 
-    /// set column vectors
+    /// Sets the entire column `c` to the vector `v`.
     fn set_col_vec(&mut self, c: usize, v: S::Vector<ROWS>);
 
-    /// transpose
+    /// Returns the transpose of this matrix, flipping rows and columns.
     fn transposed(&self) -> S::Matrix<COLS, ROWS>;
 
-    /// Return dual matrix
-    ///
-    /// If self is a real matrix, this will return a dual matrix with the infinitesimal part set to
-    /// zero: (self, 0ϵ)
+    /// Converts this matrix into a dual matrix type with zero derivative if originally real;
+    /// if already dual, merges or preserves derivative structure as appropriate.
     fn to_dual_const<const M: usize, const N: usize>(&self) -> S::DualMatrix<ROWS, COLS, M, N>;
 
-    /// zeros
+    /// Returns a matrix of all zeros.
     fn zeros() -> Self {
         Self::from_f64(0.0)
     }
 }
 
-/// Is real matrix?
+/// A specialized trait for real (non-dual) matrices, typically parameterized by `f64` or a batch
+/// real type. Enables direct indexing `(r, c)` in addition to the other matrix operations.
+///
+/// # Const Parameters
+/// - `S`: The real scalar type implementing [`IsRealScalar`] and [`IsScalar<..., 0, 0>`].
+/// - `ROWS`, `COLS`: Dimensions of the matrix.
+/// - `BATCH`: Number of lanes (1 if single-lane).
 pub trait IsRealMatrix<
     S: IsRealScalar<BATCH> + IsScalar<BATCH, 0, 0>,
     const ROWS: usize,
@@ -180,7 +207,8 @@ pub trait IsRealMatrix<
 {
 }
 
-/// Is single matrix? (not batch)
+/// A trait for single-lane matrices (not batch) whose scalar is single-lane as well.
+/// This typically means either pure real matrices (`f64`) or dual matrices with `BATCH=1`.
 pub trait IsSingleMatrix<
     S: IsSingleScalar<DM, DN>,
     const ROWS: usize,
@@ -190,11 +218,10 @@ pub trait IsSingleMatrix<
 >:
     IsMatrix<S, ROWS, COLS, 1, DM, DN> + Mul<S::SingleVector<COLS>, Output = S::SingleVector<ROWS>>
 {
-    /// returns single real matrix
+    /// Extracts the real (f64-based) version of this matrix, ignoring dual derivative info if
+    /// present.
     fn single_real_matrix(&self) -> MatF64<ROWS, COLS>;
 }
-
-impl<const ROWS: usize, const COLS: usize> IsRealMatrix<f64, ROWS, COLS, 1> for MatF64<ROWS, COLS> {}
 
 impl<const ROWS: usize, const COLS: usize> IsSingleMatrix<f64, ROWS, COLS, 0, 0>
     for MatF64<ROWS, COLS>
@@ -203,6 +230,8 @@ impl<const ROWS: usize, const COLS: usize> IsSingleMatrix<f64, ROWS, COLS, 0, 0>
         *self
     }
 }
+
+impl<const ROWS: usize, const COLS: usize> IsRealMatrix<f64, ROWS, COLS, 1> for MatF64<ROWS, COLS> {}
 
 impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1, 0, 0>
     for MatF64<ROWS, COLS>

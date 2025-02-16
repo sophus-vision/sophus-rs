@@ -205,7 +205,7 @@ fn dyn_camera_tests() {
             VecF64,
             EPS_F64,
         },
-        maps::vector_valued_maps::VectorValuedVectorMap,
+        maps::VectorValuedVectorMap,
     };
     use sophus_image::ImageSize;
 

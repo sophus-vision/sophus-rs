@@ -1,6 +1,7 @@
 #![deny(missing_docs)]
 #![allow(clippy::needless_range_loop)]
 #![no_std]
+#![cfg_attr(nightly, feature(doc_auto_cfg))]
 
 //! Renderer
 

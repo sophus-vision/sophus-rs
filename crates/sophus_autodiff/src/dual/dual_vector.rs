@@ -32,9 +32,24 @@ use crate::{
     prelude::*,
 };
 
-/// Dual vector
+/// A dual vector, storing a set of dual scalars (with partial derivatives) for each row.
+///
+/// Conceptually, this is the forward-mode AD version of a vector in \(\mathbb{R}^\text{ROWS}\),
+/// where each element is a [`DualScalar<DM, DN>`], i.e., each element carries its own infinitesimal
+/// part.
+///
+/// # Fields
+/// - `inner`: An [`SVec`] of [`DualScalar<DM, DN>`], dimension `ROWS`.
+///
+/// # Generic Parameters
+/// - `ROWS`: Number of vector components.
+/// - `DM`, `DN`: Dimensions for each component’s derivative (infinitesimal) matrix. For example,
+///   `DM=3, DN=1` might store partial derivatives w.r.t. a 3D input for each element.
+///
+/// See [crate::dual::IsDualVector] for more details.
 #[derive(Clone, Debug, Copy)]
 pub struct DualVector<const ROWS: usize, const DM: usize, const DN: usize> {
+    /// Internal storage of the vector elements, each a `DualScalar<DM, DN>`.
     pub(crate) inner: SVec<DualScalar<DM, DN>, ROWS>,
 }
 
@@ -46,10 +61,10 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
         for i in 0..ROWS {
             dij_val[(i, 0)].real_part = val[i];
             let mut v = SMat::<f64, DM, DN>::zeros();
+            // identity derivative for the i-th element w.r.t. that row
             v[(i, 0)] = 1.0;
             dij_val[(i, 0)].infinitesimal_part = Some(v);
         }
-
         Self { inner: dij_val }
     }
 
@@ -77,6 +92,7 @@ impl<const ROWS: usize, const DM: usize> HasJacobian<DualScalar<DM, 1>, ROWS, 1,
         let mut v = SMat::<f64, ROWS, DM>::zeros();
         for i in 0..ROWS {
             let d = self.inner[i].derivative();
+            // each element’s derivative is DM x 1 => we collect the column into row i
             for j in 0..DM {
                 v[(i, j)] = d[j];
             }
@@ -180,6 +196,7 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
     }
 
     fn norm(&self) -> DualScalar<DM, DN> {
+        // accumulate dot = x^T x, then sqrt
         self.dot(*self).sqrt()
     }
 
@@ -205,7 +222,6 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
         A: Borrow<[f64; ROWS]>,
     {
         let vals = vals.borrow();
-
         let mut out = Self::zeros();
         for i in 0..ROWS {
             out.inner[i].real_part = vals[i];
@@ -218,7 +234,6 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
         A: Borrow<VecF64<ROWS>>,
     {
         let vals = val.borrow();
-
         let mut out = Self::zeros();
         for i in 0..ROWS {
             out.inner[i].real_part = vals[i];
@@ -243,10 +258,7 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
         bot_row: DualVector<R1, DM, DN>,
     ) -> Self {
         assert_eq!(R0 + R1, ROWS);
-
-        assert_eq!(ROWS, R0 + R1);
         let mut m = Self::zeros();
-
         m.inner
             .fixed_view_mut::<R0, 1>(0, 0)
             .copy_from(&top_row.inner);
@@ -260,6 +272,7 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
     where
         U: Borrow<DualScalar<DM, DN>>,
     {
+        // scale each element by s
         Self {
             inner: self.inner * *s.borrow(),
         }
@@ -269,17 +282,16 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
     where
         V: Borrow<Self>,
     {
-        let mut sum = <DualScalar<DM, DN>>::from_f64(0.0);
-
+        // sum_{i} self[i] * rhs[i]
+        let mut sum = DualScalar::<DM, DN>::from_f64(0.0);
         for i in 0..ROWS {
             sum += self.elem(i) * rhs.borrow().elem(i);
         }
-
         sum
     }
 
     fn normalized(&self) -> Self {
-        self.scaled(<DualScalar<DM, DN>>::from_f64(1.0) / self.norm())
+        self.scaled(DualScalar::<DM, DN>::from_f64(1.0) / self.norm())
     }
 
     fn from_f64_array<A>(vals: A) -> Self
@@ -287,7 +299,6 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
         A: Borrow<[f64; ROWS]>,
     {
         let vals = vals.borrow();
-
         let mut out = Self::zeros();
         for i in 0..ROWS {
             out.inner[i].real_part = vals[i];
@@ -311,6 +322,7 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
     fn to_dual_const<const M: usize, const N: usize>(
         &self,
     ) -> <DualScalar<DM, DN> as IsScalar<1, DM, DN>>::DualVector<ROWS, M, N> {
+        // Discard derivative part, just copy real parts.
         DualVector::<ROWS, M, N>::from_real_vector(self.real_vector())
     }
 
@@ -321,6 +333,7 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
     where
         V: Borrow<DualVector<R2, DM, DN>>,
     {
+        // build a dual matrix with each entry = self[i] * rhs[j]
         let mut out = DualMatrix::<ROWS, R2, DM, DN>::zeros();
         for i in 0..ROWS {
             for j in 0..R2 {
@@ -334,6 +347,7 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
     where
         Q: Borrow<Self>,
     {
+        // single-lane bool => entire vector is chosen or not
         if *mask {
             *self
         } else {
@@ -342,6 +356,7 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
     }
 
     fn get_fixed_subvec<const R: usize>(&self, start_r: usize) -> DualVector<R, DM, DN> {
+        // sub-slice from row start_r to row start_r+R
         DualVector {
             inner: self.inner.fixed_rows::<R>(start_r).into(),
         }

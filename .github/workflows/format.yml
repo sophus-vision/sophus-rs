@@ -13,6 +13,7 @@ jobs:
       steps:
         - name: Checkout workspace
           uses: actions/checkout@v3
+        - uses: extractions/setup-just@v1
         - name: Install pre-commit and install
           run: |
             pip install pre-commit
@@ -22,8 +23,13 @@ jobs:
         - uses: actions-rs/toolchain@v1
           with:
             toolchain: nightly
+        - name: cargo fmt
+          run: |
+            rustup default nightly
+            rustup component add rustfmt
+            just format
         - name: cargo doc
           run: |
             rustup default nightly
             rustup component add rustfmt
-            cargo fmt
+            just doc

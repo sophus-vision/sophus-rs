@@ -9,7 +9,7 @@ use core::{
 use approx::assert_relative_eq;
 use nalgebra::SVector;
 #[cfg(feature = "simd")]
-use sophus_autodiff::dual::dual_batch_scalar::DualBatchScalar;
+use sophus_autodiff::dual::DualBatchScalar;
 #[cfg(feature = "simd")]
 use sophus_autodiff::linalg::BatchScalarF64;
 use sophus_autodiff::{

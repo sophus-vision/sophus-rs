@@ -91,7 +91,7 @@ macro_rules! def_real_group_test_template {
         impl RealFactorLieGroupTest for $group {
             fn mat_v_test() {
                 use crate::IsLieGroup;
-                use sophus_autodiff::linalg::scalar::IsScalar;
+                use sophus_autodiff::linalg::IsScalar;
 
                 const POINT: usize = <$group>::POINT;
 
@@ -110,8 +110,8 @@ macro_rules! def_real_group_test_template {
             fn test_mat_v_jacobian() {
                 use crate::IsLieGroup;
                 use log::info;
-                use sophus_autodiff::linalg::scalar::IsScalar;
-                use sophus_autodiff::linalg::vector::IsVector;
+                use sophus_autodiff::linalg::IsScalar;
+                use sophus_autodiff::linalg::IsVector;
                 use sophus_autodiff::params::HasParams;
                 use sophus_autodiff::points::example_points;
 

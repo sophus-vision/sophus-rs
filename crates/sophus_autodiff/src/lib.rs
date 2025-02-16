@@ -2,84 +2,86 @@
 #![deny(missing_docs)]
 #![no_std]
 #![allow(clippy::needless_range_loop)]
-//! Automatic differentiation module
-//!  - linear algebra types
-//!      * such as [linalg::VecF64], and [linalg::MatF64]
-//!      * batch types such as [linalg::BatchScalarF64], [linalg::BatchVecF64],
-//!        [linalg::BatchMatF64] - require the `simd` feature
-//!  - dual numbers: [dual::DualScalar], [dual::DualVector], [dual::DualMatrix]
-//!      * [maps::curves] f: ℝ -> ℝ,   f: ℝ -> ℝʳ,   f: ℝ -> ℝʳ x ℝᶜ
-//!      * [maps::scalar_valued_maps]: f: ℝᵐ -> ℝ,   f: ℝᵐ x ℝⁿ -> ℝ
-//!      * [maps::vector_valued_maps]: f: ℝᵐ -> ℝᵖ,   f: ℝᵐ x ℝⁿ -> ℝᵖ
-//!      * [maps::matrix_valued_maps]: f: ℝᵐ -> ℝʳ x ℝᶜ,   f: ℝᵐ x ℝⁿ -> ℝʳ x ℝᶜ
+#![doc = include_str!(concat!("./", std::env!("CARGO_PKG_README")))]
+#![cfg_attr(nightly, feature(doc_auto_cfg))]
 
 #[cfg(feature = "std")]
 extern crate std;
 
-/// dual numbers - for automatic differentiation
+/// Dual numbers – for automatic differentiation. This module provides forward-mode AD through dual
+/// number types, enabling derivative computations for scalars, vectors, and matrices
+/// (including batch/`simd` forms).
 pub mod dual;
-/// floating point
-pub mod floating_point;
-/// core linear algebra types
+/// Traits for core linear algebra types. Defines abstractions for scalars, vectors, and matrices,
+/// along with optional batch/SIMD support.
 pub mod linalg;
-/// manifolds
+/// Traits for manifolds. A manifold generalizes vector spaces to curved settings. This module
+/// offers interfaces for manifold-based computations, tangent spaces, and related logic.
 pub mod manifold;
-/// curves, scalar-valued, vector-valued, and matrix-valued maps
+/// Numerical differentiation on curves, scalar-valued, vector-valued, and matrix-valued maps.
+/// Provides finite-difference utilities for computing derivatives of user-defined functions.
 pub mod maps;
-/// params
+/// Parameter traits. Provides a uniform interfaces for types which state is internally
+/// represented by parameter vectors.
 pub mod params;
-/// points
+/// Point traits. Defines interfaces for points in various dimensions, including bounds and
+/// clamping.
 pub mod points;
 
-pub use nalgebra;
-pub use ndarray;
-
-pub use crate::points::*;
-
-/// sophus_autodiff prelude
+/// sophus_geo prelude.
+///
+/// It is recommended to import this prelude when working with `sophus_autodiff` types:
+///
+/// ```
+/// use sophus_autodiff::prelude::*;
+/// ```
+///
+/// or
+///
+/// ```ignore
+/// use sophus::prelude::*;
+/// ```
+///
+/// to import all preludes when using the `sophus` umbrella crate.
 pub mod prelude {
     pub use crate::{
         dual::{
-            matrix::{
-                IsDualMatrix,
-                IsDualMatrixFromCurve,
-            },
-            scalar::{
-                IsDualScalar,
-                IsDualScalarFromCurve,
-            },
-            vector::{
-                HasJacobian,
-                IsDualVector,
-                IsDualVectorFromCurve,
-            },
+            HasJacobian,
+            IsDualMatrix,
+            IsDualMatrixFromCurve,
+            IsDualScalar,
+            IsDualScalarFromCurve,
+            IsDualVector,
+            IsDualVectorFromCurve,
         },
         linalg::{
-            bool_mask::IsBoolMask,
-            matrix::{
-                IsMatrix,
-                IsRealMatrix,
-                IsSingleMatrix,
-            },
-            scalar::{
-                IsCoreScalar,
-                IsRealScalar,
-                IsScalar,
-                IsSingleScalar,
-            },
-            vector::{
-                IsRealVector,
-                IsSingleVector,
-                IsVector,
-            },
+            IsBoolMask,
+            IsCoreScalar,
+            IsMatrix,
+            IsRealMatrix,
+            IsRealScalar,
+            IsRealVector,
+            IsScalar,
+            IsSingleMatrix,
+            IsSingleScalar,
+            IsSingleVector,
+            IsVector,
         },
         manifold::{
             IsManifold,
             IsTangent,
+            IsVariable,
         },
         params::{
             HasParams,
             IsParamsImpl,
         },
+        points::{
+            IsPoint,
+            IsUnboundedPoint,
+        },
     };
 }
+
+/// nalgebra crate re-export.
+pub use nalgebra;

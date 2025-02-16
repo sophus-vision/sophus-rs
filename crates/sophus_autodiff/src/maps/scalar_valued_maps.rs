@@ -43,7 +43,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> ScalarValuedVectorMap<S, BATCH>
 ///
 /// This is a function which takes a matrix and returns a scalar:
 ///
-///   f: ℝᵐ x ℝⁿ -> ℝ
+///   f: ℝᵐˣⁿ -> ℝ
 pub struct ScalarValuedMatrixMap<
     S: IsScalar<BATCH, DM, DN>,
     const BATCH: usize,
@@ -55,8 +55,6 @@ pub struct ScalarValuedMatrixMap<
 
 impl<S: IsRealScalar<BATCH>, const BATCH: usize> ScalarValuedMatrixMap<S, BATCH, 0, 0> {
     /// Finite difference quotient of the scalar-valued map.
-    ///
-    /// The derivative is a matrix or rank-2 tensor of shape (Rᵢ x Cⱼ).
     pub fn sym_diff_quotient<TFn, const INROWS: usize, const INCOLS: usize>(
         scalar_valued: TFn,
         a: S::RealMatrix<INROWS, INCOLS>,
@@ -89,7 +87,7 @@ fn scalar_valued_map_tests() {
     #[cfg(feature = "simd")]
     use crate::linalg::BatchScalarF64;
     use crate::{
-        dual::dual_scalar::DualScalar,
+        dual::DualScalar,
         linalg::EPS_F64,
     };
 
@@ -104,7 +102,7 @@ fn scalar_valued_map_tests() {
             #[cfg(test)]
             impl Test for $scalar {
                 fn run() {
-                    use crate::linalg::vector::IsVector;
+                    use crate::linalg::IsVector;
 
                     let a = <$scalar as IsScalar<$batch, 0, 0>>::Vector::<2>::new(
                         <$scalar>::from_f64(0.1),

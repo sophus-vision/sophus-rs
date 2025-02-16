@@ -1,3 +1,9 @@
+#![deny(missing_docs)]
+#![allow(clippy::needless_range_loop)]
+#![no_std]
+#![cfg_attr(nightly, feature(doc_auto_cfg))]
+//! Time series data structures and algorithms.
+
 use core::{
     ops::Index,
     time::Duration,
@@ -6,7 +12,7 @@ use core::{
 use log::warn;
 use sophus_geo::{
     prelude::*,
-    region::interval::Interval,
+    region::Interval,
 };
 
 extern crate alloc;

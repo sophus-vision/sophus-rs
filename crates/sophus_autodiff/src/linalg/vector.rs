@@ -16,7 +16,7 @@ use approx::{
 };
 
 use crate::{
-    dual::dual_vector::DualVector,
+    dual::DualVector,
     linalg::{
         MatF64,
         VecF64,
@@ -24,7 +24,16 @@ use crate::{
     prelude::*,
 };
 
-/// Vector - either a real (f64) or a dual number vector
+/// A trait representing a fixed-size vector whose elements can be real scalars (`f64`)
+/// or dual numbers. This trait provides core vector operations such as dot products,
+/// subvector extraction, scaling, normalization, and more. It also supports both
+/// real-only and dual/simd-based implementations via generics.
+///
+/// # Generic parameters
+/// - `S`: The scalar type, which might be `f64` or a dual number implementing [`IsScalar`].
+/// - `ROWS`: The number of rows (dimension) of the vector.
+/// - `BATCH`: If using batch/simd, the number of lanes; otherwise typically 1.
+/// - `DM`, `DN`: Shape parameters for dual-number derivatives (0 for real scalars).
 pub trait IsVector<
     S: IsScalar<BATCH, DM, DN>,
     const ROWS: usize,
@@ -37,111 +46,127 @@ pub trait IsVector<
     + Neg<Output = Self>
     + Add<Output = Self>
     + Sub<Output = Self>
-    + Neg
     + Debug
     + AbsDiffEq<Epsilon = f64>
     + RelativeEq<Epsilon = f64>
 {
-    /// creates vector from a block of two vectors
+    /// Creates a new vector by concatenating two smaller vectors `top_row` and `bot_row`.
+    /// The resulting vector has dimension `R0 + R1`.
     fn block_vec2<const R0: usize, const R1: usize>(
         top_row: S::Vector<R0>,
         bot_row: S::Vector<R1>,
     ) -> Self;
 
-    /// dot product
+    /// Computes the dot product (inner product) with another vector.
     fn dot<V>(&self, rhs: V) -> S
     where
         V: Borrow<Self>;
 
-    /// create a vector from an array
+    /// Creates a vector from an array of elements.
     fn from_array<A>(vals: A) -> Self
     where
         A: Borrow<[S; ROWS]>;
 
-    /// create a constant vector from an array
+    /// Creates a constant (non-dual) vector from an array of real scalars.
     fn from_real_array<A>(vals: A) -> Self
     where
         A: Borrow<[S::RealScalar; ROWS]>;
 
-    /// create a constant vector
+    /// Creates a constant vector from a real vector type (e.g. `VecF64<ROWS>`).
     fn from_real_vector<A>(val: A) -> Self
     where
         A: Borrow<S::RealVector<ROWS>>;
 
-    /// create a constant scalar
+    /// Creates a vector where all elements are set to the given `f64`.
     fn from_f64(val: f64) -> Self;
 
-    /// create a constant vector from an array
+    /// Creates a vector from an array of `f64`.
+    ///
+    /// Similar to [`from_real_array`](Self::from_real_array) but may serve a
+    /// different purpose in some dual or batch contexts.
     fn from_f64_array<A>(vals: A) -> Self
     where
         A: Borrow<[f64; ROWS]>;
 
-    /// get ith element
+    /// Returns the `idx`-th element of the vector.
     fn elem(&self, idx: usize) -> S;
 
-    /// get ith element
+    /// Returns a mutable reference to the `idx`-th element of the vector.
     fn elem_mut(&mut self, idx: usize) -> &mut S;
 
-    /// Returns a fixed-size subvector starting at the given row
+    /// Extracts a subvector of length `R`, starting from row index `start_r`.
+    ///
+    /// # Panics
+    /// May panic if `start_r + R` exceeds the vector’s total size `ROWS`.
     fn get_fixed_subvec<const R: usize>(&self, start_r: usize) -> S::Vector<R>;
 
-    /// create a constant vector from an array
+    /// Creates a vector from an array of `S` scalars.
     fn from_scalar_array<A>(vals: A) -> Self
     where
         A: Borrow<[S; ROWS]>;
 
-    /// norm
+    /// Computes the Euclidean norm (length) of this vector.
     fn norm(&self) -> S;
 
-    /// return normalized vector
+    /// Returns a normalized version of this vector (`self / self.norm()`).
+    ///
+    /// # Note
+    /// May return a NaN or invalid value if the norm is zero.
     fn normalized(&self) -> Self;
 
-    /// outer product
+    /// Computes the outer product between `self` (treated as ROWS×1) and `rhs`
+    /// (treated as 1×R2), yielding a ROWS×R2 matrix.
     fn outer<const R2: usize, V>(&self, rhs: V) -> S::Matrix<ROWS, R2>
     where
         V: Borrow<S::Vector<R2>>;
 
-    /// return the real part
+    /// Returns the underlying real vector (e.g., `VecF64<ROWS>`) if `S` is a real type.
+    ///
+    /// If `S` is dual or simd, this method returns the "real part" of the vector’s elements.
     fn real_vector(&self) -> S::RealVector<ROWS>;
 
-    /// Returns self if mask is true, otherwise returns other
+    /// Lane-wise select operation: for each element or lane, picks from `self` if
+    /// `mask` is true, otherwise picks from `other`.
     ///
-    /// For batch vectors, this is a lane-wise operation
+    /// For non-batch usage (BATCH=1), `mask` is just a simple boolean. For batch/simd usage,
+    /// `mask` can represent per-lane boolean flags.
     fn select<O>(&self, mask: &S::Mask, other: O) -> Self
     where
         O: Borrow<Self>;
 
-    /// return scaled vector
+    /// Scales the vector by a scalar `v` (e.g., `self * v`).
     fn scaled<U>(&self, v: U) -> Self
     where
         U: Borrow<S>;
 
-    /// squared norm
+    /// Returns the squared Euclidean norm of this vector.
     fn squared_norm(&self) -> S;
 
-    /// Return dual vector
-    ///
-    /// If self is a real vector, this will return a dual vector with the infinitesimal part set to
-    /// zero: (self, 0ϵ)
+    /// Converts this vector into a dual vector with zero infinitesimal part, if
+    /// `S` is a real type. If it is already a dual type, it preserves or adapts
+    /// the dual content based on generics `M` and `N`.
     fn to_dual_const<const M: usize, const N: usize>(
         &self,
     ) -> <<S as IsScalar<BATCH, DM, DN>>::DualScalar<M, N> as IsScalar<BATCH, M, N>>::Vector<ROWS>;
 
-    /// return the matrix representation - in self as a column vector
+    /// Interprets `self` as a column vector and returns it in matrix form (ROWS×1).
     fn to_mat(&self) -> S::Matrix<ROWS, 1>;
 
-    /// ones
+    /// Creates a vector of all ones (1.0).
     fn ones() -> Self {
         Self::from_f64(1.0)
     }
 
-    /// zeros
+    /// Creates a vector of all zeros (0.0).
     fn zeros() -> Self {
         Self::from_f64(0.0)
     }
 }
 
-/// is real vector like
+/// A trait representing a real (non-dual) vector, typically `[f64; ROWS]` or [`VecF64<ROWS>`].
+///
+/// These vectors can still use batch types for SIMD, but they do not carry
+/// derivative information. This trait also requires indexing support.
 pub trait IsRealVector<
     S: IsRealScalar<BATCH> + IsScalar<BATCH, 0, 0>,
     const ROWS: usize,
@@ -151,15 +176,30 @@ pub trait IsRealVector<
 {
 }
 
-/// Batch scalar
+/// A trait for batch vectors, where each scalar may hold multiple lanes of data
+/// (e.g., via `portable_simd`), or multiple partial derivatives for autodiff.
+///
+/// # Type Parameters
+/// - `ROWS`: Dimension of the vector.
+/// - `BATCH`: Number of lanes (e.g., 4, 8, etc.).
+/// - `DM`, `DN`: Shape of each dual’s Jacobian (0 if real-only).
+#[cfg(feature = "simd")]
 pub trait IsBatchVector<const ROWS: usize, const BATCH: usize, const DM: usize, const DN: usize>:
     IsScalar<BATCH, DM, DN>
 {
-    /// get item
+    /// Extracts a single lane’s scalar from a batched dual or real scalar.
+    ///
+    /// # Parameters
+    /// - `i`: The lane index, typically in `0..BATCH`.
     fn extract_single(&self, i: usize) -> Self::SingleScalar;
 }
 
-/// is scalar vector
+/// A trait describing "single scalar" vectors, i.e., no batch dimension (`BATCH=1`),
+/// commonly used for real or basic dual scalars. This trait provides a method
+/// to set one element’s real-part directly.
+///
+/// # Example
+/// Implemented on `VecF64<ROWS>` for real usage.
 pub trait IsSingleVector<
     S: IsSingleScalar<DM, DN>,
     const ROWS: usize,
@@ -167,7 +207,7 @@ pub trait IsSingleVector<
     const DN: usize,
 >: IsVector<S, ROWS, 1, DM, DN>
 {
-    /// set real scalar
+    /// Sets the real part of the element at `idx` to `v`.
     fn set_real_scalar(&mut self, idx: usize, v: f64);
 }
 
@@ -302,10 +342,27 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1, 0, 0> for VecF64<ROWS> {
     }
 }
 
-/// cross product
+/// Computes the cross product of two 3D vectors `lhs` × `rhs`.
+///
+/// # Generic Parameters
+/// - `S`: The scalar type (real or dual).
+/// - `BATCH`, `DM`, `DN`: For batch or dual usage.
+///
+/// # Examples
+/// ```rust
+/// use sophus_autodiff::linalg::{
+///     cross,
+///     VecF64,
+/// };
+///
+/// let v1 = VecF64::<3>::new(1.0, 0.0, 0.0);
+/// let v2 = VecF64::<3>::new(0.0, 1.0, 0.0);
+/// let result = cross::<f64, 1, 0, 0>(v1, v2);
+/// assert_eq!(result, VecF64::<3>::new(0.0, 0.0, 1.0));
+/// ```
 pub fn cross<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>(
-    lhs: &S::Vector<3>,
-    rhs: &S::Vector<3>,
+    lhs: S::Vector<3>,
+    rhs: S::Vector<3>,
 ) -> S::Vector<3> {
     let l0 = lhs.elem(0);
     let l1 = lhs.elem(1);

@@ -30,8 +30,8 @@ use super::{
 };
 use crate::{
     linalg::{
-        scalar::NumberCategory,
         MatF64,
+        NumberCategory,
         SVec,
         VecF64,
         EPS_F64,
@@ -41,13 +41,32 @@ use crate::{
 
 extern crate alloc;
 
-/// Dual number - a real number and an infinitesimal number
+/// A dual-number scalar, storing both a real part and an *optional* infinitesimal part
+/// (the derivative or Jacobian block).
+///
+/// # Structure
+/// - `real_part` (`f64`): The main (real) value.
+/// - `infinitesimal_part` (`Option<MatF64<DM, DN>>`): Stores the derivative information, shaped
+///   `[DM × DN]`.
+///   - If `DM=1, DN=1`, this represents a single partial derivative d/dx.
+///   - If `DM>1` or `DN>1`, it can represent more complex derivatives (e.g., gradients, Jacobians).
+///
+/// # Generic Parameters
+/// - `DM`: The number of derivative rows.
+/// - `DN`: The number of derivative columns.
+///
+/// For instance, `DualScalar<3, 1>` might store partials w.r.t. a 3D input, resulting in a 3×1
+/// derivative for each scalar.
+///
+/// See [crate::dual::IsDualScalar] for more details.
 #[derive(Clone, Debug, Copy)]
 pub struct DualScalar<const DM: usize, const DN: usize> {
-    /// real part
+    /// The real (non-infinitesimal) part of the dual number.
     pub real_part: f64,
 
-    /// infinitesimal part - represents derivative
+    /// The infinitesimal part, storing derivative information if present.
+    ///
+    /// If `None`, the derivative is assumed to be zero.
     pub infinitesimal_part: Option<MatF64<DM, DN>>,
 }
 
@@ -81,6 +100,8 @@ impl<const DM: usize, const DN: usize> RelativeEq for DualScalar<DM, DN> {
 
 impl<const DM: usize, const DN: usize> IsCoreScalar for DualScalar<DM, DN> {
     fn number_category() -> NumberCategory {
+        // We treat dual numbers as "Real" in the sense that they
+        // can represent floating scalars with derivatives.
         NumberCategory::Real
     }
 }
@@ -116,22 +137,23 @@ impl<const DM: usize, const DN: usize> AsRef<DualScalar<DM, DN>> for DualScalar<
 
 impl<const DM: usize, const DN: usize> One for DualScalar<DM, DN> {
     fn one() -> Self {
-        <DualScalar<DM, DN>>::from_f64(1.0)
+        Self::from_f64(1.0)
     }
 }
 
 impl<const DM: usize, const DN: usize> Zero for DualScalar<DM, DN> {
     fn zero() -> Self {
-        <DualScalar<DM, DN>>::from_f64(0.0)
+        Self::from_f64(0.0)
     }
 
     fn is_zero(&self) -> bool {
-        self.real_part == <DualScalar<DM, DN>>::from_f64(0.0).real_part()
+        self.real_part == 0.0
     }
 }
 
 impl<const DM: usize, const DN: usize> IsDualScalar<1, DM, DN> for DualScalar<DM, DN> {
     fn var(val: f64) -> Self {
+        // Creating a "variable" means setting derivative=identity w.r.t. this scalar.
         Self {
             real_part: val,
             infinitesimal_part: Some(MatF64::<DM, DN>::from_f64(1.0)),
@@ -149,17 +171,20 @@ impl<const DM: usize, const DN: usize> IsDualScalar<1, DM, DN> for DualScalar<DM
     }
 
     fn derivative(&self) -> MatF64<DM, DN> {
-        self.infinitesimal_part.unwrap_or(MatF64::<DM, DN>::zeros())
+        self.infinitesimal_part
+            .unwrap_or_else(MatF64::<DM, DN>::zeros)
     }
 }
 
 impl IsDualScalarFromCurve<DualScalar<1, 1>, 1> for DualScalar<1, 1> {
     fn curve_derivative(&self) -> f64 {
+        // The derivative matrix is 1×1, so we just return that single element.
         self.derivative()[0]
     }
 }
 
 impl<const DM: usize, const DN: usize> DualScalar<DM, DN> {
+    /// Internal helper to combine derivative parts from two dual scalars during binary ops.
     fn binary_dij(
         lhs_dx: &Option<MatF64<DM, DN>>,
         rhs_dx: &Option<MatF64<DM, DN>>,
@@ -176,9 +201,9 @@ impl<const DM: usize, const DN: usize> DualScalar<DM, DN> {
 }
 
 impl<const DM: usize, const DN: usize> Neg for DualScalar<DM, DN> {
-    type Output = DualScalar<DM, DN>;
+    type Output = Self;
 
-    fn neg(self) -> Self {
+    fn neg(self) -> Self::Output {
         Self {
             real_part: -self.real_part,
             infinitesimal_part: self.infinitesimal_part.map(|dij_val| -dij_val),
@@ -204,8 +229,9 @@ impl<const DM: usize, const DN: usize> From<f64> for DualScalar<DM, DN> {
     }
 }
 
+/// Defines the main scalar trait for `DualScalar<DM, DN>` in single-lane usage (BATCH=1).
 impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN> {
-    type Scalar = DualScalar<DM, DN>;
+    type Scalar = Self;
     type Vector<const ROWS: usize> = DualVector<ROWS, DM, DN>;
     type Matrix<const ROWS: usize, const COLS: usize> = DualMatrix<ROWS, COLS, DM, DN>;
 
@@ -213,7 +239,7 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
     type RealMatrix<const ROWS: usize, const COLS: usize> = MatF64<ROWS, COLS>;
     type RealVector<const ROWS: usize> = VecF64<ROWS>;
 
-    type SingleScalar = DualScalar<DM, DN>;
+    type SingleScalar = Self;
 
     type DualScalar<const M: usize, const N: usize> = DualScalar<M, N>;
     type DualVector<const ROWS: usize, const M: usize, const N: usize> = DualVector<ROWS, M, N>;
@@ -237,36 +263,40 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
         [self.real_part]
     }
 
-    fn cos(&self) -> DualScalar<DM, DN> {
+    fn cos(&self) -> Self {
         Self {
             real_part: self.real_part.cos(),
+            // d/dx (cos(x)) = -sin(x)
             infinitesimal_part: self
                 .infinitesimal_part
                 .map(|dij_val| -dij_val * self.real_part.sin()),
         }
     }
 
-    fn exp(&self) -> DualScalar<DM, DN> {
+    fn exp(&self) -> Self {
         Self {
-            real_part: self.real_part.cos(),
+            real_part: self.real_part.exp(),
+            // d/dx (exp(x)) = exp(x)
             infinitesimal_part: self
                 .infinitesimal_part
                 .map(|dij_val| dij_val * self.real_part.exp()),
         }
     }
 
-    fn ln(&self) -> DualScalar<DM, DN> {
+    fn ln(&self) -> Self {
         Self {
             real_part: self.real_part.ln(),
+            // d/dx (ln(x)) = 1/x
             infinitesimal_part: self
                 .infinitesimal_part
-                .map(|dij_val| dij_val.map(|dij| dij / self.real_part)),
+                .map(|dij_val| dij_val.map(|d| d / self.real_part)),
         }
     }
 
-    fn sin(&self) -> DualScalar<DM, DN> {
+    fn sin(&self) -> Self {
         Self {
             real_part: self.real_part.sin(),
+            // d/dx (sin(x)) = cos(x)
             infinitesimal_part: self
                 .infinitesimal_part
                 .map(|dij_val| dij_val * self.real_part.cos()),
@@ -276,6 +306,8 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
     fn abs(&self) -> Self {
         Self {
             real_part: self.real_part.abs(),
+            // derivative wrt x of abs(x) is signum(x), but that is not strictly differentiable at
+            // x=0. We'll assume signum-based for x != 0, or break for x=0.
             infinitesimal_part: self
                 .infinitesimal_part
                 .map(|dij_val| dij_val * self.real_part.signum()),
@@ -287,15 +319,15 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
         S: Borrow<Self>,
     {
         let rhs = rhs.borrow();
-        let inv_sq_nrm: f64 =
-            1.0 / (self.real_part * self.real_part + rhs.real_part * rhs.real_part);
+        // The usual derivative of atan2(y, x) wrt y => x / (x^2 + y^2), wrt x => -y / (x^2 + y^2)
+        let inv_sq_nrm = 1.0 / (self.real_part * self.real_part + rhs.real_part * rhs.real_part);
         Self {
             real_part: self.real_part.atan2(rhs.real_part),
             infinitesimal_part: Self::binary_dij(
                 &self.infinitesimal_part,
                 &rhs.infinitesimal_part,
-                |l_dij| inv_sq_nrm * ((*l_dij) * rhs.real_part),
-                |r_dij| -inv_sq_nrm * (self.real_part * (*r_dij)),
+                |l_dij| l_dij * (inv_sq_nrm * rhs.real_part),
+                |r_dij| r_dij * (-inv_sq_nrm * self.real_part),
             ),
         }
     }
@@ -305,76 +337,78 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
     }
 
     fn sqrt(&self) -> Self {
-        let sqrt = self.real_part.sqrt();
+        let sqrt_val = self.real_part.sqrt();
+        // d/dx of sqrt(x) = 1 / (2 sqrt(x))
+        let half_inv_sqrt = 1.0 / (2.0 * sqrt_val);
         Self {
-            real_part: sqrt,
-            infinitesimal_part: self.infinitesimal_part.map(|dij| dij * 1.0 / (2.0 * sqrt)),
+            real_part: sqrt_val,
+            infinitesimal_part: self.infinitesimal_part.map(|dij| dij * half_inv_sqrt),
         }
     }
 
     fn to_vec(&self) -> DualVector<1, DM, DN> {
         DualVector::<1, DM, DN> {
-            inner: SVec::<DualScalar<DM, DN>, 1>::from_element(*self),
+            inner: SVec::<Self, 1>::from_element(*self),
         }
     }
 
     fn tan(&self) -> Self {
+        let cos_val = self.real_part.cos();
+        // d/dx (tan x) = sec^2(x) = 1 / cos^2(x)
+        let sec_sq = 1.0 / (cos_val * cos_val);
         Self {
             real_part: self.real_part.tan(),
-            infinitesimal_part: match self.infinitesimal_part {
-                Some(dij_val) => {
-                    let c = self.real_part.cos();
-                    let sec_squared = 1.0 / (c * c);
-                    Some(dij_val * sec_squared)
-                }
-                None => None,
-            },
+            infinitesimal_part: self.infinitesimal_part.map(|dij_val| dij_val * sec_sq),
         }
     }
 
     fn acos(&self) -> Self {
+        // d/dx (acos(x)) = -1 / sqrt(1 - x^2)
+        let denom = 1.0 - self.real_part * self.real_part;
+        let dval = if denom > 0.0 {
+            -1.0 / denom.sqrt()
+        } else {
+            // For out-of-domain or edge cases, we won't handle gracefully here.
+            f64::NAN
+        };
+
         Self {
             real_part: self.real_part.acos(),
-            infinitesimal_part: match self.infinitesimal_part {
-                Some(dij_val) => {
-                    let dval = -1.0 / (1.0 - self.real_part * self.real_part).sqrt();
-                    Some(dij_val * dval)
-                }
-                None => None,
-            },
+            infinitesimal_part: self.infinitesimal_part.map(|dij_val| dij_val * dval),
         }
     }
 
     fn asin(&self) -> Self {
+        // d/dx (asin(x)) = 1 / sqrt(1 - x^2)
+        let denom = 1.0 - self.real_part * self.real_part;
+        let dval = if denom > 0.0 {
+            1.0 / denom.sqrt()
+        } else {
+            f64::NAN
+        };
+
         Self {
             real_part: self.real_part.asin(),
-            infinitesimal_part: match self.infinitesimal_part {
-                Some(dij_val) => {
-                    let dval = 1.0 / (1.0 - self.real_part * self.real_part).sqrt();
-                    Some(dij_val * dval)
-                }
-                None => None,
-            },
+            infinitesimal_part: self.infinitesimal_part.map(|dij_val| dij_val * dval),
         }
     }
 
     fn atan(&self) -> Self {
+        // d/dx (atan(x)) = 1 / (1 + x^2)
+        let denom = 1.0 + self.real_part * self.real_part;
+        let dval = 1.0 / denom;
         Self {
             real_part: self.real_part.atan(),
-            infinitesimal_part: match self.infinitesimal_part {
-                Some(dij_val) => {
-                    let dval = 1.0 / (1.0 + self.real_part * self.real_part);
-
-                    Some(dij_val * dval)
-                }
-                None => None,
-            },
+            infinitesimal_part: self.infinitesimal_part.map(|dij_val| dij_val * dval),
         }
     }
 
     fn fract(&self) -> Self {
         Self {
             real_part: self.real_part.fract(),
+            // derivative of fract(x) is derivative( x - floor(x)) => 1 for x not an integer,
+            // but it's not well-defined at integers. We'll just keep the same derivative for now,
+            // as fract(x) = x - floor(x).
             infinitesimal_part: self.infinitesimal_part,
         }
     }
@@ -399,6 +433,7 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
     }
 
     fn signum(&self) -> Self {
+        // derivative is not defined at 0, but we'll ignore that for now.
         Self {
             real_part: self.real_part.signum(),
             infinitesimal_part: None,
@@ -406,10 +441,11 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
     }
 
     fn less_equal(&self, rhs: &Self) -> Self::Mask {
-        self.real_part.less_equal(&rhs.real_part)
+        self.real_part <= rhs.real_part
     }
 
     fn to_dual_const<const M: usize, const N: usize>(&self) -> Self::DualScalar<M, N> {
+        // Copies only the real part, ignoring the derivative
         Self::DualScalar::<M, N> {
             real_part: self.real_part,
             infinitesimal_part: None,
@@ -425,7 +461,7 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
     }
 
     fn greater_equal(&self, rhs: &Self) -> Self::Mask {
-        self.real_part.greater_equal(&rhs.real_part)
+        self.real_part >= rhs.real_part
     }
 
     fn eps() -> Self {
@@ -433,39 +469,38 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
     }
 }
 
-impl<const DM: usize, const DN: usize> AddAssign<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+// Implement additive and multiplicative assignment for convenience:
+impl<const DM: usize, const DN: usize> AddAssign<Self> for DualScalar<DM, DN> {
     fn add_assign(&mut self, rhs: Self) {
-        // this is a bit inefficient, better to do it in place
         *self = (*self).add(&rhs);
     }
 }
 
-impl<const DM: usize, const DN: usize> MulAssign<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+impl<const DM: usize, const DN: usize> MulAssign<Self> for DualScalar<DM, DN> {
     fn mul_assign(&mut self, rhs: Self) {
-        // this is a bit inefficient, better to do it in place
         *self = (*self).mul(&rhs);
     }
 }
 
-impl<const DM: usize, const DN: usize> DivAssign<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+impl<const DM: usize, const DN: usize> DivAssign<Self> for DualScalar<DM, DN> {
     fn div_assign(&mut self, rhs: Self) {
-        // this is a bit inefficient, better to do it in place
         *self = (*self).div(&rhs);
     }
 }
 
+// Basic arithmetic ops to combine derivatives:
 impl<const DM: usize, const DN: usize> Add<DualScalar<DM, DN>> for DualScalar<DM, DN> {
-    type Output = DualScalar<DM, DN>;
+    type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
         self.add(&rhs)
     }
 }
 
-impl<const DM: usize, const DN: usize> Add<&DualScalar<DM, DN>> for DualScalar<DM, DN> {
-    type Output = DualScalar<DM, DN>;
+impl<const DM: usize, const DN: usize> Add<&Self> for DualScalar<DM, DN> {
+    type Output = Self;
+
     fn add(self, rhs: &Self) -> Self::Output {
         let r = self.real_part + rhs.real_part;
-
         Self {
             real_part: r,
             infinitesimal_part: Self::binary_dij(
@@ -478,62 +513,16 @@ impl<const DM: usize, const DN: usize> Add<&DualScalar<DM, DN>> for DualScalar<D
     }
 }
 
-impl<const DM: usize, const DN: usize> Mul<DualScalar<DM, DN>> for DualScalar<DM, DN> {
-    type Output = DualScalar<DM, DN>;
-    fn mul(self, rhs: Self) -> Self::Output {
-        self.mul(&rhs)
-    }
-}
-
-impl<const DM: usize, const DN: usize> Mul<&DualScalar<DM, DN>> for DualScalar<DM, DN> {
-    type Output = DualScalar<DM, DN>;
-    fn mul(self, rhs: &Self) -> Self::Output {
-        let r = self.real_part * rhs.real_part;
-
-        Self {
-            real_part: r,
-            infinitesimal_part: Self::binary_dij(
-                &self.infinitesimal_part,
-                &rhs.infinitesimal_part,
-                |l_dij| (*l_dij) * rhs.real_part,
-                |r_dij| (*r_dij) * self.real_part,
-            ),
-        }
-    }
-}
-
-impl<const DM: usize, const DN: usize> Div<DualScalar<DM, DN>> for DualScalar<DM, DN> {
-    type Output = DualScalar<DM, DN>;
-    fn div(self, rhs: Self) -> Self::Output {
-        self.div(&rhs)
-    }
-}
-
-impl<const DM: usize, const DN: usize> Div<&DualScalar<DM, DN>> for DualScalar<DM, DN> {
-    type Output = DualScalar<DM, DN>;
-    fn div(self, rhs: &Self) -> Self::Output {
-        let rhs_inv = 1.0 / rhs.real_part;
-        Self {
-            real_part: self.real_part * rhs_inv,
-            infinitesimal_part: Self::binary_dij(
-                &self.infinitesimal_part,
-                &rhs.infinitesimal_part,
-                |l_dij| l_dij * rhs_inv,
-                |r_dij| -self.real_part * r_dij * rhs_inv * rhs_inv,
-            ),
-        }
-    }
-}
-
 impl<const DM: usize, const DN: usize> Sub<DualScalar<DM, DN>> for DualScalar<DM, DN> {
-    type Output = DualScalar<DM, DN>;
+    type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
         self.sub(&rhs)
     }
 }
 
-impl<const DM: usize, const DN: usize> Sub<&DualScalar<DM, DN>> for DualScalar<DM, DN> {
-    type Output = DualScalar<DM, DN>;
+impl<const DM: usize, const DN: usize> Sub<&Self> for DualScalar<DM, DN> {
+    type Output = Self;
+
     fn sub(self, rhs: &Self) -> Self::Output {
         Self {
             real_part: self.real_part - rhs.real_part,
@@ -542,6 +531,57 @@ impl<const DM: usize, const DN: usize> Sub<&DualScalar<DM, DN>> for DualScalar<D
                 &rhs.infinitesimal_part,
                 |l_dij| *l_dij,
                 |r_dij| -r_dij,
+            ),
+        }
+    }
+}
+
+impl<const DM: usize, const DN: usize> Mul<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        self.mul(&rhs)
+    }
+}
+
+impl<const DM: usize, const DN: usize> Mul<&Self> for DualScalar<DM, DN> {
+    type Output = Self;
+
+    fn mul(self, rhs: &Self) -> Self::Output {
+        let prod = self.real_part * rhs.real_part;
+        Self {
+            real_part: prod,
+            infinitesimal_part: Self::binary_dij(
+                &self.infinitesimal_part,
+                &rhs.infinitesimal_part,
+                |l_dij| *l_dij * rhs.real_part,
+                |r_dij| *r_dij * self.real_part,
+            ),
+        }
+    }
+}
+
+impl<const DM: usize, const DN: usize> Div<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        self.div(&rhs)
+    }
+}
+
+impl<const DM: usize, const DN: usize> Div<&Self> for DualScalar<DM, DN> {
+    type Output = Self;
+
+    fn div(self, rhs: &Self) -> Self::Output {
+        let inv = 1.0 / rhs.real_part;
+        let new_real = self.real_part * inv;
+        Self {
+            real_part: new_real,
+            infinitesimal_part: Self::binary_dij(
+                &self.infinitesimal_part,
+                &rhs.infinitesimal_part,
+                |l_dij| *l_dij * inv,
+                |r_dij| -self.real_part * *r_dij * inv * inv,
             ),
         }
     }
