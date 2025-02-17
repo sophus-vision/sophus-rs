@@ -1,8 +1,8 @@
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;
 use sophus_renderer::{
-    camera::properties::RenderCameraProperties,
-    types::SceneFocusMarker,
+    camera::RenderCameraProperties,
+    SceneFocusMarker,
 };
 
 use crate::prelude::*;

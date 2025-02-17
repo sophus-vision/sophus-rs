@@ -1,12 +1,12 @@
 use alloc::vec::Vec;
 
-use sophus_image::arc_image::ArcImage4U8;
+use sophus_image::ArcImage4U8;
 use sophus_lie::Isometry3F64;
 use sophus_renderer::{
-    camera::properties::RenderCameraProperties,
-    offscreen_renderer::OffscreenRenderer,
-    renderables::scene_renderable::SceneRenderable,
-    textures::depth_image::DepthImage,
+    camera::RenderCameraProperties,
+    renderables::SceneRenderable,
+    textures::DepthImage,
+    OffscreenRenderer,
     RenderContext,
 };
 

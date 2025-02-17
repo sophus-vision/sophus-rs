@@ -1,15 +1,15 @@
-/// distortion renderer
-pub mod distortion;
-/// line renderer
-pub mod line;
-/// mesh renderer
-pub mod mesh;
-/// point renderer
-pub mod point;
-/// textured mesh renderer
-pub mod textured_mesh;
+mod distortion;
+mod line;
+mod mesh;
+mod point;
+mod textured_mesh;
 
+pub use distortion::*;
+pub use line::*;
+pub use mesh::*;
+pub use point::*;
 use sophus_lie::Isometry3F64;
+pub use textured_mesh::*;
 use wgpu::DepthStencilState;
 
 use crate::{
@@ -23,8 +23,8 @@ use crate::{
         point::ScenePointRenderer,
     },
     textures::{
-        depth::DepthTextures,
-        rgba::RgbdTexture,
+        DepthTextures,
+        RgbdTexture,
     },
     uniform_buffers::VertexShaderUniformBuffers,
     RenderContext,

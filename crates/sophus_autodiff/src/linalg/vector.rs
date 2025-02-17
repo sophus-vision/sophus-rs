@@ -163,7 +163,7 @@ pub trait IsVector<
     }
 }
 
-/// A trait representing a real (non-dual) vector, typically `[f64; ROWS]` or [`VecF64<ROWS>`].
+/// A trait representing a real (non-dual) vector, typically [`VecF64<ROWS>`].
 ///
 /// These vectors can still use batch types for SIMD, but they do not carry
 /// derivative information. This trait also requires indexing support.

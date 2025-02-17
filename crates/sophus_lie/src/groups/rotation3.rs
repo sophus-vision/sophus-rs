@@ -37,7 +37,7 @@ use crate::{
 
 extern crate alloc;
 
-/// 3d rotations - special orthogonal group SO(3)
+/// 3d rotations - element of the Special Orthogonal group SO(3)
 ///
 ///  * BATCH
 ///     - batch dimension. If S is f64 or [sophus_autodiff::dual::DualScalar] then BATCH=1.
@@ -47,7 +47,7 @@ extern crate alloc;
 pub type Rotation3<S, const BATCH: usize, const DM: usize, const DN: usize> =
     LieGroup<S, 3, 4, 3, 3, BATCH, DM, DN, Rotation3Impl<S, BATCH, DM, DN>>;
 
-/// 3d rotation with f64 scalar type a - special orthogonal group SO(3)
+/// 3d rotation with f64 scalar type a - element of the Special Orthogonal group SO(3)
 ///
 /// See [Rotation3] for details.
 pub type Rotation3F64 = Rotation3<f64, 1, 0, 0>;

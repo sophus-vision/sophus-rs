@@ -7,7 +7,7 @@ use crate::{
         PointVertex3,
     },
     prelude::*,
-    renderables::scene_renderable::PointCloud3,
+    renderables::PointCloud3,
     uniform_buffers::VertexShaderUniformBuffers,
     RenderContext,
 };

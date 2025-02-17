@@ -1,5 +1,5 @@
 use sophus_image::ImageSize;
-use sophus_sensor::dyn_camera::DynCameraF64;
+use sophus_sensor::DynCameraF64;
 
 use crate::{
     camera::{

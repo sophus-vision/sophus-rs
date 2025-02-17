@@ -1,7 +1,7 @@
 use sophus_lie::Isometry3F64;
 use sophus_renderer::{
     camera::RenderCamera,
-    renderables::scene_renderable::SceneRenderable,
+    renderables::SceneRenderable,
 };
 
 use crate::prelude::*;

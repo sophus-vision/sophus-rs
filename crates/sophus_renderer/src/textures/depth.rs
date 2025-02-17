@@ -1,13 +1,12 @@
 use sophus_image::{
-    arc_image::ArcImageF32,
-    image_view::ImageViewF32,
-    prelude::IsImageView,
+    ArcImageF32,
     ImageSize,
+    ImageViewF32,
 };
 use wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
 
 use crate::{
-    camera::clipping_planes::ClippingPlanesF64,
+    camera::ClippingPlanesF64,
     prelude::*,
     textures::{
         depth_image::DepthImage,

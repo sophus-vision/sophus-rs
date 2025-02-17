@@ -1,7 +1,7 @@
-/// general camera - either perspective or orthographic
-pub mod general_camera;
-pub use crate::camera_enum::general_camera::GeneralCameraEnum;
+mod general_camera;
+mod perspective_camera;
 
-/// perspective camera
-pub mod perspective_camera;
-pub use crate::camera_enum::perspective_camera::PerspectiveCameraEnum;
+pub use crate::camera_enum::{
+    general_camera::*,
+    perspective_camera::*,
+};

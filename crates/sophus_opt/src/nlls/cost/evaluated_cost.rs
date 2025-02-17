@@ -8,10 +8,7 @@ use crate::{
         block_vector::BlockVector,
         symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
     },
-    variables::{
-        var_families::VarFamilies,
-        VarKind,
-    },
+    variables::VarFamilies,
 };
 extern crate alloc;
 
@@ -31,20 +28,6 @@ impl<const NUM: usize, const NUM_ARGS: usize> EvaluatedCost<NUM, NUM_ARGS> {
             family_names,
             terms: alloc::vec::Vec::new(),
         }
-    }
-
-    /// number of variables of a given kind
-    pub fn num_of_kind(&self, kind: VarKind, pool: &VarFamilies) -> usize {
-        let mut c = 0;
-
-        for name in self.family_names.iter() {
-            c += if pool.collection.get(name).unwrap().get_var_kind() == kind {
-                1
-            } else {
-                0
-            };
-        }
-        c
     }
 }
 

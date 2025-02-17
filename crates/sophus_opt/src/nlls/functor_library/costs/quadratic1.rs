@@ -13,10 +13,6 @@ use crate::{
     variables::VarKind,
 };
 
-/// Quadratic cost functor
-#[derive(Copy, Clone)]
-pub struct CostFunctor {}
-
 /// Term of the quadratic cost function
 #[derive(Clone, Debug)]
 pub struct Quadratic1CostTerm {

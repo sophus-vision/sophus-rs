@@ -3,7 +3,7 @@ use sophus_lie::prelude::*;
 
 use crate::ray::Ray;
 
-/// n-Sphere in ℝ^{n+1}.
+/// n-Sphere in `ℝ^{n+1}`.
 ///
 /// A 1-sphere is a circle, a 2-sphere is a sphere, etc.
 pub struct HyperSphere<
@@ -19,10 +19,10 @@ pub struct HyperSphere<
     pub radius: S,
 }
 
-/// Circle in ℝ².
+/// Circle in `ℝ²`.
 pub type Circle<S, const B: usize, const DM: usize, const DN: usize> = HyperSphere<S, 2, B, DM, DN>;
 
-/// Circle in ℝ² with f64 scalar type.
+/// Circle in `ℝ²` with f64 scalar type.
 pub type CircleF64 = Circle<f64, 1, 0, 0>;
 
 impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>

@@ -1,7 +1,7 @@
 use crate::prelude::IsScalar;
 
 /// A trait for scalar types that store both a real part and an infinitesimal part,
-/// enabling **forward-mode automatic differentiation** (AD) of scalar functions.
+/// enabling *forward-mode automatic differentiation* (AD) of scalar functions.
 ///
 /// Typical implementations include [`DualScalar<DM, DN>`][crate::dual::DualScalar]
 /// for single-lane usage (`BATCH=1`), or [`DualBatchScalar<BATCH, DM,
@@ -51,8 +51,8 @@ pub trait IsDualScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     /// of shape `[DM, DN]`.
     ///
     /// # Interpretation
-    /// - If `DM=1, DN=1`, this corresponds to a scalar derivative in ℝ.
-    /// - If `DM>1, DN=1`, it corresponds to a vector derivative in ℝ^DM.
+    /// - If `DM=1, DN=1`, this corresponds to a scalar derivative in `ℝ`.
+    /// - If `DM>1, DN=1`, it corresponds to a vector derivative in `ℝ^DM`.
     /// - For more complex shapes, it can represent Jacobians or Hessians as needed.
     fn derivative(&self) -> Self::RealMatrix<DM, DN>;
 }

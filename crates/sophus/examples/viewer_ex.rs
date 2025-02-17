@@ -8,32 +8,26 @@ use sophus::{
     examples::viewer_example::make_distorted_frame,
     lie::Isometry3,
     prelude::*,
-    sensor::dyn_camera::DynCameraF64,
+    sensor::DynCameraF64,
 };
 use sophus_image::{
-    intensity_image::intensity_arc_image::IsIntensityArcImage,
-    mut_image::MutImageF32,
-    mut_image_view::IsMutImageView,
     ImageSize,
+    MutImageF32,
 };
 use sophus_renderer::{
     camera::{
-        clipping_planes::ClippingPlanes,
-        properties::RenderCameraProperties,
+        ClippingPlanes,
         RenderCamera,
+        RenderCameraProperties,
     },
     renderables::{
-        color::Color,
-        frame::ImageFrame,
-        pixel_renderable::{
-            make_line2,
-            make_point2,
-        },
-        scene_renderable::{
-            make_line3,
-            make_mesh3_at,
-            make_point3,
-        },
+        make_line2,
+        make_line3,
+        make_mesh3_at,
+        make_point2,
+        make_point3,
+        Color,
+        ImageFrame,
     },
     RenderContext,
 };
@@ -41,18 +35,16 @@ use sophus_viewer::{
     packets::{
         append_to_scene_packet,
         create_scene_packet,
-        image_view_packet::ImageViewPacket,
-        plot_view_packet::{
-            curve_vec_with_conf::CurveVecWithConfStyle,
-            scalar_curve::ScalarCurveStyle,
-            vec_curve::CurveVecStyle,
-            ClearCondition,
-            LineType,
-            PlotViewPacket,
-        },
+        ClearCondition,
+        CurveVecStyle,
+        CurveVecWithConfStyle,
+        ImageViewPacket,
+        LineType,
         Packet,
+        PlotViewPacket,
+        ScalarCurveStyle,
     },
-    simple_viewer::SimpleViewer,
+    SimpleViewer,
 };
 use thingbuf::mpsc::blocking::channel;
 

@@ -5,7 +5,7 @@ use crate::{
     renderables::color::Color,
 };
 
-/// Pixel renderable
+/// pixel renderable
 #[derive(Clone, Debug)]
 pub enum PixelRenderable {
     /// 2D line segments

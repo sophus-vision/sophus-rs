@@ -7,8 +7,8 @@ use wgpu::{
 use crate::{
     prelude::*,
     textures::{
-        depth::DepthTextures,
-        rgba::RgbdTexture,
+        DepthTextures,
+        RgbdTexture,
     },
     uniform_buffers::VertexShaderUniformBuffers,
     RenderContext,

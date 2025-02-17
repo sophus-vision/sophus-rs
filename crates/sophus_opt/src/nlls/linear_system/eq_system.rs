@@ -13,7 +13,7 @@ use crate::{
         OptParams,
     },
     prelude::*,
-    variables::var_families::VarFamilies,
+    variables::VarFamilies,
 };
 
 extern crate alloc;

@@ -7,8 +7,8 @@ use sophus_lie::{
     Isometry3F64,
 };
 use sophus_sensor::{
-    camera_enum::perspective_camera::PinholeCameraF64,
     PinholeCamera,
+    PinholeCameraF64,
 };
 
 use crate::{

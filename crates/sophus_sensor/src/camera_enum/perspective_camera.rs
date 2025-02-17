@@ -5,13 +5,13 @@ use sophus_image::ImageSize;
 
 use crate::{
     distortions::{
-        affine::AffineDistortionImpl,
-        brown_conrady::BrownConradyDistortionImpl,
-        enhanced_unified::EnhancedUnifiedDistortionImpl,
-        kannala_brandt::KannalaBrandtDistortionImpl,
+        AffineDistortionImpl,
+        BrownConradyDistortionImpl,
+        EnhancedUnifiedDistortionImpl,
+        KannalaBrandtDistortionImpl,
     },
     prelude::*,
-    projections::perspective::PerspectiveProjectionImpl,
+    projections::PerspectiveProjectionImpl,
     traits::IsCameraDistortionImpl,
     Camera,
 };

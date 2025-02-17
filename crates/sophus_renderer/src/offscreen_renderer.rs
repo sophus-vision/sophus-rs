@@ -1,30 +1,29 @@
 use sophus_image::{
-    arc_image::ArcImage4U8,
-    image_view::IsImageView,
+    ArcImage4U8,
     ImageSize,
 };
 use sophus_lie::Isometry3F64;
 
 use crate::{
     camera::{
-        intrinsics::RenderIntrinsics,
-        properties::RenderCameraProperties,
+        RenderCameraProperties,
+        RenderIntrinsics,
     },
     pixel_renderer::{
-        pixel_line::Line2dEntity,
-        pixel_point::Point2dEntity,
+        Line2dEntity,
         PixelRenderer,
+        Point2dEntity,
     },
     prelude::*,
     renderables::{
-        pixel_renderable::PixelRenderable,
-        scene_renderable::SceneRenderable,
+        PixelRenderable,
+        SceneRenderable,
     },
     scene_renderer::{
-        distortion::DistortionRenderer,
-        line::Line3dEntity,
-        mesh::Mesh3dEntity,
-        point::Point3dEntity,
+        DistortionRenderer,
+        Line3dEntity,
+        Mesh3dEntity,
+        Point3dEntity,
         SceneRenderer,
     },
     textures::Textures,

@@ -1,22 +1,15 @@
 use eframe::egui::mutex::Mutex;
 use sophus_autodiff::linalg::SVec;
 use sophus_image::{
-    arc_image::{
-        ArcImage4U8,
-        ArcImageF32,
-    },
     color_map::BlueWhiteRedBlackColorMap,
-    mut_image::{
-        MutImage4U8,
-        MutImageF32,
-    },
-    prelude::{
-        IsImageView,
-        IsMutImageView,
-    },
+    prelude::*,
+    ArcImage4U8,
+    ArcImageF32,
+    MutImage4U8,
+    MutImageF32,
 };
 
-use crate::camera::clipping_planes::ClippingPlanesF32;
+use crate::camera::ClippingPlanesF32;
 
 /// depth image
 pub struct DepthImage {

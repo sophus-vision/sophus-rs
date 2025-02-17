@@ -6,12 +6,10 @@ use crate::{
         intensity_pixel::IntensityPixel,
         intensity_scalar::IsIntensityScalar,
     },
-    mut_image::MutImageR,
-    prelude::{
-        DynIntensityMutImage,
-        *,
-    },
+    prelude::*,
+    DynIntensityMutImage,
     MutImage,
+    MutImageR,
 };
 
 /// Trait for "intensity" images (grayscale, grayscale+alpha, RGB, RGBA).

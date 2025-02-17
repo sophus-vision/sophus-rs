@@ -6,7 +6,7 @@ use wgpu::{
 };
 
 use crate::{
-    camera::properties::RenderCameraProperties,
+    camera::RenderCameraProperties,
     prelude::*,
     types::{
         TranslationAndScaling,

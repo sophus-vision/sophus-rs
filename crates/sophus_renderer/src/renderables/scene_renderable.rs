@@ -1,3 +1,6 @@
+mod axes;
+
+pub use axes::*;
 use sophus_autodiff::linalg::SVec;
 use sophus_lie::{
     Isometry3,
@@ -11,9 +14,6 @@ use crate::{
         pixel_renderable::HasToVec2F32,
     },
 };
-
-/// axes
-pub mod axes;
 
 /// scene renderable
 #[derive(Clone, Debug)]

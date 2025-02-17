@@ -1,7 +1,4 @@
-use sophus_image::{
-    arc_image::ArcImage4U8,
-    image_view::IsImageView,
-};
+use sophus_image::ArcImage4U8;
 use sophus_lie::Isometry3F64;
 use wgpu::util::DeviceExt;
 
@@ -11,7 +8,7 @@ use crate::{
         TexturedMeshVertex3,
     },
     prelude::*,
-    renderables::scene_renderable::TexturedTriangleMesh3,
+    renderables::TexturedTriangleMesh3,
     uniform_buffers::VertexShaderUniformBuffers,
     RenderContext,
 };

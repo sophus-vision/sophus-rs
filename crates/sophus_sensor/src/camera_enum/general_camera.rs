@@ -8,7 +8,7 @@ use crate::{
         PerspectiveCameraEnum,
     },
     prelude::*,
-    projections::orthographic::OrthographicCamera,
+    projections::OrthographicCamera,
     BrownConradyCamera,
     KannalaBrandtCamera,
     PinholeCamera,

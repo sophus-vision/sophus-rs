@@ -1,16 +1,16 @@
 // ported from https://github.com/farm-ng/farm-ng-core/blob/main/rs/plotting/src/plotter_gui/mod.rs
 
 use linked_hash_map::LinkedHashMap;
-use sophus_renderer::aspect_ratio::HasAspectRatio;
+use sophus_renderer::HasAspectRatio;
 
 use crate::{
     interactions::InteractionEnum,
-    packets::plot_view_packet::{
-        curve_vec_with_conf::CurveVecWithConf,
-        scalar_curve::ScalarCurve,
-        vec_curve::CurveVec,
+    packets::{
         CurveTrait,
+        CurveVec,
+        CurveVecWithConf,
         PlotViewPacket,
+        ScalarCurve,
     },
     prelude::*,
     views::View,

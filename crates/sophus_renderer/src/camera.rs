@@ -5,14 +5,13 @@ use sophus_lie::{
     Isometry3F64,
 };
 
-/// Clipping planes
-pub mod clipping_planes;
-/// Camera intrinsics
-pub mod intrinsics;
-/// Camera properties
-pub mod properties;
+mod clipping_planes;
+mod intrinsics;
+mod properties;
 
-use crate::camera::properties::RenderCameraProperties;
+pub use clipping_planes::*;
+pub use intrinsics::*;
+pub use properties::*;
 
 /// Render camera configuration.
 #[derive(Clone, Debug)]

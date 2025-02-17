@@ -1,8 +1,8 @@
 use linked_hash_map::LinkedHashMap;
 use sophus_renderer::{
-    aspect_ratio::HasAspectRatio,
-    camera::intrinsics::RenderIntrinsics,
-    offscreen_renderer::OffscreenRenderer,
+    camera::RenderIntrinsics,
+    HasAspectRatio,
+    OffscreenRenderer,
     RenderContext,
 };
 
@@ -11,7 +11,7 @@ use crate::{
         inplane_interaction::InplaneInteraction,
         InteractionEnum,
     },
-    packets::image_view_packet::ImageViewPacket,
+    packets::ImageViewPacket,
     prelude::*,
     views::View,
 };

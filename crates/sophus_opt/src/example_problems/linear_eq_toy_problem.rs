@@ -3,25 +3,19 @@ use sophus_lie::prelude::IsMatrix;
 
 use crate::{
     nlls::{
-        constraint::{
-            eq_constraint::EqConstraints,
-            eq_constraint_fn::EqConstraintFn,
-        },
-        cost::{
-            cost_fn::CostFn,
-            cost_term::CostTerms,
-        },
-        functor_library::{
-            costs::quadratic1::Quadratic1CostTerm,
-            eq_constraints::linear_eq::LinearEqConstraint1,
-        },
+        costs::Quadratic1CostTerm,
+        eq_constraints::LinearEqConstraint1,
         optimize_nlls_with_eq_constraints,
+        CostFn,
+        CostTerms,
+        EqConstraintFn,
+        EqConstraints,
         LinearSolverType,
         OptParams,
     },
     variables::{
-        var_builder::VarBuilder,
-        var_family::VarFamily,
+        VarBuilder,
+        VarFamily,
         VarKind,
     },
 };

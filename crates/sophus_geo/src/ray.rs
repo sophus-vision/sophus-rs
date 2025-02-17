@@ -6,7 +6,7 @@ use sophus_lie::prelude::{
 
 use crate::unit_vector::UnitVector;
 
-/// Ray in ℝⁿ.
+/// Ray in `ℝⁿ`.
 ///
 /// ## Generic parameters:
 ///

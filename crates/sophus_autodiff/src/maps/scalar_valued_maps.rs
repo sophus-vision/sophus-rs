@@ -4,7 +4,7 @@ use crate::prelude::*;
 ///
 /// This is a function which takes a vector and returns a scalar:
 ///
-///   f: ℝᵐ -> ℝ
+///   `f: ℝᵐ -> ℝ`
 ///
 /// These functions are also called a scalar fields (on vector spaces).
 pub struct ScalarValuedVectorMap<S: IsScalar<BATCH, 0, 0>, const BATCH: usize> {
@@ -43,7 +43,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> ScalarValuedVectorMap<S, BATCH>
 ///
 /// This is a function which takes a matrix and returns a scalar:
 ///
-///   f: ℝᵐˣⁿ -> ℝ
+///   `f: ℝᵐˣⁿ -> ℝ`
 pub struct ScalarValuedMatrixMap<
     S: IsScalar<BATCH, DM, DN>,
     const BATCH: usize,

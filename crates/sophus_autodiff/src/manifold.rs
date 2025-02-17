@@ -8,7 +8,7 @@ use core::fmt::Debug;
 
 /// A trait for a manifold.
 ///
-/// A manifold is a space that locally resembles Euclidean space ℝ^DOF. This
+/// A manifold is a space that locally resembles Euclidean space `ℝ^DOF``. This
 /// trait generalizes addition and subtraction via [IsManifold::oplus] and [IsManifold::ominus].
 ///
 /// # Generic parameters

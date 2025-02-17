@@ -6,7 +6,7 @@ use crate::{
         PipelineBuilder,
     },
     prelude::*,
-    renderables::pixel_renderable::LineSegments2,
+    renderables::LineSegments2,
     RenderContext,
 };
 pub(crate) struct Line2dEntity {

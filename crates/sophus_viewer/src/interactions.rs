@@ -1,26 +1,22 @@
-/// in-plane interaction
-pub mod inplane_interaction;
-/// orbit interaction
-pub mod orbit_interaction;
+pub(crate) mod inplane_interaction;
+pub(crate) mod orbit_interaction;
 
 use eframe::egui;
 use sophus_autodiff::linalg::VecF64;
 use sophus_image::{
-    arc_image::ArcImageF32,
+    ArcImageF32,
     ImageSize,
 };
 use sophus_lie::Isometry3F64;
 use sophus_renderer::{
     camera::{
-        clipping_planes::ClippingPlanesF64,
-        intrinsics::RenderIntrinsics,
+        ClippingPlanesF64,
+        RenderIntrinsics,
     },
-    renderables::color::Color,
-    textures::depth_image::ndc_z_to_color,
-    types::{
-        SceneFocusMarker,
-        TranslationAndScaling,
-    },
+    renderables::Color,
+    textures::ndc_z_to_color,
+    SceneFocusMarker,
+    TranslationAndScaling,
 };
 
 use crate::{

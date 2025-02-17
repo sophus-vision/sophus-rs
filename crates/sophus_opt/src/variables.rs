@@ -1,13 +1,14 @@
 use core::fmt::Debug;
 
-/// Builder for variable families
-pub mod var_builder;
-/// Set of variable families
-pub mod var_families;
-/// Variable family
-pub mod var_family;
-/// A tuple of variables
-pub mod var_tuple;
+mod var_builder;
+mod var_families;
+mod var_family;
+mod var_tuple;
+
+pub use var_builder::*;
+pub use var_families::*;
+pub use var_family::*;
+pub use var_tuple::*;
 
 extern crate alloc;
 

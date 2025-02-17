@@ -1,7 +1,7 @@
-/// png io
 #[cfg(feature = "std")]
-pub mod png;
+mod png;
+#[cfg(feature = "std")]
+mod tiff;
 
-/// tiff io
-#[cfg(feature = "std")]
-pub mod tiff;
+pub use png::*;
+pub use tiff::*;

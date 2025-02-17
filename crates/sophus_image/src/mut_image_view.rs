@@ -1,4 +1,4 @@
-use sophus_tensor::mut_tensor_view::MutTensorView;
+use sophus_tensor::MutTensorView;
 
 use crate::{
     image_view::GenImageView,
@@ -22,9 +22,6 @@ pub struct GenMutImageView<
     /// underlying mutable tensor view
     pub mut_tensor_view: MutTensorView<'a, TOTAL_RANK, 2, SRANK, Scalar, STensor, ROWS, COLS>,
 }
-
-/// Mutable image view of scalar values
-pub type MutImageView<'a, Scalar> = GenMutImageView<'a, 2, 0, Scalar, Scalar, 1, 1>;
 
 macro_rules! mut_image_view {
     ($scalar_rank:literal, $srank:literal) => {

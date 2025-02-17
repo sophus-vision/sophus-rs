@@ -1,4 +1,3 @@
-use sophus_autodiff::linalg::SVec;
 use sophus_tensor::{
     MutTensor,
     TensorView,
@@ -26,40 +25,6 @@ pub struct GenMutImage<
     /// underlying mutable tensor
     pub mut_tensor: MutTensor<TOTAL_RANK, 2, SRANK, Scalar, STensor, ROWS, COLS>,
 }
-
-/// Mutable image of scalar values
-pub type MutImage<Scalar> = GenMutImage<2, 0, Scalar, Scalar, 1, 1>;
-
-/// Mutable image of vector values
-///
-/// Here, R indicates the number of rows in the vector
-pub type MutImageR<Scalar, const ROWS: usize> =
-    GenMutImage<3, 1, Scalar, SVec<Scalar, ROWS>, ROWS, 1>;
-
-/// Mutable image of u8 scalars
-pub type MutImageU8 = MutImage<u8>;
-/// Mutable image of u16 scalars
-pub type MutImageU16 = MutImage<u16>;
-/// Mutable image of f32 scalars
-pub type MutImageF32 = MutImage<f32>;
-/// Mutable image of u8 2-vectors
-pub type MutImage2U8 = MutImageR<u8, 2>;
-/// Mutable image of u16 2-vectors
-pub type MutImage2U16 = MutImageR<u16, 2>;
-/// Mutable image of f32 2-vectors
-pub type MutImage2F32 = MutImageR<f32, 2>;
-/// Mutable image of u8 3-vectors
-pub type MutImage3U8 = MutImageR<u8, 3>;
-/// Mutable image of u16 3-vectors
-pub type MutImage3U16 = MutImageR<u16, 3>;
-/// Mutable image of f32 3-vectors
-pub type MutImage3F32 = MutImageR<f32, 3>;
-/// Mutable image of u8 4-vectors
-pub type MutImage4U8 = MutImageR<u8, 4>;
-/// Mutable image of u16 4-vectors
-pub type MutImage4U16 = MutImageR<u16, 4>;
-/// Mutable image of f32 4-vectors
-pub type MutImage4F32 = MutImageR<f32, 4>;
 
 /// is a mutable image
 pub trait IsMutImage<

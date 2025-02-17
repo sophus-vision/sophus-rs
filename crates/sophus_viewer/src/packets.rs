@@ -2,31 +2,21 @@ use sophus_lie::Isometry3F64;
 use sophus_renderer::{
     camera::RenderCamera,
     renderables::{
-        frame::ImageFrame,
-        pixel_renderable::PixelRenderable,
-        scene_renderable::SceneRenderable,
+        ImageFrame,
+        PixelRenderable,
+        SceneRenderable,
     },
 };
 
-use crate::{
-    packets::{
-        image_view_packet::ImageViewPacket,
-        plot_view_packet::PlotViewPacket,
-        scene_view_packet::{
-            SceneViewCreation,
-            SceneViewPacket,
-            SceneViewPacketContent,
-        },
-    },
-    prelude::*,
-};
+use crate::prelude::*;
 
-/// image packet
-pub mod image_view_packet;
-/// plot view packet
-pub mod plot_view_packet;
-/// scene packet
-pub mod scene_view_packet;
+mod image_view_packet;
+mod plot_view_packet;
+mod scene_view_packet;
+
+pub use image_view_packet::*;
+pub use plot_view_packet::*;
+pub use scene_view_packet::*;
 
 /// Packet of renderables
 #[derive(Clone, Debug)]
