@@ -43,9 +43,9 @@ pub mod prelude {
 
     pub use crate::{
         nlls::{
+            HasEqConstraintResidualFn,
+            HasResidualFn,
             IsCostFn,
-            IsCostTerm,
-            IsEqConstraint,
             IsEqConstraintsFn,
             IsEvaluatedCost,
             MakeEvaluatedCostTerm,

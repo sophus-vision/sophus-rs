@@ -67,7 +67,7 @@ pub struct CostSystem {
     pub(crate) evaluated_costs: alloc::vec::Vec<alloc::boxed::Box<dyn IsEvaluatedCost>>,
 }
 
-impl<const NUM: usize, const NUM_ARGS: usize> IsEvaluatedCost for EvaluatedCost<NUM, NUM_ARGS> {
+impl<const INPUT_DIM: usize, const N: usize> IsEvaluatedCost for EvaluatedCost<INPUT_DIM, N> {
     fn populate_upper_triangulatr_normal_equation(
         &self,
         variables: &VarFamilies,

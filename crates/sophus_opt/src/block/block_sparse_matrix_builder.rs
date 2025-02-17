@@ -35,7 +35,7 @@ use super::{
 ///
 /// It ia split into a grid of regions and each region is split into a grid of block matrices.
 /// Within each region, all block matrices have the same shape. E.g., the region (0,0) contains
-/// only M1×N1-shaped blocks, the region (1,2) contains only (M1×N2) blocks, etc.
+/// only M1×N1-shaped blocks, the region (0,1) contains only (M1×N2) blocks, etc.
 #[derive(Debug)]
 pub struct BlockSparseMatrixBuilder {
     pub(crate) region_grid: Grid<BlockTripletRegion>,
@@ -98,7 +98,9 @@ pub(crate) enum ToDenseImplMode {
 }
 
 impl BlockSparseMatrixBuilder {
-    /// Create a zero block matrix.
+    /// Create a sparse block matrix "filled" with zeros.
+    ///
+    /// The shape of the block matrix is determined by the provided of row and column partitions.
     pub fn zero(row_partitions: &[PartitionSpec], col_partitions: &[PartitionSpec]) -> Self {
         let mut row_block_dims = Vec::new();
         let mut col_block_dims = Vec::new();

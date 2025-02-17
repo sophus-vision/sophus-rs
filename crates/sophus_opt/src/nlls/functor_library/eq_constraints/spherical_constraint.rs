@@ -7,21 +7,31 @@ use sophus_autodiff::{
 };
 
 use crate::{
-    nlls::constraint::eq_constraint::IsEqConstraint,
+    nlls::constraint::eq_constraint::HasEqConstraintResidualFn,
     prelude::*,
 };
 
-/// spherical equality constraint
+/// Spherical equality constraint.
+///
+/// `|x| = r`.
+///
+/// where `x` is a 3D vector and `r` is the sphere radius.
+///
+/// The corresponding constraint residual is:
+///
+/// `c(x) = |x| - r`.
 #[derive(Clone, Debug)]
 pub struct SphericalConstraint {
-    /// sphere radius
+    /// Sphere radius `r`.
     pub radius: f64,
-    /// entity index
+    /// Entity indices for `x`.
     pub entity_indices: [usize; 1],
 }
 
 impl SphericalConstraint {
-    /// Compute the residual
+    /// Compute the constraint residual
+    ///
+    /// `c(x) = |x| - r`.
     pub fn residual<Scalar: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize>(
         vec: Scalar::Vector<3>,
         radius: Scalar,
@@ -31,7 +41,7 @@ impl SphericalConstraint {
     }
 }
 
-impl IsEqConstraint<1, 3, 1, (), VecF64<3>> for SphericalConstraint {
+impl HasEqConstraintResidualFn<1, 3, 1, (), VecF64<3>> for SphericalConstraint {
     fn idx_ref(&self) -> &[usize; 1] {
         &self.entity_indices
     }

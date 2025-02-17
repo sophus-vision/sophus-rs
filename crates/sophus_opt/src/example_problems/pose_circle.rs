@@ -6,7 +6,7 @@ use sophus_lie::{
 
 use crate::{
     nlls::{
-        costs::PoseGraphCostTerm,
+        costs::PoseGraph2CostTerm,
         optimize_nlls,
         CostFn,
         CostTerms,
@@ -31,8 +31,8 @@ pub struct PoseCircleProblem {
     /// estimated poses
     pub est_world_from_robot: alloc::vec::Vec<Isometry2F64>,
     /// pose-pose constraints
-    pub obs_pose_a_from_pose_b_poses:
-        CostTerms<12, 2, (), (Isometry2F64, Isometry2F64), PoseGraphCostTerm>,
+    pub obs_pose_m_from_pose_n_poses:
+        CostTerms<12, 2, (), (Isometry2F64, Isometry2F64), PoseGraph2CostTerm>,
 }
 
 impl Default for PoseCircleProblem {
@@ -46,7 +46,7 @@ impl PoseCircleProblem {
     pub fn new(len: usize) -> Self {
         let mut true_world_from_robot_poses = alloc::vec![];
         let mut est_world_from_robot_poses = alloc::vec![];
-        let mut obs_pose_a_from_pose_b_poses = CostTerms::new(["poses", "poses"], alloc::vec![]);
+        let mut obs_pose_m_from_pose_n_poses = CostTerms::new(["poses", "poses"], alloc::vec![]);
 
         let radius = 10.0;
 
@@ -60,38 +60,38 @@ impl PoseCircleProblem {
         }
 
         for i in 0..len {
-            let a_idx = i;
-            let b_idx = (i + 1) % len;
-            let true_world_from_pose_a = true_world_from_robot_poses[a_idx];
-            let true_world_from_pose_b = true_world_from_robot_poses[b_idx];
+            let m_idx = i;
+            let n_idx = (i + 1) % len;
+            let true_world_from_pose_m = true_world_from_robot_poses[m_idx];
+            let true_world_from_pose_n = true_world_from_robot_poses[n_idx];
 
             let p = VecF64::<3>::from_real_array([0.001, 0.001, 0.0001]);
-            let pose_a_from_pose_b =
-                Isometry2::exp(p) * true_world_from_pose_a.inverse() * true_world_from_pose_b;
+            let pose_m_from_pose_n =
+                Isometry2::exp(p) * true_world_from_pose_m.inverse() * true_world_from_pose_n;
 
-            obs_pose_a_from_pose_b_poses
+            obs_pose_m_from_pose_n_poses
                 .collection
-                .push(PoseGraphCostTerm {
-                    pose_a_from_pose_b,
-                    entity_indices: [a_idx, b_idx],
+                .push(PoseGraph2CostTerm {
+                    pose_m_from_pose_n,
+                    entity_indices: [m_idx, n_idx],
                 });
         }
 
         est_world_from_robot_poses.push(true_world_from_robot_poses[0]);
 
         for i in 1..len {
-            let a_idx = i - 1;
-            let b_idx = i;
-            let obs = obs_pose_a_from_pose_b_poses.collection[a_idx].clone();
-            assert_eq!(obs.entity_indices[0], a_idx);
-            assert_eq!(obs.entity_indices[1], b_idx);
+            let m_idx = i - 1;
+            let n_idx = i;
+            let obs = obs_pose_m_from_pose_n_poses.collection[m_idx].clone();
+            assert_eq!(obs.entity_indices[0], m_idx);
+            assert_eq!(obs.entity_indices[1], n_idx);
 
-            let world_from_pose_a = est_world_from_robot_poses[a_idx];
-            let pose_a_from_pose_b = obs.pose_a_from_pose_b;
+            let world_from_pose_m = est_world_from_robot_poses[m_idx];
+            let pose_m_from_pose_n = obs.pose_m_from_pose_n;
             let p = VecF64::<3>::from_real_array([0.1, 0.1, 0.1]);
-            let world_from_pose_b = Isometry2::exp(p) * world_from_pose_a * pose_a_from_pose_b;
+            let world_from_pose_n = Isometry2::exp(p) * world_from_pose_m * pose_m_from_pose_n;
 
-            est_world_from_robot_poses.push(world_from_pose_b);
+            est_world_from_robot_poses.push(world_from_pose_n);
         }
 
         assert_eq!(
@@ -102,22 +102,22 @@ impl PoseCircleProblem {
         Self {
             true_world_from_robot: true_world_from_robot_poses,
             est_world_from_robot: est_world_from_robot_poses,
-            obs_pose_a_from_pose_b_poses,
+            obs_pose_m_from_pose_n_poses,
         }
     }
 
     /// Calculate the error of the current estimate
     pub fn calc_error(&self, est_world_from_robot: &[Isometry2F64]) -> f64 {
         let mut res_err = 0.0;
-        for obs in self.obs_pose_a_from_pose_b_poses.collection.clone() {
-            let residual = PoseGraphCostTerm::residual(
+        for obs in self.obs_pose_m_from_pose_n_poses.collection.clone() {
+            let residual = PoseGraph2CostTerm::residual(
                 est_world_from_robot[obs.entity_indices[0]],
                 est_world_from_robot[obs.entity_indices[1]],
-                obs.pose_a_from_pose_b,
+                obs.pose_m_from_pose_n,
             );
             res_err += residual.dot(&residual);
         }
-        res_err /= self.obs_pose_a_from_pose_b_poses.collection.len() as f64;
+        res_err /= self.obs_pose_m_from_pose_n_poses.collection.len() as f64;
         res_err
     }
 
@@ -139,9 +139,9 @@ impl PoseCircleProblem {
             .build();
         let solution = optimize_nlls(
             variables,
-            alloc::vec![CostFn::new_box(
+            alloc::vec![CostFn::new_boxed(
                 (),
-                self.obs_pose_a_from_pose_b_poses.clone(),
+                self.obs_pose_m_from_pose_n_poses.clone(),
             )],
             OptParams {
                 num_iterations: 16,

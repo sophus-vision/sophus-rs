@@ -9,7 +9,7 @@ use snafu::Snafu;
 use super::{
     cost_term::{
         CostTerms,
-        IsCostTerm,
+        HasResidualFn,
     },
     evaluated_cost::IsEvaluatedCost,
 };
@@ -46,43 +46,65 @@ pub trait IsCostFn {
         parallelize: bool,
     ) -> Result<alloc::boxed::Box<dyn IsEvaluatedCost>, CostError>;
 
-    /// sort the terms of the cost function (to ensure more efficient evaluation and reduction over
-    /// conditioned variables)
+    /// Sort the terms of the cost function (to ensure more efficient evaluation and reduction over
+    /// conditioned variables).
     fn sort(&mut self, variables: &VarFamilies);
 
-    /// get the robust kernel function
+    /// Get the robust kernel function.
     fn robust_kernel(&self) -> Option<RobustKernel>;
 }
 
 /// Generic cost function of the non-linear least squares problem.
 ///
-/// This struct is passed as a box of IsEvaluatedCost to the optimizer.
+/// It represents a cost function that is a sum of squares of multiple residual function terms:
+///
+/// `f(x) = ∑ᵢ [g(Vⁱ₀, Vⁱ₁, ..., Vⁱₙ₋₁)]²`
+///
+/// All terms are based on a common residual function `g` and a set of input arguments
+/// `Vⁱ₀, Vⁱ₁, ...,  Vⁱₙ₋₁`.
+///
+/// This struct is passed as a box of [IsEvaluatedCost] to the optimizer.
+///
+/// ## Generic parameters
+///
+///  * `INPUT_DIM`
+///    - Total input dimension of the common residual function `g`. It is the sum of argument
+///      dimensions: |Vⁱ₀| + |Vⁱ₁| + ... + |Vⁱₙ₋₁|.
+///  * `N`
+///    - Number of arguments of the common residual function `g`.
+///  * `GlobalConstants`
+///    - Type of the global constants which are passed to the residual function. If no global
+///      constants are needed, use `()`.
+///  * `ResidualFn`
+///    - The common residual function `g`.
+///  * `Args`
+///    - Tuple of input argument types: `(Vⁱ₀, Vⁱ₁, ..., Vⁱₙ₋₁)`.
 #[derive(Debug, Clone)]
 pub struct CostFn<
-    const NUM: usize,
-    const NUM_ARGS: usize,
+    const INPUT_DIM: usize,
+    const N: usize,
     GlobalConstants: 'static + Send + Sync,
-    Term: IsCostTerm<NUM, NUM_ARGS, GlobalConstants, VarTuple>,
-    VarTuple: IsVarTuple<NUM_ARGS> + 'static,
+    ResidualFn: HasResidualFn<INPUT_DIM, N, GlobalConstants, Args>,
+    Args: IsVarTuple<N> + 'static,
 > {
     global_constants: GlobalConstants,
-    cost_terms: CostTerms<NUM, NUM_ARGS, GlobalConstants, VarTuple, Term>,
+    cost_terms: CostTerms<INPUT_DIM, N, GlobalConstants, Args, ResidualFn>,
     robust_kernel: Option<RobustKernel>,
-    phantom: PhantomData<VarTuple>,
+    phantom: PhantomData<Args>,
 }
 
 impl<
-        const NUM: usize,
-        const NUM_ARGS: usize,
+        const INPUT_DIM: usize,
+        const N: usize,
         GlobalConstants: 'static + Send + Sync,
-        Term: IsCostTerm<NUM, NUM_ARGS, GlobalConstants, VarTuple> + 'static,
-        VarTuple: IsVarTuple<NUM_ARGS> + 'static,
-    > CostFn<NUM, NUM_ARGS, GlobalConstants, Term, VarTuple>
+        ResidualFn: HasResidualFn<INPUT_DIM, N, GlobalConstants, Args> + 'static,
+        Args: IsVarTuple<N> + 'static,
+    > CostFn<INPUT_DIM, N, GlobalConstants, ResidualFn, Args>
 {
-    /// create a new cost function from the cost terms and a residual function
-    pub fn new_box(
+    /// Create from global constants and cost terms.
+    pub fn new_boxed(
         global_constants: GlobalConstants,
-        terms: CostTerms<NUM, NUM_ARGS, GlobalConstants, VarTuple, Term>,
+        terms: CostTerms<INPUT_DIM, N, GlobalConstants, Args, ResidualFn>,
     ) -> alloc::boxed::Box<dyn IsCostFn> {
         alloc::boxed::Box::new(Self {
             global_constants,
@@ -92,11 +114,10 @@ impl<
         })
     }
 
-    /// create a new robust cost function from the cost terms, a residual function and a robust
-    /// kernel
-    pub fn new_robust(
+    /// Create from global constants, cost terms, and a robust kernel.
+    pub fn new_boxed_robust(
         global_constants: GlobalConstants,
-        terms: CostTerms<NUM, NUM_ARGS, GlobalConstants, VarTuple, Term>,
+        terms: CostTerms<INPUT_DIM, N, GlobalConstants, Args, ResidualFn>,
         robust_kernel: RobustKernel,
     ) -> alloc::boxed::Box<dyn IsCostFn> {
         alloc::boxed::Box::new(Self {
@@ -108,10 +129,10 @@ impl<
     }
 }
 
-/// Errors that can occur when working with variable families
+/// Errors that can occur when working with variables as cost arguments.
 #[derive(Snafu, Debug)]
 pub enum CostError {
-    /// Variable family error
+    /// Error when working with variable as cost arguments.
     #[snafu(display("CostError({})", source))]
     VariableFamilyError {
         /// source
@@ -120,12 +141,12 @@ pub enum CostError {
 }
 
 impl<
-        const NUM: usize,
-        const NUM_ARGS: usize,
+        const INPUT_DIM: usize,
+        const N: usize,
         GlobalConstants: 'static + Send + Sync,
-        Term: IsCostTerm<NUM, NUM_ARGS, GlobalConstants, VarTuple> + 'static,
-        VarTuple: IsVarTuple<NUM_ARGS> + 'static,
-    > IsCostFn for CostFn<NUM, NUM_ARGS, GlobalConstants, Term, VarTuple>
+        ResidualFn: HasResidualFn<INPUT_DIM, N, GlobalConstants, Args> + 'static,
+        Args: IsVarTuple<N> + 'static,
+    > IsCostFn for CostFn<INPUT_DIM, N, GlobalConstants, ResidualFn, Args>
 {
     fn eval(
         &self,
@@ -134,7 +155,7 @@ impl<
         parallelize: bool,
     ) -> Result<alloc::boxed::Box<dyn IsEvaluatedCost>, CostError> {
         let mut var_kind_array =
-            VarTuple::var_kind_array(variables, self.cost_terms.family_names.clone());
+            Args::var_kind_array(variables, self.cost_terms.family_names.clone());
 
         if eval_mode == EvalMode::DontCalculateDerivatives {
             var_kind_array = var_kind_array.map(|_x| VarKind::Conditioned)
@@ -143,14 +164,14 @@ impl<
         let mut evaluated_terms = EvaluatedCost::new(self.cost_terms.family_names.clone());
 
         let var_family_tuple =
-            VarTuple::ref_var_family_tuple(variables, self.cost_terms.family_names.clone())
+            Args::ref_var_family_tuple(variables, self.cost_terms.family_names.clone())
                 .map_err(|e| CostError::VariableFamilyError { source: e })?;
 
-        let eval_res = |term: &Term| {
+        let eval_res = |term: &ResidualFn| {
             term.eval(
                 &self.global_constants,
                 *term.idx_ref(),
-                VarTuple::extract(&var_family_tuple, *term.idx_ref()),
+                Args::extract(&var_family_tuple, *term.idx_ref()),
                 var_kind_array,
                 self.robust_kernel,
             )
@@ -191,32 +212,9 @@ impl<
 
         match parallelization_strategy {
             ParallelizationStrategy::None => {
-                // This functional style code is slightly less efficient, than the nested while
-                // loop below.
-                //
-                // evaluated_terms.terms = reduction_ranges
-                //     .iter() // sequential outer loop
-                //     .map(|range| {
-                //         let evaluated_term_sum = self.terms.terms[range.start..range.end]
-                //             .iter() // sequential inner loop
-                //             .fold(None, |acc: Option<Term<NUM, NUM_ARGS>>, term| {
-                //                 let evaluated_term = eval_res(term);
-                //                 match acc {
-                //                     Some(mut sum) => {
-                //                         sum.reduce(evaluated_term);
-                //                         Some(sum)
-                //                     }
-                //                     None => Some(evaluated_term),
-                //                 }
-                //             });
-
-                //         evaluated_term_sum.unwrap()
-                //     })
-                //     .collect();
-
                 evaluated_terms.terms.reserve(reduction_ranges.len());
                 for range in reduction_ranges.iter() {
-                    let mut evaluated_term_sum: Option<EvaluatedCostTerm<NUM, NUM_ARGS>> = None;
+                    let mut evaluated_term_sum: Option<EvaluatedCostTerm<INPUT_DIM, N>> = None;
 
                     for term in self.cost_terms.collection[range.start..range.end].iter() {
                         match evaluated_term_sum {
@@ -241,7 +239,7 @@ impl<
                             .iter() // sequential inner loop
                             .fold(
                                 None,
-                                |acc: Option<EvaluatedCostTerm<NUM, NUM_ARGS>>, term| {
+                                |acc: Option<EvaluatedCostTerm<INPUT_DIM, N>>, term| {
                                     let evaluated_term = eval_res(term);
                                     match acc {
                                         Some(mut sum) => {
@@ -272,7 +270,7 @@ impl<
                             .par_iter() // parallelize over the inner terms
                             .fold(
                                 || None,
-                                |acc: Option<EvaluatedCostTerm<NUM, NUM_ARGS>>, term| {
+                                |acc: Option<EvaluatedCostTerm<INPUT_DIM, N>>, term| {
                                     let evaluated_term = eval_res(term);
                                     match acc {
                                         Some(mut sum) => {
@@ -305,8 +303,7 @@ impl<
     }
 
     fn sort(&mut self, variables: &VarFamilies) {
-        let var_kind_array =
-            &VarTuple::var_kind_array(variables, self.cost_terms.family_names.clone());
+        let var_kind_array = &Args::var_kind_array(variables, self.cost_terms.family_names.clone());
 
         let c_array = c_from_var_kind(var_kind_array);
 

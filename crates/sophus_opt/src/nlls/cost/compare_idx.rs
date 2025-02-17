@@ -2,8 +2,8 @@ use crate::variables::VarKind;
 
 extern crate alloc;
 
-/// Convert VarKind array to char array for comparison
-pub fn c_from_var_kind<const N: usize>(var_kind_array: &[VarKind; N]) -> [char; N] {
+// Convert VarKind array to char array for comparison
+pub(crate) fn c_from_var_kind<const N: usize>(var_kind_array: &[VarKind; N]) -> [char; N] {
     let mut c_array: [char; N] = ['0'; N];
 
     for i in 0..N {
@@ -17,12 +17,12 @@ pub fn c_from_var_kind<const N: usize>(var_kind_array: &[VarKind; N]) -> [char; 
     c_array
 }
 
-/// Wrapper around the char array for comparison
-///
-/// f: free variable
-/// c: conditioned variable
-/// m: marginalized variable
-pub struct CompareIdx<C, const N: usize>
+// Wrapper around the char array for comparison
+//
+// f: free variable
+// c: conditioned variable
+// m: marginalized variable
+pub(crate) struct CompareIdx<C, const N: usize>
 where
     C: AsRef<[char]>,
 {

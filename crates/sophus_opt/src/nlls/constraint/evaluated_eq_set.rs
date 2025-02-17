@@ -13,22 +13,29 @@ use crate::{
 
 extern crate alloc;
 
-/// Evaluated eq constraints
+/// Evaluated equality constraint set:
+/// `{c(V⁰₀, V⁰₁, ..., V⁰ₙ₋₁), ..., c(Vⁱ₀, Vⁱ₁, ..., Vⁱₙ₋₁), ...}`.
+///
+/// ## Generic parameters
+///
+///  * `INPUT_DIM`
+///    - Total input dimension of the constraint residual function `c`. It is the sum of argument
+///      dimensions: `|Vⁱ₀| + |Vⁱ₁| + ... + |Vⁱₙ₋₁|`.
+///  * `N`
+///    - Number of arguments of the residual function `c`.
 #[derive(Debug, Clone)]
-pub struct EvaluatedEqSet<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const NUM_ARGS: usize>
-{
-    /// one name (of the corresponding variable family) for each argument (of the cost function
-    pub family_names: [String; NUM_ARGS],
-    /// evaluated constraints
-    pub evaluated_constraints:
-        alloc::vec::Vec<EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>>,
+pub struct EvaluatedEqSet<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> {
+    /// Variable family name for each argument.
+    pub family_names: [String; N],
+    /// Collection of evaluated constraints.
+    pub evaluated_constraints: alloc::vec::Vec<EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, N>>,
 }
 
-impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const NUM_ARGS: usize>
-    EvaluatedEqSet<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>
+impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize>
+    EvaluatedEqSet<RESIDUAL_DIM, INPUT_DIM, N>
 {
-    /// create a new equality constraint set
-    pub fn new(family_names: [String; NUM_ARGS]) -> Self {
+    /// Create a new evaluated constraint set.
+    pub fn new(family_names: [String; N]) -> Self {
         EvaluatedEqSet {
             family_names,
             evaluated_constraints: alloc::vec::Vec::new(),
@@ -36,12 +43,12 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const NUM_ARGS: usize>
     }
 }
 
-/// Is evaluated equality constraint set
+/// Evaluated equality constraint set trait.
 pub trait IsEvaluatedEqConstraintSet: Debug + DynClone {
-    /// sum of L1 norms of residuals
+    /// Return sum of L1 norms of constraint residuals: `∑ᵢ |c(Vⁱ₀, Vⁱ₁, ..., Vⁱₙ₋₁)|`.
     fn calc_sum_of_l1_norms(&self) -> f64;
 
-    /// populate upper triangular KKT matrix
+    /// Populate upper triangular KKT matrix.
     fn populate_upper_triangular_kkt_mat(
         &self,
         variables: &VarFamilies,

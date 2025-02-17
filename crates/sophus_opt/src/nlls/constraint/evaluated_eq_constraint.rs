@@ -8,56 +8,71 @@ use crate::{
     variables::VarKind,
 };
 
-/// Evaluated constraint
+/// Evaluated equality constraint.
+///
+/// ## Generic parameters
+///
+///  * `RESIDUAL_DIM`
+///    - Dimension of the constraint residual vector `c`.
+///  * `INPUT_DIM`
+///    - Total input dimension of the constraint residual function `c`. It is the sum of argument
+///      dimensions: |Vⁱ₀| + |Vⁱ₁| + ... + |Vⁱₙ₋₁|.
+///  * `N`
+///    - Number of arguments of the constraint residual function `c`.
 #[derive(Debug, Clone)]
-pub struct EvaluatedEqConstraint<
-    const RESIDUAL_DIM: usize,
-    const INPUT_DIM: usize,
-    const NUM_ARGS: usize,
-> {
-    /// The current constraint residual vector g(x) of dimension DIM
+pub struct EvaluatedEqConstraint<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize>
+{
+    /// The constraint residual vector `c`.
     pub residual: VecF64<RESIDUAL_DIM>,
-    /// The jacobian of the equality constraint.
-    pub jacobian: BlockJacobian<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>,
-    /// The indices of the variable families this constraint touches
-    pub idx: [usize; NUM_ARGS],
+    /// The Jacobian of the equality constraint residual function `c`.
+    pub jacobian: BlockJacobian<RESIDUAL_DIM, INPUT_DIM, N>,
+    /// Array of variable indices for each argument of the constraint residual function.
+    ///
+    /// For example, if `idx = [2, 7, 3]` and `Args` is `(Foo, Bar, Bar)`, then:
+    ///
+    /// - Argument 0 is the 2nd variable of the `Foo` family.
+    /// - Argument 1 is the 7th variable of the `Bar` family.
+    /// - Argument 2 is the 3rd variable of the `Bar` family.
+    pub idx: [usize; N],
 }
 
-impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const NUM_ARGS: usize>
-    EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>
+impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize>
+    EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, N>
 {
-    pub(crate) fn reduce(
-        &mut self,
-        other: EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>,
-    ) {
+    pub(crate) fn reduce(&mut self, other: EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, N>) {
         self.jacobian.mat += other.jacobian.mat;
         self.residual += other.residual;
     }
 }
 
-/// Trait for making n-ary constraint.
+/// Trait for making an N-ary evaluated equality constraint.
 pub trait MakeEvaluatedEqConstraint<
     const RESIDUAL_DIM: usize,
     const INPUT_DIM: usize,
-    const NUM_ARGS: usize,
+    const N: usize,
 >
 {
-    /// Make an equality from a residual value, and derivatives (=self)
+    /// Make an equality from a residual value, and derivatives (=self). This function shall be
+    /// called inside the [crate::nlls::IsEqConstraintsFn::eval] function of a user-defined
+    /// constraint.
     ///
-    /// In more detail, this function computes the Jacobian of the
-    /// corresponding constraint given the following inputs:
+    /// This function computes the Jacobian of the constraint to produce the
+    /// [EvaluatedEqConstraint] - given the following inputs:
     ///
-    /// - `self`:          A tuple of functions that return the Jacobian of the constraint function
-    ///   with respect to each argument.
-    /// - `var_kinds`:     An array of `VarKind` for each argument of the cost function. A Jacobian
-    ///   will be computed for each argument that is not `Conditioned`.
-    /// - `residual`:      The residual of the corresponding eq constraint.
+    ///  * `self`
+    ///     - A tuple of functions that return the Jacobian of the constraint function with respect
+    ///       to each argument.
+    ///  * `var_kinds`
+    ///     - An array of `VarKind` for each argument of the constraint. A Jacobian will be computed
+    ///       for each argument that is not `Conditioned`.
+    ///  * `residual`
+    ///     - The residual of the corresponding equality constraint.
     fn make_eq(
         self,
-        idx: [usize; NUM_ARGS],
-        var_kinds: [VarKind; NUM_ARGS],
+        idx: [usize; N],
+        var_kinds: [VarKind; N],
         residual: VecF64<RESIDUAL_DIM>,
-    ) -> EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>;
+    ) -> EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, N>;
 }
 
 impl<F0, const RESIDUAL_DIM: usize, const INPUT_DIM: usize>

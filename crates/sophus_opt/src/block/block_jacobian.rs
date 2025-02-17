@@ -5,23 +5,26 @@ use crate::block::BlockRange;
 /// Jacobian matrix, split into several blocks
 ///
 /// ```ascii
-/// | J_0   ...   J_{NUM_ARGS-1} |
+/// -------------------------------
+/// |         |         |         |
+/// |   J_0   |  . . .  | J_{N-1} |
+/// |         |         |         |
+/// -------------------------------
 /// ```
 ///
-/// The (RESIDUAL_DIM x INPUT_DIM) matrix is partitioned into NUM_ARGS blocks horizontally.
-/// The shape of each of are specified by the `ranges` array.
-///
-/// Hence, the Jacobian sub-block J_i is a (RESIDUAL_DIM x ranges(i).dim) matrix.
+/// The `(RESIDUAL_DIM  x  INPUT_DIM)` matrix is partitioned into `N` blocks horizontally.
+/// The shape of each of are specified by the `ranges` array: The Jacobian sub-block `J_i` is a
+/// `(RESIDUAL_DIM  x  ranges(i).dim)` matrix.
 #[derive(Clone, Debug)]
-pub struct BlockJacobian<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const NUM_ARGS: usize> {
+pub struct BlockJacobian<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> {
     /// matrix storage
     pub mat: nalgebra::SMatrix<f64, RESIDUAL_DIM, INPUT_DIM>,
     /// ranges, one for each block
-    pub ranges: [BlockRange; NUM_ARGS],
+    pub ranges: [BlockRange; N],
 }
 
-impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const NUM_ARGS: usize>
-    BlockJacobian<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>
+impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize>
+    BlockJacobian<RESIDUAL_DIM, INPUT_DIM, N>
 {
     /// create a new Jacobian matrix with N blocks with the given dimensions
     pub fn new(dims: &[usize]) -> Self {
@@ -29,7 +32,7 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const NUM_ARGS: usize>
         debug_assert_eq!(dims.iter().sum::<usize>(), INPUT_DIM);
 
         let num_blocks = dims.len();
-        let mut col_ranges = [BlockRange::default(); NUM_ARGS];
+        let mut col_ranges = [BlockRange::default(); N];
         let mut num_cols: usize = 0;
 
         for i in 0..num_blocks {

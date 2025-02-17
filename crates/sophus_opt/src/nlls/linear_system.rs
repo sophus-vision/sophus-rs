@@ -1,25 +1,24 @@
-use cost_system::CostSystem;
-use eq_system::EqSystem;
-use solvers::{
+pub(crate) mod cost_system;
+pub(crate) mod eq_system;
+pub(crate) mod solvers;
+
+use super::{
+    dense_lu::DenseLu,
+    sparse_ldlt::SparseLdlt,
     sparse_lu::SparseLu,
     sparse_qr::SparseQr,
+    CostSystem,
+    EqSystem,
+    IsSparseSymmetricLinearSystem,
+    NllsError,
 };
-
-use super::NllsError;
 use crate::{
     block::{
         block_vector::BlockVector,
         symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
         PartitionSpec,
     },
-    nlls::{
-        linear_system::solvers::{
-            dense_lu::DenseLu,
-            sparse_ldlt::SparseLdlt,
-            IsSparseSymmetricLinearSystem,
-        },
-        LinearSolverType,
-    },
+    nlls::LinearSolverType,
     variables::{
         VarFamilies,
         VarKind,
@@ -27,13 +26,6 @@ use crate::{
 };
 
 extern crate alloc;
-
-/// Normal equation system for the non-linear least squares cost
-pub mod cost_system;
-/// KKT sub-system for the equality-constraints
-pub mod eq_system;
-/// Linear solvers
-pub mod solvers;
 
 /// Evaluation mode
 #[derive(Clone, Debug, Copy, PartialEq)]

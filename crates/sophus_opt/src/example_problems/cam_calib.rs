@@ -187,7 +187,7 @@ impl CamCalibProblem {
             variables,
             alloc::vec![
                 // robust kernel to deal with outliers
-                CostFn::new_robust(
+                CostFn::new_boxed_robust(
                     (),
                     reproj_obs.clone(),
                     crate::robust_kernel::RobustKernel::Huber(HuberKernel::new(1.0)),
@@ -252,8 +252,8 @@ impl CamCalibProblem {
         let solution = optimize_nlls(
             var_pool,
             alloc::vec![
-                CostFn::new_box((), priors.clone()),
-                CostFn::new_box((), reproj_obs.clone()),
+                CostFn::new_boxed((), priors.clone()),
+                CostFn::new_boxed((), reproj_obs.clone()),
             ],
             OptParams {
                 num_iterations: 10,

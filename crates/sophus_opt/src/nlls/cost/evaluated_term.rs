@@ -15,23 +15,41 @@ use crate::{
 
 extern crate alloc;
 
-/// Evaluated cost term
+/// Evaluated cost term.
+///
+/// ## Generic parameters
+///
+///  * `INPUT_DIM`
+///    - Total input dimension of the residual function `g`. It is the sum of argument dimensions:
+///      |Vⁱ₀| + |Vⁱ₁| + ... + |Vⁱₙ₋₁|.
+///  * `N`
+///    - Number of arguments of the residual function `g`.
 #[derive(Debug, Clone)]
-pub struct EvaluatedCostTerm<const DIM: usize, const NUM_ARGS: usize> {
-    /// Hessian
-    pub hessian: BlockHessian<DIM, NUM_ARGS>,
-    /// Gradient
-    pub gradient: BlockGradient<DIM, NUM_ARGS>,
-    /// cost: 0.5 * residual^T * precision_mat * residual
+pub struct EvaluatedCostTerm<const INPUT_DIM: usize, const N: usize> {
+    /// Hessian matrix: `J^T * W * J` where `J` is the Jacobian matrix of the residual function
+    /// and `W` is the precision matrix.
+    pub hessian: BlockHessian<INPUT_DIM, N>,
+    /// Gradient vector: `J^T * W * g` where `J` is the Jacobian matrix of the residual
+    /// function and `W` is the precision matrix, and `g` is the residual vector.
+    pub gradient: BlockGradient<INPUT_DIM, N>,
+    /// Least squares cost: `0.5 * g^T * W * g` where `g` is the residual vector and `W` is the
+    /// precision matrix.
     pub cost: f64,
-    /// indices of the variable families
-    pub idx: [usize; NUM_ARGS],
-    /// number of sub-terms
+    /// Array of variable indices for each argument of the residual function.
+    ///
+    /// For example, if `idx = [2, 7, 3]` and `Args` is `(Foo, Bar, Bar)`, then:
+    ///
+    /// - Argument 0 is the 2nd variable of the `Foo` family.
+    /// - Argument 1 is the 7th variable of the `Bar` family.
+    /// - Argument 2 is the 3rd variable of the `Bar` family.
+    pub idx: [usize; N],
+    /// Number of sub-terms. There is more than one sub-term if this term was created by
+    /// reducing multiple terms - which share the same set of free variables.
     pub num_sub_terms: usize,
 }
 
-impl<const DIM: usize, const NUM_ARGS: usize> EvaluatedCostTerm<DIM, NUM_ARGS> {
-    pub(crate) fn reduce(&mut self, other: EvaluatedCostTerm<DIM, NUM_ARGS>) {
+impl<const INPUT_DIM: usize, const N: usize> EvaluatedCostTerm<INPUT_DIM, N> {
+    pub(crate) fn reduce(&mut self, other: EvaluatedCostTerm<INPUT_DIM, N>) {
         self.hessian.mat += other.hessian.mat;
         self.gradient.vec += other.gradient.vec;
         self.cost += other.cost;
@@ -39,13 +57,13 @@ impl<const DIM: usize, const NUM_ARGS: usize> EvaluatedCostTerm<DIM, NUM_ARGS> {
     }
 }
 
-trait RowLoop<const DIM: usize, const NUM_ARGS: usize, const R: usize> {
+trait RowLoop<const INPUT_DIM: usize, const N: usize, const R: usize> {
     fn set_off_diagonal(
         self,
         idx: usize,
         i: usize,
         j: usize,
-        hessian: &mut BlockHessian<DIM, NUM_ARGS>,
+        hessian: &mut BlockHessian<INPUT_DIM, N>,
         precision_mat: Option<MatF64<R, R>>,
     );
 
@@ -54,19 +72,19 @@ trait RowLoop<const DIM: usize, const NUM_ARGS: usize, const R: usize> {
         idx: usize,
         i: usize,
         lambda_res: &VecF64<R>,
-        gradient: &mut BlockGradient<DIM, NUM_ARGS>,
-        hessian: &mut BlockHessian<DIM, NUM_ARGS>,
+        gradient: &mut BlockGradient<INPUT_DIM, N>,
+        hessian: &mut BlockHessian<INPUT_DIM, N>,
         precision_mat: Option<MatF64<R, R>>,
     );
 }
 
-impl<const DIM: usize, const NUM_ARGS: usize, const R: usize> RowLoop<DIM, NUM_ARGS, R> for () {
+impl<const INPUT_DIM: usize, const N: usize, const R: usize> RowLoop<INPUT_DIM, N, R> for () {
     fn set_off_diagonal(
         self,
         _idx: usize,
         _i: usize,
         _j: usize,
-        _hessian: &mut BlockHessian<DIM, NUM_ARGS>,
+        _hessian: &mut BlockHessian<INPUT_DIM, N>,
         _precision_mat: Option<MatF64<R, R>>,
     ) {
     }
@@ -76,27 +94,27 @@ impl<const DIM: usize, const NUM_ARGS: usize, const R: usize> RowLoop<DIM, NUM_A
         _idx: usize,
         _i: usize,
         _lambda_res: &VecF64<R>,
-        _gradient: &mut BlockGradient<DIM, NUM_ARGS>,
-        _hessian: &mut BlockHessian<DIM, NUM_ARGS>,
+        _gradient: &mut BlockGradient<INPUT_DIM, N>,
+        _hessian: &mut BlockHessian<INPUT_DIM, N>,
         _precision_mat: Option<MatF64<R, R>>,
     ) {
     }
 }
 
 impl<
-        const DIM: usize,
-        const NUM_ARGS: usize,
+        const INPUT_DIM: usize,
+        const N: usize,
         const R: usize,
         const DX: usize,
-        Tail: RowLoop<DIM, NUM_ARGS, R> + ColLoop<DIM, NUM_ARGS, R, DX>,
-    > RowLoop<DIM, NUM_ARGS, R> for (Option<MatF64<R, DX>>, Tail)
+        Tail: RowLoop<INPUT_DIM, N, R> + ColLoop<INPUT_DIM, N, R, DX>,
+    > RowLoop<INPUT_DIM, N, R> for (Option<MatF64<R, DX>>, Tail)
 {
     fn set_off_diagonal(
         self,
         idx: usize,
         i: usize,
         j: usize,
-        hessian: &mut BlockHessian<DIM, NUM_ARGS>,
+        hessian: &mut BlockHessian<INPUT_DIM, N>,
         precision_mat: Option<MatF64<R, R>>,
     ) {
         if idx == i {
@@ -114,8 +132,8 @@ impl<
         idx: usize,
         i: usize,
         lambda_res: &VecF64<R>,
-        gradient: &mut BlockGradient<DIM, NUM_ARGS>,
-        hessian: &mut BlockHessian<DIM, NUM_ARGS>,
+        gradient: &mut BlockGradient<INPUT_DIM, N>,
+        hessian: &mut BlockHessian<INPUT_DIM, N>,
         precision_mat: Option<MatF64<R, R>>,
     ) {
         if idx == i {
@@ -138,27 +156,27 @@ impl<
     }
 }
 
-trait ColLoop<const DIM: usize, const NUM_ARGS: usize, const R: usize, const DJ: usize> {
+trait ColLoop<const INPUT_DIM: usize, const N: usize, const R: usize, const DJ: usize> {
     fn set_off_diagonal_from_lhs(
         self,
         idx: usize,
         i: usize,
         j: usize,
-        hessian: &mut BlockHessian<DIM, NUM_ARGS>,
+        hessian: &mut BlockHessian<INPUT_DIM, N>,
         lhs: MatF64<R, DJ>,
         precision_mat: Option<MatF64<R, R>>,
     );
 }
 
-impl<const DIM: usize, const NUM_ARGS: usize, const R: usize, const DJ: usize>
-    ColLoop<DIM, NUM_ARGS, R, DJ> for ()
+impl<const INPUT_DIM: usize, const N: usize, const R: usize, const DJ: usize>
+    ColLoop<INPUT_DIM, N, R, DJ> for ()
 {
     fn set_off_diagonal_from_lhs(
         self,
         _idx: usize,
         _i: usize,
         _j: usize,
-        _hessian: &mut BlockHessian<DIM, NUM_ARGS>,
+        _hessian: &mut BlockHessian<INPUT_DIM, N>,
         _lhs: MatF64<R, DJ>,
         _precision_mat: Option<MatF64<R, R>>,
     ) {
@@ -166,20 +184,20 @@ impl<const DIM: usize, const NUM_ARGS: usize, const R: usize, const DJ: usize>
 }
 
 impl<
-        const DIM: usize,
-        const NUM_ARGS: usize,
+        const INPUT_DIM: usize,
+        const N: usize,
         const R: usize,
         const DI: usize,
         const DJ: usize,
-        Tail: ColLoop<DIM, NUM_ARGS, R, DJ>,
-    > ColLoop<DIM, NUM_ARGS, R, DJ> for (Option<MatF64<R, DI>>, Tail)
+        Tail: ColLoop<INPUT_DIM, N, R, DJ>,
+    > ColLoop<INPUT_DIM, N, R, DJ> for (Option<MatF64<R, DI>>, Tail)
 {
     fn set_off_diagonal_from_lhs(
         self,
         idx: usize,
         i: usize,
         j: usize,
-        hessian: &mut BlockHessian<DIM, NUM_ARGS>,
+        hessian: &mut BlockHessian<INPUT_DIM, N>,
         lhs: MatF64<R, DJ>,
         precision_mat: Option<MatF64<R, R>>,
     ) {
@@ -198,30 +216,36 @@ impl<
     }
 }
 
-/// Trait for making n-ary terms
+/// Trait for making an N-ary cost term.
 pub trait MakeEvaluatedCostTerm<const R: usize, const N: usize> {
-    /// make a term from a residual value, and derivatives (=self)
+    /// Make a term from a residual value, and derivatives (=self). This function shall be called
+    /// inside the [HasResidualFn::eval] function of a user-defined residual.
     ///
-    /// In more detail, this function computes the Hessian, gradient and least-squares cost of the
-    /// corresponding term given the following inputs:
+    /// This function computes the Hessian, gradient and least-squares cost to produce the
+    /// [EvaluatedCostTerm] - given the following inputs:
     ///
-    /// - `self`:          A tuple of functions that return the Jacobian of the cost function with
-    ///   respect to each argument.
-    /// - `var_kinds`:     An array of `VarKind` for each argument of the cost function. A gradient
-    ///   and Hessian will be computed for each argument that is not `Conditioned`.
-    /// - `residual`:      The residual of the corresponding cost term.
-    /// - `robust_kernel`: An optional robust kernel to apply to the residual.
-    /// - `precision_mat`: Precision matrix - i.e. inverse of the covariance matrix - to compute the
-    ///   least-squares cost: `0.5 * residual^T * precision_mat * residual`. If `None`, the identity
-    ///   matrix is used: `0.5 * residual^T * residual`.
-    fn make<const DIM: usize>(
+    ///  * `self`
+    ///    - A tuple of functions that return the Jacobian of the residual function with respect to
+    ///      each argument.
+    ///  * `var_kinds`
+    ///    - An array of `VarKind` for each argument of the cost function. A gradient and Hessian
+    ///      will be computed for each argument that is not `Conditioned`.
+    ///  * `residual`
+    ///    - The residual of the corresponding cost term.
+    ///  * `robust_kernel`
+    ///    - An optional robust kernel to apply to the residual.
+    ///  * `precision_mat`
+    ///    - Precision matrix `W` - i.e. inverse of the covariance matrix - to compute the
+    ///      least-squares cost: `0.5 * g^T * precision_mat * g`. If `None`, the identity matrix is
+    ///      used: `0.5 * g^T * g`.
+    fn make<const INPUT_DIM: usize>(
         self,
         idx: [usize; N],
         var_kinds: [VarKind; N],
         residual: VecF64<R>,
         robust_kernel: Option<robust_kernel::RobustKernel>,
         precision_mat: Option<MatF64<R, R>>,
-    ) -> EvaluatedCostTerm<DIM, N>;
+    ) -> EvaluatedCostTerm<INPUT_DIM, N>;
 }
 
 macro_rules! nested_option_tuple {
@@ -259,14 +283,14 @@ macro_rules! impl_make_evaluated_cost_term_for_tuples {
                     $F: FnOnce() -> MatF64<R, $D>,
                 )+
             {
-                fn make<const DIM: usize>(
+                fn make<const INPUT_DIM: usize>(
                     self,
                     idx: [usize; $N],
                     var_kinds: [VarKind; $N],
                     residual: VecF64<R>,
                     robust_kernel: Option<robust_kernel::RobustKernel>,
                     precision_mat: Option<MatF64<R, R>>,
-                ) -> EvaluatedCostTerm<DIM, $N> {
+                ) -> EvaluatedCostTerm<INPUT_DIM, $N> {
                     let residual = match robust_kernel {
                         Some(rk) => rk.weight(residual.norm()) * residual,
                         None => residual,

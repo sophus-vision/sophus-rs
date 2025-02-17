@@ -7,21 +7,29 @@ use sophus_autodiff::{
 };
 
 use crate::{
-    nlls::constraint::eq_constraint::IsEqConstraint,
+    nlls::constraint::eq_constraint::HasEqConstraintResidualFn,
     prelude::*,
 };
 
-/// small non-linear equality constraint
+/// Linear 1d equality constraint.
+///
+/// `x₀² + x₁² = lhs`.
+///
+/// The corresponding constraint residual is:
+///
+/// `c(x) = x₀² + x₁² - lhs`.
 #[derive(Clone, Debug)]
-pub struct SmallNonLinearEqConstraint {
-    /// lhs
+pub struct ExampleNonLinearEqConstraint {
+    /// Left-hand side of the equality constraint.
     pub lhs: f64,
-    /// entity index
+    /// Entity index for `x`.
     pub entity_indices: [usize; 1],
 }
 
-impl SmallNonLinearEqConstraint {
-    /// Compute the residual
+impl ExampleNonLinearEqConstraint {
+    /// Compute the constraint residual
+    ///
+    /// `c(x) = x₀² + x₁² - lhs`.
     pub fn residual<Scalar: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize>(
         x: Scalar::Vector<2>,
         lhs: Scalar,
@@ -31,7 +39,7 @@ impl SmallNonLinearEqConstraint {
     }
 }
 
-impl IsEqConstraint<1, 2, 1, (), VecF64<2>> for SmallNonLinearEqConstraint {
+impl HasEqConstraintResidualFn<1, 2, 1, (), VecF64<2>> for ExampleNonLinearEqConstraint {
     fn idx_ref(&self) -> &[usize; 1] {
         &self.entity_indices
     }
