@@ -5,7 +5,7 @@ use crate::{
     prelude::*,
     renderables::{
         color::Color,
-        scene_renderable::LineSegment3,
+        LineSegment3,
     },
 };
 
@@ -110,7 +110,7 @@ pub fn make_axes3(world_from_local_axes: &[Isometry3F64]) -> Vec<LineSegment3> {
 ///
 /// ```
 /// use sophus_lie::Isometry3F64;
-/// use sophus_renderer::renderables::scene_renderable::axes::axes3;
+/// use sophus_renderer::renderables::axes3;
 ///
 /// let axes = axes3(&[Isometry3F64::identity()])
 ///     .scale(0.5)

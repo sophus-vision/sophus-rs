@@ -18,13 +18,13 @@ use egui_plot::{
 use linked_hash_map::LinkedHashMap;
 use sophus_autodiff::prelude::HasParams;
 use sophus_image::{
-    arc_image::ArcImageF32,
+    ArcImageF32,
     ImageSize,
 };
 use sophus_lie::prelude::IsTranslationProductGroup;
 use sophus_renderer::{
-    aspect_ratio::HasAspectRatio,
-    renderables::color::Color,
+    renderables::Color,
+    HasAspectRatio,
     RenderContext,
 };
 use thingbuf::mpsc::blocking::Receiver;
@@ -32,23 +32,19 @@ use thingbuf::mpsc::blocking::Receiver;
 use crate::{
     interactions::ViewportScale,
     packets::{
-        plot_view_packet::{
-            curve_vec_with_conf::CurveVecWithConf,
-            vec_curve::CurveVec,
-            LineType,
-        },
+        CurveVec,
+        CurveVecWithConf,
+        LineType,
         Packet,
     },
     views::{
-        active_view_info::ActiveViewInfo,
         get_adjusted_view_size,
         get_max_size,
-        image_view::ImageView,
-        plot_view::{
-            GraphType,
-            PlotView,
-        },
-        scene_view::SceneView,
+        ActiveViewInfo,
+        GraphType,
+        ImageView,
+        PlotView,
+        SceneView,
         View,
         ViewportSize,
     },
@@ -417,7 +413,7 @@ impl ViewerBase {
             .height(adjusted_size.height)
             .width(adjusted_size.width);
 
-        fn color_cnv(color: sophus_renderer::renderables::color::Color) -> egui::Color32 {
+        fn color_cnv(color: sophus_renderer::renderables::Color) -> egui::Color32 {
             egui::Color32::from_rgb(
                 (color.r * 255.0).clamp(0.0, 255.0) as u8,
                 (color.g * 255.0).clamp(0.0, 255.0) as u8,

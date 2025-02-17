@@ -18,7 +18,7 @@ pub use crate::region::{
 
 /// Base trait for regions.
 ///
-/// A region is either an interval [a, b] in ℝ, or its generalization to ℝⁿ.
+/// A region is either an interval [a, b] in `ℝ`, or its generalization to `ℝⁿ`.
 /// Concrete implementations include [Interval], [NonEmptyInterval], [BoxRegion] and
 /// [NonEmptyBoxRegion].
 ///
@@ -37,8 +37,8 @@ pub trait IsRegionBase<const D: usize, P: IsPoint<D>>: core::marker::Sized {
     ///
     /// Creates interval
     ///
-    ///  * [a, b]  if a <= b
-    ///  * [b, a]  if a > b
+    ///  * `[a, b]  if a <= b`
+    ///  * `[b, a]  if a > b`
     fn from_bounds(bound_a: P, bound_b: P) -> Self;
 
     /// Create region from single point.
@@ -55,9 +55,9 @@ pub trait IsRegionBase<const D: usize, P: IsPoint<D>>: core::marker::Sized {
 
     /// Is region unbounded?
     ///
-    /// A region is unbound if it includes all points of the . For example,
-    /// an [Interval] is unbound if it includes all point x with
-    /// [f64::NEG_INFINITY] <= x <=  [f64::INFINITY].
+    /// A region is unbound if it includes all points of the domain. For example,
+    /// an [Interval] is unbound if it includes all point `x` with
+    /// [f64::NEG_INFINITY] `<= x <= ` [f64::INFINITY].
     fn is_unbounded(&self) -> bool;
 
     /// Extend region to include the point.
@@ -74,7 +74,7 @@ pub trait IsRegionBase<const D: usize, P: IsPoint<D>>: core::marker::Sized {
 
     /// Return range of the region.
     ///
-    /// For an interval [a, b], the range is b - a.
+    /// For an interval `[a, b]`, the range is `b - a`.
     fn range(&self) -> P;
 
     /// Convert self to the [Self::Region] type.

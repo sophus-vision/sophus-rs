@@ -7,11 +7,13 @@
 
 ## Overview
 
-sophus-rs is a Rust library for 2d and 3d geometry for Computer Vision and Robotics applications.
-It is a spin-off of the [Sophus](https://github.com/strasdat/Sophus) C++ library which
-focuses on *Lie groups* (e.g. rotations and transformations in 2d and 3d).
+sophus-rs is a Rust library for 2d and 3d geometry for Computer Vision and
+Robotics applications. It is a spin-off of the
+[Sophus](https://github.com/strasdat/Sophus) C++ library which focuses on
+*Lie groups* (e.g. rotations and transformations in 2d and 3d).
 
-In addition to Lie groups, sophus-rs also includes other geometric/maths concepts.
+In addition to Lie groups, sophus-rs also includes other geometric/maths
+concepts.
 
 ## Automatic differentiation
 
@@ -44,24 +46,30 @@ let finite_diff = VectorValuedVectorMap::<f64, 1>::sym_diff_quotient_jacobian(
     0.0001,
 );
 // Automatic differentiation Jacobian
-let auto_diff = proj_fn::<DualScalar<3, 1>, 3, 1>(DualVector::var(a)).jacobian();
+let auto_diff =
+  proj_fn::<DualScalar<3, 1>, 3, 1>(DualVector::var(a)).jacobian();
 
 approx::assert_abs_diff_eq!(finite_diff, auto_diff, epsilon = 0.0001);
 ```
 
-Note that proj_fn is a function that takes a 3D vector and returns a 2D vector. The Jacobian of
-proj_fn is 2x3 matrix. When a (three dimensional) dual vector is passed to proj_fn, then
-a 2d dual vector is returned. Since we are expecting a 2x3 Jacobian, each element of the 2d dual
-vector must represent 3x1 Jacobian. This is why we use DualScalar<3, 1> as the scalar type.
+Note that `proj_fn` is a function that takes a 3D vector and returns a 2D vector.
+The Jacobian of `proj_fn` is `2x3` matrix. When a (three dimensional) dual
+vector is passed to proj_fn, then a 2d dual vector is returned. Since we are
+expecting a `2x3` Jacobian, each element of the 2d dual vector must represent
+`3x1` Jacobian. This is why we use `DualScalar<3, 1>` as the scalar type.
 
 ## Lie Groups
 
 sophus-rs provides a number of Lie groups, including:
 
- * The group of 2D rotations, [lie::Rotation2], also known as the special orthogonal group SO(2),
- * the group of 3D rotations, [lie::Rotation3], also known as the special orthogonal group SO(3),
- * the group of 2d isometries, [lie::Isometry2], also known as the Euclidean group SE(2), and
- * the group of 3d isometries, [lie::Isometry3], also known as the Euclidean group SE(3).
+ * The group of 2D rotations, [lie::Rotation2], also known as the
+   Special Orthogonal group SO(2),
+ * the group of 3D rotations, [lie::Rotation3], also known as the
+   Special Orthogonal group SO(3),
+ * the group of 2d isometries, [lie::Isometry2], also known as the
+   Special Euclidean group SE(2), and
+ * the group of 3d isometries, [lie::Isometry3], also known as the
+   Spevial Euclidean group SE(3).
 
 
 ```
@@ -77,7 +85,9 @@ let foo_in_world = VecF64::<3>::new(1.0, 2.0, 3.0);
 
 // Combine them into an SE(3) transform.
 let world_from_foo_isometry
-    = Isometry3F64::from_translation_and_rotation(foo_in_world, world_from_foo_rotation);
+    = Isometry3F64::from_translation_and_rotation(
+        foo_in_world,
+        world_from_foo_rotation);
 
 // Apply world_from_foo_isometry to a 3D point in the foo reference frame.
 let point_in_foo = VecF64::<3>::new(10.0, 0.0, 0.0);
@@ -89,11 +99,11 @@ let point_in_world = world_from_foo_isometry.transform(&point_in_foo);
 let angle = FRAC_PI_4;
 let cos = angle.cos();
 let sin = angle.sin();
-let expected_point_in_world = VecF64::<3>::new(1.0 + 10.0 * cos, 2.0 + 10.0 * sin, 3.0);
+let expected_point_in_world
+    = VecF64::<3>::new(1.0 + 10.0 * cos, 2.0 + 10.0 * sin, 3.0);
 
-approx::assert_abs_diff_eq!(point_in_world[0], expected_point_in_world[0], epsilon = 1e-9);
-approx::assert_abs_diff_eq!(point_in_world[1], expected_point_in_world[1], epsilon = 1e-9);
-approx::assert_abs_diff_eq!(point_in_world[2], expected_point_in_world[2], epsilon = 1e-9);
+approx::assert_abs_diff_eq!(
+    point_in_world, expected_point_in_world, epsilon = 1e-9);
 
 // Map isometry to 6-dimensional tangent space.
 let omega = world_from_foo_isometry.log();
@@ -105,13 +115,19 @@ approx::assert_abs_diff_eq!(roundtrip_world_from_foo_isometry.matrix(),
 
 // Compose with another isometry.
 let world_from_bar_isometry = Isometry3F64::rot_y(std::f64::consts::FRAC_PI_6);
-let bar_from_foo_isometry = world_from_bar_isometry.inverse() * world_from_foo_isometry;
+let bar_from_foo_isometry
+    = world_from_bar_isometry.inverse() * world_from_foo_isometry;
 ```
+
+## Sparse non-linear least squares optimization
+
+sophus-rs also provides a sparse non-linear least squares optimization through
+[crate::opt].
 
 ## And more...
 
-such unit vector, splines, image classes, camera models, non-linear least squares optimization and
-some visualization tools. Check out the [documentation](https://docs.rs/sophus) for more information.
+such unit vector, splines, image classes, camera models, and some visualization
+tools. Check out the [documentation](https://docs.rs/sophus) for more information.
 
 
 ## Building
@@ -123,15 +139,15 @@ sophus-rs builds on stable.
 sophus = "0.13.0"
 ```
 
-```toml
-[dependencies]
-sophus = { version = "0.13.0", features = ["simd"] }
-```
-
 To allow for batch types, such as BatchScalarF64, the 'simd' feature is required. This feature
 depends on [`portable-simd`](https://doc.rust-lang.org/std/simd/index.html), which is currently
 only available on [nightly](https://doc.rust-lang.org/book/appendix-07-nightly-rust.html). There
 are no plans to rely on any other nightly features.
+
+```toml
+[dependencies]
+sophus = { version = "0.13.0", features = ["simd"] }
+```
 
 ## Crate Structure and Usage
 

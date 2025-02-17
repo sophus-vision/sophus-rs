@@ -1,19 +1,17 @@
 use crate::{
-    image_view::{
-        ImageView2U16,
-        ImageView2U8,
-        ImageView3F32,
-        ImageView3U16,
-        ImageView3U8,
-        ImageView4F32,
-        ImageView4U16,
-        ImageView4U8,
-        ImageViewF32,
-        ImageViewU16,
-        ImageViewU8,
-    },
     prelude::*,
     ImageSize,
+    ImageView2U16,
+    ImageView2U8,
+    ImageView3F32,
+    ImageView3U16,
+    ImageView3U8,
+    ImageView4F32,
+    ImageView4U16,
+    ImageView4U8,
+    ImageViewF32,
+    ImageViewU16,
+    ImageViewU8,
 };
 
 /// Intensity image view of unsigned integer values.

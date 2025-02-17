@@ -1,12 +1,11 @@
 use eframe::egui;
 use sophus_autodiff::linalg::VecF64;
-use sophus_image::arc_image::ArcImage4U8;
+use sophus_image::ArcImage4U8;
 
 use crate::{
-    aspect_ratio::HasAspectRatio,
     offscreen_renderer::OffscreenRenderer,
-    renderables::color::Color,
-    textures::depth_image::DepthImage,
+    renderables::Color,
+    textures::DepthImage,
 };
 
 /// Render result
@@ -22,6 +21,12 @@ pub struct RenderResult {
 
     /// depth egui texture id
     pub depth_egui_tex_id: egui::TextureId,
+}
+
+/// aspect ratio
+pub trait HasAspectRatio {
+    /// return aspect ratio
+    fn aspect_ratio(&self) -> f32;
 }
 
 impl HasAspectRatio for OffscreenRenderer {

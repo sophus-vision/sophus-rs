@@ -26,11 +26,9 @@ use crate::{
         linear_system::EvalMode,
     },
     variables::{
-        var_families::{
-            VarFamilies,
-            VarFamilyError,
-        },
-        var_tuple::IsVarTuple,
+        IsVarTuple,
+        VarFamilies,
+        VarFamilyError,
         VarKind,
     },
 };

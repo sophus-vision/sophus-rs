@@ -7,7 +7,7 @@ use crate::{
         PipelineBuilder,
     },
     prelude::*,
-    renderables::scene_renderable::LineSegments3,
+    renderables::LineSegments3,
     uniform_buffers::VertexShaderUniformBuffers,
     RenderContext,
 };

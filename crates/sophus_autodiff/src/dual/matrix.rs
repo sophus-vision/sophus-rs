@@ -9,7 +9,7 @@ use crate::{
 
 /// A structure that holds the derivative of a matrix-valued map with respect to its inputs.
 ///
-/// For a function f: X -> ℝʳ, or similarly a batch variant in SIMD,
+/// For a function `f: X -> ℝʳ`, or similarly a batch variant in SIMD,
 /// this structure stores each output dimension’s derivative block.
 ///
 /// - `out_vec[i]` contains a derivative matrix (for dimension `i` of the output).
@@ -76,7 +76,7 @@ pub trait IsDualMatrix<
     fn derivative(self) -> MatrixValuedDerivative<S::RealScalar, ROWS, COLS, BATCH, DM, DN>;
 }
 
-/// A helper trait marking that this dual matrix is the result of a *curve* f: ℝ -> ℝʳˣᶜ, letting
+/// A helper trait marking that this dual matrix is the result of a *curve* `f: ℝ -> ℝʳˣᶜ`, letting
 /// you retrieve a simpler derivative form for each dimension of the output.
 pub trait IsDualMatrixFromCurve<
     S: IsDualScalar<BATCH, 1, 1>,

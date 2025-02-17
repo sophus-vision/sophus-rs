@@ -1,36 +1,33 @@
 #![deny(missing_docs)]
 #![allow(clippy::needless_range_loop)]
-#![no_std]
+#![doc = include_str!(concat!("../", std::env!("CARGO_PKG_README")))]
 #![cfg_attr(nightly, feature(doc_auto_cfg))]
 
-//! Renderer
+#[doc = include_str!(concat!("../",  core::env!("CARGO_PKG_README")))]
+#[cfg(doctest)]
+pub struct ReadmeDoctests;
 
-/// Aspect ratio
-pub mod aspect_ratio;
 /// Render camera
 pub mod camera;
-/// The rendering implementation
-pub mod offscreen_renderer;
-/// render uniforms
-pub mod pipeline_builder;
-/// The pixel renderer for 2D rendering.
-pub mod pixel_renderer;
-/// The render context
-pub mod render_context;
 /// The renderable structs.
 pub mod renderables;
-/// The scene renderer for 3D rendering.
-pub mod scene_renderer;
 /// offscreen texture for rendering
 pub mod textures;
-/// Types used in the renderer API
-pub mod types;
-/// pipeline builder
-pub mod uniform_buffers;
-
-pub use crate::render_context::RenderContext;
-
-/// prelude
+/// sophus_renderer prelude.
+///
+/// It is recommended to import this prelude when working with `sophus_renderer types:
+///
+/// ```
+/// use sophus_renderer::prelude::*;
+/// ```
+///
+/// or
+///
+/// ```ignore
+/// use sophus::prelude::*;
+/// ```
+///
+/// to import all preludes when using the `sophus` umbrella crate.
 pub mod prelude {
     pub(crate) use alloc::{
         collections::btree_map::BTreeMap,
@@ -51,3 +48,19 @@ pub mod prelude {
 
     extern crate alloc;
 }
+
+mod offscreen_renderer;
+mod pipeline_builder;
+mod pixel_renderer;
+mod render_context;
+mod scene_renderer;
+mod types;
+mod uniform_buffers;
+
+pub use offscreen_renderer::*;
+pub use pipeline_builder::*;
+pub use pixel_renderer::*;
+pub use render_context::*;
+pub use scene_renderer::*;
+pub use types::*;
+pub use uniform_buffers::*;

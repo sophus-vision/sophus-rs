@@ -37,14 +37,14 @@ use crate::{
 /// A batch dual matrix, whose elements are [DualBatchScalar] (forward-mode AD) across multiple
 /// lanes.
 ///
-/// This implements vector functionality for ℝʳ *with* partial derivatives,
+/// This implements vector functionality for `ℝʳ` *with* partial derivatives,
 /// in parallel lanes (SIMD). Each element is a `DualBatchScalar<BATCH, DM, DN>` storing:
 ///
 /// - `BATCH`: The number of SIMD lanes.
 /// - `DM`, `DN`: The shape of each element’s derivative.
 ///
-/// # Fields
-/// - `inner`: A fixed-size vector (`SVec`) of length `ROWS`, each item a `DualBatchScalar`.
+/// # Private fields
+/// - `inner`: A `ROWS x COLS` [SMat], each item a [`DualBatchScalar<DM, DN>`].
 ///
 /// # Example
 /// For `ROWS=3, COLS=2, BATCH=4, DM=3, DN=1`, you have 3x2 elements, each storing 4-lane real parts

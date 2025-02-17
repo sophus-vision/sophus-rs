@@ -44,7 +44,7 @@ pub trait IsStaticTensor<
     }
 
     /// Get the stride as an array
-    fn strides() -> [usize; SRANK];
+    fn get_strides() -> [usize; SRANK];
 
     /// Create a tensor from a slice
     fn from_slice(slice: &[Scalar]) -> Self;
@@ -62,7 +62,7 @@ impl<Scalar: IsCoreScalar + 'static> IsStaticTensor<Scalar, 0, 1, 1> for Scalar 
         []
     }
 
-    fn strides() -> [usize; 0] {
+    fn get_strides() -> [usize; 0] {
         []
     }
 
@@ -83,7 +83,7 @@ impl<Scalar: IsCoreScalar + 'static, const ROWS: usize> IsStaticTensor<Scalar, 1
         [ROWS]
     }
 
-    fn strides() -> [usize; 1] {
+    fn get_strides() -> [usize; 1] {
         [1]
     }
 
@@ -104,7 +104,7 @@ impl<Scalar: IsCoreScalar + 'static, const ROWS: usize, const COLS: usize>
         [ROWS, COLS]
     }
 
-    fn strides() -> [usize; 2] {
+    fn get_strides() -> [usize; 2] {
         [1, ROWS]
     }
 

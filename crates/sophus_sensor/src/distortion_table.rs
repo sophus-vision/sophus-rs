@@ -2,11 +2,9 @@ use nalgebra::SVector;
 use sophus_autodiff::linalg::VecF64;
 use sophus_geo::region::BoxRegion;
 use sophus_image::{
-    arc_image::ArcImage2F32,
-    image_view::IsImageView,
-    interpolation::interpolate,
-    mut_image::MutImage2F32,
-    mut_image_view::IsMutImageView,
+    interpolate_xf32,
+    ArcImage2F32,
+    MutImage2F32,
 };
 
 use crate::{
@@ -45,7 +43,7 @@ impl DistortTable {
         norm_point.x /= self.incr().x;
         norm_point.y /= self.incr().y;
 
-        let p2 = interpolate(&self.table, norm_point.cast());
+        let p2 = interpolate_xf32(&self.table, norm_point.cast());
         VecF64::<2>::new(p2[0] as f64, p2[1] as f64)
     }
 }

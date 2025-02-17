@@ -1,8 +1,7 @@
 use eframe::egui;
 use sophus_autodiff::linalg::VecF64;
 use sophus_image::{
-    arc_image::ArcImageF32,
-    image_view::IsImageView,
+    ArcImageF32,
     ImageSize,
 };
 use sophus_lie::{
@@ -12,10 +11,10 @@ use sophus_lie::{
 };
 use sophus_renderer::{
     camera::{
-        clipping_planes::ClippingPlanesF64,
-        intrinsics::RenderIntrinsics,
+        ClippingPlanesF64,
+        RenderIntrinsics,
     },
-    types::TranslationAndScaling,
+    TranslationAndScaling,
 };
 
 use crate::{

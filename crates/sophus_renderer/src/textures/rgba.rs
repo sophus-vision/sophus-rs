@@ -4,13 +4,11 @@ use eframe::egui::{
     self,
 };
 use sophus_image::{
-    arc_image::{
-        ArcImage4U16,
-        ArcImage4U8,
-        ArcImageF32,
-    },
-    image_view::ImageView4U8,
+    ArcImage4U16,
+    ArcImage4U8,
+    ArcImageF32,
     ImageSize,
+    ImageView4U8,
 };
 use wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
 

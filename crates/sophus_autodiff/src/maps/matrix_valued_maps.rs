@@ -9,7 +9,7 @@ use crate::{
 ///
 /// This is a function which takes a vector and returns a matrix:
 ///
-///  f: ℝᵐ -> ℝʳˣᶜ
+///  `f: ℝᵐ -> ℝʳˣᶜ`
 pub struct MatrixValuedVectorMap<S, const BATCH: usize> {
     phantom: core::marker::PhantomData<S>,
 }
@@ -53,7 +53,7 @@ impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize> MatrixValuedVec
 ///
 /// This is a function which takes a matrix and returns a matrix:
 ///
-///  f: ℝᵐˣⁿ -> ℝʳˣᶜ
+///  `f: ℝᵐˣⁿ -> ℝʳˣᶜ`
 pub struct MatrixValuedMatrixMap<S: IsScalar<BATCH, 0, 0>, const BATCH: usize> {
     phantom: core::marker::PhantomData<S>,
 }

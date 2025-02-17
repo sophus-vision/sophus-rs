@@ -1,7 +1,5 @@
 use core::fmt::Debug;
 
-use constraint::eq_constraint_fn::EqConstraintError;
-use cost::cost_fn::CostError;
 use linear_system::{
     cost_system::CostSystem,
     eq_system::EqSystem,
@@ -18,28 +16,39 @@ use crate::{
         block_vector::BlockVector,
         symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
     },
-    nlls::{
-        constraint::eq_constraint_fn::IsEqConstraintsFn,
-        cost::cost_fn::IsCostFn,
-        linear_system::{
-            solvers::sparse_ldlt::SparseLdltParams,
-            EvalMode,
-            LinearSystem,
-        },
+    nlls::linear_system::{
+        solvers::sparse_ldlt::SparseLdltParams,
+        EvalMode,
+        LinearSystem,
     },
-    variables::var_families::VarFamilies,
+    variables::VarFamilies,
 };
 
 extern crate alloc;
 
-/// equality/inequality constraints
-pub mod constraint;
-/// Cost functions, terms, residuals etc.
-pub mod cost;
-/// functor library
-pub mod functor_library;
-/// Linear system
-pub mod linear_system;
+mod constraint;
+mod cost;
+mod functor_library;
+mod linear_system;
+
+pub use constraint::{
+    eq_constraint::*,
+    eq_constraint_fn::*,
+    evaluated_eq_constraint::*,
+    evaluated_eq_set::*,
+};
+pub use cost::{
+    compare_idx::*,
+    cost_fn::*,
+    cost_term::*,
+    evaluated_cost::*,
+    evaluated_term::*,
+};
+
+pub use crate::nlls::functor_library::{
+    costs,
+    eq_constraints,
+};
 
 /// Linear solver type
 #[derive(Copy, Clone, Debug)]

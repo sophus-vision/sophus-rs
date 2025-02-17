@@ -10,7 +10,7 @@ use sophus_autodiff::linalg::{
 
 use crate::{
     camera::Camera,
-    distortions::affine::AffineDistortionImpl,
+    distortions::AffineDistortionImpl,
     traits::IsProjection,
 };
 

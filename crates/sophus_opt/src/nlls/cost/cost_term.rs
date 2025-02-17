@@ -5,7 +5,7 @@ use super::evaluated_term::EvaluatedCostTerm;
 use crate::{
     robust_kernel::RobustKernel,
     variables::{
-        var_tuple::IsVarTuple,
+        IsVarTuple,
         VarKind,
     },
 };

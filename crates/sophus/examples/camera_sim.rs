@@ -2,25 +2,23 @@
 
 use sophus::{
     lie::Isometry3,
-    prelude::IsImageView,
+    prelude::*,
     sim::camera_simulator::CameraSimulator,
 };
 use sophus_image::{
     io::{
-        png::save_as_png,
-        tiff::save_as_tiff,
+        save_as_png,
+        save_as_tiff,
     },
     ImageSize,
 };
 use sophus_renderer::{
-    camera::properties::RenderCameraProperties,
+    camera::RenderCameraProperties,
     renderables::{
-        color::Color,
-        scene_renderable::{
-            make_line3,
-            make_mesh3_at,
-            make_point3,
-        },
+        make_line3,
+        make_mesh3_at,
+        make_point3,
+        Color,
     },
     RenderContext,
 };

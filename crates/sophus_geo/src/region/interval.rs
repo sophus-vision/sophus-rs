@@ -10,7 +10,7 @@ use super::{
     IsRegionBase,
 };
 
-/// A non-empty interval [a, b] in ℝ.
+/// A non-empty interval [a, b] in `ℝ`.
 ///
 /// See [IsRegionBase] and [IsNonEmptyRegion] for details about the (non-empty) region concept.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -103,7 +103,7 @@ impl IsNonEmptyRegion<1, f64> for NonEmptyInterval {
     }
 }
 
-/// A interval [a, b] in ℝ which might be empty.
+/// A interval [a, b] in `ℝ` which might be empty.
 ///
 /// See [IsRegionBase] for details about the region concept.
 #[derive(Debug, Copy, Clone, PartialEq)]

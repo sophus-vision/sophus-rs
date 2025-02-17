@@ -5,14 +5,12 @@ use crate::{
         symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
     },
     nlls::{
-        cost::{
-            cost_fn::CostError,
-            evaluated_cost::EvaluatedCost,
-        },
+        CostError,
+        EvaluatedCost,
         OptParams,
     },
     prelude::*,
-    variables::var_families::VarFamilies,
+    variables::VarFamilies,
 };
 
 extern crate alloc;

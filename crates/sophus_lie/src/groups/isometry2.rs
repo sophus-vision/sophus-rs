@@ -18,7 +18,7 @@ use crate::{
     TranslationProductGroupImpl,
 };
 
-/// 2d isometry - special Euclidean group SE(2)
+/// 2d isometry - element of the Special Euclidean group SE(2)
 ///
 ///  * BATCH
 ///     - batch dimension. If S is f64 or [sophus_autodiff::dual::DualScalar] then BATCH=1.
@@ -28,7 +28,7 @@ use crate::{
 pub type Isometry2<S, const BATCH: usize, const DM: usize, const DN: usize> =
     LieGroup<S, 3, 4, 2, 3, BATCH, DM, DN, Isometry2Impl<S, BATCH, DM, DN>>;
 
-/// 2d isometry with f64 scalar type - special Euclidean group SE(2)
+/// 2d isometry with f64 scalar type - element of the Special Euclidean group SE(2)
 ///
 /// See [Isometry2] for details.
 pub type Isometry2F64 = Isometry2<f64, 1, 0, 0>;

@@ -2,8 +2,8 @@ use sophus_autodiff::linalg::SVec;
 
 use crate::prelude::*;
 
-/// Bilinear interpolated image lookup
-pub fn interpolate_impl<'a, I: IsImageView<'a, 2, 0, f32, f32, 1, 1>>(
+/// Bilinear interpolated single-channel f32 image lookup
+pub fn interpolate_f32<'a, I: IsImageView<'a, 2, 0, f32, f32, 1, 1>>(
     img: &'a I,
     uv: SVec<f32, 2>,
 ) -> f32 {
@@ -42,14 +42,14 @@ pub fn interpolate_impl<'a, I: IsImageView<'a, 2, 0, f32, f32, 1, 1>>(
         + val11 * (frac_u * frac_v)
 }
 
-/// Bilinear interpolated image lookup
-pub fn interpolate<
+/// Bilinear interpolated multi-channel f32 image lookup
+pub fn interpolate_xf32<
     'a,
     const ROWS: usize,
     I: IsImageView<'a, 3, 1, f32, SVec<f32, ROWS>, ROWS, 1>,
 >(
     img: &'a I,
-    uv: nalgebra::Vector2<f32>,
+    uv: SVec<f32, 2>,
 ) -> SVec<f32, ROWS> {
     let image_size = img.image_size();
 

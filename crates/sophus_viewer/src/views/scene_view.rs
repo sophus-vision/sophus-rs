@@ -1,9 +1,9 @@
 use linked_hash_map::LinkedHashMap;
 use log::warn;
 use sophus_renderer::{
-    aspect_ratio::HasAspectRatio,
-    camera::intrinsics::RenderIntrinsics,
-    offscreen_renderer::OffscreenRenderer,
+    camera::RenderIntrinsics,
+    HasAspectRatio,
+    OffscreenRenderer,
     RenderContext,
 };
 
@@ -12,7 +12,7 @@ use crate::{
         orbit_interaction::OrbitalInteraction,
         InteractionEnum,
     },
-    packets::scene_view_packet::{
+    packets::{
         SceneViewCreation,
         SceneViewPacket,
         SceneViewPacketContent,

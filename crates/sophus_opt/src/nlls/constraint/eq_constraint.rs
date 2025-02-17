@@ -3,7 +3,7 @@ use std::fmt::Debug;
 
 use super::evaluated_eq_constraint::EvaluatedEqConstraint;
 use crate::variables::{
-    var_tuple::IsVarTuple,
+    IsVarTuple,
     VarKind,
 };
 

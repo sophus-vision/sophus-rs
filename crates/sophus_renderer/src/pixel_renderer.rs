@@ -1,7 +1,8 @@
-/// Line renderer
-pub mod pixel_line;
-/// Pixel point renderer
-pub mod pixel_point;
+mod pixel_line;
+mod pixel_point;
+
+pub use pixel_line::*;
+pub use pixel_point::*;
 
 use crate::{
     pipeline_builder::{

@@ -102,7 +102,7 @@ macro_rules! mut_view_is_view {
                     *d *= num_scalars;
                 }
                 #[allow(clippy::drop_non_drop)]
-                let strides = concat_arrays!(dstrides, STensor::strides());
+                let strides = concat_arrays!(dstrides, STensor::get_strides());
 
                 let ptr = elem_view_mut.as_ptr() as *mut Scalar;
                 use ndarray::ShapeBuilder;

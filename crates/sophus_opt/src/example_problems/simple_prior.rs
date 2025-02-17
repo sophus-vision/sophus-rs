@@ -9,22 +9,20 @@ use sophus_lie::{
 
 use crate::{
     nlls::{
-        cost::{
-            cost_fn::CostFn,
-            cost_term::CostTerms,
-        },
-        functor_library::costs::{
-            isometry2_prior::Isometry2PriorCostTerm,
-            isometry3_prior::Isometry3PriorCostTerm,
+        costs::{
+            Isometry2PriorCostTerm,
+            Isometry3PriorCostTerm,
         },
         optimize_nlls,
+        CostFn,
+        CostTerms,
         LinearSolverType,
         OptParams,
     },
     prelude::*,
     variables::{
-        var_builder::VarBuilder,
-        var_family::VarFamily,
+        VarBuilder,
+        VarFamily,
         VarKind,
     },
 };

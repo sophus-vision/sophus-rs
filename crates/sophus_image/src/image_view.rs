@@ -1,6 +1,5 @@
 use ndarray::ShapeBuilder;
-use sophus_autodiff::linalg::SVec;
-use sophus_tensor::tensor_view::TensorView;
+use sophus_tensor::TensorView;
 
 use crate::{
     prelude::*,
@@ -23,40 +22,6 @@ pub struct GenImageView<
     /// underlying tensor view
     pub tensor_view: TensorView<'a, TOTAL_RANK, 2, SRANK, Scalar, STensor, ROWS, COLS>,
 }
-
-/// Image view of scalar values
-pub type ImageView<'a, Scalar> = GenImageView<'a, 2, 0, Scalar, Scalar, 1, 1>;
-
-/// Image view of vector values
-///
-/// Here, R indicates the number of rows in the vector
-pub type ImageViewR<'a, Scalar, const ROWS: usize> =
-    GenImageView<'a, 3, 1, Scalar, SVec<Scalar, ROWS>, ROWS, 1>;
-
-/// Image view of u8 values
-pub type ImageViewU8<'a> = ImageView<'a, u8>;
-/// Image view of u16 values
-pub type ImageViewU16<'a> = ImageView<'a, u16>;
-/// Image view of f32 values
-pub type ImageViewF32<'a> = ImageView<'a, f32>;
-/// Image view of u8 2-vectors
-pub type ImageView2U8<'a> = ImageViewR<'a, u8, 2>;
-/// Image view of u16 2-vectors
-pub type ImageView2U16<'a> = ImageViewR<'a, u16, 2>;
-/// Image view of f32 2-vectors
-pub type ImageView2F32<'a> = ImageViewR<'a, f32, 2>;
-/// Image view of u8 3-vectors
-pub type ImageView3U8<'a> = ImageViewR<'a, u8, 3>;
-/// Image view of u16 3-vectors
-pub type ImageView3U16<'a> = ImageViewR<'a, u16, 3>;
-/// Image view of f32 3-vectors
-pub type ImageView3F32<'a> = ImageViewR<'a, f32, 3>;
-/// Image view of u8 4-vectors
-pub type ImageView4U8<'a> = ImageViewR<'a, u8, 4>;
-/// Image view of u16 4-vectors
-pub type ImageView4U16<'a> = ImageViewR<'a, u16, 4>;
-/// Image view of f32 4-vectors
-pub type ImageView4F32<'a> = ImageViewR<'a, f32, 4>;
 
 /// Image view of static tensors
 pub trait IsImageView<

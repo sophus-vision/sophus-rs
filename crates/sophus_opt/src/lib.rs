@@ -1,12 +1,16 @@
 #![cfg_attr(feature = "simd", feature(portable_simd))]
 #![deny(missing_docs)]
 #![allow(clippy::needless_range_loop)]
+#![doc = include_str!(concat!("../", std::env!("CARGO_PKG_README")))]
+#![cfg_attr(nightly, feature(doc_auto_cfg))]
 
-//! # Sophus optimization crate - part of the sophus-rs project
+#[doc = include_str!(concat!("../",  core::env!("CARGO_PKG_README")))]
+#[cfg(doctest)]
+pub struct ReadmeDoctests;
 
-/// Some assert macros
-pub mod asserts;
-/// Block vector and matrix operations
+mod asserts;
+
+/// Block vectors, block matrices and utilities
 pub mod block;
 /// Example problems
 pub mod example_problems;
@@ -16,8 +20,21 @@ pub mod nlls;
 pub mod robust_kernel;
 /// Decision variables
 pub mod variables;
-
-/// Sophus optimization prelude
+/// sophus_opt prelude.
+///
+/// It is recommended to import this prelude when working with `sophus_opt types:
+///
+/// ```
+/// use sophus_opt::prelude::*;
+/// ```
+///
+/// or
+///
+/// ```ignore
+/// use sophus::prelude::*;
+/// ```
+///
+/// to import all preludes when using the `sophus` umbrella crate.
 pub mod prelude {
     pub use sophus_autodiff::prelude::*;
     pub use sophus_image::prelude::*;
@@ -26,17 +43,13 @@ pub mod prelude {
 
     pub use crate::{
         nlls::{
-            constraint::{
-                eq_constraint::IsEqConstraint,
-                eq_constraint_fn::IsEqConstraintsFn,
-                evaluated_eq_constraint::MakeEvaluatedEqConstraint,
-            },
-            cost::{
-                cost_fn::IsCostFn,
-                cost_term::IsCostTerm,
-                evaluated_cost::IsEvaluatedCost,
-                evaluated_term::MakeEvaluatedCostTerm,
-            },
+            IsCostFn,
+            IsCostTerm,
+            IsEqConstraint,
+            IsEqConstraintsFn,
+            IsEvaluatedCost,
+            MakeEvaluatedCostTerm,
+            MakeEvaluatedEqConstraint,
         },
         robust_kernel::IsRobustKernel,
     };

@@ -6,19 +6,17 @@ use sophus_lie::{
 
 use crate::{
     nlls::{
-        cost::{
-            cost_fn::CostFn,
-            cost_term::CostTerms,
-        },
-        functor_library::costs::pose_graph::PoseGraphCostTerm,
+        costs::PoseGraphCostTerm,
         optimize_nlls,
+        CostFn,
+        CostTerms,
         LinearSolverType,
         OptParams,
     },
     prelude::*,
     variables::{
-        var_builder::VarBuilder,
-        var_family::VarFamily,
+        VarBuilder,
+        VarFamily,
         VarKind,
     },
 };

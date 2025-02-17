@@ -1,7 +1,7 @@
 use sophus_renderer::renderables::{
-    frame::ImageFrame,
-    pixel_renderable::PixelRenderable,
-    scene_renderable::SceneRenderable,
+    ImageFrame,
+    PixelRenderable,
+    SceneRenderable,
 };
 
 use crate::prelude::*;

@@ -1,14 +1,16 @@
 use sophus_image::{
-    arc_image::ArcImage4U8,
-    image_view::IsImageView,
+    ArcImage4U8,
     ImageSize,
 };
-use sophus_sensor::dyn_camera::DynCameraF64;
+use sophus_sensor::DynCameraF64;
 
-use crate::camera::{
-    clipping_planes::ClippingPlanes,
-    intrinsics::RenderIntrinsics,
-    properties::RenderCameraProperties,
+use crate::{
+    camera::{
+        ClippingPlanes,
+        RenderCameraProperties,
+        RenderIntrinsics,
+    },
+    prelude::*,
 };
 
 /// Frame to hold content

@@ -8,7 +8,7 @@ use crate::{
 ///
 /// This is a function which takes a vector and returns a vector:
 ///
-///  f: ℝᵐ -> ℝʳ
+///  `f: ℝᵐ -> ℝʳ`
 ///
 /// These functions are also called vector fields (on vector space).
 pub struct VectorValuedVectorMap<S: IsScalar<BATCH, 0, 0>, const BATCH: usize> {
@@ -85,7 +85,7 @@ impl<S: IsRealScalar<BATCH, RealScalar = S>, const BATCH: usize> VectorValuedVec
 ///
 /// This is a function which takes a matrix and returns a vector:
 ///
-///  f: ℝᵐˣⁿ -> ℝʳ
+///  `f: ℝᵐˣⁿ -> ℝʳ`
 ///
 /// This type of function is also called a vector field (on product spaces).
 pub struct VectorValuedMatrixMap<

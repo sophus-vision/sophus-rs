@@ -32,8 +32,11 @@ pub use sophus_timeseries as timeseries;
 #[doc(inline)]
 pub use sophus_viewer as viewer;
 
-/// Examples for the `sophus` umbrella crate. Note that this is not a comprehensive list of
-/// examples, and most usage examples are found in the individual sub-crates. In particular, the
+/// Non-comprehensive list of examples.
+///
+/// This is *not a comprehensive list* of examples for the *sophus umbrella crate*.
+/// The current focus is on the sophus render and camera simulation modules. Most
+/// usage examples are found in the individual sub-crates. In particular, the
 /// unit tests in each sub-crate are a good source of examples.
 pub mod examples;
 pub use eframe;
@@ -46,7 +49,7 @@ pub use thingbuf;
 /// It is recommended to import this prelude when working with `sophus` types:
 ///
 /// ```
-/// use sophus_autodiff::prelude::*;
+/// use sophus::prelude::*;
 /// ```
 pub mod prelude {
     pub use crate::{

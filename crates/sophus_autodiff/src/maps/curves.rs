@@ -2,11 +2,11 @@ use crate::prelude::*;
 
 extern crate alloc;
 
-/// A smooth curve in ℝ.
+/// A smooth curve in `ℝ`.
 ///
 /// This is a function which takes a scalar and returns a scalar:
 ///
-///  f: ℝ -> ℝ
+///  `f: ℝ -> ℝ`
 pub struct ScalarValuedCurve<S, const BATCH: usize> {
     phantom: core::marker::PhantomData<S>,
 }
@@ -24,11 +24,11 @@ impl<S: IsScalar<BATCH, 0, 0>, const BATCH: usize> ScalarValuedCurve<S, BATCH> {
     }
 }
 
-/// A smooth curve in ℝʳ.
+/// A smooth curve in `ℝʳ`.
 ///
 /// This is a function which takes a scalar and returns a vector:
 ///
-///   f: ℝ -> ℝʳ
+///   `f: ℝ -> ℝʳ`
 pub struct VectorValuedCurve<S, const BATCH: usize> {
     phantom: core::marker::PhantomData<S>,
 }
@@ -46,10 +46,10 @@ impl<S: IsScalar<BATCH, 0, 0>, const BATCH: usize> VectorValuedCurve<S, BATCH> {
     }
 }
 
-/// A smooth curve in ℝʳ x ℝᶜ.
+/// A smooth curve in `ℝʳ x ℝᶜ`.
 ///
 /// This is a function which takes a scalar and returns a matrix:
-///   f: ℝ -> ℝʳ x ℝᶜ
+///   `f: ℝ -> ℝʳˣᶜ`
 pub struct MatrixValuedCurve<
     S: IsScalar<BATCH, DM, DN>,
     const BATCH: usize,

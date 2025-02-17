@@ -7,7 +7,7 @@ use crate::{
         PointVertex2,
     },
     prelude::*,
-    renderables::pixel_renderable::PointCloud2,
+    renderables::PointCloud2,
     RenderContext,
 };
 

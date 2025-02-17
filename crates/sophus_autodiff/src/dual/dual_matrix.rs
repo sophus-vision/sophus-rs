@@ -35,8 +35,8 @@ use crate::{
 /// where each element is a [`DualScalar<DM, DN>`], i.e., each element carries its own infinitesimal
 /// part.
 ///
-/// # Fields
-/// - `inner`: A [`SMat`] of [`DualScalar<DM, DN>`].
+/// # Private fields
+/// - `inner`: A `ROWS x COLS` [`SMat`] of [`DualScalar<DM, DN>`]s.
 ///
 /// # Generic Parameters
 /// - `ROWS`, `COLS`: Matrix dimensions.

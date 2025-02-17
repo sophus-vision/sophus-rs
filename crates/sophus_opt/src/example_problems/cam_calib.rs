@@ -8,27 +8,25 @@ use sophus_lie::{
     Isometry3F64,
     Rotation3,
 };
-use sophus_sensor::camera_enum::perspective_camera::PinholeCameraF64;
+use sophus_sensor::PinholeCameraF64;
 
 use crate::{
     nlls::{
-        cost::{
-            cost_fn::CostFn,
-            cost_term::CostTerms,
-        },
-        functor_library::costs::{
-            isometry3_prior::Isometry3PriorCostTerm,
-            pinhole_reprojection::PinholeCameraReprojectionCostTerm,
+        costs::{
+            Isometry3PriorCostTerm,
+            PinholeCameraReprojectionCostTerm,
         },
         optimize_nlls,
+        CostFn,
+        CostTerms,
         LinearSolverType,
         OptParams,
     },
     prelude::*,
     robust_kernel::HuberKernel,
     variables::{
-        var_builder::VarBuilder,
-        var_family::VarFamily,
+        VarBuilder,
+        VarFamily,
         VarKind,
     },
 };

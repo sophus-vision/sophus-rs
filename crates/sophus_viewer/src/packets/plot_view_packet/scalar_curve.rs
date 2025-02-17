@@ -1,4 +1,4 @@
-use sophus_renderer::renderables::color::Color;
+use sophus_renderer::renderables::Color;
 
 use crate::{
     packets::plot_view_packet::{

@@ -19,22 +19,20 @@ use tiff::{
 
 use crate::{
     intensity_image::intensity_image_view::IsIntensityViewImageF32,
-    mut_image::{
-        MutImage2F32,
-        MutImage2U16,
-        MutImage2U8,
-        MutImage3F32,
-        MutImage3U16,
-        MutImage3U8,
-        MutImage4F32,
-        MutImage4U16,
-        MutImage4U8,
-        MutImageF32,
-        MutImageU16,
-        MutImageU8,
-    },
-    prelude::DynIntensityMutImage,
+    DynIntensityMutImage,
     ImageSize,
+    MutImage2F32,
+    MutImage2U16,
+    MutImage2U8,
+    MutImage3F32,
+    MutImage3U16,
+    MutImage3U8,
+    MutImage4F32,
+    MutImage4U16,
+    MutImage4U8,
+    MutImageF32,
+    MutImageU16,
+    MutImageU8,
 };
 
 fn err_conv(e: TiffError) -> std::io::Error {

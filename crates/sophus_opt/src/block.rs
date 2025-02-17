@@ -1,17 +1,18 @@
-/// Block gradient vector
-pub mod block_gradient;
-/// Block Hessian matrix
-pub mod block_hessian;
-/// Block jacobian
-pub mod block_jacobian;
-/// builder for a block sparse matrix
-pub mod block_sparse_matrix_builder;
-/// Block vector
-pub mod block_vector;
-/// Generic grid
-pub mod grid;
-/// builder for a symmetric block sparse matrix
-pub mod symmetric_block_sparse_matrix_builder;
+pub(crate) mod block_gradient;
+pub(crate) mod block_hessian;
+pub(crate) mod block_jacobian;
+pub(crate) mod block_sparse_matrix_builder;
+pub(crate) mod block_vector;
+pub(crate) mod grid;
+pub(crate) mod symmetric_block_sparse_matrix_builder;
+
+pub use block_gradient::*;
+pub use block_hessian::*;
+pub use block_jacobian::*;
+pub use block_sparse_matrix_builder::*;
+pub use block_vector::*;
+pub use grid::*;
+pub use symmetric_block_sparse_matrix_builder::*;
 
 /// Range of a block
 #[derive(Clone, Debug, Copy, Default)]

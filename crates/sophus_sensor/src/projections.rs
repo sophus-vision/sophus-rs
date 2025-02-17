@@ -1,4 +1,5 @@
-/// Orthographic camera
-pub mod orthographic;
-/// Perspective camera
-pub mod perspective;
+mod orthographic;
+mod perspective;
+
+pub use orthographic::*;
+pub use perspective::*;

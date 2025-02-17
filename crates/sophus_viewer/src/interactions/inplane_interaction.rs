@@ -6,8 +6,8 @@ use sophus_lie::{
     Isometry3F64,
 };
 use sophus_renderer::{
-    camera::intrinsics::RenderIntrinsics,
-    types::TranslationAndScaling,
+    camera::RenderIntrinsics,
+    TranslationAndScaling,
 };
 
 use crate::{

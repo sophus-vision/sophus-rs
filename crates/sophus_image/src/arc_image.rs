@@ -1,7 +1,6 @@
-use sophus_autodiff::linalg::SVec;
 use sophus_tensor::{
-    tensor_view::TensorView,
     ArcTensor,
+    TensorView,
 };
 
 use crate::{
@@ -24,39 +23,6 @@ pub struct GenArcImage<
     /// underlying tensor
     pub tensor: ArcTensor<TOTAL_RANK, 2, SRANK, Scalar, STensor, ROWS, COLS>,
 }
-
-/// Image of scalar values
-pub type ArcImage<Scalar> = GenArcImage<2, 0, Scalar, Scalar, 1, 1>;
-
-/// Image of vector values
-///
-/// Here, R indicates the number of rows in the vector
-pub type ArcImageR<Scalar, const R: usize> = GenArcImage<3, 1, Scalar, SVec<Scalar, R>, R, 1>;
-
-/// Image of u8 scalars
-pub type ArcImageU8 = ArcImage<u8>;
-/// Image of u16 scalars
-pub type ArcImageU16 = ArcImage<u16>;
-/// Image of f32 scalars
-pub type ArcImageF32 = ArcImage<f32>;
-/// Image of u8 2-vectors
-pub type ArcImage2U8 = ArcImageR<u8, 2>;
-/// Image of u16 2-vectors
-pub type ArcImage2U16 = ArcImageR<u16, 2>;
-/// Image of f32 2-vectors
-pub type ArcImage2F32 = ArcImageR<f32, 2>;
-/// Image of u8 3-vectors
-pub type ArcImage3U8 = ArcImageR<u8, 3>;
-/// Image of u16 3-vectors
-pub type ArcImage3U16 = ArcImageR<u16, 3>;
-/// Image of f32 3-vectors
-pub type ArcImage3F32 = ArcImageR<f32, 3>;
-/// Image of u8 4-vectors
-pub type ArcImage4U8 = ArcImageR<u8, 4>;
-/// Image of u16 4-vectors
-pub type ArcImage4U16 = ArcImageR<u16, 4>;
-/// Image of f32 4-vectors
-pub type ArcImage4F32 = ArcImageR<f32, 4>;
 
 macro_rules! arc_image {
     ($scalar_rank:literal, $srank:literal) => {

@@ -27,11 +27,9 @@ use crate::{
     },
     robust_kernel::RobustKernel,
     variables::{
-        var_families::{
-            VarFamilies,
-            VarFamilyError,
-        },
-        var_tuple::IsVarTuple,
+        IsVarTuple,
+        VarFamilies,
+        VarFamilyError,
         VarKind,
     },
 };

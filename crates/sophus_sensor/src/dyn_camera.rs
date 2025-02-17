@@ -4,7 +4,7 @@ use sophus_image::ImageSize;
 
 use crate::{
     camera_enum::{
-        perspective_camera::EnhancedUnifiedCamera,
+        EnhancedUnifiedCamera,
         GeneralCameraEnum,
         PerspectiveCameraEnum,
     },
@@ -211,9 +211,9 @@ fn dyn_camera_tests() {
 
     use crate::{
         distortions::{
-            affine::AffineDistortionImpl,
-            enhanced_unified::EnhancedUnifiedDistortionImpl,
-            kannala_brandt::KannalaBrandtDistortionImpl,
+            AffineDistortionImpl,
+            EnhancedUnifiedDistortionImpl,
+            KannalaBrandtDistortionImpl,
         },
         traits::IsCameraDistortionImpl,
     };

@@ -6,16 +6,16 @@ use sophus_autodiff::{
     prelude::IsVector,
 };
 use sophus_image::{
-    arc_image::ArcImage4U8,
-    mut_image::MutImage4U8,
-    mut_image_view::IsMutImageView,
+    prelude::*,
+    ArcImage4U8,
     ImageSize,
+    MutImage4U8,
 };
 use sophus_renderer::{
-    camera::properties::RenderCameraProperties,
-    renderables::frame::ImageFrame,
+    camera::RenderCameraProperties,
+    renderables::ImageFrame,
 };
-use sophus_sensor::dyn_camera::DynCameraF64;
+use sophus_sensor::DynCameraF64;
 
 /// Makes example image of image-size
 pub fn make_example_image(image_size: ImageSize) -> ArcImage4U8 {

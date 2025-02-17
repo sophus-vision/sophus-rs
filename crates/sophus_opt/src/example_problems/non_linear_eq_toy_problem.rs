@@ -2,25 +2,19 @@ use sophus_autodiff::linalg::VecF64;
 
 use crate::{
     nlls::{
-        constraint::{
-            eq_constraint::EqConstraints,
-            eq_constraint_fn::EqConstraintFn,
-        },
-        cost::{
-            cost_fn::CostFn,
-            cost_term::CostTerms,
-        },
-        functor_library::{
-            costs::example_non_linear_cost::ExampleNonLinearCost,
-            eq_constraints::small_non_linear_eq::SmallNonLinearEqConstraint,
-        },
+        costs::ExampleNonLinearCost,
+        eq_constraints::SmallNonLinearEqConstraint,
         optimize_nlls_with_eq_constraints,
+        CostFn,
+        CostTerms,
+        EqConstraintFn,
+        EqConstraints,
         LinearSolverType,
         OptParams,
     },
     variables::{
-        var_builder::VarBuilder,
-        var_family::VarFamily,
+        VarBuilder,
+        VarFamily,
         VarKind,
     },
 };

@@ -38,8 +38,8 @@ use crate::{
 /// where each element is a [`DualScalar<DM, DN>`], i.e., each element carries its own infinitesimal
 /// part.
 ///
-/// # Fields
-/// - `inner`: An [`SVec`] of [`DualScalar<DM, DN>`], dimension `ROWS`.
+/// # Private fields
+/// - `inner`: A`ROWS`--dimensional [`SVec`] of [`DualScalar<DM, DN>`]s.
 ///
 /// # Generic Parameters
 /// - `ROWS`: Number of vector components.

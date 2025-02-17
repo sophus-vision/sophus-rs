@@ -1,5 +1,5 @@
 [package]
-description = "sophus - geometry for robotics and computer vision"
+description = "geometric primitives: rays, hyper-planes, hyper-spheres, axis-aligned bounding boxes"
 name = "sophus_geo"
 readme = "README.md"
 

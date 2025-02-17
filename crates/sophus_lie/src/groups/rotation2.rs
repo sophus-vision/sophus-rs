@@ -26,7 +26,7 @@ use crate::{
 
 extern crate alloc;
 
-/// 2d rotation - special orthogonal group SO(2)
+/// 2d rotation - element of the Special Orthogonal group SO(2)
 ///
 ///  * BATCH
 ///     - batch dimension. If S is f64 or [sophus_autodiff::dual::DualScalar] then BATCH=1.
@@ -36,7 +36,7 @@ extern crate alloc;
 pub type Rotation2<S, const B: usize, const DM: usize, const DN: usize> =
     LieGroup<S, 1, 2, 2, 2, B, DM, DN, Rotation2Impl<S, B, DM, DN>>;
 
-/// 2d rotation with f64 scalar type - special orthogonal group SO(2)
+/// 2d rotation with f64 scalar type - element of the Special Orthogonal group SO(2)
 ///
 /// See [Rotation2] for details.a
 pub type Rotation2F64 = Rotation2<f64, 1, 0, 0>;

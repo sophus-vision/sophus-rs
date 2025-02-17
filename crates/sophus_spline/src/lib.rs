@@ -1,19 +1,41 @@
+#![cfg_attr(feature = "simd", feature(portable_simd))]
 #![deny(missing_docs)]
-#![allow(clippy::needless_range_loop)]
 #![no_std]
+#![allow(clippy::needless_range_loop)]
+#![doc = include_str!(concat!("../", std::env!("CARGO_PKG_README")))]
 #![cfg_attr(nightly, feature(doc_auto_cfg))]
-//! # Spline module
 
-/// Cubic B-Spline details
-pub mod spline_segment;
+#[doc = include_str!(concat!("../",  core::env!("CARGO_PKG_README")))]
+#[cfg(doctest)]
+pub struct ReadmeDoctests;
+
+#[cfg(feature = "std")]
+extern crate std;
+
+mod spline_segment;
+
+/// sophus_spline prelude.
+///
+/// It is recommended to import this prelude when working with `sophus_spline types:
+///
+/// ```
+/// use sophus_spline::prelude::*;
+/// ```
+///
+/// or
+///
+/// ```ignore
+/// use sophus::prelude::*;
+/// ```
+///
+/// to import all preludes when using the `sophus` umbrella crate.
+pub mod prelude {
+    pub use sophus_autodiff::prelude::*;
+}
 
 use log::debug;
 use sophus_autodiff::prelude::*;
-
-use crate::spline_segment::{
-    CubicBSplineSegment,
-    SegmentCase,
-};
+pub use spline_segment::*;
 
 extern crate alloc;
 

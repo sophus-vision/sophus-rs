@@ -21,7 +21,7 @@ use crate::{
         LinearSolverType,
     },
     variables::{
-        var_families::VarFamilies,
+        VarFamilies,
         VarKind,
     },
 };

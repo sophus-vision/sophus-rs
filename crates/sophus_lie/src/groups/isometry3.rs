@@ -20,7 +20,7 @@ use crate::{
     Rotation3,
 };
 
-/// 3d isometry - special Euclidean group SE(3)
+/// 3d isometry - element of the Special Euclidean group SE(3)
 ///
 ///  * BATCH
 ///     - batch dimension. If S is f64 or [sophus_autodiff::dual::DualScalar] then BATCH=1.
@@ -30,7 +30,7 @@ use crate::{
 pub type Isometry3<S, const BATCH: usize, const DM: usize, const DN: usize> =
     LieGroup<S, 6, 7, 3, 4, BATCH, DM, DN, Isometry3Impl<S, BATCH, DM, DN>>;
 
-/// 3d isometry with f64 scalar type - special Euclidean group SE(3)
+/// 3d isometry with f64 scalar type - element of the Special Euclidean group SE(3)
 ///
 /// See [Isometry3] for details.
 pub type Isometry3F64 = Isometry3<f64, 1, 0, 0>;

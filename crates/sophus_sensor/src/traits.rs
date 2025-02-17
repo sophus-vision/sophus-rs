@@ -7,7 +7,7 @@ use sophus_autodiff::params::IsParamsImpl;
 use sophus_image::ImageSize;
 
 use crate::{
-    camera_enum::perspective_camera::EnhancedUnifiedCamera,
+    camera_enum::EnhancedUnifiedCamera,
     prelude::*,
     BrownConradyCamera,
     KannalaBrandtCamera,

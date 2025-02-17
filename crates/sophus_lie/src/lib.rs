@@ -2,11 +2,19 @@
 #![deny(missing_docs)]
 #![allow(clippy::needless_range_loop)]
 #![no_std]
+#![doc = include_str!(concat!("../", std::env!("CARGO_PKG_README")))]
 #![cfg_attr(nightly, feature(doc_auto_cfg))]
-//! Lie groups crate - part of the sophus-rs project
+
+#[doc = include_str!(concat!("../",  core::env!("CARGO_PKG_README")))]
+#[cfg(doctest)]
+pub struct ReadmeDoctests;
+
+#[cfg(feature = "std")]
+extern crate std;
 
 mod groups;
 mod lie_group;
+
 /// sophus_lie prelude.
 ///
 /// It is recommended to import this prelude when working with `sophus_lie` types:

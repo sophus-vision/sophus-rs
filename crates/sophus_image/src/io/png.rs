@@ -11,17 +11,15 @@ use crate::{
         dyn_intensity_image::DynIntensityMutImage,
         intensity_image_view::IsIntensityViewImageU,
     },
-    mut_image::{
-        MutImage2U16,
-        MutImage2U8,
-        MutImage3U16,
-        MutImage3U8,
-        MutImage4U16,
-        MutImage4U8,
-        MutImageU16,
-        MutImageU8,
-    },
     ImageSize,
+    MutImage2U16,
+    MutImage2U8,
+    MutImage3U16,
+    MutImage3U8,
+    MutImage4U16,
+    MutImage4U8,
+    MutImageU16,
+    MutImageU8,
 };
 
 /// Save an image of unsigned integers as a PNG file
