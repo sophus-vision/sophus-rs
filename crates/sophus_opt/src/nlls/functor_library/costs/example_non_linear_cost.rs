@@ -13,16 +13,22 @@ use crate::{
     variables::VarKind,
 };
 
-/// Non-linear quadratic cost term
+/// Example non-linear residual cost term.
+///
+/// ```ascii
+///        [[x₀² + x₁]]
+/// g(x) = [[        ]] - z
+///        [[x₁² - x₀]]
+/// ```
 #[derive(Clone, Debug)]
-pub struct ExampleNonLinearCost {
-    /// 2d measurement
+pub struct ExampleNonLinearCostTerm {
+    /// 2d measurement.
     pub z: VecF64<2>,
-    /// entity index
+    /// Entity index for `x`.
     pub entity_indices: [usize; 1],
 }
 
-impl ExampleNonLinearCost {
+impl ExampleNonLinearCostTerm {
     /// Compute the residual
     pub fn residual<Scalar: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize>(
         x: Scalar::Vector<2>,
@@ -35,7 +41,7 @@ impl ExampleNonLinearCost {
     }
 }
 
-impl IsCostTerm<2, 1, (), VecF64<2>> for ExampleNonLinearCost {
+impl HasResidualFn<2, 1, (), VecF64<2>> for ExampleNonLinearCostTerm {
     fn idx_ref(&self) -> &[usize; 1] {
         &self.entity_indices
     }

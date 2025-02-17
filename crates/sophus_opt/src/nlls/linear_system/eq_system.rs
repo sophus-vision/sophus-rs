@@ -92,8 +92,8 @@ pub struct EqSystem {
     pub(crate) partitions: alloc::vec::Vec<PartitionSpec>,
 }
 
-impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const NUM_ARGS: usize>
-    IsEvaluatedEqConstraintSet for EvaluatedEqSet<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>
+impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> IsEvaluatedEqConstraintSet
+    for EvaluatedEqSet<RESIDUAL_DIM, INPUT_DIM, N>
 {
     fn populate_upper_triangular_kkt_mat(
         &self,

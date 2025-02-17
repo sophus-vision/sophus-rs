@@ -13,7 +13,13 @@ use crate::{
     variables::VarKind,
 };
 
-/// Term of the quadratic cost function
+/// Linear 2d quadratic residual cost term.
+///
+/// `g(x) = x - z`.
+///
+/// The quadratic cost function is defined as:
+///
+/// `f(x) = 0.5 * (g(x)ᵀ * g(x)).`
 #[derive(Clone, Debug)]
 pub struct Quadratic2CostTerm {
     /// Measurement
@@ -24,16 +30,17 @@ pub struct Quadratic2CostTerm {
 
 impl Quadratic2CostTerm {
     /// Compute the residual
+    ///
+    /// `g(x) = x - z`.
     pub fn residual<Scalar: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize>(
         x: Scalar::Vector<2>,
         z: Scalar::Vector<2>,
     ) -> Scalar::Vector<2> {
-        Scalar::Vector::<2>::from_array([x.elem(0) + x.elem(1), x.elem(0) * x.elem(0) + x.elem(1)])
-            - z
+        x - z
     }
 }
 
-impl IsCostTerm<2, 1, (), VecF64<2>> for Quadratic2CostTerm {
+impl HasResidualFn<2, 1, (), VecF64<2>> for Quadratic2CostTerm {
     fn idx_ref(&self) -> &[usize; 1] {
         &self.entity_indices
     }

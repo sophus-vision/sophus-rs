@@ -1,18 +1,14 @@
+pub(crate) mod dense_lu;
+pub(crate) mod sparse_ldlt;
+pub(crate) mod sparse_lu;
+pub(crate) mod sparse_qr;
+
 use snafu::Snafu;
 
 use crate::{
     block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
     nlls::NllsError,
 };
-
-/// dense lu
-pub mod dense_lu;
-/// sparse ldlt
-pub mod sparse_ldlt;
-/// sparse lu
-pub mod sparse_lu;
-/// sparse qr
-pub mod sparse_qr;
 
 /// Sparse solver error - forwarded from faer error enums.
 #[derive(Snafu, Debug)]
@@ -27,9 +23,7 @@ pub enum SparseSolverError {
     Unspecific,
 }
 
-/// Interface for linear sparse symmetric system
-pub trait IsSparseSymmetricLinearSystem {
-    /// Solve the linear system
+pub(crate) trait IsSparseSymmetricLinearSystem {
     fn solve(
         &self,
         triplets: &SymmetricBlockSparseMatrixBuilder,
@@ -37,9 +31,7 @@ pub trait IsSparseSymmetricLinearSystem {
     ) -> Result<nalgebra::DVector<f64>, NllsError>;
 }
 
-/// Interface for solving a dense linear system
-pub trait IsDenseLinearSystem {
-    /// Solve
+pub(crate) trait IsDenseLinearSystem {
     fn solve_dense(
         &self,
         mat_a: nalgebra::DMatrix<f64>,

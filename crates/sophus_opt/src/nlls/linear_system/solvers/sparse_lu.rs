@@ -6,6 +6,7 @@ use faer::{
 use super::{
     IsSparseSymmetricLinearSystem,
     NllsError,
+    SparseSolverError,
 };
 use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 
@@ -39,12 +40,12 @@ impl IsSparseSymmetricLinearSystem for SparseLu {
             Err(e) => Err(NllsError::SparseLuError {
                 details: match e {
                     faer::sparse::LuError::Generic(faer_error) => match faer_error {
-                        FaerError::IndexOverflow => super::SparseSolverError::IndexOverflow,
-                        FaerError::OutOfMemory => super::SparseSolverError::OutOfMemory,
-                        _ => super::SparseSolverError::Unspecific,
+                        FaerError::IndexOverflow => SparseSolverError::IndexOverflow,
+                        FaerError::OutOfMemory => SparseSolverError::OutOfMemory,
+                        _ => SparseSolverError::Unspecific,
                     },
                     faer::sparse::LuError::SymbolicSingular(_) => {
-                        super::SparseSolverError::SymbolicSingular
+                        SparseSolverError::SymbolicSingular
                     }
                 },
             }),

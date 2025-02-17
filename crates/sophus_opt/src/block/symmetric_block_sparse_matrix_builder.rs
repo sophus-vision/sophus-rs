@@ -19,7 +19,7 @@ use crate::debug_assert_le;
 /// ---------------------------------------------------------
 /// | AxA ... AxA | AxB ... AxB |             | AxZ ... AxZ |
 /// |   .         |  .       .  |             |  .       .  |
-/// |      .      |  .       .  |   * * *     |  .       .  |
+/// |      .      |  .       .  |   *  *  *   |  .       .  |
 /// |         AxA | AxB ... AxB |             | AxZ ... AxZ |
 /// ---------------------------------------------------------
 /// |             | BxB ... BxB |             |             |
@@ -27,9 +27,9 @@ use crate::debug_assert_le;
 /// |             |      .   .  |             |      *      |
 /// |             |         BxB |             |             |
 /// ---------------------------------------------------------
-/// |             |             |    *        |             |
-/// |             |             |       *     |      *      |
-/// |             |             |          *  |      *      |
+/// |             |             |             |             |
+/// |             |             |    *        |      *      |
+/// |             |             |        *    |      *      |
 /// |             |             |             |             |
 /// ---------------------------------------------------------
 /// |             |             |             | ZxZ ... ZxZ |
@@ -48,7 +48,9 @@ pub struct SymmetricBlockSparseMatrixBuilder {
 }
 
 impl SymmetricBlockSparseMatrixBuilder {
-    /// Create a zero block matrix.
+    /// Create a sparse block matrix "filled" with zeros.
+    ///
+    /// The shape of the block matrix is determined by the partition specs.
     pub fn zero(partitions: &[PartitionSpec]) -> Self {
         Self {
             builder: BlockSparseMatrixBuilder::zero(partitions, partitions),
@@ -70,8 +72,8 @@ impl SymmetricBlockSparseMatrixBuilder {
     /// This is a += operation, i.e., the block is added to the existing block.
     ///
     /// Only upper triangular blocks are accepted; hence it shall hold that
-    ///  * grid_idx(0) <= grid_idx(1),
-    ///  * block_index(0) <= block_index(1).
+    ///  * `grid_idx(0)    <= grid_idx(1)`,
+    ///  * `block_index(0) <= block_index(1)`.
     ///
     /// In release mode, lower triangular blocks are ignored. In debug mode,
     /// this function will panic if the block is lower triangular.

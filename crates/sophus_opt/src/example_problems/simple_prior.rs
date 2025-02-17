@@ -32,7 +32,7 @@ extern crate alloc;
 /// Simple 2D isometry prior problem
 pub struct SimpleIso2PriorProblem {
     /// True world from robot isometry
-    pub true_world_from_robot: Isometry2F64,
+    pub prior_world_from_robot: Isometry2F64,
     /// Estimated world from robot isometry
     pub est_world_from_robot: Isometry2F64,
 }
@@ -45,10 +45,10 @@ impl Default for SimpleIso2PriorProblem {
 
 impl SimpleIso2PriorProblem {
     fn new() -> Self {
-        let true_world_from_robot =
+        let prior_world_from_robot =
             Isometry2F64::exp(VecF64::<3>::from_real_array([0.2, 1.0, 0.2]));
         Self {
-            true_world_from_robot,
+            prior_world_from_robot,
             est_world_from_robot: Isometry2F64::identity(),
         }
     }
@@ -61,7 +61,7 @@ impl SimpleIso2PriorProblem {
         let obs_pose_a_from_pose_b_poses = CostTerms::new(
             [POSE],
             alloc::vec![Isometry2PriorCostTerm {
-                isometry_prior_mean: self.true_world_from_robot,
+                isometry_prior_mean: self.prior_world_from_robot,
                 isometry_prior_precision: MatF64::<3, 3>::identity(),
                 entity_indices: [0],
             }],
@@ -74,7 +74,7 @@ impl SimpleIso2PriorProblem {
             .build();
         let solution = optimize_nlls(
             variables,
-            alloc::vec![CostFn::new_box((), obs_pose_a_from_pose_b_poses.clone(),)],
+            alloc::vec![CostFn::new_boxed((), obs_pose_a_from_pose_b_poses.clone(),)],
             OptParams {
                 num_iterations: 1,
                 initial_lm_damping: EPS_F64, // if lm prior param is tiny
@@ -87,7 +87,7 @@ impl SimpleIso2PriorProblem {
         let refined_world_from_robot = solution.variables.get_members::<Isometry2F64>(POSE)[0];
 
         approx::assert_abs_diff_eq!(
-            self.true_world_from_robot.compact(),
+            self.prior_world_from_robot.compact(),
             refined_world_from_robot.compact(),
             epsilon = EPS_F64
         );
@@ -97,7 +97,7 @@ impl SimpleIso2PriorProblem {
 /// Simple 3D isometry prior problem
 pub struct SimpleIso3PriorProblem {
     /// True world from robot isometry
-    pub true_world_from_robot: Isometry3F64,
+    pub prior_world_from_robot: Isometry3F64,
     /// Estimated world from robot isometry
     pub est_world_from_robot: Isometry3F64,
 }
@@ -110,10 +110,10 @@ impl Default for SimpleIso3PriorProblem {
 
 impl SimpleIso3PriorProblem {
     fn new() -> Self {
-        let true_world_from_robot =
+        let prior_world_from_robot =
             Isometry3F64::exp(VecF64::<6>::from_real_array([0.2, 0.0, 1.0, 0.2, 0.0, 1.0]));
         Self {
-            true_world_from_robot,
+            prior_world_from_robot,
             est_world_from_robot: Isometry3F64::identity(),
         }
     }
@@ -126,7 +126,7 @@ impl SimpleIso3PriorProblem {
         let obs_pose_a_from_pose_b_poses = CostTerms::new(
             [POSE],
             alloc::vec![Isometry3PriorCostTerm {
-                isometry_prior_mean: self.true_world_from_robot,
+                isometry_prior_mean: self.prior_world_from_robot,
                 isometry_prior_precision: MatF64::<6, 6>::identity(),
                 entity_indices: [0],
             }],
@@ -139,7 +139,7 @@ impl SimpleIso3PriorProblem {
             .build();
         let solution = optimize_nlls(
             variables,
-            alloc::vec![CostFn::new_box((), obs_pose_a_from_pose_b_poses.clone(),)],
+            alloc::vec![CostFn::new_boxed((), obs_pose_a_from_pose_b_poses.clone(),)],
             OptParams {
                 num_iterations: 1,
                 initial_lm_damping: EPS_F64, // if lm prior param is tiny
@@ -152,7 +152,7 @@ impl SimpleIso3PriorProblem {
         let refined_world_from_robot = solution.variables.get_members::<Isometry3F64>(POSE)[0];
 
         approx::assert_abs_diff_eq!(
-            self.true_world_from_robot.compact(),
+            self.prior_world_from_robot.compact(),
             refined_world_from_robot.compact(),
             epsilon = EPS_F64
         );

@@ -18,17 +18,29 @@ use crate::{
     variables::VarKind,
 };
 
-/// Pinhole camera reprojection cost term
+/// Pinhole camera reprojection residual cost term.
+///
+///
+/// `g(p, ʷT꜀, xʷ) = πₚ((ʷT꜀)⁻¹ * xʷ) - z`
+///
+/// where `ʷT꜀ ∈ SE(3)` is the camera pose in the world reference frame, `xʷ ∈ ℝ³` is the 3D point
+/// in world coordinates, `p` camera intrinsic parameters, `π` is the camera projection function,
+/// and `z ∈ ℝ²` is the pixel measurement.
 #[derive(Clone, Debug)]
 pub struct PinholeCameraReprojectionCostTerm {
-    /// Pixel measurement
+    /// Pixel measurement.
     pub uv_in_image: VecF64<2>,
-    /// camera/intrinsics index, pose index, point index
+    /// Entity indices:
+    ///  - 0: ith intrinsics `p`
+    ///  - 1: jth camera pose `ʷT꜀`
+    ///  - 2: kth 3D point `xʷ`
     pub entity_indices: [usize; 3],
 }
 
 impl PinholeCameraReprojectionCostTerm {
-    /// Compute the residual
+    /// Compute the residual:
+    ///
+    /// `g(p, ʷT꜀, xʷ) = πₚ((ʷT꜀)⁻¹ * xʷ) - z`
     pub fn residual<Scalar: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize>(
         intrinscs: PinholeCamera<Scalar, 1, DM, DN>,
         world_from_camera: Isometry3<Scalar, 1, DM, DN>,
@@ -40,7 +52,7 @@ impl PinholeCameraReprojectionCostTerm {
     }
 }
 
-impl IsCostTerm<13, 3, (), (PinholeCameraF64, Isometry3F64, VecF64<3>)>
+impl HasResidualFn<13, 3, (), (PinholeCameraF64, Isometry3F64, VecF64<3>)>
     for PinholeCameraReprojectionCostTerm
 {
     fn idx_ref(&self) -> &[usize; 3] {

@@ -12,55 +12,90 @@ use crate::{
 
 extern crate alloc;
 
-/// (Unevaluated) term of the cost function
-pub trait IsCostTerm<
-    const NUM: usize,
-    const NUM_ARGS: usize,
+/// Residual function of the non-linear least squares problem.
+///
+/// This trait is implemented by the user to define the concrete residual function.
+///
+/// ## Generic parameter
+///
+///  * `INPUT_DIM`
+///    - Total input dimension. It is the sum of argument dimensions: |Vⁱ₀| + |Vⁱ₁| + ... + |Vⁱₙ₋₁|.
+///  * `N`
+///    - Number of arguments.
+///  * `GlobalConstants`
+///    - Type of the global constants which are passed to the residual function. If no global
+///      constants are needed, use `()`.
+///  * `Args`
+///    - Tuple of input argument types: `(Vⁱ₀, Vⁱ₁, ..., Vⁱₙ₋₁)`.
+pub trait HasResidualFn<
+    const INPUT_DIM: usize,
+    const N: usize,
     GlobalConstants: 'static + Send + Sync,
-    Args: IsVarTuple<NUM_ARGS>,
+    Args: IsVarTuple<N>,
 >: Send + Sync + 'static + Debug
 {
-    /// one index (into the variable family) for each argument
-    fn idx_ref(&self) -> &[usize; NUM_ARGS];
+    /// Returns an array of variable indices for each argument in this residual function.
+    ///
+    /// For example, if `idx_ref() = [2, 7, 3]` and `Args` is `(Foo, Bar, Bar)`, then:
+    ///
+    /// - Argument 0 is the 2nd variable of the `Foo` family.
+    /// - Argument 1 is the 7th variable of the `Bar` family.
+    /// - Argument 2 is the 3rd variable of the `Bar` family.
+    fn idx_ref(&self) -> &[usize; N];
 
-    /// evaluate the residual function which shall be defined by the user
+    /// Evaluate the residual function.
     fn eval(
         &self,
         global_constants: &GlobalConstants,
-        idx: [usize; NUM_ARGS],
+        idx: [usize; N],
         args: Args,
-        derivatives: [VarKind; NUM_ARGS],
+        derivatives: [VarKind; N],
         robust_kernel: Option<RobustKernel>,
-    ) -> EvaluatedCostTerm<NUM, NUM_ARGS>;
+    ) -> EvaluatedCostTerm<INPUT_DIM, N>;
 }
 
-/// (Unevaluated) cost
+/// Cost terms, to be passed to the non-linear least squares optimizer.
+///
+/// ## Generic parameters
+///
+///  * `INPUT_DIM`
+///    - Total input dimension of the common residual function `g`. It is the sum of argument
+///      dimensions: |Vⁱ₀| + |Vⁱ₁| + ... + |Vⁱₙ₋₁|.
+///  * `N`
+///    - Number of arguments of the common residual function `g`.
+///  * `GlobalConstants`
+///    - Type of the global constants which are passed to the residual function. If no global
+///      constants are needed, use `()`.
+///  * `Args`
+///    - Tuple of input argument types: `(Vⁱ₀, Vⁱ₁, ..., Vⁱₙ₋₁)`.
+///  * `ResidualFn`
+///    - The common residual function `g`.
 #[derive(Debug, Clone)]
 pub struct CostTerms<
-    const NUM: usize,
-    const NUM_ARGS: usize,
+    const INPUT_DIM: usize,
+    const N: usize,
     GlobalConstants: 'static + Send + Sync,
-    Args: IsVarTuple<NUM_ARGS>,
-    Term: IsCostTerm<NUM, NUM_ARGS, GlobalConstants, Args>,
+    Args: IsVarTuple<N>,
+    ResidualFn: HasResidualFn<INPUT_DIM, N, GlobalConstants, Args>,
 > {
-    /// one variable family name for each argument
-    pub family_names: [String; NUM_ARGS],
-    /// collection of unevaluated terms
-    pub collection: alloc::vec::Vec<Term>,
+    /// Variable family name for each argument.
+    pub family_names: [String; N],
+    /// Collection of unevaluated terms.
+    pub collection: alloc::vec::Vec<ResidualFn>,
     pub(crate) reduction_ranges: Option<alloc::vec::Vec<Range<usize>>>,
     phantom: core::marker::PhantomData<(GlobalConstants, Args)>,
 }
 
 impl<
-        const NUM: usize,
-        const NUM_ARGS: usize,
+        const INPUT_DIM: usize,
+        const N: usize,
         GlobalConstants: 'static + Send + Sync,
-        Args: IsVarTuple<NUM_ARGS>,
-        Term: IsCostTerm<NUM, NUM_ARGS, GlobalConstants, Args>,
-    > CostTerms<NUM, NUM_ARGS, GlobalConstants, Args, Term>
+        Args: IsVarTuple<N>,
+        ResidualFn: HasResidualFn<INPUT_DIM, N, GlobalConstants, Args>,
+    > CostTerms<INPUT_DIM, N, GlobalConstants, Args, ResidualFn>
 {
-    /// Create a new set of terms
-    pub fn new(family_names: [impl ToString; NUM_ARGS], terms: alloc::vec::Vec<Term>) -> Self {
+    /// Create a new set of cost terms.
+    pub fn new(family_names: [impl ToString; N], terms: alloc::vec::Vec<ResidualFn>) -> Self {
         CostTerms {
             family_names: family_names.map(|name| name.to_string()),
             collection: terms,

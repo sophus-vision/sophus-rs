@@ -4,7 +4,7 @@ use sophus_lie::prelude::IsMatrix;
 use crate::{
     nlls::{
         costs::Quadratic1CostTerm,
-        eq_constraints::LinearEqConstraint1,
+        eq_constraints::ExampleLinearEqConstraint,
         optimize_nlls_with_eq_constraints,
         CostFn,
         CostTerms,
@@ -67,7 +67,7 @@ impl LinearEqToyProblem {
         );
         let eq_constraints = EqConstraints::new(
             [VAR_X, VAR_X],
-            vec![LinearEqConstraint1 {
+            vec![ExampleLinearEqConstraint {
                 lhs: EQ_CONSTRAINT_RHS,
                 entity_indices: [0, 1],
             }],
@@ -75,14 +75,14 @@ impl LinearEqToyProblem {
 
         // illustrate that the initial guess is not feasible
         assert!(
-            LinearEqConstraint1::residual(initial_x0, initial_x1, EQ_CONSTRAINT_RHS).norm()
+            ExampleLinearEqConstraint::residual(initial_x0, initial_x1, EQ_CONSTRAINT_RHS).norm()
                 > EPS_F64
         );
 
         let solution = optimize_nlls_with_eq_constraints(
             variables,
-            alloc::vec![CostFn::new_box((), cost_terms.clone(),)],
-            alloc::vec![EqConstraintFn::new_box((), eq_constraints,)],
+            alloc::vec![CostFn::new_boxed((), cost_terms.clone(),)],
+            alloc::vec![EqConstraintFn::new_boxed((), eq_constraints,)],
             OptParams {
                 num_iterations: 10,
                 initial_lm_damping: EPS_F64,
@@ -101,7 +101,7 @@ impl LinearEqToyProblem {
 
         // converged solution should satisfy the equality constraint
         approx::assert_abs_diff_eq!(
-            LinearEqConstraint1::residual(x0, x1, EQ_CONSTRAINT_RHS)[0],
+            ExampleLinearEqConstraint::residual(x0, x1, EQ_CONSTRAINT_RHS)[0],
             0.0,
             epsilon = 1e-6
         );

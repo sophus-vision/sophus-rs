@@ -5,32 +5,40 @@ use super::BlockRange;
 /// Hessian matrix, partitioned into several blocks
 ///
 /// ```ascii
-/// |    H_0,0             ...         H_0,{NUM_ARGS-1}      |
-/// |      .         .                        .              |
-/// |      .                  .               .              |
-/// | H_{NUM_ARGS-1},{0}   ...   H_{NUM_ARGS-1},{NUM_ARGS-1} |
+/// -------------------------------------------------
+/// |               |               |               |
+/// |     H_0,0     |   .   .   .   |   H_0,{N-1}   |
+/// |               |               |               |
+/// |-------------------------------|---------------|
+/// |       .       |   .           |       .       |
+/// |       .       |       .       |       .       |
+/// |       .       |           .   |       .       |
+/// |---------------|-------------------------------|
+/// |               |               |               |
+/// |  H_{N-1},{0}  |   .   .   .   | H_{N-1},{N-1} |
+/// |               |               |               |
+/// -------------------------------------------------
 /// ```
 ///
-/// The (NUM x NUM) symmetric matrix is partitioned into NUM_ARGS blocks horizontally and
-/// vertically. The shape of each of are specified by the `ranges` array.
-///
-/// Hence, the Hessian sub-block H_i,j is a (ranges(i).dim x ranges(j).dim) matrix.
+/// The `(INPUT_DIM  x  INPUT_DIM)` symmetric matrix is partitioned into `N` blocks horizontally and
+/// vertically. The shape of each of are specified by the `ranges` array: The Hessian sub-block
+/// `H_i,j` is a `(ranges(i).dim  x  ranges(j).dim)` matrix.
 #[derive(Clone, Debug)]
-pub struct BlockHessian<const NUM: usize, const NUM_ARGS: usize> {
+pub struct BlockHessian<const INPUT_DIM: usize, const N: usize> {
     /// matrix storage
-    pub mat: nalgebra::SMatrix<f64, NUM, NUM>,
+    pub mat: nalgebra::SMatrix<f64, INPUT_DIM, INPUT_DIM>,
     /// ranges, one for each block
-    pub ranges: [BlockRange; NUM_ARGS],
+    pub ranges: [BlockRange; N],
 }
 
-impl<const NUM: usize, const NUM_ARGS: usize> BlockHessian<NUM, NUM_ARGS> {
+impl<const INPUT_DIM: usize, const N: usize> BlockHessian<INPUT_DIM, N> {
     /// create a new block matrix
     pub fn new(dims: &[usize]) -> Self {
         debug_assert!(!dims.is_empty());
 
         let num_blocks = dims.len();
 
-        let mut ranges = [BlockRange::default(); NUM_ARGS];
+        let mut ranges = [BlockRange::default(); N];
         let mut num_rows: usize = 0;
 
         for i in 0..num_blocks {
@@ -95,7 +103,7 @@ impl<const NUM: usize, const NUM_ARGS: usize> BlockHessian<NUM, NUM_ARGS> {
             nalgebra::Dyn,
             nalgebra::Dyn,
             nalgebra::Const<1>,
-            nalgebra::Const<NUM>,
+            nalgebra::Const<INPUT_DIM>,
         >,
     > {
         let idx_i = self.ranges[ith].index as usize;
@@ -119,7 +127,7 @@ impl<const NUM: usize, const NUM_ARGS: usize> BlockHessian<NUM, NUM_ARGS> {
             nalgebra::Const<R>,
             nalgebra::Const<C>,
             nalgebra::Const<1>,
-            nalgebra::Const<NUM>,
+            nalgebra::Const<INPUT_DIM>,
         >,
     > {
         let idx_i = self.ranges[ith].index as usize;

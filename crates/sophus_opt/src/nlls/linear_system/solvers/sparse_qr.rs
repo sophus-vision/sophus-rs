@@ -6,6 +6,7 @@ use faer::{
 use super::{
     IsSparseSymmetricLinearSystem,
     NllsError,
+    SparseSolverError,
 };
 use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 
@@ -38,9 +39,9 @@ impl IsSparseSymmetricLinearSystem for SparseQr {
             }
             Err(e) => Err(NllsError::SparseQrError {
                 details: match e {
-                    FaerError::IndexOverflow => super::SparseSolverError::IndexOverflow,
-                    FaerError::OutOfMemory => super::SparseSolverError::OutOfMemory,
-                    _ => super::SparseSolverError::Unspecific,
+                    FaerError::IndexOverflow => SparseSolverError::IndexOverflow,
+                    FaerError::OutOfMemory => SparseSolverError::OutOfMemory,
+                    _ => SparseSolverError::Unspecific,
                 },
             }),
         }

@@ -12,9 +12,9 @@ use super::{
 extern crate alloc;
 
 /// Tuple of variables (one for each argument of the cost function)
-pub trait IsVarTuple<const NUM_ARGS: usize>: Send + Sync + 'static {
+pub trait IsVarTuple<const N: usize>: Send + Sync + 'static {
     /// number of degrees of freedom for each variable
-    const DOF_T: [usize; NUM_ARGS];
+    const DOF_T: [usize; N];
 
     /// Tuple variable families
     type VarFamilyTupleRef<'a>: Send + Sync;
@@ -22,14 +22,14 @@ pub trait IsVarTuple<const NUM_ARGS: usize>: Send + Sync + 'static {
     /// reference to the variable   family tuple
     fn ref_var_family_tuple(
         families: &VarFamilies,
-        names: [String; NUM_ARGS],
+        names: [String; N],
     ) -> Result<Self::VarFamilyTupleRef<'_>, VarFamilyError>;
 
     /// extract the variables from the family tuple
-    fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; NUM_ARGS]) -> Self;
+    fn extract(family_tuple: &Self::VarFamilyTupleRef<'_>, ids: [usize; N]) -> Self;
 
     /// return the variable kind for each variable (one for each argument of the cost function)
-    fn var_kind_array(families: &VarFamilies, names: [String; NUM_ARGS]) -> [VarKind; NUM_ARGS];
+    fn var_kind_array(families: &VarFamilies, names: [String; N]) -> [VarKind; N];
 }
 
 impl<M0: IsVariable + 'static + Send + Sync> IsVarTuple<1> for M0 {

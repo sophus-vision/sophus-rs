@@ -17,19 +17,35 @@ use crate::{
     variables::VarKind,
 };
 
-/// Isometry3 prior cost term
+/// Isometry3 prior residual cost term.
+///
+///
+/// `g(T) = log[T * E(T)⁻¹]`
+///
+/// where `T ∈ SE(3)` is the current isometry and `E(T) ∈ SE(3)` is the
+/// prior mean isometry. The quadratic cost function is defined as:
+///
+///
+/// `f(T) = 0.5 * (g(T)ᵀ * W * g(T)).`
+///
+/// where `W` is the prior `6x6` precision matrix, which is the inverse of the prior
+/// covariance matrix.
 #[derive(Clone, Debug)]
 pub struct Isometry3PriorCostTerm {
-    /// prior mean
+    /// Prior mean, `E(T)` of type [Isometry3F64].
     pub isometry_prior_mean: Isometry3F64,
-    /// prior precision
+    /// Prior precision, `W`.
     pub isometry_prior_precision: MatF64<6, 6>,
-    /// entity index
+    /// Entity index for `T`.
     pub entity_indices: [usize; 1],
 }
 
 impl Isometry3PriorCostTerm {
-    /// Compute the residual
+    /// Compute the residual.
+    ///
+    /// `g(T) = log[T * E(T)⁻¹]`
+    ///
+    /// Note that `T:= isometry` and `E(T):= isometry_prior_mean` are of type [Isometry3F64].
     pub fn residual<Scalar: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize>(
         isometry: Isometry3<Scalar, 1, DM, DN>,
         isometry_prior_mean: Isometry3<Scalar, 1, DM, DN>,
@@ -38,7 +54,7 @@ impl Isometry3PriorCostTerm {
     }
 }
 
-impl IsCostTerm<6, 1, (), Isometry3F64> for Isometry3PriorCostTerm {
+impl HasResidualFn<6, 1, (), Isometry3F64> for Isometry3PriorCostTerm {
     fn idx_ref(&self) -> &[usize; 1] {
         &self.entity_indices
     }
@@ -61,9 +77,7 @@ impl IsCostTerm<6, 1, (), Isometry3F64> for Isometry3PriorCostTerm {
             )
         };
 
-        let zeros: VecF64<6> = VecF64::<6>::zeros();
-
-        (|| dx_res_fn(DualVector::var(zeros)).jacobian(),).make(
+        (|| dx_res_fn(DualVector::var(VecF64::<6>::zeros())).jacobian(),).make(
             idx,
             var_kinds,
             residual,

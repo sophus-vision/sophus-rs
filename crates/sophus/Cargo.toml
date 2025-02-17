@@ -33,6 +33,7 @@ eframe.workspace = true
 egui-wgpu.workspace = true
 egui_extras.workspace = true
 env_logger.workspace = true
+rand.workspace = true
 thingbuf.workspace = true
 tokio = { version = "1", features = ["full"] }
 wgpu.workspace = true

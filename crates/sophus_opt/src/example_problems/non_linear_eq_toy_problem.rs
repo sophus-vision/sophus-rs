@@ -2,8 +2,8 @@ use sophus_autodiff::linalg::VecF64;
 
 use crate::{
     nlls::{
-        costs::ExampleNonLinearCost,
-        eq_constraints::SmallNonLinearEqConstraint,
+        costs::ExampleNonLinearCostTerm,
+        eq_constraints::ExampleNonLinearEqConstraint,
         optimize_nlls_with_eq_constraints,
         CostFn,
         CostTerms,
@@ -48,14 +48,14 @@ impl NonLinearEqToyProblem {
             .build();
         let cost_terms = CostTerms::new(
             [VAR_X],
-            alloc::vec![ExampleNonLinearCost {
+            alloc::vec![ExampleNonLinearCostTerm {
                 z: VecF64::<2>::new(1.0, 1.0),
                 entity_indices: [0]
             },],
         );
         let eq_constraints = EqConstraints::new(
             [VAR_X],
-            vec![SmallNonLinearEqConstraint {
+            vec![ExampleNonLinearEqConstraint {
                 lhs: EQ_CONSTRAINT_RHS,
                 entity_indices: [0],
             }],
@@ -63,13 +63,13 @@ impl NonLinearEqToyProblem {
 
         // illustrate that the initial guess is not feasible
         assert!(
-            SmallNonLinearEqConstraint::residual(initial_x, EQ_CONSTRAINT_RHS).norm() > EPS_F64
+            ExampleNonLinearEqConstraint::residual(initial_x, EQ_CONSTRAINT_RHS).norm() > EPS_F64
         );
 
         let refined_variables = optimize_nlls_with_eq_constraints(
             variables,
-            alloc::vec![CostFn::new_box((), cost_terms.clone(),)],
-            alloc::vec![EqConstraintFn::new_box((), eq_constraints,)],
+            alloc::vec![CostFn::new_boxed((), cost_terms.clone(),)],
+            alloc::vec![EqConstraintFn::new_boxed((), eq_constraints,)],
             OptParams {
                 num_iterations: 10,
                 initial_lm_damping: EPS_F64,
@@ -85,7 +85,7 @@ impl NonLinearEqToyProblem {
 
         // converged solution should satisfy the equality constraint
         approx::assert_abs_diff_eq!(
-            SmallNonLinearEqConstraint::residual(refined_x, EQ_CONSTRAINT_RHS)[0],
+            ExampleNonLinearEqConstraint::residual(refined_x, EQ_CONSTRAINT_RHS)[0],
             0.0,
             epsilon = 1e-6
         );

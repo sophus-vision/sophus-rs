@@ -1,35 +1,11 @@
-use core::fmt::Debug;
-
-use linear_system::{
-    cost_system::CostSystem,
-    eq_system::EqSystem,
-    solvers::SparseSolverError,
-};
-use log::{
-    debug,
-    info,
-};
-use snafu::Snafu;
-
-use crate::{
-    block::{
-        block_vector::BlockVector,
-        symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
-    },
-    nlls::linear_system::{
-        solvers::sparse_ldlt::SparseLdltParams,
-        EvalMode,
-        LinearSystem,
-    },
-    variables::VarFamilies,
-};
-
 extern crate alloc;
 
 mod constraint;
 mod cost;
 mod functor_library;
 mod linear_system;
+
+use core::fmt::Debug;
 
 pub use constraint::{
     eq_constraint::*,
@@ -38,16 +14,34 @@ pub use constraint::{
     evaluated_eq_set::*,
 };
 pub use cost::{
-    compare_idx::*,
     cost_fn::*,
     cost_term::*,
     evaluated_cost::*,
     evaluated_term::*,
 };
+pub(crate) use linear_system::solvers::*;
+pub use linear_system::{
+    cost_system::*,
+    eq_system::*,
+    *,
+};
+use log::{
+    debug,
+    info,
+};
+use snafu::Snafu;
 
+use self::sparse_ldlt::SparseLdltParams;
 pub use crate::nlls::functor_library::{
     costs,
     eq_constraints,
+};
+use crate::{
+    block::{
+        block_vector::BlockVector,
+        symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
+    },
+    variables::VarFamilies,
 };
 
 /// Linear solver type

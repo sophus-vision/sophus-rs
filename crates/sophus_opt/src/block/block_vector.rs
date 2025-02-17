@@ -7,7 +7,34 @@ struct BlockVectorRegion {
     block_dim: usize,
 }
 
-/// Vector, split in several blocks
+/// Block vector.
+///
+/// ``ascii
+/// -----
+/// | A |
+/// | . |
+/// | . |
+/// | A |
+/// -----
+/// | B |
+/// | . |
+/// | . |
+/// | B |
+/// -----
+/// |   |
+/// | * |
+/// | * |
+/// |   |
+/// -----
+/// | Z |
+/// | . |
+/// | . |
+/// | Z |
+/// -----
+///
+/// It ia split into regions and each region is split into a sequence of sub-vectors.
+/// Within each region, all sub-vectors have the same dimension. E.g., region 0 contains
+/// only A-dimensional sub-vectors, region 1 contains only B-dimensional sub-vectors, etc.
 #[derive(Debug, Clone)]
 pub struct BlockVector {
     partitions: Vec<BlockVectorRegion>,
@@ -15,8 +42,9 @@ pub struct BlockVector {
 }
 
 impl BlockVector {
-    /// Create zero block vector. Its shape and size is determined by the number of families as well
-    /// as the number of free variables in each family.
+    /// Create a block vector filled with zeros.
+    ///
+    /// The shape of the block vector is determined by the provided partition specs.
     pub fn zero(partition_specs: &[PartitionSpec]) -> Self {
         let mut scalar_offsets = Vec::new();
         let mut offset = 0;

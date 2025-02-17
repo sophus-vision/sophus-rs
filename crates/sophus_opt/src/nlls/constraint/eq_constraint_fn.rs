@@ -9,7 +9,7 @@ use snafu::Snafu;
 use super::{
     eq_constraint::{
         EqConstraints,
-        IsEqConstraint,
+        HasEqConstraintResidualFn,
     },
     evaluated_eq_set::IsEvaluatedEqConstraintSet,
 };
@@ -35,53 +35,7 @@ use crate::{
 
 extern crate alloc;
 
-/// Equality constraint function
-#[derive(Debug, Clone)]
-pub struct EqConstraintFn<
-    const RESIDUAL_DIM: usize,
-    const INPUT_DIM: usize,
-    const NUM_ARGS: usize,
-    GlobalConstants: 'static + Send + Sync,
-    Constraint: IsEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS, GlobalConstants, VarTuple>,
-    VarTuple: IsVarTuple<NUM_ARGS> + 'static,
-> {
-    global_constants: GlobalConstants,
-    constraints:
-        EqConstraints<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS, GlobalConstants, VarTuple, Constraint>,
-    phantom: PhantomData<VarTuple>,
-}
-
-impl<
-        const RESIDUAL_DIM: usize,
-        const INPUT_DIM: usize,
-        const NUM_ARGS: usize,
-        GlobalConstants: 'static + Send + Sync,
-        Constraint: IsEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS, GlobalConstants, VarTuple>,
-        VarTuple: IsVarTuple<NUM_ARGS> + 'static,
-    > EqConstraintFn<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS, GlobalConstants, Constraint, VarTuple>
-{
-    /// Create a new equality constraint function from the given eq-constrains and a
-    /// eq-constraint functor.
-    pub fn new_box(
-        global_constants: GlobalConstants,
-        terms: EqConstraints<
-            RESIDUAL_DIM,
-            INPUT_DIM,
-            NUM_ARGS,
-            GlobalConstants,
-            VarTuple,
-            Constraint,
-        >,
-    ) -> alloc::boxed::Box<dyn IsEqConstraintsFn> {
-        alloc::boxed::Box::new(Self {
-            global_constants,
-            constraints: terms,
-            phantom: PhantomData,
-        })
-    }
-}
-
-/// Is Equality constraint function.
+/// Equality constraint function.
 pub trait IsEqConstraintsFn {
     /// Evaluate the equality constraint.
     fn eval(
@@ -90,23 +44,87 @@ pub trait IsEqConstraintsFn {
         eval_mode: EvalMode,
     ) -> Result<alloc::boxed::Box<dyn IsEvaluatedEqConstraintSet>, EqConstraintError>;
 
-    /// Sort the constraints.
+    /// Sort the constraints (to ensure more efficient evaluation and reduction over
+    /// conditioned variables).
     fn sort(&mut self, variables: &VarFamilies);
 
-    /// Number of arguments.
+    /// Number of constraint arguments.
     fn num_args(&self) -> usize;
 
-    /// residual dimension
+    /// Dimension of the constraint residual.
     fn residual_dim(&self) -> usize;
 }
 
-/// Errors that can occur when working with variable families
+/// Generic equality constraint function.
+///
+/// It represents a set of equality constraints:
+///
+/// `{c(V⁰₀, V⁰₁, ..., V⁰ₙ₋₁), ..., c(Vⁱ₀, Vⁱ₁, ..., Vⁱₙ₋₁), ...}`
+///
+/// All terms are based on a common constraint residual function `c` and a set
+///  of input arguments `Vⁱ₀, Vⁱ₁, ...,  Vⁱₙ₋₁`.
+///
+/// This struct is passed as a box of [IsEqConstraintsFn] to the optimizer.
+///
+/// ## Generic parameters
+///
+///  * `RESIDUAL_DIM`
+///    - Dimension of the constraint residual vector `c`.
+///  * `INPUT_DIM`
+///    - Total input dimension of the constraint residual function `c`. It is the sum of argument
+///      dimensions: |Vⁱ₀| + |Vⁱ₁| + ... + |Vⁱₙ₋₁|.
+///  * `N`
+///    - Number of arguments of the constraint residual function `c`.
+///  * `GlobalConstants`
+///    - Type of the global constants which are passed to the residual function. If no global
+///      constants are needed, use `()`.
+///  * `Constraint`
+///    - The constraint residual function `c`.
+///  * `Args`
+///    - Tuple of input argument types: `(Vⁱ₀, Vⁱ₁, ..., Vⁱₙ₋₁)`.
+#[derive(Debug, Clone)]
+pub struct EqConstraintFn<
+    const RESIDUAL_DIM: usize,
+    const INPUT_DIM: usize,
+    const N: usize,
+    GlobalConstants: 'static + Send + Sync,
+    Constraint: HasEqConstraintResidualFn<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Args>,
+    Args: IsVarTuple<N> + 'static,
+> {
+    global_constants: GlobalConstants,
+    constraints: EqConstraints<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Args, Constraint>,
+    phantom: PhantomData<Args>,
+}
+
+impl<
+        const RESIDUAL_DIM: usize,
+        const INPUT_DIM: usize,
+        const N: usize,
+        GlobalConstants: 'static + Send + Sync,
+        Constraint: HasEqConstraintResidualFn<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Args>,
+        Args: IsVarTuple<N> + 'static,
+    > EqConstraintFn<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Constraint, Args>
+{
+    /// Create a new equality constraint function from global constants and a set of constraints.
+    pub fn new_boxed(
+        global_constants: GlobalConstants,
+        constraints: EqConstraints<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Args, Constraint>,
+    ) -> alloc::boxed::Box<dyn IsEqConstraintsFn> {
+        alloc::boxed::Box::new(Self {
+            global_constants,
+            constraints,
+            phantom: PhantomData,
+        })
+    }
+}
+
+/// Errors that can occur when working with variables as constraint arguments.
 #[derive(Snafu, Debug)]
 pub enum EqConstraintError {
-    /// Error when working with variable families
+    /// Error when working with variable as constraint arguments.
     #[snafu(display("EqConstraintError( {} )", source))]
     VariableFamilyError {
-        /// The source of the error
+        /// source
         source: VarFamilyError,
     },
 }
@@ -114,12 +132,12 @@ pub enum EqConstraintError {
 impl<
         const RESIDUAL_DIM: usize,
         const INPUT_DIM: usize,
-        const NUM_ARGS: usize,
+        const N: usize,
         GlobalConstants: 'static + Send + Sync,
-        Constraint: IsEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS, GlobalConstants, VarTuple>,
-        VarTuple: IsVarTuple<NUM_ARGS> + 'static,
+        Constraint: HasEqConstraintResidualFn<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Args>,
+        Args: IsVarTuple<N> + 'static,
     > IsEqConstraintsFn
-    for EqConstraintFn<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS, GlobalConstants, Constraint, VarTuple>
+    for EqConstraintFn<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Constraint, Args>
 {
     fn eval(
         &self,
@@ -127,7 +145,7 @@ impl<
         eval_mode: EvalMode,
     ) -> Result<alloc::boxed::Box<dyn IsEvaluatedEqConstraintSet>, EqConstraintError> {
         let mut var_kind_array =
-            VarTuple::var_kind_array(variables, self.constraints.family_names.clone());
+            Args::var_kind_array(variables, self.constraints.family_names.clone());
 
         if eval_mode == EvalMode::DontCalculateDerivatives {
             var_kind_array = var_kind_array.map(|_x| VarKind::Conditioned)
@@ -137,14 +155,14 @@ impl<
             EvaluatedEqSet::new(self.constraints.family_names.clone());
 
         let var_family_tuple =
-            VarTuple::ref_var_family_tuple(variables, self.constraints.family_names.clone())
+            Args::ref_var_family_tuple(variables, self.constraints.family_names.clone())
                 .map_err(|e| EqConstraintError::VariableFamilyError { source: e })?;
 
         let eval_res = |term: &Constraint| {
             term.eval(
                 &self.global_constants,
                 *term.idx_ref(),
-                VarTuple::extract(&var_family_tuple, *term.idx_ref()),
+                Args::extract(&var_family_tuple, *term.idx_ref()),
                 var_kind_array,
             )
         };
@@ -155,9 +173,8 @@ impl<
             .evaluated_constraints
             .reserve(reduction_ranges.len());
         for range in reduction_ranges.iter() {
-            let mut evaluated_term_sum: Option<
-                EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, NUM_ARGS>,
-            > = None;
+            let mut evaluated_term_sum: Option<EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, N>> =
+                None;
 
             for term in self.constraints.collection[range.start..range.end].iter() {
                 match evaluated_term_sum {
@@ -179,7 +196,7 @@ impl<
 
     fn sort(&mut self, variables: &VarFamilies) {
         let var_kind_array =
-            &VarTuple::var_kind_array(variables, self.constraints.family_names.clone());
+            &Args::var_kind_array(variables, self.constraints.family_names.clone());
 
         let c_array = c_from_var_kind(var_kind_array);
 
@@ -220,7 +237,7 @@ impl<
     }
 
     fn num_args(&self) -> usize {
-        NUM_ARGS
+        N
     }
 
     fn residual_dim(&self) -> usize {
