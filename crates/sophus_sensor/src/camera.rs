@@ -51,8 +51,7 @@ impl<
         let params = params.borrow();
         assert!(
             Distort::are_params_valid(params).all(),
-            "Invalid parameters for {:?}",
-            params
+            "Invalid parameters for {params:?}"
         );
         Self {
             params: *params,

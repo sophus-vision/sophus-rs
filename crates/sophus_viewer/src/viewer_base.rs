@@ -442,7 +442,7 @@ impl ViewerBase {
                         plot_ui.line(
                             egui_plot::Line::new(plot_points)
                                 .color(color_cnv(g.style.colors[i]))
-                                .name(format!("{}-{}", curve_name, i)),
+                                .name(format!("{curve_name}-{i}")),
                         );
                     }
                 }
@@ -452,7 +452,7 @@ impl ViewerBase {
                         plot_ui.line(
                             egui_plot::Line::new(plot_points)
                                 .color(color_cnv(g.style.colors[i]))
-                                .name(format!("{}-{}", curve_name, i)),
+                                .name(format!("{curve_name}-{i}")),
                         );
                     }
                 }
@@ -490,7 +490,7 @@ impl ViewerBase {
                         plot_ui.line(
                             egui_plot::Line::new(plot_points)
                                 .color(color_cnv(color[i]))
-                                .name(format!("{}-{}", curve_name, i))
+                                .name(format!("{curve_name}-{i}"))
                                 .style(style),
                         );
                     }

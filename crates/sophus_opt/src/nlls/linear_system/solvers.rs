@@ -61,11 +61,7 @@ fn solver_tests() {
         for &(i, j, val) in triplets {
             assert!(
                 i < n && j < n,
-                "Triplet index ({}, {}) out of bounds for an {}x{} matrix",
-                i,
-                j,
-                n,
-                n
+                "Triplet index ({i}, {j}) out of bounds for an {n}x{n} matrix"
             );
             mat[(i, j)] += val;
         }

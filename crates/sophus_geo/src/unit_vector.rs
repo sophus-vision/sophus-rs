@@ -30,14 +30,14 @@ impl<
     > UnitVectorImpl<S, DOF, DIM, BATCH, DM, DN>
 {
     fn unit(i: usize) -> S::Vector<DIM> {
-        assert!(i < DIM, "{} < {}", i, DIM);
+        assert!(i < DIM, "{i} < {DIM}");
         let mut v = S::Vector::<DIM>::zeros();
         *v.elem_mut(i) = S::from_f64(1.0);
         v
     }
 
     fn unit_tangent(i: usize) -> S::Vector<DOF> {
-        assert!(i < DOF, "{} < {}", i, DOF);
+        assert!(i < DOF, "{i} < {DOF}");
         let mut v = S::Vector::<DOF>::zeros();
         *v.elem_mut(i) = S::from_f64(1.0);
         v

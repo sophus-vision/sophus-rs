@@ -27,5 +27,8 @@ doc:
 camera_sim:
     cargo run --example camera_sim --release --features std
 
+mini_optics_sim:
+    cargo run --example mini_optics_sim --release --features std
+
 viewer_ex:
     cargo run --example viewer_ex --release --features std
