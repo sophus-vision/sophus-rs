@@ -1,16 +1,16 @@
 use super::EvalMode;
 use crate::{
     block::{
+        PartitionSpec,
         block_vector::BlockVector,
         symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
-        PartitionSpec,
     },
     nlls::{
+        OptParams,
         constraint::evaluated_eq_set::{
             EvaluatedEqSet,
             IsEvaluatedEqConstraintSet,
         },
-        OptParams,
     },
     prelude::*,
     variables::VarFamilies,

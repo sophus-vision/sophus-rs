@@ -20,8 +20,8 @@ use crate::{
             evaluated_eq_set::EvaluatedEqSet,
         },
         cost::compare_idx::{
-            c_from_var_kind,
             CompareIdx,
+            c_from_var_kind,
         },
         linear_system::EvalMode,
     },
@@ -97,13 +97,13 @@ pub struct EqConstraintFn<
 }
 
 impl<
-        const RESIDUAL_DIM: usize,
-        const INPUT_DIM: usize,
-        const N: usize,
-        GlobalConstants: 'static + Send + Sync,
-        Constraint: HasEqConstraintResidualFn<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Args>,
-        Args: IsVarTuple<N> + 'static,
-    > EqConstraintFn<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Constraint, Args>
+    const RESIDUAL_DIM: usize,
+    const INPUT_DIM: usize,
+    const N: usize,
+    GlobalConstants: 'static + Send + Sync,
+    Constraint: HasEqConstraintResidualFn<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Args>,
+    Args: IsVarTuple<N> + 'static,
+> EqConstraintFn<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Constraint, Args>
 {
     /// Create a new equality constraint function from global constants and a set of constraints.
     pub fn new_boxed(
@@ -130,13 +130,13 @@ pub enum EqConstraintError {
 }
 
 impl<
-        const RESIDUAL_DIM: usize,
-        const INPUT_DIM: usize,
-        const N: usize,
-        GlobalConstants: 'static + Send + Sync,
-        Constraint: HasEqConstraintResidualFn<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Args>,
-        Args: IsVarTuple<N> + 'static,
-    > IsEqConstraintsFn
+    const RESIDUAL_DIM: usize,
+    const INPUT_DIM: usize,
+    const N: usize,
+    GlobalConstants: 'static + Send + Sync,
+    Constraint: HasEqConstraintResidualFn<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Args>,
+    Args: IsVarTuple<N> + 'static,
+> IsEqConstraintsFn
     for EqConstraintFn<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Constraint, Args>
 {
     fn eval(

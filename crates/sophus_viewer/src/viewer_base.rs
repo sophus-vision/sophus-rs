@@ -23,9 +23,9 @@ use sophus_image::{
 };
 use sophus_lie::prelude::IsTranslationProductGroup;
 use sophus_renderer::{
-    renderables::Color,
     HasAspectRatio,
     RenderContext,
+    renderables::Color,
 };
 use thingbuf::mpsc::blocking::Receiver;
 
@@ -38,8 +38,6 @@ use crate::{
         Packet,
     },
     views::{
-        get_adjusted_view_size,
-        get_max_size,
         ActiveViewInfo,
         GraphType,
         ImageView,
@@ -47,6 +45,8 @@ use crate::{
         SceneView,
         View,
         ViewportSize,
+        get_adjusted_view_size,
+        get_max_size,
     },
 };
 
@@ -421,8 +421,11 @@ impl ViewerBase {
             )
         }
         fn show_vec<const N: usize>(curve_name: &str, g: &CurveVec<N>, plot_ui: &mut PlotUi) {
-            if let Some(v_line) = g.v_line {
-                plot_ui.add(VLine::new(v_line).color(egui::Color32::from_rgb(255, 255, 255)));
+            if let Some(v_line) = &g.v_line {
+                plot_ui.add(
+                    VLine::new(v_line.name.clone(), v_line.x)
+                        .color(egui::Color32::from_rgb(255, 255, 255)),
+                );
             }
             let mut points = vec![];
             for _ in 0..N {
@@ -440,9 +443,8 @@ impl ViewerBase {
                     for (i, p) in points.iter().enumerate().take(N) {
                         let plot_points = egui_plot::PlotPoints::Owned(p.clone());
                         plot_ui.line(
-                            egui_plot::Line::new(plot_points)
-                                .color(color_cnv(g.style.colors[i]))
-                                .name(format!("{curve_name}-{i}")),
+                            egui_plot::Line::new(format!("{curve_name}-{i}"), plot_points)
+                                .color(color_cnv(g.style.colors[i])),
                         );
                     }
                 }
@@ -450,9 +452,8 @@ impl ViewerBase {
                     for (i, p) in points.iter().enumerate().take(N) {
                         let plot_points = egui_plot::PlotPoints::Owned(p.clone());
                         plot_ui.line(
-                            egui_plot::Line::new(plot_points)
-                                .color(color_cnv(g.style.colors[i]))
-                                .name(format!("{curve_name}-{i}")),
+                            egui_plot::Line::new(format!("{curve_name}-{i}"), plot_points)
+                                .color(color_cnv(g.style.colors[i])),
                         );
                     }
                 }
@@ -463,8 +464,11 @@ impl ViewerBase {
             g: &CurveVecWithConf<N>,
             plot_ui: &mut PlotUi,
         ) {
-            if let Some(v_line) = g.v_line {
-                plot_ui.add(VLine::new(v_line).color(egui::Color32::from_rgb(255, 255, 255)));
+            if let Some(v_line) = &g.v_line {
+                plot_ui.add(
+                    VLine::new(v_line.name.clone(), v_line.x)
+                        .color(egui::Color32::from_rgb(255, 255, 255)),
+                );
             }
             let mut points = vec![];
             let mut up_points = vec![];
@@ -488,9 +492,8 @@ impl ViewerBase {
                     for (i, p) in points.iter().enumerate().take(N) {
                         let plot_points = egui_plot::PlotPoints::Owned(p.clone());
                         plot_ui.line(
-                            egui_plot::Line::new(plot_points)
+                            egui_plot::Line::new(format!("{curve_name}-{i}"), plot_points)
                                 .color(color_cnv(color[i]))
-                                .name(format!("{curve_name}-{i}"))
                                 .style(style),
                         );
                     }
@@ -512,9 +515,9 @@ impl ViewerBase {
 
                         match &graph_data.curve {
                             GraphType::Scalar(g) => {
-                                if let Some(v_line) = g.v_line {
+                                if let Some(v_line) = &g.v_line {
                                     plot_ui.add(
-                                        VLine::new(v_line)
+                                        VLine::new(v_line.name.clone(), v_line.x)
                                             .color(egui::Color32::from_rgb(255, 255, 255)),
                                     );
                                 }
@@ -529,16 +532,14 @@ impl ViewerBase {
                                 match g.style.line_type {
                                     LineType::LineStrip => {
                                         plot_ui.line(
-                                            egui_plot::Line::new(plot_points)
-                                                .color(color_cnv(g.style.color))
-                                                .name(curve_name),
+                                            egui_plot::Line::new(curve_name, plot_points)
+                                                .color(color_cnv(g.style.color)),
                                         );
                                     }
                                     LineType::Points => {
                                         plot_ui.points(
-                                            egui_plot::Points::new(plot_points)
-                                                .color(color_cnv(g.style.color))
-                                                .name(curve_name),
+                                            egui_plot::Points::new(curve_name, plot_points)
+                                                .color(color_cnv(g.style.color)),
                                         );
                                     }
                                 }

@@ -1,7 +1,9 @@
+use eframe::wgpu;
 use sophus_lie::Isometry3F64;
 use wgpu::util::DeviceExt;
 
 use crate::{
+    RenderContext,
     pipeline_builder::{
         PipelineBuilder,
         PointVertex3,
@@ -9,7 +11,6 @@ use crate::{
     prelude::*,
     renderables::PointCloud3,
     uniform_buffers::VertexShaderUniformBuffers,
-    RenderContext,
 };
 pub(crate) struct Point3dEntity {
     pub(crate) vertex_data: Vec<PointVertex3>,

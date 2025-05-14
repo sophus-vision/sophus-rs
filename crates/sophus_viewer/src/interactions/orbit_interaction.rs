@@ -10,11 +10,11 @@ use sophus_lie::{
     Isometry3F64,
 };
 use sophus_renderer::{
+    TranslationAndScaling,
     camera::{
         ClippingPlanesF64,
         RenderIntrinsics,
     },
-    TranslationAndScaling,
 };
 
 use crate::{

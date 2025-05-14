@@ -1,10 +1,13 @@
 use sophus_renderer::renderables::Color;
 
 use crate::{
-    packets::plot_view_packet::{
-        ClearCondition,
-        CurveTrait,
-        LineType,
+    packets::{
+        VerticalLine,
+        plot_view_packet::{
+            ClearCondition,
+            CurveTrait,
+            LineType,
+        },
     },
     prelude::*,
 };
@@ -30,7 +33,7 @@ pub struct ScalarCurve {
     pub clear_cond: ClearCondition,
 
     /// v-line
-    pub v_line: Option<f64>,
+    pub v_line: Option<VerticalLine>,
 }
 
 impl ScalarCurve {
@@ -40,7 +43,7 @@ impl ScalarCurve {
         color: Color,
         line_type: LineType,
         clear_cond: ClearCondition,
-        v_line: Option<f64>,
+        v_line: Option<VerticalLine>,
     ) -> Self {
         ScalarCurve {
             data,
@@ -56,7 +59,7 @@ impl CurveTrait<f64, ScalarCurveStyle> for ScalarCurve {
         &mut self.data
     }
 
-    fn update_vline(&mut self, v_line: Option<f64>) {
+    fn update_vline(&mut self, v_line: Option<VerticalLine>) {
         self.v_line = v_line;
     }
 

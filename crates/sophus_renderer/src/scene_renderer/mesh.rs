@@ -1,7 +1,9 @@
+use eframe::wgpu;
 use sophus_lie::Isometry3F64;
 use wgpu::util::DeviceExt;
 
 use crate::{
+    RenderContext,
     pipeline_builder::{
         MeshVertex3,
         PipelineBuilder,
@@ -9,7 +11,6 @@ use crate::{
     prelude::*,
     renderables::TriangleMesh3,
     uniform_buffers::VertexShaderUniformBuffers,
-    RenderContext,
 };
 
 pub(crate) struct Mesh3dEntity {
@@ -21,26 +22,28 @@ pub(crate) struct Mesh3dEntity {
 impl Mesh3dEntity {
     /// Create a new 3D mesh entity
     pub fn new(render_context: &RenderContext, mesh: &TriangleMesh3) -> Self {
-        let vertex_data: Vec<MeshVertex3> = mesh
-            .triangles
-            .iter()
-            .flat_map(|trig| {
-                vec![
-                    MeshVertex3 {
-                        _pos: [trig.p0[0], trig.p0[1], trig.p0[2]],
-                        _color: [trig.color0.r, trig.color0.g, trig.color0.b, trig.color0.a],
-                    },
-                    MeshVertex3 {
-                        _pos: [trig.p1[0], trig.p1[1], trig.p1[2]],
-                        _color: [trig.color1.r, trig.color1.g, trig.color1.b, trig.color1.a],
-                    },
-                    MeshVertex3 {
-                        _pos: [trig.p2[0], trig.p2[1], trig.p2[2]],
-                        _color: [trig.color2.r, trig.color2.g, trig.color2.b, trig.color2.a],
-                    },
-                ]
-            })
-            .collect();
+        let mut vertex_data = vec![];
+        for trig in &mesh.triangles {
+            // flat-shading normal
+            let n = (trig.p1 - trig.p0).cross(&(trig.p2 - trig.p0)).normalize();
+            vertex_data.extend_from_slice(&[
+                MeshVertex3 {
+                    _pos: trig.p0.into(),
+                    _normal: n.into(),
+                    _color: [trig.color0.r, trig.color0.g, trig.color0.b, trig.color0.a],
+                },
+                MeshVertex3 {
+                    _pos: trig.p1.into(),
+                    _normal: n.into(),
+                    _color: [trig.color1.r, trig.color1.g, trig.color1.b, trig.color1.a],
+                },
+                MeshVertex3 {
+                    _pos: trig.p2.into(),
+                    _normal: n.into(),
+                    _color: [trig.color2.r, trig.color2.g, trig.color2.b, trig.color2.a],
+                },
+            ]);
+        }
 
         let vertex_buffer =
             render_context

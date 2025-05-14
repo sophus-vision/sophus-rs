@@ -25,6 +25,7 @@ use sophus_image::{
 };
 use sophus_lie::Isometry3F64;
 use sophus_renderer::{
+    RenderContext,
     camera::{
         RenderCamera,
         RenderCameraProperties,
@@ -33,20 +34,19 @@ use sophus_renderer::{
         Color,
         ImageFrame,
     },
-    RenderContext,
 };
 use sophus_viewer::{
-    packets::{
-        append_to_scene_packet,
-        create_scene_packet,
-        ImageViewPacket,
-    },
     ViewerBase,
     ViewerBaseConfig,
+    packets::{
+        ImageViewPacket,
+        append_to_scene_packet,
+        create_scene_packet,
+    },
 };
 use thingbuf::mpsc::blocking::{
-    channel,
     Sender,
+    channel,
 };
 
 pub struct OpticsElements {

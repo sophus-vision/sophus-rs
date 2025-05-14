@@ -27,13 +27,13 @@ pub struct MatrixValuedDerivative<
 }
 
 impl<
-        S: IsRealScalar<BATCH, RealScalar = S>,
-        const OUTROWS: usize,
-        const OUTCOLS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > MatrixValuedDerivative<S, OUTROWS, OUTCOLS, BATCH, DM, DN>
+    S: IsRealScalar<BATCH, RealScalar = S>,
+    const OUTROWS: usize,
+    const OUTCOLS: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> MatrixValuedDerivative<S, OUTROWS, OUTCOLS, BATCH, DM, DN>
 {
     /// Creates a new instance set to all zeros.
     pub fn zeros() -> Self {

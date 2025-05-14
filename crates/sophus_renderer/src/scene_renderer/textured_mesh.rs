@@ -1,8 +1,10 @@
+use eframe::wgpu;
 use sophus_image::ArcImage4U8;
 use sophus_lie::Isometry3F64;
 use wgpu::util::DeviceExt;
 
 use crate::{
+    RenderContext,
     pipeline_builder::{
         PipelineBuilder,
         TexturedMeshVertex3,
@@ -10,7 +12,6 @@ use crate::{
     prelude::*,
     renderables::TexturedTriangleMesh3,
     uniform_buffers::VertexShaderUniformBuffers,
-    RenderContext,
 };
 
 /// mesh entity
@@ -128,14 +129,14 @@ impl TexturedMeshEntity {
         });
 
         render_context.wgpu_queue.write_texture(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
             bytemuck::cast_slice(image.tensor.scalar_view().as_slice().unwrap()),
-            wgpu::ImageDataLayout {
+            wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * image.image_size().width as u32),
                 rows_per_image: Some(image.image_size().height as u32),

@@ -37,12 +37,12 @@ pub struct Ray<
 }
 
 impl<
-        S: IsSingleScalar<DM, DN> + PartialOrd,
-        const DOF: usize,
-        const DIM: usize,
-        const DM: usize,
-        const DN: usize,
-    > Ray<S, DOF, DIM, 1, DM, DN>
+    S: IsSingleScalar<DM, DN> + PartialOrd,
+    const DOF: usize,
+    const DIM: usize,
+    const DM: usize,
+    const DN: usize,
+> Ray<S, DOF, DIM, 1, DM, DN>
 {
     /// Returns point on ray.
     ///

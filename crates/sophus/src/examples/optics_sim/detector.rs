@@ -1,14 +1,14 @@
 use sophus_autodiff::linalg::VecF64;
 use sophus_geo::LineF64;
 use sophus_renderer::renderables::{
-    make_line3,
     Color,
     SceneRenderable,
+    make_line3,
 };
 
 use crate::examples::optics_sim::element::Element;
 
-/// A struct representing a detector in an optical system.
+/// Detector in an optical system, i.e., the image plane.
 #[derive(Clone)]
 pub struct Detector {
     /// The x-coordinate of the detector.

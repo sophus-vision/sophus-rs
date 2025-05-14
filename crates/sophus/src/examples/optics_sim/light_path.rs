@@ -9,10 +9,10 @@ use sophus_geo::{
     UnitVector,
 };
 use sophus_renderer::renderables::{
-    named_line3,
     Color,
     LineSegment3,
     SceneRenderable,
+    named_line3,
 };
 
 use crate::examples::optics_sim::{
@@ -20,8 +20,8 @@ use crate::examples::optics_sim::{
     convex_lens::BiConvexLens2,
     detector::Detector,
     element::{
-        gray_color,
         Element,
+        gray_color,
     },
 };
 

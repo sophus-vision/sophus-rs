@@ -348,11 +348,7 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
         Q: Borrow<Self>,
     {
         // single-lane bool => entire vector is chosen or not
-        if *mask {
-            *self
-        } else {
-            *other.borrow()
-        }
+        if *mask { *self } else { *other.borrow() }
     }
 
     fn get_fixed_subvec<const R: usize>(&self, start_r: usize) -> DualVector<R, DM, DN> {

@@ -1,3 +1,4 @@
+use eframe::wgpu;
 use sophus_image::ImageSize;
 use wgpu::{
     BindGroup,
@@ -5,13 +6,13 @@ use wgpu::{
 };
 
 use crate::{
+    RenderContext,
     prelude::*,
     textures::{
         DepthTextures,
         RgbdTexture,
     },
     uniform_buffers::VertexShaderUniformBuffers,
-    RenderContext,
 };
 
 /// Scene line renderer
@@ -190,8 +191,9 @@ impl DistortionRenderer {
                     label: Some("distortion pipeline with background"),
                     layout: Some(&pipeline_layout),
                     module: &shader,
-                    entry_point: "distort_with_background",
+                    entry_point: Some("distort_with_background"),
                     compilation_options: Default::default(),
+                    cache: None,
                 }),
                 texture_bind_group,
             )
@@ -225,8 +227,9 @@ impl DistortionRenderer {
                     label: Some("distortion pipeline"),
                     layout: Some(&pipeline_layout),
                     module: &shader,
-                    entry_point: "distort",
+                    entry_point: Some("distort"),
                     compilation_options: Default::default(),
+                    cache: None,
                 }),
                 texture_bind_group_layout,
             )

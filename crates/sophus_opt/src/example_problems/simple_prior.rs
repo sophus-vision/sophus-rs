@@ -9,15 +9,15 @@ use sophus_lie::{
 
 use crate::{
     nlls::{
+        CostFn,
+        CostTerms,
+        LinearSolverType,
+        OptParams,
         costs::{
             Isometry2PriorCostTerm,
             Isometry3PriorCostTerm,
         },
         optimize_nlls,
-        CostFn,
-        CostTerms,
-        LinearSolverType,
-        OptParams,
     },
     prelude::*,
     variables::{

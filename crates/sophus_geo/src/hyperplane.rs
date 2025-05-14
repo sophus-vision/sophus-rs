@@ -3,16 +3,16 @@ use sophus_autodiff::linalg::{
     VecF64,
 };
 use sophus_lie::{
-    prelude::*,
     Isometry2,
     Isometry2F64,
     Isometry3,
     Isometry3F64,
+    prelude::*,
 };
 
 use crate::{
-    unit_vector::UnitVector,
     Ray,
+    unit_vector::UnitVector,
 };
 
 /// N-dimensional Hyperplane.
@@ -31,13 +31,13 @@ pub struct HyperPlane<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const DIM: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > HyperPlane<S, DOF, DIM, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const DIM: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> HyperPlane<S, DOF, DIM, BATCH, DM, DN>
 {
     /// Projects a point onto the hyperplane.
     ///
@@ -71,12 +71,12 @@ impl<
 }
 
 impl<
-        S: IsSingleScalar<DM, DN> + PartialOrd,
-        const DOF: usize,
-        const DIM: usize,
-        const DM: usize,
-        const DN: usize,
-    > HyperPlane<S, DOF, DIM, 1, DM, DN>
+    S: IsSingleScalar<DM, DN> + PartialOrd,
+    const DOF: usize,
+    const DIM: usize,
+    const DM: usize,
+    const DN: usize,
+> HyperPlane<S, DOF, DIM, 1, DM, DN>
 {
     /// Intersects a ray with the hyperplane.
     pub fn rays_intersect(&self, ray: &Ray<S, DOF, DIM, 1, DM, DN>) -> Option<S::Vector<DIM>> {
@@ -220,8 +220,8 @@ fn plane_test() {
             DualVector,
         },
         linalg::{
-            VecF64,
             EPS_F64,
+            VecF64,
         },
         maps::VectorValuedVectorMap,
     };

@@ -3,15 +3,15 @@ use core::borrow::Borrow;
 use sophus_image::ImageSize;
 
 use crate::{
+    BrownConradyCamera,
+    KannalaBrandtCamera,
+    PinholeCamera,
     camera_enum::perspective_camera::{
         EnhancedUnifiedCamera,
         PerspectiveCameraEnum,
     },
     prelude::*,
     projections::OrthographicCamera,
-    BrownConradyCamera,
-    KannalaBrandtCamera,
-    PinholeCamera,
 };
 
 /// Generalized camera enum

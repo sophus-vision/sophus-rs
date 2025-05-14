@@ -330,11 +330,7 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1, 0, 0> for VecF64<ROWS> {
     where
         Q: Borrow<Self>,
     {
-        if *mask {
-            *self
-        } else {
-            *other.borrow()
-        }
+        if *mask { *self } else { *other.borrow() }
     }
 
     fn get_fixed_subvec<const R: usize>(&self, start_r: usize) -> VecF64<R> {
@@ -351,8 +347,8 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1, 0, 0> for VecF64<ROWS> {
 /// # Examples
 /// ```rust
 /// use sophus_autodiff::linalg::{
-///     cross,
 ///     VecF64,
+///     cross,
 /// };
 ///
 /// let v1 = VecF64::<3>::new(1.0, 0.0, 0.0);

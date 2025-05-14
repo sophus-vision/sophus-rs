@@ -4,10 +4,10 @@ use sophus_tensor::{
 };
 
 use crate::{
+    ImageSize,
     image_view::GenImageView,
     mut_image::GenMutImage,
     prelude::*,
-    ImageSize,
 };
 
 /// Image of static tensors with shared ownership

@@ -230,7 +230,7 @@ impl<S: IsSingleScalar<DM, DN> + 'static, const DIMS: usize, const DM: usize, co
             segment_idx: normalized_t.i64_floor() as usize,
             u: normalized_t.clone().fract(),
         };
-        debug!("{:?}", idx_and_u);
+        debug!("{idx_and_u:?}");
 
         let eps = 0.00001;
 
@@ -292,7 +292,7 @@ fn test_pline() {
                 break;
             }
 
-            info!("t {}", t);
+            info!("t {t}");
             info!("{:?}", spline.idx_involved(t));
 
             info!("i: {}", spline.interpolate(t));

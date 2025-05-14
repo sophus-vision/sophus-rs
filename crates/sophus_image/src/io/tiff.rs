@@ -5,34 +5,34 @@ use std::{
 };
 
 use tiff::{
+    TiffError,
     decoder::{
         Decoder,
         DecodingResult,
     },
     encoder::{
-        colortype::ColorType,
         TiffEncoder,
         TiffValue,
+        colortype::ColorType,
     },
-    TiffError,
 };
 
 use crate::{
-    intensity_image::intensity_image_view::IsIntensityViewImageF32,
     DynIntensityMutImage,
     ImageSize,
     MutImage2F32,
-    MutImage2U16,
     MutImage2U8,
+    MutImage2U16,
     MutImage3F32,
-    MutImage3U16,
     MutImage3U8,
+    MutImage3U16,
     MutImage4F32,
-    MutImage4U16,
     MutImage4U8,
+    MutImage4U16,
     MutImageF32,
-    MutImageU16,
     MutImageU8,
+    MutImageU16,
+    intensity_image::intensity_image_view::IsIntensityViewImageF32,
 };
 
 fn err_conv(e: TiffError) -> std::io::Error {

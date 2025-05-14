@@ -19,6 +19,8 @@ pub enum SparseSolverError {
     OutOfMemory,
     /// LU decomposition specific error
     SymbolicSingular,
+    /// LDLt Error
+    LdltError,
     /// unspecific - to be forward compatible
     Unspecific,
 }
@@ -41,6 +43,7 @@ pub(crate) trait IsDenseLinearSystem {
 
 #[test]
 fn solver_tests() {
+    use faer::sparse::Triplet;
     use log::info;
     use nalgebra::DMatrix;
     use sophus_autodiff::{
@@ -56,14 +59,16 @@ fn solver_tests() {
         SparseQr,
     };
 
-    pub fn from_triplets_nxn(n: usize, triplets: &[(usize, usize, f64)]) -> DMatrix<f64> {
+    pub fn from_triplets_nxn(n: usize, triplets: &[Triplet<usize, usize, f64>]) -> DMatrix<f64> {
         let mut mat = DMatrix::zeros(n, n);
-        for &(i, j, val) in triplets {
+        for t in triplets {
             assert!(
-                i < n && j < n,
-                "Triplet index ({i}, {j}) out of bounds for an {n}x{n} matrix"
+                t.row < n && t.col < n,
+                "Triplet index ({}, {}) out of bounds for an {n}x{n} matrix",
+                t.row,
+                t.row,
             );
-            mat[(i, j)] += val;
+            mat[(t.row, t.col)] += t.val;
         }
         mat
     }
@@ -113,10 +118,10 @@ fn solver_tests() {
         .solve(&symmetric_matrix_builder, &b)
         .unwrap();
 
-    info!("x_dense_lu {}", x_dense_lu);
-    info!("x_sparse_qr {}", x_sparse_qr);
-    info!("x_sparse_lu {}", x_sparse_lu);
-    info!("x_sparse_ldlt {}", x_sparse_ldlt);
+    info!("x_dense_lu {x_dense_lu}");
+    info!("x_sparse_qr {x_sparse_qr}");
+    info!("x_sparse_lu {x_sparse_lu}");
+    info!("x_sparse_ldlt {x_sparse_ldlt}");
 
     approx::assert_abs_diff_eq!(mat_a.clone() * x_dense_lu, b.clone(), epsilon = 1e-6);
     approx::assert_abs_diff_eq!(mat_a.clone() * x_sparse_qr, b.clone(), epsilon = 1e-6);

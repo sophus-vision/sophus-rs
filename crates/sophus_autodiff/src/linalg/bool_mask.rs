@@ -64,11 +64,7 @@ impl IsBoolMask for bool {
     }
 
     fn count(&self) -> usize {
-        if *self {
-            1
-        } else {
-            0
-        }
+        if *self { 1 } else { 0 }
     }
 
     fn lanes(&self) -> usize {

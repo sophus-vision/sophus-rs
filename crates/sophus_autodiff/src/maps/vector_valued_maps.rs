@@ -143,8 +143,8 @@ fn vector_valued_map_from_vector_tests() {
     use crate::{
         dual::DualScalar,
         linalg::{
-            IsVector,
             EPS_F64,
+            IsVector,
         },
         maps::vector_valued_maps::{
             VectorValuedMatrixMap,

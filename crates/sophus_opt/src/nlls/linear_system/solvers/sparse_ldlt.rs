@@ -1,4 +1,33 @@
-use faer::sparse::FaerError;
+extern crate alloc;
+
+use alloc::vec::Vec;
+use std::num::NonZeroUsize;
+
+use faer::{
+    Conj,
+    Par,
+    Side,
+    dyn_stack::{
+        MemBuffer,
+        MemStack,
+        StackReq,
+    },
+    linalg::cholesky::ldlt::factor::LdltRegularization,
+    mat::MatMut,
+    perm::PermRef,
+    reborrow::ReborrowMut,
+    sparse::{
+        FaerError,
+        SparseColMat,
+        SymbolicSparseColMat,
+        Triplet,
+        linalg::{
+            amd,
+            cholesky::simplicial,
+        },
+        utils,
+    },
+};
 
 use super::{
     IsSparseSymmetricLinearSystem,
@@ -7,12 +36,9 @@ use super::{
 };
 use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 
-extern crate alloc;
-
-/// sparse LDLT factorization parameters
+/// Numeric regularization for LDLᵀ (`δ ≃ 10⁻⁶` is usually safe).
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct SparseLdltParams {
-    /// Regularization for LDLT factorization
     pub regularization_eps: f64,
 }
 
@@ -24,189 +50,167 @@ impl Default for SparseLdltParams {
     }
 }
 
-/// Sparse LDLt solver
-///
-/// Sparse LDLt decomposition - based on an example from the faer crate.
 #[derive(Default, Debug)]
 pub struct SparseLdlt {
     params: SparseLdltParams,
+    parallelize: bool,
 }
 
 impl SparseLdlt {
-    /// Create a new sparse LDLt solver
-    pub fn new(params: SparseLdltParams) -> Self {
-        Self { params }
+    pub fn new(params: SparseLdltParams, parallelize: bool) -> Self {
+        Self {
+            params,
+            parallelize,
+        }
     }
 }
 
 impl IsSparseSymmetricLinearSystem for SparseLdlt {
     fn solve(
         &self,
-        upper_triangular: &SymmetricBlockSparseMatrixBuilder,
+        upper: &SymmetricBlockSparseMatrixBuilder,
         b: &nalgebra::DVector<f64>,
     ) -> Result<nalgebra::DVector<f64>, NllsError> {
-        Ok(
-            match SimplicalSparseLdlt::from_triplets(
-                &upper_triangular.to_upper_triangular_scalar_triplets(),
-                upper_triangular.scalar_dimension(),
-                self.params,
-            )
-            .solve(b)
-            {
-                Ok(x) => x,
-                Err(e) => {
-                    return Err(NllsError::SparseLdltError {
-                        details: match e {
-                            FaerError::IndexOverflow => SparseSolverError::IndexOverflow,
-                            FaerError::OutOfMemory => SparseSolverError::OutOfMemory,
-                            _ => SparseSolverError::Unspecific,
-                        },
-                    })
-                }
-            },
+        match SimplicialSparseLdlt::from_triplets(
+            &upper.to_upper_triangular_scalar_triplets(),
+            upper.scalar_dimension(),
+            self.parallelize,
+            self.params,
         )
+        .solve(b)
+        {
+            Ok(x) => Ok(x),
+            Err(e) => Err(NllsError::SparseLdltError {
+                details: match e {
+                    SimplicialSparseLdltError::FaerError(fe) => match fe {
+                        FaerError::OutOfMemory => SparseSolverError::OutOfMemory,
+                        FaerError::IndexOverflow => SparseSolverError::IndexOverflow,
+                        _ => SparseSolverError::Unspecific,
+                    },
+                    SimplicialSparseLdltError::LdltError => SparseSolverError::LdltError,
+                },
+            }),
+        }
     }
 }
 
-struct SimplicalSparseLdlt {
-    upper_ccs: faer::sparse::SparseColMat<usize, f64>,
+// Owns the matrix, and the factorization parameters.
+// All large temporaries are allocated on demand and dropped immediately
+// afterwards, so the struct stays small.
+struct SimplicialSparseLdlt {
+    upper_ccs: SparseColMat<usize, f64>, // *upper-triangular* CSC
     params: SparseLdltParams,
+    parallelize: bool,
 }
 
+// Holds the AMD permutation (and its inverse) computed once per system.
 struct SparseLdltPerm {
-    perm: alloc::vec::Vec<usize>,
-    perm_inv: alloc::vec::Vec<usize>,
+    perm: Vec<usize>,
+    perm_inv: Vec<usize>,
 }
 
 impl SparseLdltPerm {
-    fn perm_upper_ccs(
-        &self,
-        upper_ccs: &faer::sparse::SparseColMat<usize, f64>,
-    ) -> faer::sparse::SparseColMat<usize, f64> {
-        let dim = upper_ccs.ncols();
-        let nnz = upper_ccs.compute_nnz();
-        let perm_ref =
-            unsafe { faer::perm::PermRef::new_unchecked(&self.perm, &self.perm_inv, dim) };
+    /// Apply the permutation **symmetrically** to the self-adjoint matrix
+    /// (upper triangle only) and return a *new* `SparseColMat`.
+    fn perm_upper_ccs(&self, upper: &SparseColMat<usize, f64>) -> SparseColMat<usize, f64> {
+        let dim = upper.ncols();
+        let nnz = upper.compute_nnz();
 
-        let mut ccs_perm_col_ptrs = alloc::vec::Vec::new();
-        let mut ccs_perm_row_indices = alloc::vec::Vec::new();
-        let mut ccs_perm_values = alloc::vec::Vec::new();
+        // SAFETY: we guarantee both slices are valid permutations of 0..dim.
+        let perm_ref = unsafe { PermRef::new_unchecked(&self.perm, &self.perm_inv, dim) };
 
-        ccs_perm_col_ptrs.try_reserve_exact(dim + 1).unwrap();
-        ccs_perm_col_ptrs.resize(dim + 1, 0usize);
-        ccs_perm_row_indices.try_reserve_exact(nnz).unwrap();
-        ccs_perm_row_indices.resize(nnz, 0usize);
-        ccs_perm_values.try_reserve_exact(nnz).unwrap();
-        ccs_perm_values.resize(nnz, 0.0f64);
+        // allocate destination storage
+        let mut col_ptr = vec![0usize; dim + 1];
+        let mut row_idx = vec![0usize; nnz];
+        let mut values = vec![0.0f64; nnz];
 
-        let mut mem = faer::dyn_stack::GlobalPodBuffer::try_new(
-            faer::sparse::utils::permute_hermitian_req::<usize>(dim).unwrap(),
-        )
-        .unwrap();
-        faer::sparse::utils::permute_hermitian::<usize, f64>(
-            &mut ccs_perm_values,
-            &mut ccs_perm_col_ptrs,
-            &mut ccs_perm_row_indices,
-            upper_ccs.as_ref(),
+        // scratch buffer for the permutation routine
+        let mut mem =
+            MemBuffer::try_new(utils::permute_self_adjoint_scratch::<usize>(dim)).unwrap();
+
+        // Permute → result is *unsorted* upper triangle.
+        utils::permute_self_adjoint_to_unsorted(
+            &mut values,
+            &mut col_ptr,
+            &mut row_idx,
+            upper.as_ref(),
             perm_ref,
-            faer::Side::Upper,
-            faer::Side::Upper,
-            faer::dyn_stack::PodStack::new(&mut mem),
+            Side::Upper, // source triangle
+            Side::Upper, // destination triangle
+            MemStack::new(&mut mem),
         );
 
-        faer::sparse::SparseColMat::<usize, f64>::new(
-            unsafe {
-                faer::sparse::SymbolicSparseColMat::new_unchecked(
-                    dim,
-                    dim,
-                    ccs_perm_col_ptrs,
-                    None,
-                    ccs_perm_row_indices,
-                )
-            },
-            ccs_perm_values,
+        // SAFETY: we just produced a valid CSC representation.
+        SparseColMat::new(
+            unsafe { SymbolicSparseColMat::new_unchecked(dim, dim, col_ptr, None, row_idx) },
+            values,
         )
     }
 }
 
+// Bundles the permutation + the symbolic analysis so we don’t recompute
+// them for each RHS.
 struct SparseLdltPermSymb {
     permutation: SparseLdltPerm,
-    symbolic: faer::sparse::linalg::cholesky::simplicial::SymbolicSimplicialCholesky<usize>,
+    symbolic: simplicial::SymbolicSimplicialCholesky<usize>,
 }
 
-impl SimplicalSparseLdlt {
-    fn symbolic_and_perm(&self) -> Result<SparseLdltPermSymb, FaerError> {
-        // Following low-level example from faer crate:
-        // https://github.com/sarah-quinones/faer-rs/blob/main/src/sparse/linalg/cholesky.rs#L11
-        let dim = self.upper_ccs.ncols();
+enum SimplicialSparseLdltError {
+    FaerError(FaerError),
+    LdltError,
+}
 
+impl SimplicialSparseLdlt {
+    fn symbolic_and_perm(&self) -> Result<SparseLdltPermSymb, FaerError> {
+        let dim = self.upper_ccs.ncols();
         let nnz = self.upper_ccs.compute_nnz();
 
+        // --- AMD ordering --------------------------------------------------
         let (perm, perm_inv) = {
-            let mut perm = alloc::vec::Vec::new();
-            let mut perm_inv = alloc::vec::Vec::new();
-            perm.try_reserve_exact(dim)?;
-            perm_inv.try_reserve_exact(dim)?;
-            perm.resize(dim, 0usize);
-            perm_inv.resize(dim, 0usize);
+            let mut perm = vec![0usize; dim];
+            let mut perm_inv = vec![0usize; dim];
 
-            let mut mem =
-                faer::dyn_stack::GlobalPodBuffer::try_new(faer::sparse::linalg::amd::order_req::<
-                    usize,
-                >(dim, nnz)?)?;
-            faer::sparse::linalg::amd::order(
+            let mut mem = MemBuffer::try_new(amd::order_scratch::<usize>(dim, nnz))?;
+            amd::order(
                 &mut perm,
                 &mut perm_inv,
                 self.upper_ccs.symbolic(),
-                faer::sparse::linalg::amd::Control::default(),
-                faer::dyn_stack::PodStack::new(&mut mem),
+                amd::Control::default(),
+                MemStack::new(&mut mem),
             )?;
-
             (perm, perm_inv)
         };
+
         let permutation = SparseLdltPerm { perm, perm_inv };
+        let perm_upper = permutation.perm_upper_ccs(&self.upper_ccs);
 
-        let ccs_perm_upper = permutation.perm_upper_ccs(&self.upper_ccs);
-
+        // --- symbolic analysis --------------------------------------------
         let symbolic = {
-            let mut mem = faer::dyn_stack::GlobalPodBuffer::try_new(
-                faer::dyn_stack::StackReq::try_any_of([
-                    faer::sparse::linalg::cholesky::simplicial::prefactorize_symbolic_cholesky_req::<
-                        usize,
-                    >(dim, self.upper_ccs.compute_nnz())?,
-                    faer::sparse::linalg::cholesky::simplicial::factorize_simplicial_symbolic_req::<
-                        usize,
-                    >(dim)?,
-                ])?,
-            )?;
-            let mut stack = faer::dyn_stack::PodStack::new(&mut mem);
+            let mut mem = MemBuffer::try_new(StackReq::any_of(&[
+                simplicial::prefactorize_symbolic_cholesky_scratch::<usize>(dim, nnz),
+                simplicial::factorize_simplicial_symbolic_cholesky_scratch::<usize>(dim),
+            ]))?;
+            let mut stack = MemStack::new(&mut mem);
 
-            let mut etree = alloc::vec::Vec::new();
-            let mut col_counts = alloc::vec::Vec::new();
-            etree.try_reserve_exact(dim)?;
-            etree.resize(dim, 0isize);
-            col_counts.try_reserve_exact(dim)?;
-            col_counts.resize(dim, 0usize);
+            let mut etree = vec![0isize; dim];
+            let mut col_counts = vec![0usize; dim];
 
-            faer::sparse::linalg::cholesky::simplicial::prefactorize_symbolic_cholesky(
+            simplicial::prefactorize_symbolic_cholesky(
                 &mut etree,
                 &mut col_counts,
-                ccs_perm_upper.symbolic(),
-                faer::reborrow::ReborrowMut::rb_mut(&mut stack),
+                perm_upper.symbolic(),
+                ReborrowMut::rb_mut(&mut stack),
             );
-            faer::sparse::linalg::cholesky::simplicial::factorize_simplicial_symbolic(
-                ccs_perm_upper.symbolic(),
-                // SAFETY: `etree` was filled correctly by
-                // `simplicial::prefactorize_symbolic_cholesky`.
-                unsafe {
-                    faer::sparse::linalg::cholesky::simplicial::EliminationTreeRef::from_inner(
-                        &etree,
-                    )
-                },
+
+            // SAFETY: `etree` is filled by the previous call.
+            simplicial::factorize_simplicial_symbolic_cholesky(
+                perm_upper.symbolic(),
+                unsafe { simplicial::EliminationTreeRef::from_inner(&etree) },
                 &col_counts,
-                faer::reborrow::ReborrowMut::rb_mut(&mut stack),
+                ReborrowMut::rb_mut(&mut stack),
             )?
         };
+
         Ok(SparseLdltPermSymb {
             permutation,
             symbolic,
@@ -216,88 +220,100 @@ impl SimplicalSparseLdlt {
     fn solve_from_symbolic(
         &self,
         b: &nalgebra::DVector<f64>,
-        symbolic_perm: &SparseLdltPermSymb,
-    ) -> Result<nalgebra::DVector<f64>, FaerError> {
+        symb_perm: &SparseLdltPermSymb,
+    ) -> Result<nalgebra::DVector<f64>, SimplicialSparseLdltError> {
         let dim = self.upper_ccs.ncols();
+        // SAFETY: `perm` / `perm_inv` are valid permutations of size `dim`.
         let perm_ref = unsafe {
-            faer::perm::PermRef::new_unchecked(
-                &symbolic_perm.permutation.perm,
-                &symbolic_perm.permutation.perm_inv,
+            PermRef::new_unchecked(
+                &symb_perm.permutation.perm,
+                &symb_perm.permutation.perm_inv,
                 dim,
             )
         };
-        let symbolic = &symbolic_perm.symbolic;
+        let symbolic = &symb_perm.symbolic;
 
-        let mut mem =
-            faer::dyn_stack::GlobalPodBuffer::try_new(faer::dyn_stack::StackReq::try_all_of([
-                faer::sparse::linalg::cholesky::simplicial::factorize_simplicial_numeric_ldlt_req::<
-                    usize,
-                    f64,
-                >(dim)?,
-                faer::perm::permute_rows_in_place_req::<usize, f64>(dim, 1)?,
-                symbolic.solve_in_place_req::<f64>(dim)?,
-            ])?)?;
-        let mut stack = faer::dyn_stack::PodStack::new(&mut mem);
+        // Scratch-space sizes
+        let mut mem = MemBuffer::try_new(StackReq::all_of(&[
+            simplicial::factorize_simplicial_numeric_ldlt_scratch::<usize, f64>(dim),
+            faer::perm::permute_rows_in_place_scratch::<usize, f64>(dim, 1),
+            symbolic.solve_in_place_scratch::<f64>(dim),
+        ]))
+        .map_err(|_| SimplicialSparseLdltError::FaerError(FaerError::OutOfMemory))?;
+        let mut stack = MemStack::new(&mut mem);
 
-        let mut l_values = alloc::vec::Vec::new();
-        l_values.try_reserve_exact(symbolic.len_values())?;
-        l_values.resize(symbolic.len_values(), 0.0f64);
-        let ccs_perm_upper = symbolic_perm.permutation.perm_upper_ccs(&self.upper_ccs);
+        // Numeric LDLᵀ factorization
+        let mut lval = vec![0.0f64; symbolic.len_val()];
+        let perm_upper = symb_perm.permutation.perm_upper_ccs(&self.upper_ccs);
 
-        faer::sparse::linalg::cholesky::simplicial::factorize_simplicial_numeric_ldlt::<usize, f64>(
-            &mut l_values,
-            ccs_perm_upper.as_ref(),
-            faer::sparse::linalg::cholesky::LdltRegularization {
-                dynamic_regularization_signs: Some(&vec![1; dim]),
+        simplicial::factorize_simplicial_numeric_ldlt::<usize, f64>(
+            &mut lval,
+            perm_upper.as_ref(),
+            LdltRegularization {
+                dynamic_regularization_signs: Some(&vec![1; dim]), // +1 on every diagonal
                 dynamic_regularization_delta: self.params.regularization_eps,
                 dynamic_regularization_epsilon: self.params.regularization_eps,
             },
             symbolic,
-            faer::reborrow::ReborrowMut::rb_mut(&mut stack),
-        );
+            ReborrowMut::rb_mut(&mut stack),
+        )
+        .map_err(|_| SimplicialSparseLdltError::LdltError)?;
 
-        let ldlt =
-            faer::sparse::linalg::cholesky::simplicial::SimplicialLdltRef::<'_, usize, f64>::new(
-                symbolic, &l_values,
-            );
+        let ldlt = simplicial::SimplicialLdltRef::<usize, f64>::new(symbolic, &lval);
 
+        // Solve Pᵀ A P x = Pᵀ b
         let mut x = b.clone();
-        let x_mut_slice = x.as_mut_slice();
-        let mut x_ref = faer::mat::from_column_major_slice_mut(x_mut_slice, dim, 1);
+        let mut x_ref = MatMut::<f64>::from_column_major_slice_mut(x.as_mut_slice(), dim, 1);
+
+        // Pᵀ b
         faer::perm::permute_rows_in_place(
-            faer::reborrow::ReborrowMut::rb_mut(&mut x_ref),
+            ReborrowMut::rb_mut(&mut x_ref),
             perm_ref,
-            faer::reborrow::ReborrowMut::rb_mut(&mut stack),
+            ReborrowMut::rb_mut(&mut stack),
         );
+        // (LDLᵀ)⁻¹
         ldlt.solve_in_place_with_conj(
-            faer::Conj::No,
-            faer::reborrow::ReborrowMut::rb_mut(&mut x_ref),
-            faer::Parallelism::None,
-            faer::reborrow::ReborrowMut::rb_mut(&mut stack),
+            Conj::No,
+            ReborrowMut::rb_mut(&mut x_ref),
+            if self.parallelize {
+                Par::Rayon(NonZeroUsize::new(rayon::current_num_threads()).unwrap())
+            } else {
+                Par::Seq
+            },
+            ReborrowMut::rb_mut(&mut stack),
         );
+        // P x
         faer::perm::permute_rows_in_place(
-            faer::reborrow::ReborrowMut::rb_mut(&mut x_ref),
+            ReborrowMut::rb_mut(&mut x_ref),
             perm_ref.inverse(),
-            faer::reborrow::ReborrowMut::rb_mut(&mut stack),
+            ReborrowMut::rb_mut(&mut stack),
         );
 
         Ok(x)
     }
 
     fn from_triplets(
-        sym_tri_mat: &[(usize, usize, f64)],
-        size: usize,
+        triplets: &[Triplet<usize, usize, f64>],
+        n: usize,
+        parallelize: bool,
         params: SparseLdltParams,
     ) -> Self {
-        SimplicalSparseLdlt {
-            upper_ccs: faer::sparse::SparseColMat::try_new_from_triplets(size, size, sym_tri_mat)
-                .unwrap(),
+        // Triplets are assumed valid (caller generated them).
+        // `try_new_from_triplets` sorts / deduplicates if needed.
+        Self {
+            upper_ccs: SparseColMat::try_new_from_triplets(n, n, triplets).unwrap(),
             params,
+            parallelize,
         }
     }
 
-    fn solve(&self, b: &nalgebra::DVector<f64>) -> Result<nalgebra::DVector<f64>, FaerError> {
-        let symbolic_perm = self.symbolic_and_perm()?;
-        self.solve_from_symbolic(b, &symbolic_perm)
+    fn solve(
+        &self,
+        b: &nalgebra::DVector<f64>,
+    ) -> Result<nalgebra::DVector<f64>, SimplicialSparseLdltError> {
+        let symb_perm = self
+            .symbolic_and_perm()
+            .map_err(SimplicialSparseLdltError::FaerError)?;
+        self.solve_from_symbolic(b, &symb_perm)
     }
 }

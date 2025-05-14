@@ -2,9 +2,9 @@ use nalgebra::SVector;
 use sophus_autodiff::linalg::VecF64;
 use sophus_geo::region::BoxRegion;
 use sophus_image::{
-    interpolate_xf32,
     ArcImage2F32,
     MutImage2F32,
+    interpolate_xf32,
 };
 
 use crate::{
@@ -110,16 +110,16 @@ fn camera_distortion_table_tests() {
     };
     use sophus_autodiff::{
         linalg::{
-            VecF64,
             EPS_F64,
+            VecF64,
         },
         maps::VectorValuedVectorMap,
     };
     use sophus_image::ImageSize;
 
     use crate::distortion_table::{
-        distort_table,
         DistortTable,
+        distort_table,
     };
 
     {

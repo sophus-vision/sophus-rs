@@ -13,10 +13,10 @@ use sophus_autodiff::linalg::{
 };
 
 use crate::{
-    prelude::*,
     ArcTensor,
     MutTensorView,
     TensorView,
+    prelude::*,
 };
 
 /// mutable tensor
@@ -452,12 +452,12 @@ mut_tensor_is_view!(5, 2, 3);
 macro_rules! mut_tensor_is_view_drank_1 {
     ($scalar_rank:literal, $srank:literal) => {
         impl<
-                'a,
-                Scalar: IsCoreScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
-                const ROWS: usize,
-                const COLS: usize,
-            > MutTensor<$scalar_rank, 1, $srank, Scalar, STensor, ROWS, COLS>
+            'a,
+            Scalar: IsCoreScalar + 'static,
+            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
+            const ROWS: usize,
+            const COLS: usize,
+        > MutTensor<$scalar_rank, 1, $srank, Scalar, STensor, ROWS, COLS>
         {
             /// create a new mutable tensor from fn
             pub fn from_fn<F: FnMut([usize; 1]) -> STensor>(shape: [usize; 1], mut op: F) -> Self {
@@ -480,12 +480,12 @@ mut_tensor_is_view_drank_1!(3, 2);
 macro_rules! mut_tensor_is_view_drank_2_plus {
     ($scalar_rank:literal, $srank:literal, $drank:literal) => {
         impl<
-                'a,
-                Scalar: IsCoreScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
-                const ROWS: usize,
-                const COLS: usize,
-            > MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS>
+            'a,
+            Scalar: IsCoreScalar + 'static,
+            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
+            const ROWS: usize,
+            const COLS: usize,
+        > MutTensor<$scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS>
         {
             /// create a new mutable tensor from fn
             pub fn from_fn<F: FnMut([usize; $drank]) -> STensor>(

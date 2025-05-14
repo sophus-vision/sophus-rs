@@ -6,10 +6,10 @@ use sophus_autodiff::{
     prelude::IsVector,
 };
 use sophus_image::{
-    prelude::*,
     ArcImage4U8,
     ImageSize,
     MutImage4U8,
+    prelude::*,
 };
 use sophus_renderer::{
     camera::RenderCameraProperties,

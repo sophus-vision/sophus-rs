@@ -12,15 +12,15 @@ use sophus_sensor::PinholeCameraF64;
 
 use crate::{
     nlls::{
+        CostFn,
+        CostTerms,
+        LinearSolverType,
+        OptParams,
         costs::{
             Isometry3PriorCostTerm,
             PinholeCameraReprojectionCostTerm,
         },
         optimize_nlls,
-        CostFn,
-        CostTerms,
-        LinearSolverType,
-        OptParams,
     },
     prelude::*,
     robust_kernel::HuberKernel,
@@ -88,10 +88,10 @@ impl CamCalibProblem {
         let mut true_points_in_world = alloc::vec![];
 
         for i in 0..40 {
-            let u = rng.gen::<f64>() * (image_size.width as f64 - 1.0);
-            let v = rng.gen::<f64>() * (image_size.height as f64 - 1.0);
+            let u = rng.random::<f64>() * (image_size.width as f64 - 1.0);
+            let v = rng.random::<f64>() * (image_size.height as f64 - 1.0);
             let true_uv_in_img0 = VecF64::<2>::new(u, v);
-            let img_noise = VecF64::<2>::new(rng.gen::<f64>() - 0.5, rng.gen::<f64>() - 0.5);
+            let img_noise = VecF64::<2>::new(rng.random::<f64>() - 0.5, rng.random::<f64>() - 0.5);
             observations.push(PinholeCameraReprojectionCostTerm {
                 uv_in_image: true_uv_in_img0 + img_noise,
                 entity_indices: [0, 0, i],
@@ -106,11 +106,11 @@ impl CamCalibProblem {
                 true_world_from_cameras[1].inverse() * true_world_from_cameras[0];
             let true_point_in_cam1 = true_cam1_from_cam0.transform(true_point_in_cam0);
             let true_uv_in_img1 = true_intrinsics.cam_proj(true_point_in_cam1);
-            let img_noise = VecF64::<2>::new(rng.gen::<f64>() - 0.5, rng.gen::<f64>() - 0.5);
+            let img_noise = VecF64::<2>::new(rng.random::<f64>() - 0.5, rng.random::<f64>() - 0.5);
 
             if spurious_matches && i == 0 {
-                let u = rng.gen::<f64>() * (image_size.width as f64 - 1.0);
-                let v = rng.gen::<f64>() * (image_size.height as f64 - 1.0);
+                let u = rng.random::<f64>() * (image_size.width as f64 - 1.0);
+                let v = rng.random::<f64>() * (image_size.height as f64 - 1.0);
                 observations.push(PinholeCameraReprojectionCostTerm {
                     uv_in_image: VecF64::<2>::new(u, v),
                     entity_indices: [0, 1, i],
@@ -126,7 +126,7 @@ impl CamCalibProblem {
                 true_world_from_cameras[2].inverse() * true_world_from_cameras[0];
             let true_point_in_cam2 = true_cam2_from_cam0.transform(true_point_in_cam0);
             let true_uv_in_img2 = true_intrinsics.cam_proj(true_point_in_cam2);
-            let img_noise = VecF64::<2>::new(rng.gen::<f64>() - 0.5, rng.gen::<f64>() - 0.5);
+            let img_noise = VecF64::<2>::new(rng.random::<f64>() - 0.5, rng.random::<f64>() - 0.5);
             observations.push(PinholeCameraReprojectionCostTerm {
                 uv_in_image: true_uv_in_img2 + img_noise,
                 entity_indices: [0, 2, i],

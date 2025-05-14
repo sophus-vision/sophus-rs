@@ -17,6 +17,15 @@ pub struct ClearCondition {
     pub max_x_range: f64,
 }
 
+/// Vertical Line
+#[derive(Clone, Debug)]
+pub struct VerticalLine {
+    /// position
+    pub x: f64,
+    /// label
+    pub name: String,
+}
+
 /// Curve trait
 pub trait CurveTrait<DataChunk, Style> {
     /// mut tuples
@@ -28,7 +37,7 @@ pub trait CurveTrait<DataChunk, Style> {
         mut new_tuples: VecDeque<(f64, DataChunk)>,
         style: Style,
         clear_cond: ClearCondition,
-        v_line: Option<f64>,
+        v_line: Option<VerticalLine>,
     ) {
         self.mut_tuples().append(&mut new_tuples);
 
@@ -40,7 +49,7 @@ pub trait CurveTrait<DataChunk, Style> {
     }
 
     /// update vline
-    fn update_vline(&mut self, v_line: Option<f64>);
+    fn update_vline(&mut self, v_line: Option<VerticalLine>);
 
     /// assign
     fn assign_style(&mut self, meta: Style);
@@ -106,7 +115,7 @@ impl PlotViewPacket {
         data: VecDeque<(f64, f64)>,
         style: ScalarCurveStyle,
         clear_cond: ClearCondition,
-        v_line: Option<f64>,
+        v_line: Option<VerticalLine>,
     ) -> PlotViewPacket {
         let curve = NamedScalarCurve {
             plot_name: plot.into(),
@@ -127,7 +136,7 @@ impl PlotViewPacket {
         data: VecDeque<(f64, [f64; 2])>,
         style: CurveVecStyle<2>,
         clear_cond: ClearCondition,
-        v_line: Option<f64>,
+        v_line: Option<VerticalLine>,
     ) -> PlotViewPacket {
         let curve = NamedCurveVec {
             plot_name: plot.into(),
@@ -149,7 +158,7 @@ impl PlotViewPacket {
         data: VecDeque<(f64, [f64; 3])>,
         style: CurveVecStyle<3>,
         clear_cond: ClearCondition,
-        v_line: Option<f64>,
+        v_line: Option<VerticalLine>,
     ) -> PlotViewPacket {
         let curve = NamedCurveVec {
             plot_name: plot.into(),
@@ -171,7 +180,7 @@ impl PlotViewPacket {
         data: DataVecDeque<2>,
         style: CurveVecWithConfStyle<2>,
         clear_cond: ClearCondition,
-        v_line: Option<f64>,
+        v_line: Option<VerticalLine>,
     ) -> PlotViewPacket {
         let curve = NamedVecConfCurve {
             plot_name: plot.into(),
@@ -193,7 +202,7 @@ impl PlotViewPacket {
         data: DataVecDeque<3>,
         style: CurveVecWithConfStyle<3>,
         clear_cond: ClearCondition,
-        v_line: Option<f64>,
+        v_line: Option<VerticalLine>,
     ) -> PlotViewPacket {
         let curve = NamedVecConfCurve {
             plot_name: plot.into(),

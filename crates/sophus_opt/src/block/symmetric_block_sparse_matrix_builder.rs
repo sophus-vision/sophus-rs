@@ -1,12 +1,12 @@
 use std::fmt::Debug;
 
 use super::{
+    PartitionSpec,
     block_sparse_matrix_builder::{
         BlockSparseMatrixBuilder,
         ToDenseImplMode,
         ToScalarTripletsImplMode,
     },
-    PartitionSpec,
 };
 use crate::debug_assert_le;
 
@@ -99,14 +99,16 @@ impl SymmetricBlockSparseMatrixBuilder {
     }
 
     /// Convert to upper triangular scalar triplets.
-    pub fn to_upper_triangular_scalar_triplets(&self) -> Vec<(usize, usize, f64)> {
+    pub fn to_upper_triangular_scalar_triplets(
+        &self,
+    ) -> Vec<faer::sparse::Triplet<usize, usize, f64>> {
         self.builder.to_scalar_triplets_impl(
             ToScalarTripletsImplMode::UpperTriangularFromUpperTriangularBlockPattern,
         )
     }
 
     /// Convert the block matrix to symmetric matrix in scalar triplets format.
-    pub fn to_symmetric_scalar_triplets(&self) -> Vec<(usize, usize, f64)> {
+    pub fn to_symmetric_scalar_triplets(&self) -> Vec<faer::sparse::Triplet<usize, usize, f64>> {
         self.builder.to_scalar_triplets_impl(
             ToScalarTripletsImplMode::SymmetricFromUpperTriangularBlockPattern,
         )

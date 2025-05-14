@@ -225,10 +225,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
             .less_equal(&S::RealScalar::from_f64(EPS_F64))
             .any()
         {
-            warn!(
-                "Newton did not converge: f_xy: {:?}: pixel {:?}",
-                f_xy, dbg_info_distorted_point
-            );
+            warn!("Newton did not converge: f_xy: {f_xy:?}: pixel {dbg_info_distorted_point:?}");
         }
         xy
     }

@@ -90,13 +90,13 @@ pub struct EqConstraints<
 }
 
 impl<
-        const RESIDUAL_DIM: usize,
-        const INPUT_DIM: usize,
-        const N: usize,
-        GlobalConstants: 'static + Send + Sync,
-        Args: IsVarTuple<N>,
-        Constraint: HasEqConstraintResidualFn<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Args>,
-    > EqConstraints<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Args, Constraint>
+    const RESIDUAL_DIM: usize,
+    const INPUT_DIM: usize,
+    const N: usize,
+    GlobalConstants: 'static + Send + Sync,
+    Args: IsVarTuple<N>,
+    Constraint: HasEqConstraintResidualFn<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Args>,
+> EqConstraints<RESIDUAL_DIM, INPUT_DIM, N, GlobalConstants, Args, Constraint>
 {
     /// Create a new set of terms
     pub fn new(family_names: [impl ToString; N], constraints: alloc::vec::Vec<Constraint>) -> Self {

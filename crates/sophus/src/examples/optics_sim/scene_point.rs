@@ -1,8 +1,8 @@
 use sophus_autodiff::linalg::VecF64;
 use sophus_renderer::renderables::{
-    make_point3,
     Color,
     SceneRenderable,
+    make_point3,
 };
 
 use crate::examples::optics_sim::{

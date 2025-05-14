@@ -39,7 +39,7 @@ pub trait IsDualScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     /// Creates a dual vector of dimension `ROWS` from a purely real vector,
     /// establishing each component as a variable for AD.
     fn vector_var<const ROWS: usize>(val: Self::RealVector<ROWS>)
-        -> Self::DualVector<ROWS, DM, DN>;
+    -> Self::DualVector<ROWS, DM, DN>;
 
     /// Creates a dual matrix of size `[ROWS, COLS]` from a purely real matrix,
     /// establishing each element as a variable for AD.

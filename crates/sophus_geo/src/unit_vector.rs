@@ -21,13 +21,13 @@ struct UnitVectorImpl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const DIM: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > UnitVectorImpl<S, DOF, DIM, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const DIM: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> UnitVectorImpl<S, DOF, DIM, BATCH, DM, DN>
 {
     fn unit(i: usize) -> S::Vector<DIM> {
         assert!(i < DIM, "{i} < {DIM}");
@@ -87,13 +87,13 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const DIM: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > IsTangent<S, DOF, BATCH, DM, DN> for UnitVectorImpl<S, DOF, DIM, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const DIM: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> IsTangent<S, DOF, BATCH, DM, DN> for UnitVectorImpl<S, DOF, DIM, BATCH, DM, DN>
 {
     fn tangent_examples() -> alloc::vec::Vec<S::Vector<DOF>> {
         todo!()
@@ -101,13 +101,13 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const DIM: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > IsParamsImpl<S, DIM, BATCH, DM, DN> for UnitVectorImpl<S, DOF, DIM, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const DIM: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> IsParamsImpl<S, DIM, BATCH, DM, DN> for UnitVectorImpl<S, DOF, DIM, BATCH, DM, DN>
 {
     fn are_params_valid<P>(params: P) -> S::Mask
     where
@@ -157,13 +157,13 @@ pub struct UnitVector<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const DIM: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > Neg for UnitVector<S, DOF, DIM, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const DIM: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> Neg for UnitVector<S, DOF, DIM, BATCH, DM, DN>
 {
     type Output = Self;
 
@@ -175,12 +175,12 @@ impl<
 }
 
 impl<
-        S: IsSingleScalar<DM, DN> + PartialOrd,
-        const DOF: usize,
-        const DIM: usize,
-        const DM: usize,
-        const DN: usize,
-    > UnitVector<S, DOF, DIM, 1, DM, DN>
+    S: IsSingleScalar<DM, DN> + PartialOrd,
+    const DOF: usize,
+    const DIM: usize,
+    const DM: usize,
+    const DN: usize,
+> UnitVector<S, DOF, DIM, 1, DM, DN>
 {
     /// Function to calculate the refracted direction.
     ///
@@ -249,13 +249,13 @@ impl core::fmt::Display for NearZeroDirectionVectorError {
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const DIM: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > UnitVector<S, DOF, DIM, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const DIM: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> UnitVector<S, DOF, DIM, BATCH, DM, DN>
 {
     /// Tries to create new unit vector from direction vector.
     ///
@@ -297,13 +297,13 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const DIM: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > IsParamsImpl<S, DIM, BATCH, DM, DN> for UnitVector<S, DOF, DIM, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const DIM: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> IsParamsImpl<S, DIM, BATCH, DM, DN> for UnitVector<S, DOF, DIM, BATCH, DM, DN>
 {
     fn are_params_valid<P>(params: P) -> S::Mask
     where
@@ -322,13 +322,13 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const DIM: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > HasParams<S, DIM, BATCH, DM, DN> for UnitVector<S, DOF, DIM, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const DIM: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> HasParams<S, DIM, BATCH, DM, DN> for UnitVector<S, DOF, DIM, BATCH, DM, DN>
 {
     fn from_params<P>(params: P) -> Self
     where
@@ -350,13 +350,13 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const DIM: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > IsManifold<S, DIM, DOF, BATCH, DM, DN> for UnitVector<S, DOF, DIM, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const DIM: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> IsManifold<S, DIM, DOF, BATCH, DM, DN> for UnitVector<S, DOF, DIM, BATCH, DM, DN>
 {
     fn oplus(&self, tangent: &S::Vector<DOF>) -> Self {
         let params = UnitVectorImpl::<S, DOF, DIM, BATCH, DM, DN>::mat_rx(&self.params)

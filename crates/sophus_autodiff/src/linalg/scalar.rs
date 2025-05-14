@@ -15,9 +15,9 @@ use core::{
 };
 
 use approx::{
-    assert_abs_diff_eq,
     AbsDiffEq,
     RelativeEq,
+    assert_abs_diff_eq,
 };
 
 use crate::{
@@ -27,9 +27,9 @@ use crate::{
         DualVector,
     },
     linalg::{
+        EPS_F64,
         MatF64,
         VecF64,
-        EPS_F64,
     },
     prelude::*,
 };
@@ -129,23 +129,12 @@ pub trait IsScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     /// The real vector type corresponding to `Self`'s vector form.
     type RealVector<const ROWS: usize>: IsRealVector<Self::RealScalar, ROWS, BATCH>;
     /// The real matrix type corresponding to `Self`'s matrix form.
-    type RealMatrix<const ROWS: usize, const COLS: usize>: IsRealMatrix<
-        Self::RealScalar,
-        ROWS,
-        COLS,
-        BATCH,
-    >;
+    type RealMatrix<const ROWS: usize, const COLS: usize>: IsRealMatrix<Self::RealScalar, ROWS, COLS, BATCH>;
 
     /// A dual scalar type for forward-mode AD.
     type DualScalar<const M: usize, const N: usize>: IsDualScalar<BATCH, M, N>;
     /// The corresponding dual vector type.
-    type DualVector<const ROWS: usize, const M: usize, const N: usize>: IsDualVector<
-        Self::DualScalar<M, N>,
-        ROWS,
-        BATCH,
-        M,
-        N,
-    >;
+    type DualVector<const ROWS: usize, const M: usize, const N: usize>: IsDualVector<Self::DualScalar<M, N>, ROWS, BATCH, M, N>;
     /// The corresponding dual matrix type.
     type DualMatrix<const ROWS: usize, const COLS: usize, const M: usize, const N: usize>:
         IsDualMatrix<Self::DualScalar<M, N>, ROWS, COLS, BATCH, M, N>;
@@ -276,13 +265,7 @@ pub trait IsSingleScalar<const DM: usize, const DN: usize>:
     type SingleVector<const ROWS: usize>: IsSingleVector<Self, ROWS, DM, DN>;
 
     /// The matrix type that works with single-lane scalars.
-    type SingleMatrix<const ROWS: usize, const COLS: usize>: IsSingleMatrix<
-        Self,
-        ROWS,
-        COLS,
-        DM,
-        DN,
-    >;
+    type SingleMatrix<const ROWS: usize, const COLS: usize>: IsSingleMatrix<Self, ROWS, COLS, DM, DN>;
 
     /// Returns the real “f64” part if any. For non-real types, you might keep partial derivative
     /// out.
@@ -434,11 +417,7 @@ impl IsScalar<1, 0, 0> for f64 {
     }
 
     fn select(&self, mask: &Self::Mask, other: Self) -> Self {
-        if *mask {
-            *self
-        } else {
-            other
-        }
+        if *mask { *self } else { other }
     }
 
     fn test_suite() {

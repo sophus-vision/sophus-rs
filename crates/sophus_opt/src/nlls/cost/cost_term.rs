@@ -87,12 +87,12 @@ pub struct CostTerms<
 }
 
 impl<
-        const INPUT_DIM: usize,
-        const N: usize,
-        GlobalConstants: 'static + Send + Sync,
-        Args: IsVarTuple<N>,
-        ResidualFn: HasResidualFn<INPUT_DIM, N, GlobalConstants, Args>,
-    > CostTerms<INPUT_DIM, N, GlobalConstants, Args, ResidualFn>
+    const INPUT_DIM: usize,
+    const N: usize,
+    GlobalConstants: 'static + Send + Sync,
+    Args: IsVarTuple<N>,
+    ResidualFn: HasResidualFn<INPUT_DIM, N, GlobalConstants, Args>,
+> CostTerms<INPUT_DIM, N, GlobalConstants, Args, ResidualFn>
 {
     /// Create a new set of cost terms.
     pub fn new(family_names: [impl ToString; N], terms: alloc::vec::Vec<ResidualFn>) -> Self {

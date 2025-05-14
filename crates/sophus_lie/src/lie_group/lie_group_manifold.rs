@@ -6,9 +6,9 @@ use sophus_autodiff::{
 };
 
 use crate::{
+    IsLieGroupImpl,
     lie_group::LieGroup,
     prelude::*,
-    IsLieGroupImpl,
 };
 
 extern crate alloc;
@@ -18,16 +18,16 @@ extern crate alloc;
 // A ⊕ t := exp(t) * A
 // A ⊖ B :=  log(inv(A) * B)
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN> + Clone + Debug,
-    > IsManifold<S, PARAMS, DOF, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN> + Clone + Debug,
+> IsManifold<S, PARAMS, DOF, BATCH, DM, DN>
     for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     fn oplus(&self, tangent: &<S as IsScalar<BATCH, DM, DN>>::Vector<DOF>) -> Self {
@@ -40,17 +40,17 @@ impl<
 }
 
 impl<
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        G: IsLieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT, 1, 0, 0>
-            + Clone
-            + Debug
-            + Send
-            + Sync
-            + 'static,
-    > IsVariable for LieGroup<f64, DOF, PARAMS, POINT, AMBIENT, 1, 0, 0, G>
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    G: IsLieGroupImpl<f64, DOF, PARAMS, POINT, AMBIENT, 1, 0, 0>
+        + Clone
+        + Debug
+        + Send
+        + Sync
+        + 'static,
+> IsVariable for LieGroup<f64, DOF, PARAMS, POINT, AMBIENT, 1, 0, 0, G>
 {
     const NUM_DOF: usize = DOF;
 

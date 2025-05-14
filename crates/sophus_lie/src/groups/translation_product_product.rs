@@ -7,13 +7,13 @@ use sophus_autodiff::{
 };
 
 use crate::{
-    lie_group::LieGroup,
-    prelude::*,
     HasDisambiguate,
     IsLieFactorGroupImpl,
     IsLieGroupImpl,
     IsRealLieFactorGroupImpl,
     IsRealLieGroupImpl,
+    lie_group::LieGroup,
+    prelude::*,
 };
 
 extern crate alloc;
@@ -40,18 +40,18 @@ pub struct TranslationProductGroupImpl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const SDOF: usize,
-        const SPARAMS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
-    > TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const SDOF: usize,
+    const SPARAMS: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
+> TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
     /// translation part of the group parameters
     pub fn translation(params: &S::Vector<PARAMS>) -> S::Vector<POINT> {
@@ -95,18 +95,18 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const SDOF: usize,
-        const SPARAMS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
-    > HasDisambiguate<S, PARAMS, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const SDOF: usize,
+    const SPARAMS: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
+> HasDisambiguate<S, PARAMS, BATCH, DM, DN>
     for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
     fn disambiguate(params: S::Vector<PARAMS>) -> S::Vector<PARAMS> {
@@ -118,18 +118,18 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const SDOF: usize,
-        const SPARAMS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
-    > IsParamsImpl<S, PARAMS, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const SDOF: usize,
+    const SPARAMS: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
+> IsParamsImpl<S, PARAMS, BATCH, DM, DN>
     for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
     fn are_params_valid<P>(params: P) -> S::Mask
@@ -167,18 +167,18 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const SDOF: usize,
-        const SPARAMS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
-    > IsTangent<S, DOF, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const SDOF: usize,
+    const SPARAMS: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
+> IsTangent<S, DOF, BATCH, DM, DN>
     for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
     fn tangent_examples() -> alloc::vec::Vec<S::Vector<DOF>> {
@@ -201,18 +201,18 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const SDOF: usize,
-        const SPARAMS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        Factor: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
-    > IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const SDOF: usize,
+    const SPARAMS: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    Factor: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
+> IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>
     for TranslationProductGroupImpl<
         S,
         DOF,
@@ -395,16 +395,16 @@ impl<
 }
 
 impl<
-        S: IsRealScalar<BATCH>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const SDOF: usize,
-        const SPARAMS: usize,
-        const BATCH: usize,
-        Factor: IsRealLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH>,
-    > IsRealLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH>
+    S: IsRealScalar<BATCH>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const SDOF: usize,
+    const SPARAMS: usize,
+    const BATCH: usize,
+    Factor: IsRealLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH>,
+> IsRealLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH>
     for TranslationProductGroupImpl<
         S,
         DOF,
@@ -536,18 +536,18 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const SDOF: usize,
-        const SPARAMS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        FactorImpl: crate::IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
-    >
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const SDOF: usize,
+    const SPARAMS: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    FactorImpl: crate::IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
+>
     IsTranslationProductGroup<
         S,
         DOF,

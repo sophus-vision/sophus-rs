@@ -98,14 +98,8 @@ where
     }
 }
 
-impl<
-        F0,
-        F1,
-        const RESIDUAL_DIM: usize,
-        const C0: usize,
-        const C1: usize,
-        const INPUT_DIM: usize,
-    > MakeEvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, 2> for (F0, F1)
+impl<F0, F1, const RESIDUAL_DIM: usize, const C0: usize, const C1: usize, const INPUT_DIM: usize>
+    MakeEvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, 2> for (F0, F1)
 where
     F0: FnOnce() -> MatF64<RESIDUAL_DIM, C0>,
     F1: FnOnce() -> MatF64<RESIDUAL_DIM, C1>,
@@ -132,15 +126,15 @@ where
 }
 
 impl<
-        F0,
-        F1,
-        F2,
-        const RESIDUAL_DIM: usize,
-        const C0: usize,
-        const C1: usize,
-        const C2: usize,
-        const INPUT_DIM: usize,
-    > MakeEvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, 3> for (F0, F1, F2)
+    F0,
+    F1,
+    F2,
+    const RESIDUAL_DIM: usize,
+    const C0: usize,
+    const C1: usize,
+    const C2: usize,
+    const INPUT_DIM: usize,
+> MakeEvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, 3> for (F0, F1, F2)
 where
     F0: FnOnce() -> MatF64<RESIDUAL_DIM, C0>,
     F1: FnOnce() -> MatF64<RESIDUAL_DIM, C1>,

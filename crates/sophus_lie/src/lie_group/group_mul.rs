@@ -3,22 +3,22 @@ use core::ops::Mul;
 use sophus_autodiff::prelude::IsScalar;
 
 use crate::{
-    lie_group::LieGroup,
     IsLieGroupImpl,
+    lie_group::LieGroup,
 };
 
 // a * b
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
-    > Mul<LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
+> Mul<LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>>
     for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     type Output = LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>;
@@ -30,16 +30,16 @@ impl<
 
 // a * &b
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
-    > Mul<&LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
+> Mul<&LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>>
     for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     type Output = LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>;
@@ -51,16 +51,16 @@ impl<
 
 // &a * &b
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
-    > Mul<LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
+> Mul<LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>>
     for &LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     type Output = LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>;
@@ -72,16 +72,16 @@ impl<
 
 // a * &b
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
-    > Mul<&LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
+> Mul<&LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>>
     for &LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     type Output = LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>;

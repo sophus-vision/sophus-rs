@@ -1,15 +1,15 @@
 use sophus_autodiff::linalg::SVec;
 
 use crate::{
+    DynIntensityMutImage,
+    MutImage,
+    MutImageR,
     intensity_image::{
         dyn_intensity_image::DynIntensityMutImageU,
         intensity_pixel::IntensityPixel,
         intensity_scalar::IsIntensityScalar,
     },
     prelude::*,
-    DynIntensityMutImage,
-    MutImage,
-    MutImageR,
 };
 
 /// Trait for "intensity" images (grayscale, grayscale+alpha, RGB, RGBA).

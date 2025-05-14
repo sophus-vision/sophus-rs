@@ -1,8 +1,9 @@
+use eframe::wgpu;
 use sophus_image::ImageSize;
 
 use crate::{
-    types::DOG_MULTISAMPLE_COUNT,
     RenderContext,
+    types::DOG_MULTISAMPLE_COUNT,
 };
 
 #[derive(Debug)]

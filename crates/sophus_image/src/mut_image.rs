@@ -4,10 +4,10 @@ use sophus_tensor::{
 };
 
 use crate::{
+    ImageSize,
     arc_image::GenArcImage,
     image_view::GenImageView,
     prelude::*,
-    ImageSize,
 };
 
 extern crate alloc;

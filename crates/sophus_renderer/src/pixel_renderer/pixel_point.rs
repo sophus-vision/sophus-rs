@@ -1,14 +1,17 @@
-use eframe::egui::mutex::Mutex;
+use eframe::{
+    egui::mutex::Mutex,
+    wgpu,
+};
 use wgpu::util::DeviceExt;
 
 use crate::{
+    RenderContext,
     pipeline_builder::{
         PipelineBuilder,
         PointVertex2,
     },
     prelude::*,
     renderables::PointCloud2,
-    RenderContext,
 };
 
 pub(crate) struct Point2dEntity {

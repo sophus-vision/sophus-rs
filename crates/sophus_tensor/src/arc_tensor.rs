@@ -7,9 +7,9 @@ use sophus_autodiff::linalg::{
 };
 
 use crate::{
-    prelude::*,
     MutTensor,
     TensorView,
+    prelude::*,
 };
 
 /// Arc tensor - a tensor with shared ownership
@@ -448,10 +448,10 @@ fn arc_tensor_std_tests() {
 
     thread::scope(|s| {
         s.spawn(|| {
-            info!("{:?}", img);
+            info!("{img:?}");
         });
         s.spawn(|| {
-            info!("{:?}", img);
+            info!("{img:?}");
         });
     });
 }

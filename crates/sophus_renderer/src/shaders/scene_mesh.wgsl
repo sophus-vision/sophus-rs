@@ -12,11 +12,11 @@ struct VertexOut {
     @builtin(position) position: vec4<f32>,
 };
 
-
 @vertex
 fn vs_main(
      @location(0) position: vec3<f32>,
-     @location(1) color: vec4<f32>)-> VertexOut
+     @location(1) normal: vec3<f32>,
+     @location(2) color: vec4<f32>)-> VertexOut
 {
     let projection = project_point(position, view_uniform, pinhole, camera, zoom);
     var out: VertexOut;
@@ -26,6 +26,6 @@ fn vs_main(
 }
 
 @fragment
-fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    return in.rgba;
+fn fs_main(frag: VertexOut) -> @location(0) vec4<f32> {
+    return frag.rgba;
 }

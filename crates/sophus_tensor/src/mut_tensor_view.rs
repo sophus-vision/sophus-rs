@@ -3,9 +3,9 @@ use core::marker::PhantomData;
 use concat_arrays::concat_arrays;
 
 use crate::{
-    prelude::*,
     MutTensor,
     TensorView,
+    prelude::*,
 };
 
 /// Mutable tensor view

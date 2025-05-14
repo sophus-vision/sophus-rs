@@ -102,12 +102,12 @@ impl<const INPUT_DIM: usize, const N: usize, const R: usize> RowLoop<INPUT_DIM, 
 }
 
 impl<
-        const INPUT_DIM: usize,
-        const N: usize,
-        const R: usize,
-        const DX: usize,
-        Tail: RowLoop<INPUT_DIM, N, R> + ColLoop<INPUT_DIM, N, R, DX>,
-    > RowLoop<INPUT_DIM, N, R> for (Option<MatF64<R, DX>>, Tail)
+    const INPUT_DIM: usize,
+    const N: usize,
+    const R: usize,
+    const DX: usize,
+    Tail: RowLoop<INPUT_DIM, N, R> + ColLoop<INPUT_DIM, N, R, DX>,
+> RowLoop<INPUT_DIM, N, R> for (Option<MatF64<R, DX>>, Tail)
 {
     fn set_off_diagonal(
         self,
@@ -184,13 +184,13 @@ impl<const INPUT_DIM: usize, const N: usize, const R: usize, const DJ: usize>
 }
 
 impl<
-        const INPUT_DIM: usize,
-        const N: usize,
-        const R: usize,
-        const DI: usize,
-        const DJ: usize,
-        Tail: ColLoop<INPUT_DIM, N, R, DJ>,
-    > ColLoop<INPUT_DIM, N, R, DJ> for (Option<MatF64<R, DI>>, Tail)
+    const INPUT_DIM: usize,
+    const N: usize,
+    const R: usize,
+    const DI: usize,
+    const DJ: usize,
+    Tail: ColLoop<INPUT_DIM, N, R, DJ>,
+> ColLoop<INPUT_DIM, N, R, DJ> for (Option<MatF64<R, DI>>, Tail)
 {
     fn set_off_diagonal_from_lhs(
         self,

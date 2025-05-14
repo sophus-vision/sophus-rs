@@ -29,12 +29,12 @@ pub struct VectorValuedDerivative<
 }
 
 impl<
-        S: IsRealScalar<BATCH, RealScalar = S>,
-        const OUTROWS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > VectorValuedDerivative<S, OUTROWS, BATCH, DM, DN>
+    S: IsRealScalar<BATCH, RealScalar = S>,
+    const OUTROWS: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> VectorValuedDerivative<S, OUTROWS, BATCH, DM, DN>
 {
     /// Creates a new instance set to all zeros.
     pub fn zeros() -> Self {
@@ -120,8 +120,8 @@ fn dual_vector_tests() {
     use crate::{
         dual::dual_scalar::DualScalar,
         linalg::{
-            IsVector,
             EPS_F64,
+            IsVector,
         },
         maps::{
             ScalarValuedVectorMap,

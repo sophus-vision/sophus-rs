@@ -13,6 +13,7 @@ pub mod camera;
 pub mod renderables;
 /// offscreen texture for rendering
 pub mod textures;
+
 /// sophus_renderer prelude.
 ///
 /// It is recommended to import this prelude when working with `sophus_renderer types:

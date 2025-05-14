@@ -6,9 +6,9 @@ use snafu::Snafu;
 use sophus_autodiff::manifold::IsVariable;
 
 use super::{
+    VarKind,
     var_builder::VarBuilder,
     var_family::IsVarFamily,
-    VarKind,
 };
 use crate::variables::var_family::VarFamily;
 

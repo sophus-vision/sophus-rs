@@ -3,10 +3,10 @@ use std::sync::Arc;
 use sophus_autodiff::linalg::VecF64;
 use sophus_opt::{
     nlls::{
-        optimize_nlls,
         CostFn,
         CostTerms,
         OptParams,
+        optimize_nlls,
     },
     variables::{
         VarBuilder,

@@ -3,6 +3,8 @@ use core::any::TypeId;
 use sophus_autodiff::linalg::SVec;
 
 use crate::{
+    ArcImage,
+    ArcImageR,
     intensity_image::{
         dyn_intensity_image::{
             DynIntensityArcImage,
@@ -12,8 +14,6 @@ use crate::{
         intensity_scalar::IsIntensityScalar,
     },
     prelude::*,
-    ArcImage,
-    ArcImageR,
 };
 
 /// Trait for "intensity" images (grayscale, grayscale+alpha, RGB, RGBA).

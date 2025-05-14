@@ -6,12 +6,12 @@ use sophus_lie::{
 
 use crate::{
     nlls::{
-        costs::PoseGraph2CostTerm,
-        optimize_nlls,
         CostFn,
         CostTerms,
         LinearSolverType,
         OptParams,
+        costs::PoseGraph2CostTerm,
+        optimize_nlls,
     },
     prelude::*,
     variables::{

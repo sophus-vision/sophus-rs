@@ -9,14 +9,14 @@ use sophus_image::{
 };
 use sophus_lie::Isometry3F64;
 use sophus_renderer::{
+    SceneFocusMarker,
+    TranslationAndScaling,
     camera::{
         ClippingPlanesF64,
         RenderIntrinsics,
     },
     renderables::Color,
     textures::ndc_z_to_color,
-    SceneFocusMarker,
-    TranslationAndScaling,
 };
 
 use crate::{

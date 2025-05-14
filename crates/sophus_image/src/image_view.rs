@@ -2,8 +2,8 @@ use ndarray::ShapeBuilder;
 use sophus_tensor::TensorView;
 
 use crate::{
-    prelude::*,
     ImageSize,
+    prelude::*,
 };
 
 /// Image view of static tensors
@@ -54,12 +54,12 @@ pub trait IsImageView<
 macro_rules! image_view {
     ($scalar_rank:literal, $srank:literal) => {
         impl<
-                'a,
-                Scalar: IsCoreScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
-                const ROWS: usize,
-                const COLS: usize,
-            > GenImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
+            'a,
+            Scalar: IsCoreScalar + 'static,
+            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
+            const ROWS: usize,
+            const COLS: usize,
+        > GenImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
         where
             TensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS>:
                 IsTensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS>,
@@ -158,12 +158,12 @@ macro_rules! image_view {
         }
 
         impl<
-                'a,
-                Scalar: IsCoreScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
-                const ROWS: usize,
-                const COLS: usize,
-            > IsImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
+            'a,
+            Scalar: IsCoreScalar + 'static,
+            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
+            const ROWS: usize,
+            const COLS: usize,
+        > IsImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
             for GenImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
         where
             TensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS>:

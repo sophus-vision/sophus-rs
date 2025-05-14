@@ -4,6 +4,7 @@ use sophus_autodiff::manifold::IsVariable;
 use sophus_image::ImageSize;
 
 use crate::{
+    Camera,
     distortions::{
         AffineDistortionImpl,
         BrownConradyDistortionImpl,
@@ -13,7 +14,6 @@ use crate::{
     prelude::*,
     projections::PerspectiveProjectionImpl,
     traits::IsCameraDistortionImpl,
-    Camera,
 };
 
 /// Pinhole camera
@@ -71,11 +71,11 @@ pub type BrownConradyCameraF64 = BrownConradyCamera<f64, 1, 0, 0>;
 pub type EnhancedUnifiedCameraF64 = EnhancedUnifiedCamera<f64, 1, 0, 0>;
 
 impl<
-        const DISTORT: usize,
-        const PARAMS: usize,
-        Distort: IsCameraDistortionImpl<f64, DISTORT, PARAMS, 1, 0, 0>,
-        Proj: IsProjection<f64, 1, 0, 0>,
-    > IsVariable for Camera<f64, DISTORT, PARAMS, 1, 0, 0, Distort, Proj>
+    const DISTORT: usize,
+    const PARAMS: usize,
+    Distort: IsCameraDistortionImpl<f64, DISTORT, PARAMS, 1, 0, 0>,
+    Proj: IsProjection<f64, 1, 0, 0>,
+> IsVariable for Camera<f64, DISTORT, PARAMS, 1, 0, 0, Distort, Proj>
 {
     const NUM_DOF: usize = PARAMS;
 
