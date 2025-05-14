@@ -101,7 +101,7 @@ impl VertexShaderUniformBuffers {
         render_context
             .wgpu_device
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some(&format!("`{:?}` render layout", stage)),
+                label: Some(&format!("`{stage:?}` render layout")),
                 entries: &[
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,

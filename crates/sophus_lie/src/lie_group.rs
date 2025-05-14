@@ -220,7 +220,7 @@ impl<
                 num += S::Mask::all_true().count();
             }
             let percentage = num_preserves as f64 / num as f64;
-            assert!(percentage <= 0.75, "{} <= 0.75", percentage);
+            assert!(percentage <= 0.75, "{percentage} <= 0.75");
         }
     }
 

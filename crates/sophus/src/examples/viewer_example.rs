@@ -37,6 +37,7 @@ pub fn make_example_image(image_size: ImageSize) -> ArcImage4U8 {
     img.to_shared()
 }
 
+/// Creates a distorted image frame with a red and blue grid
 pub fn make_distorted_frame() -> ImageFrame {
     let focal_length = 500.0;
 

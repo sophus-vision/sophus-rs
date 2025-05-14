@@ -161,11 +161,11 @@ fn pose_circle_opt_tests() {
         let pose_graph = PoseCircleProblem::new(2500);
 
         let res_err = pose_graph.calc_error(&pose_graph.est_world_from_robot);
-        assert!(res_err > 1.0, "{} > thr?", res_err);
+        assert!(res_err > 1.0, "{res_err} > thr?");
 
         let refined_world_from_robot = pose_graph.optimize(solver);
 
         let res_err = pose_graph.calc_error(&refined_world_from_robot);
-        assert!(res_err < 0.05, "{} < thr?", res_err);
+        assert!(res_err < 0.05, "{res_err} < thr?");
     }
 }

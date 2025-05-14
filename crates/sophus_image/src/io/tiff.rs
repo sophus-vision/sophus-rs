@@ -37,12 +37,12 @@ use crate::{
 
 fn err_conv(e: TiffError) -> std::io::Error {
     match e {
-        TiffError::FormatError(e) => std::io::Error::other(format!("tiff-format: {}", e)),
-        TiffError::UnsupportedError(e) => std::io::Error::other(format!("tiff-unsupported: {}", e)),
+        TiffError::FormatError(e) => std::io::Error::other(format!("tiff-format: {e}")),
+        TiffError::UnsupportedError(e) => std::io::Error::other(format!("tiff-unsupported: {e}")),
         TiffError::IoError(io) => io,
         TiffError::LimitsExceeded => std::io::Error::other("tiff-limits-exceeded"),
         TiffError::IntSizeError => std::io::Error::other("tiff-int-size"),
-        TiffError::UsageError(e) => std::io::Error::other(format!("tiff-usage: {}", e)),
+        TiffError::UsageError(e) => std::io::Error::other(format!("tiff-usage: {e}")),
     }
 }
 
@@ -89,8 +89,7 @@ pub fn load_tiff(path: impl ToString) -> std::io::Result<DynIntensityMutImage> {
         tiff::ColorType::RGBA(_) => 4,
         _ => {
             return Err(std::io::Error::other(format!(
-                "unsupported color type: {:?}",
-                color_type
+                "unsupported color type: {color_type:?}"
             )));
         }
     };
@@ -189,8 +188,7 @@ pub fn load_tiff(path: impl ToString) -> std::io::Result<DynIntensityMutImage> {
             ))
         }
         _ => Err(std::io::Error::other(format!(
-            "unsupported decoding: {:?}",
-            decoding_result
+            "unsupported decoding: {decoding_result:?}"
         ))),
     }
 }

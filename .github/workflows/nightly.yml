@@ -9,15 +9,16 @@ jobs:
   nightly:
     runs-on: ubuntu-24.04
 
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: "recursive"
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
-      - name: Run sccache stat for check before
-        shell: bash
-        run: ${SCCACHE_PATH} --show-stats
+        uses: mozilla-actions/sccache-action@v0.0.9
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
@@ -36,6 +37,3 @@ jobs:
         run: |
           rustup default nightly
           just test-simd
-      - name: Run sccache stat for check after
-        shell: bash
-        run: ${SCCACHE_PATH} --show-stats

@@ -174,7 +174,7 @@ fn create_scene(pinhole: bool) -> Vec<Packet> {
     packets
 }
 
-pub fn run_viewer_example() {
+fn main() {
     let (message_tx, message_rx) = channel(50);
 
     spawn(move || {
@@ -244,8 +244,4 @@ pub fn run_viewer_example() {
         }),
     )
     .unwrap();
-}
-
-fn main() {
-    run_viewer_example();
 }

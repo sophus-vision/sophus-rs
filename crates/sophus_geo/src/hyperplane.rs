@@ -10,7 +10,10 @@ use sophus_lie::{
     Isometry3F64,
 };
 
-use crate::unit_vector::UnitVector;
+use crate::{
+    unit_vector::UnitVector,
+    Ray,
+};
 
 /// N-dimensional Hyperplane.
 pub struct HyperPlane<
@@ -60,8 +63,33 @@ impl<
     pub fn distance(&self, point: S::Vector<DIM>) -> S {
         (self.proj_onto(point) - point).norm()
     }
+
+    /// Hyperplane distance to the origin of the embedding space.
+    pub fn distance_to_origin(&self) -> S {
+        (self.proj_onto(S::Vector::<DIM>::zeros())).norm()
+    }
 }
 
+impl<
+        S: IsSingleScalar<DM, DN> + PartialOrd,
+        const DOF: usize,
+        const DIM: usize,
+        const DM: usize,
+        const DN: usize,
+    > HyperPlane<S, DOF, DIM, 1, DM, DN>
+{
+    /// Intersects a ray with the hyperplane.
+    pub fn rays_intersect(&self, ray: &Ray<S, DOF, DIM, 1, DM, DN>) -> Option<S::Vector<DIM>> {
+        let denom = self.normal.vector().dot(ray.clone().dir.vector());
+        if denom.clone().abs() < S::from_f64(1e-6) {
+            return None; // Ray is parallel to the plane
+        }
+
+        let t = (self.distance_to_origin() - self.normal.vector().dot(ray.clone().origin)) / denom;
+
+        Some(ray.at(t))
+    }
+}
 /// A line in 2D - represented as a 2d hyperplane.
 pub type Line<S, const B: usize, const DM: usize, const DN: usize> = HyperPlane<S, 1, 2, B, DM, DN>;
 /// A line in 2D - for f64.
@@ -75,6 +103,16 @@ pub type PlaneF64 = Plane<f64, 1, 0, 0>;
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     Line<S, BATCH, DM, DN>
 {
+    /// Constructs a line from a point pair.
+    pub fn from_point_pair(origin: S::Vector<2>, p1: S::Vector<2>) -> Self {
+        let direction = p1 - origin;
+        let normal = UnitVector::from_vector_and_normalize(&S::Vector::<2>::from_array([
+            direction.elem(1),
+            -direction.elem(0),
+        ]));
+        Self { origin, normal }
+    }
+
     /// Converting a 2d isometry to a line.
     ///
     /// Given an isometry "parent_from_line_origin", this function creates a line spanned by the
