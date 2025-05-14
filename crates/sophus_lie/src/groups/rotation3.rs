@@ -9,6 +9,7 @@ use sophus_autodiff::{
     linalg::{
         EPS_F64,
         MatF64,
+        VecF64,
         cross,
     },
     manifold::IsTangent,
@@ -1052,6 +1053,26 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
     }
 }
 
+impl From<nalgebra::UnitQuaternion<f64>> for Rotation3F64 {
+    fn from(q: nalgebra::UnitQuaternion<f64>) -> Self {
+        Self::from_params(VecF64::from_array([
+            q.scalar(),
+            q.imag().x,
+            q.imag().y,
+            q.imag().z,
+        ]))
+    }
+}
+
+impl From<Rotation3F64> for nalgebra::UnitQuaternion<f64> {
+    fn from(rotation: Rotation3F64) -> Self {
+        let params = rotation.params();
+        nalgebra::Unit::new_normalize(nalgebra::Quaternion::new(
+            params[0], params[1], params[2], params[3],
+        ))
+    }
+}
+
 #[test]
 fn rotation3_prop_tests() {
     #[cfg(feature = "simd")]
@@ -1132,4 +1153,36 @@ fn from_matrix_test() {
         info!("mat2 = {mat2:?}");
         assert_relative_eq!(mat, mat2, epsilon = EPS_F64);
     }
+}
+
+#[test]
+fn test_nalgebra_interop() {
+    use approx::assert_relative_eq;
+
+    let rotation = Rotation3F64::rot_x(0.5);
+    let na_rotation: nalgebra::UnitQuaternion<f64> = rotation.into();
+
+    assert_relative_eq!(rotation.params()[0], na_rotation.scalar(), epsilon = 1e-10);
+    assert_relative_eq!(
+        rotation.params()[1],
+        na_rotation.vector().x,
+        epsilon = 1e-10
+    );
+    assert_relative_eq!(
+        rotation.params()[2],
+        na_rotation.vector().y,
+        epsilon = 1e-10
+    );
+    assert_relative_eq!(
+        rotation.params()[3],
+        na_rotation.vector().z,
+        epsilon = 1e-10
+    );
+
+    let roundtrip_rotation = Rotation3F64::from(na_rotation);
+    assert_relative_eq!(
+        rotation.params(),
+        roundtrip_rotation.params(),
+        epsilon = 1e-10
+    );
 }

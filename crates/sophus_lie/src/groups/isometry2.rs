@@ -1,5 +1,3 @@
-use core::borrow::Borrow;
-
 use log::warn;
 
 use crate::{
@@ -53,10 +51,10 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     Isometry2<S, BATCH, DM, DN>
 {
     /// create isometry from translation and rotation
-    pub fn from_translation_and_rotation<F>(translation: S::Vector<2>, rotation: F) -> Self
-    where
-        F: Borrow<Rotation2<S, BATCH, DM, DN>>,
-    {
+    pub fn from_translation_and_rotation(
+        translation: S::Vector<2>,
+        rotation: Rotation2<S, BATCH, DM, DN>,
+    ) -> Self {
         Self::from_translation_and_factor(translation, rotation)
     }
 
@@ -66,51 +64,47 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     }
 
     /// create isometry from rotation
-    pub fn from_rotation<F>(rotation: F) -> Self
-    where
-        F: Borrow<Rotation2<S, BATCH, DM, DN>>,
-    {
+    pub fn from_rotation(rotation: Rotation2<S, BATCH, DM, DN>) -> Self {
         Self::from_translation_and_factor(S::Vector::<2>::zeros(), rotation)
     }
 
     /// translate along x axis
-    pub fn trans_x<U>(x: U) -> Self
-    where
-        U: Borrow<S>,
-    {
-        let x: &S = x.borrow();
-        Self::from_translation(S::Vector::from_array([*x, S::zero()]))
+    pub fn trans_x<U>(x: S) -> Self {
+        Self::from_translation(S::Vector::from_array([x, S::zero()]))
     }
 
     /// translate along y axis
-    pub fn trans_y<U>(y: U) -> Self
-    where
-        U: Borrow<S>,
-    {
-        let y: &S = y.borrow();
-        Self::from_translation(S::Vector::from_array([S::zero(), *y]))
+    pub fn trans_y<U>(y: S) -> Self {
+        Self::from_translation(S::Vector::from_array([S::zero(), y]))
     }
 
     /// Rotate by angle
-    pub fn rot<U>(theta: U) -> Self
-    where
-        U: Borrow<S>,
-    {
-        let theta: &S = theta.borrow();
+    pub fn rot(theta: S) -> Self {
         Self::from_rotation(Rotation2::rot(theta))
     }
 
     /// set rotation
-    pub fn set_rotation<F>(&mut self, rotation: F)
-    where
-        F: Borrow<Rotation2<S, BATCH, DM, DN>>,
-    {
+    pub fn set_rotation(&mut self, rotation: Rotation2<S, BATCH, DM, DN>) {
         self.set_factor(rotation)
     }
 
     /// get rotation
     pub fn rotation(&self) -> Rotation2<S, BATCH, DM, DN> {
         self.factor()
+    }
+}
+
+impl From<nalgebra::Isometry2<f64>> for Isometry2F64 {
+    fn from(isometry: nalgebra::Isometry2<f64>) -> Self {
+        Self::from_translation_and_rotation(isometry.translation.vector, isometry.rotation.into())
+    }
+}
+
+impl From<Isometry2F64> for nalgebra::Isometry2<f64> {
+    fn from(val: Isometry2F64) -> Self {
+        let translation = val.translation();
+        let rotation = val.rotation();
+        nalgebra::Isometry2::from_parts(translation.into(), rotation.into())
     }
 }
 
@@ -168,4 +162,32 @@ fn isometry2_prop_tests() {
     Isometry2F64::run_real_tests();
     #[cfg(feature = "simd")]
     Isometry2::<BatchScalarF64<8>, 8, 0, 0>::run_real_tests();
+}
+
+#[test]
+fn test_nalgebra_interop() {
+    use approx::assert_relative_eq;
+    use sophus_autodiff::linalg::VecF64;
+
+    use crate::Rotation2F64;
+
+    let isometry = Isometry2F64::from_translation_and_rotation(
+        VecF64::from_array([1.0, 2.0]),
+        Rotation2F64::exp(VecF64::<1>::new(0.5)),
+    );
+    let na_isometry: nalgebra::Isometry2<f64> = isometry.into();
+    assert_eq!(isometry.translation(), na_isometry.translation.vector);
+    assert_relative_eq!(
+        isometry.rotation().log()[0],
+        na_isometry.rotation.angle(),
+        epsilon = 1e-10
+    );
+
+    let roundtrip_isometry = Isometry2F64::from(na_isometry);
+    assert_relative_eq!(isometry.translation(), roundtrip_isometry.translation());
+    assert_relative_eq!(
+        isometry.rotation().params(),
+        roundtrip_isometry.rotation().params(),
+        epsilon = 1e-10
+    );
 }
