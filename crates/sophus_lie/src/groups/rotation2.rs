@@ -4,7 +4,10 @@ use core::{
 };
 
 use sophus_autodiff::{
-    linalg::EPS_F64,
+    linalg::{
+        EPS_F64,
+        VecF64,
+    },
     manifold::IsTangent,
     params::{
         HasParams,
@@ -354,6 +357,19 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 1, 
     }
 }
 
+impl From<nalgebra::UnitComplex<f64>> for Rotation2F64 {
+    fn from(unit_complex: nalgebra::UnitComplex<f64>) -> Self {
+        Self::from_params(VecF64::from_array([unit_complex.re, unit_complex.im]))
+    }
+}
+
+impl From<Rotation2F64> for nalgebra::UnitComplex<f64> {
+    fn from(rotation: Rotation2F64) -> Self {
+        let params = rotation.params();
+        nalgebra::Unit::new_normalize(nalgebra::Complex::new(params[0], params[1]))
+    }
+}
+
 impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
     HasAverage<S, 1, 2, 2, 2, DM, DN> for Rotation2<S, 1, DM, DN>
 {
@@ -408,4 +424,24 @@ fn rotation2_prop_tests() {
     Rotation2F64::run_real_factor_tests();
     #[cfg(feature = "simd")]
     Rotation2::<BatchScalarF64<8>, 8, 0, 0>::run_real_factor_tests();
+}
+
+#[test]
+fn test_nalgebra_interop() {
+    use approx::assert_relative_eq;
+    use sophus_autodiff::linalg::VecF64;
+
+    use crate::Rotation2F64;
+
+    let rotation = Rotation2F64::exp(VecF64::<1>::new(0.5));
+
+    let na_unit_complex: nalgebra::UnitComplex<f64> = rotation.into();
+    assert_relative_eq!(rotation.log()[0], na_unit_complex.angle(), epsilon = 1e-10);
+
+    let roundtrip_rotation = Rotation2F64::from(na_unit_complex);
+    assert_relative_eq!(
+        rotation.params(),
+        roundtrip_rotation.params(),
+        epsilon = 1e-10
+    );
 }
