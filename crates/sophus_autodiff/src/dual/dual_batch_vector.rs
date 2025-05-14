@@ -23,8 +23,8 @@ use super::vector::{
 };
 use crate::{
     dual::{
-        dual_batch_scalar::DualBatchScalar,
         DualBatchMatrix,
+        dual_batch_scalar::DualBatchScalar,
     },
     linalg::{
         BatchMask,

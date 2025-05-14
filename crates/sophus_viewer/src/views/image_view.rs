@@ -1,15 +1,15 @@
 use linked_hash_map::LinkedHashMap;
 use sophus_renderer::{
-    camera::RenderIntrinsics,
     HasAspectRatio,
     OffscreenRenderer,
     RenderContext,
+    camera::RenderIntrinsics,
 };
 
 use crate::{
     interactions::{
-        inplane_interaction::InplaneInteraction,
         InteractionEnum,
+        inplane_interaction::InplaneInteraction,
     },
     packets::ImageViewPacket,
     prelude::*,

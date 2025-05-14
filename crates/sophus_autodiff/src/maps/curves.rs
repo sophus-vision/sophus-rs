@@ -85,8 +85,8 @@ fn curve_test() {
     use crate::{
         dual::DualScalar,
         linalg::{
-            IsScalar,
             EPS_F64,
+            IsScalar,
         },
     };
 

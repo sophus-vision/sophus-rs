@@ -3,20 +3,20 @@ pub(crate) mod eq_system;
 pub(crate) mod solvers;
 
 use super::{
-    dense_lu::DenseLu,
-    sparse_ldlt::SparseLdlt,
-    sparse_lu::SparseLu,
-    sparse_qr::SparseQr,
     CostSystem,
     EqSystem,
     IsSparseSymmetricLinearSystem,
     NllsError,
+    dense_lu::DenseLu,
+    sparse_ldlt::SparseLdlt,
+    sparse_lu::SparseLu,
+    sparse_qr::SparseQr,
 };
 use crate::{
     block::{
+        PartitionSpec,
         block_vector::BlockVector,
         symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
-        PartitionSpec,
     },
     nlls::LinearSolverType,
     variables::{
@@ -41,6 +41,7 @@ pub struct LinearSystem {
     pub(crate) sparse_hessian_plus_damping: SymmetricBlockSparseMatrixBuilder,
     pub(crate) neg_gradient: BlockVector,
     pub(crate) solver: LinearSolverType,
+    parallelize: bool,
 }
 
 impl LinearSystem {
@@ -79,6 +80,7 @@ impl LinearSystem {
         cost_system: &CostSystem,
         eq_system: &EqSystem,
         solver: LinearSolverType,
+        parallelize: bool,
     ) -> LinearSystem {
         assert!(variables.num_of_kind(VarKind::Marginalized) == 0);
         assert!(variables.num_of_kind(VarKind::Free) >= 1);
@@ -126,15 +128,18 @@ impl LinearSystem {
             sparse_hessian_plus_damping: block_triplets,
             neg_gradient: neg_grad,
             solver,
+            parallelize,
         }
     }
 
     pub(crate) fn solve(&mut self) -> Result<nalgebra::DVector<f64>, NllsError> {
         match self.solver {
-            LinearSolverType::SparseLdlt(ldlt_params) => SparseLdlt::new(ldlt_params).solve(
-                &self.sparse_hessian_plus_damping,
-                self.neg_gradient.scalar_vector_mut(),
-            ),
+            LinearSolverType::SparseLdlt(ldlt_params) => {
+                SparseLdlt::new(ldlt_params, self.parallelize).solve(
+                    &self.sparse_hessian_plus_damping,
+                    self.neg_gradient.scalar_vector_mut(),
+                )
+            }
             LinearSolverType::DenseLu => DenseLu {}.solve(
                 &self.sparse_hessian_plus_damping,
                 self.neg_gradient.scalar_vector(),

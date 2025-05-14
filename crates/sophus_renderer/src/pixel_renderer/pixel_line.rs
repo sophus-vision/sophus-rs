@@ -1,13 +1,14 @@
+use eframe::wgpu;
 use wgpu::util::DeviceExt;
 
 use crate::{
+    RenderContext,
     pipeline_builder::{
         LineVertex2,
         PipelineBuilder,
     },
     prelude::*,
     renderables::LineSegments2,
-    RenderContext,
 };
 pub(crate) struct Line2dEntity {
     pub(crate) vertex_data: Vec<LineVertex2>,

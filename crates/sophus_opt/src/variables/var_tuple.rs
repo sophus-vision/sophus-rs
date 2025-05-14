@@ -1,12 +1,12 @@
 use sophus_autodiff::manifold::IsVariable;
 
 use super::{
+    VarKind,
     var_families::{
         VarFamilies,
         VarFamilyError,
     },
     var_family::VarFamily,
-    VarKind,
 };
 
 extern crate alloc;
@@ -84,10 +84,10 @@ impl<M0: IsVariable + 'static + Send + Sync, M1: IsVariable + 'static + Send + S
 }
 
 impl<
-        M0: IsVariable + 'static + Send + Sync,
-        M1: IsVariable + 'static + Send + Sync,
-        M2: IsVariable + 'static + Send + Sync,
-    > IsVarTuple<3> for (M0, M1, M2)
+    M0: IsVariable + 'static + Send + Sync,
+    M1: IsVariable + 'static + Send + Sync,
+    M2: IsVariable + 'static + Send + Sync,
+> IsVarTuple<3> for (M0, M1, M2)
 {
     const DOF_T: [usize; 3] = [M0::NUM_DOF, M1::NUM_DOF, M2::NUM_DOF];
     type VarFamilyTupleRef<'a> = (&'a VarFamily<M0>, &'a VarFamily<M1>, &'a VarFamily<M2>);
@@ -121,11 +121,11 @@ impl<
 }
 
 impl<
-        M0: IsVariable + 'static + Send + Sync,
-        M1: IsVariable + 'static + Send + Sync,
-        M2: IsVariable + 'static + Send + Sync,
-        M3: IsVariable + 'static + Send + Sync,
-    > IsVarTuple<4> for (M0, M1, M2, M3)
+    M0: IsVariable + 'static + Send + Sync,
+    M1: IsVariable + 'static + Send + Sync,
+    M2: IsVariable + 'static + Send + Sync,
+    M3: IsVariable + 'static + Send + Sync,
+> IsVarTuple<4> for (M0, M1, M2, M3)
 {
     const DOF_T: [usize; 4] = [M0::NUM_DOF, M1::NUM_DOF, M2::NUM_DOF, M3::NUM_DOF];
     type VarFamilyTupleRef<'a> = (
@@ -167,12 +167,12 @@ impl<
 }
 
 impl<
-        M0: IsVariable + 'static + Send + Sync,
-        M1: IsVariable + 'static + Send + Sync,
-        M2: IsVariable + 'static + Send + Sync,
-        M3: IsVariable + 'static + Send + Sync,
-        M4: IsVariable + 'static + Send + Sync,
-    > IsVarTuple<5> for (M0, M1, M2, M3, M4)
+    M0: IsVariable + 'static + Send + Sync,
+    M1: IsVariable + 'static + Send + Sync,
+    M2: IsVariable + 'static + Send + Sync,
+    M3: IsVariable + 'static + Send + Sync,
+    M4: IsVariable + 'static + Send + Sync,
+> IsVarTuple<5> for (M0, M1, M2, M3, M4)
 {
     const DOF_T: [usize; 5] = [
         M0::NUM_DOF,
@@ -224,13 +224,13 @@ impl<
 }
 
 impl<
-        M0: IsVariable + 'static + Send + Sync,
-        M1: IsVariable + 'static + Send + Sync,
-        M2: IsVariable + 'static + Send + Sync,
-        M3: IsVariable + 'static + Send + Sync,
-        M4: IsVariable + 'static + Send + Sync,
-        M5: IsVariable + 'static + Send + Sync,
-    > IsVarTuple<6> for (M0, M1, M2, M3, M4, M5)
+    M0: IsVariable + 'static + Send + Sync,
+    M1: IsVariable + 'static + Send + Sync,
+    M2: IsVariable + 'static + Send + Sync,
+    M3: IsVariable + 'static + Send + Sync,
+    M4: IsVariable + 'static + Send + Sync,
+    M5: IsVariable + 'static + Send + Sync,
+> IsVarTuple<6> for (M0, M1, M2, M3, M4, M5)
 {
     const DOF_T: [usize; 6] = [
         M0::NUM_DOF,
@@ -287,14 +287,14 @@ impl<
 }
 
 impl<
-        M0: IsVariable + 'static + Send + Sync,
-        M1: IsVariable + 'static + Send + Sync,
-        M2: IsVariable + 'static + Send + Sync,
-        M3: IsVariable + 'static + Send + Sync,
-        M4: IsVariable + 'static + Send + Sync,
-        M5: IsVariable + 'static + Send + Sync,
-        M6: IsVariable + 'static + Send + Sync,
-    > IsVarTuple<7> for (M0, M1, M2, M3, M4, M5, M6)
+    M0: IsVariable + 'static + Send + Sync,
+    M1: IsVariable + 'static + Send + Sync,
+    M2: IsVariable + 'static + Send + Sync,
+    M3: IsVariable + 'static + Send + Sync,
+    M4: IsVariable + 'static + Send + Sync,
+    M5: IsVariable + 'static + Send + Sync,
+    M6: IsVariable + 'static + Send + Sync,
+> IsVarTuple<7> for (M0, M1, M2, M3, M4, M5, M6)
 {
     const DOF_T: [usize; 7] = [
         M0::NUM_DOF,

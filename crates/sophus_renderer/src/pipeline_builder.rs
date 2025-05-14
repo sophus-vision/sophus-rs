@@ -2,13 +2,14 @@ use bytemuck::{
     Pod,
     Zeroable,
 };
+use eframe::wgpu;
 use wgpu::DepthStencilState;
 
 use crate::{
+    RenderContext,
     prelude::*,
     types::DOG_MULTISAMPLE_COUNT,
     uniform_buffers::VertexShaderUniformBuffers,
-    RenderContext,
 };
 
 pub(crate) struct TargetTexture {
@@ -87,6 +88,7 @@ impl IsVertex for PointVertex2 {
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub(crate) struct MeshVertex3 {
     pub(crate) _pos: [f32; 3],
+    pub(crate) _normal: [f32; 3],
     pub(crate) _color: [f32; 4],
 }
 
@@ -96,7 +98,7 @@ impl IsVertex for MeshVertex3 {
     }
 
     fn attr() -> Vec<wgpu::VertexAttribute> {
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4].to_vec()
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x4].to_vec()
     }
 }
 
@@ -205,11 +207,12 @@ impl PipelineBuilder {
         });
 
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            cache: None,
             label: Some(&format!("`{}` `{:?}` pipeline", name, self.pipeline_type)),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: shader,
-                entry_point: "vs_main",
+                entry_point: Some("vs_main"),
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: Vertex::array_stride(),
                     step_mode: Vertex::step_mode(),
@@ -219,7 +222,7 @@ impl PipelineBuilder {
             },
             fragment: Some(wgpu::FragmentState {
                 module: shader,
-                entry_point: "fs_main",
+                entry_point: Some("fs_main"),
                 targets: &[Some(self.rgba_target.rgba_output_format.into())],
                 compilation_options: Default::default(),
             }),

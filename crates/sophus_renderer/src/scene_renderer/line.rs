@@ -1,7 +1,9 @@
+use eframe::wgpu;
 use sophus_lie::Isometry3F64;
 use wgpu::util::DeviceExt;
 
 use crate::{
+    RenderContext,
     pipeline_builder::{
         LineVertex3,
         PipelineBuilder,
@@ -9,7 +11,6 @@ use crate::{
     prelude::*,
     renderables::LineSegments3,
     uniform_buffers::VertexShaderUniformBuffers,
-    RenderContext,
 };
 
 pub(crate) struct Line3dEntity {

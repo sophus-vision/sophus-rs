@@ -1,4 +1,7 @@
-use eframe::egui;
+use eframe::{
+    egui,
+    wgpu,
+};
 use sophus_image::ImageSize;
 
 use crate::RenderContext;

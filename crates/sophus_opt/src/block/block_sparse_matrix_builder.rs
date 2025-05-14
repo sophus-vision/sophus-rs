@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
 use super::{
-    grid::Grid,
     PartitionSpec,
+    grid::Grid,
 };
 
 /// A builder for a block sparse matrix.
@@ -191,7 +191,7 @@ impl BlockSparseMatrixBuilder {
     pub(crate) fn to_scalar_triplets_impl(
         &self,
         mode: ToScalarTripletsImplMode,
-    ) -> Vec<(usize, usize, f64)> {
+    ) -> Vec<faer::sparse::Triplet<usize, usize, f64>> {
         let mut triplets = Vec::new();
 
         for region_x_idx in 0..self.region_grid_shape()[0] {
@@ -222,11 +222,11 @@ impl BlockSparseMatrixBuilder {
                                     // SymmetricBlockSparseMatrixBuilder for details. Hence, we need to
                                     // duplicate blocks above the diagonal and mirror them below the
                                     // diagonal to get a symmetric matrix.
-                                    triplets.push((scalar_r, scalar_c, value));
+                                    triplets.push(faer::sparse::Triplet::new(scalar_r, scalar_c, value));
 
                                     if !is_block_on_diagonal
                                     {
-                                        triplets.push((scalar_c, scalar_r, value));
+                                        triplets.push(faer::sparse::Triplet::new(scalar_c, scalar_r, value));
                                     }
                                 }
                                 ToScalarTripletsImplMode::UpperTriangularFromUpperTriangularBlockPattern => {
@@ -240,10 +240,10 @@ impl BlockSparseMatrixBuilder {
                                     {
                                         continue;
                                     }
-                                    triplets.push((scalar_r, scalar_c, value));
+                                    triplets.push(faer::sparse::Triplet::new(scalar_r, scalar_c, value));
                                 }
                                 ToScalarTripletsImplMode::General => {
-                                    triplets.push((scalar_r, scalar_c, value));
+                                    triplets.push(faer::sparse::Triplet::new(scalar_r, scalar_c, value));
                                 }
                             }
                         }
@@ -255,7 +255,7 @@ impl BlockSparseMatrixBuilder {
     }
 
     /// Convert to scalar triplets.
-    pub fn to_scalar_triplets(&self) -> Vec<(usize, usize, f64)> {
+    pub fn to_scalar_triplets(&self) -> Vec<faer::sparse::Triplet<usize, usize, f64>> {
         self.to_scalar_triplets_impl(ToScalarTripletsImplMode::General)
     }
 

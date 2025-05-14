@@ -16,12 +16,12 @@ use core::{
         SubAssign,
     },
     simd::{
-        cmp::SimdPartialOrd,
-        num::SimdFloat,
         LaneCount,
         Simd,
         SimdElement,
         SupportedLaneCount,
+        cmp::SimdPartialOrd,
+        num::SimdFloat,
     },
 };
 
@@ -39,15 +39,15 @@ use crate::{
         DualBatchVector,
     },
     linalg::{
-        scalar::{
-            IsBatchScalar,
-            NumberCategory,
-        },
         BatchMatF64,
         BatchScalar,
         BatchScalarF64,
         BatchVecF64,
         EPS_F64,
+        scalar::{
+            IsBatchScalar,
+            NumberCategory,
+        },
     },
     prelude::{
         IsCoreScalar,

@@ -7,11 +7,11 @@ use sophus_autodiff::params::IsParamsImpl;
 use sophus_image::ImageSize;
 
 use crate::{
-    camera_enum::EnhancedUnifiedCamera,
-    prelude::*,
     BrownConradyCamera,
     KannalaBrandtCamera,
     PinholeCamera,
+    camera_enum::EnhancedUnifiedCamera,
+    prelude::*,
 };
 
 /// Camera distortion implementation trait

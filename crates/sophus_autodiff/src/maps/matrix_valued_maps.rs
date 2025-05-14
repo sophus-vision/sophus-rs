@@ -109,9 +109,9 @@ fn matrix_valued_map_from_vector_tests() {
     use crate::{
         dual::DualScalar,
         linalg::{
+            EPS_F64,
             IsScalar,
             IsVector,
-            EPS_F64,
         },
         maps::MatrixValuedVectorMap,
     };

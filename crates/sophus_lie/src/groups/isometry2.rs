@@ -3,19 +3,19 @@ use core::borrow::Borrow;
 use log::warn;
 
 use crate::{
-    lie_group::{
-        average::{
-            iterative_average,
-            IterativeAverageError,
-        },
-        LieGroup,
-    },
-    prelude::*,
     EmptySliceError,
     HasAverage,
     Rotation2,
     Rotation2Impl,
     TranslationProductGroupImpl,
+    lie_group::{
+        LieGroup,
+        average::{
+            IterativeAverageError,
+            iterative_average,
+        },
+    },
+    prelude::*,
 };
 
 /// 2d isometry - element of the Special Euclidean group SE(2)
@@ -139,8 +139,7 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
                     parent_from_body_estimate,
                 } => {
                     warn!(
-                        "iterative_average did not converge (iters={}), returning best guess.",
-                        max_iteration_count
+                        "iterative_average did not converge (iters={max_iteration_count}), returning best guess."
                     );
                     Ok(parent_from_body_estimate)
                 }

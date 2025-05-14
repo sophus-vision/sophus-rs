@@ -12,21 +12,21 @@ use sophus_autodiff::{
 };
 
 use crate::{
-    lie_group::LieGroup,
-    prelude::*,
     IsRealLieFactorGroupImpl,
     Rotation2,
     Rotation3,
+    lie_group::LieGroup,
+    prelude::*,
 };
 
 impl<
-        S: IsRealScalar<BATCH, RealScalar = S>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const BATCH: usize,
-        G: IsRealLieFactorGroupImpl<S, DOF, PARAMS, POINT, BATCH>,
-    > LieGroup<S, DOF, PARAMS, POINT, POINT, BATCH, 0, 0, G>
+    S: IsRealScalar<BATCH, RealScalar = S>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const BATCH: usize,
+    G: IsRealLieFactorGroupImpl<S, DOF, PARAMS, POINT, BATCH>,
+> LieGroup<S, DOF, PARAMS, POINT, POINT, BATCH, 0, 0, G>
 {
     /// V matrix - used in the exponential map
     pub fn mat_v<T>(tangent: T) -> S::Matrix<POINT, POINT>

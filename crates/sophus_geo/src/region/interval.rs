@@ -1,13 +1,13 @@
 use sophus_autodiff::linalg::VecF64;
 
 use super::{
+    IsNonEmptyRegion,
+    IsRegion,
+    IsRegionBase,
     box_region::{
         BoxRegion,
         NonEmptyBoxRegion,
     },
-    IsNonEmptyRegion,
-    IsRegion,
-    IsRegionBase,
 };
 
 /// A non-empty interval [a, b] in `ℝ`.

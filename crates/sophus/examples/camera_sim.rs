@@ -6,21 +6,21 @@ use sophus::{
     sim::camera_simulator::CameraSimulator,
 };
 use sophus_image::{
+    ImageSize,
     io::{
         save_as_png,
         save_as_tiff,
     },
-    ImageSize,
 };
 use sophus_renderer::{
+    RenderContext,
     camera::RenderCameraProperties,
     renderables::{
+        Color,
         make_line3,
         make_mesh3_at,
         make_point3,
-        Color,
     },
-    RenderContext,
 };
 
 pub async fn run_offscreen() {
@@ -70,11 +70,5 @@ pub async fn run_offscreen() {
 fn main() {
     env_logger::init();
 
-    tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(async {
-            run_offscreen().await;
-        });
+    pollster::block_on(run_offscreen());
 }

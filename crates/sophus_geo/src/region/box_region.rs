@@ -10,13 +10,13 @@ use sophus_autodiff::{
 };
 
 use super::{
+    IsNonEmptyRegion,
+    IsRegion,
+    IsRegionBase,
     interval::{
         Interval,
         NonEmptyInterval,
     },
-    IsNonEmptyRegion,
-    IsRegion,
-    IsRegionBase,
 };
 
 /// A non-empty n-dimensional "box" interval.

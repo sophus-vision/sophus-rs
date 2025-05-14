@@ -43,10 +43,10 @@ pub mod prelude {
     pub use sophus_tensor::prelude::*;
 
     pub use crate::{
+        IsIntensityArcImage,
         image_view::IsImageView,
         mut_image::IsMutImage,
         mut_image_view::IsMutImageView,
-        IsIntensityArcImage,
     };
 }
 

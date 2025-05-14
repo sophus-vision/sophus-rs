@@ -4,8 +4,8 @@ use sophus_lie::Isometry3F64;
 use crate::{
     prelude::*,
     renderables::{
-        color::Color,
         LineSegment3,
+        color::Color,
     },
 };
 

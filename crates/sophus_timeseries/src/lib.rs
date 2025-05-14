@@ -115,10 +115,7 @@ impl<T: HasTimeStamp> TimeSeries<T> {
     /// it.
     pub fn find_nearest_within(&self, time: f64, max_dist: f64) -> Option<IndexedItem<T>> {
         if !time.is_finite() {
-            warn!(
-                "TimeSeries::find_nearest_within: skipping infinite time stamp {}",
-                time
-            );
+            warn!("TimeSeries::find_nearest_within: skipping infinite time stamp {time}");
             return None;
         }
 

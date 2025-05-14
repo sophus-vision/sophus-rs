@@ -25,15 +25,15 @@ pub struct Camera<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DISTORT: usize,
-        const PARAMS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        Distort: IsCameraDistortionImpl<S, DISTORT, PARAMS, BATCH, DM, DN>,
-        Proj: IsProjection<S, BATCH, DM, DN>,
-    > Camera<S, DISTORT, PARAMS, BATCH, DM, DN, Distort, Proj>
+    S: IsScalar<BATCH, DM, DN>,
+    const DISTORT: usize,
+    const PARAMS: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    Distort: IsCameraDistortionImpl<S, DISTORT, PARAMS, BATCH, DM, DN>,
+    Proj: IsProjection<S, BATCH, DM, DN>,
+> Camera<S, DISTORT, PARAMS, BATCH, DM, DN, Distort, Proj>
 {
     /// Creates a new camera
     pub fn new<Q>(params: Q, image_size: ImageSize) -> Self
@@ -151,15 +151,15 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DISTORT: usize,
-        const PARAMS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        Distort: IsCameraDistortionImpl<S, DISTORT, PARAMS, BATCH, DM, DN>,
-        Proj: IsProjection<S, BATCH, DM, DN>,
-    > Default for Camera<S, DISTORT, PARAMS, BATCH, DM, DN, Distort, Proj>
+    S: IsScalar<BATCH, DM, DN>,
+    const DISTORT: usize,
+    const PARAMS: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    Distort: IsCameraDistortionImpl<S, DISTORT, PARAMS, BATCH, DM, DN>,
+    Proj: IsProjection<S, BATCH, DM, DN>,
+> Default for Camera<S, DISTORT, PARAMS, BATCH, DM, DN, Distort, Proj>
 {
     fn default() -> Self {
         Self::from_params_and_size(Distort::identity_params(), ImageSize::default())

@@ -1,3 +1,4 @@
+use eframe::wgpu;
 use sophus_image::{
     ArcImageF32,
     ImageSize,
@@ -6,6 +7,7 @@ use sophus_image::{
 use wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
 
 use crate::{
+    RenderContext,
     camera::ClippingPlanesF64,
     prelude::*,
     textures::{
@@ -13,7 +15,6 @@ use crate::{
         ndc_z_buffer::NdcZBuffer,
         visual_depth::VisualDepthTexture,
     },
-    RenderContext,
 };
 
 #[derive(Debug)]
@@ -62,14 +63,14 @@ impl DepthTextures {
         let image_rgba = depth_image.color_mapped();
 
         state.wgpu_queue.write_texture(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &self.visual_depth_texture.visual_texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
             bytemuck::cast_slice(image_rgba.tensor.scalar_view().as_slice().unwrap()),
-            wgpu::ImageDataLayout {
+            wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * image_rgba.image_size().width as u32),
                 rows_per_image: Some(image_rgba.image_size().height as u32),
@@ -93,15 +94,15 @@ impl DepthTextures {
 
         // Copy depth texture to staging buffer
         command_encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &self.main_render_ndc_z_texture.final_texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &self.staging_buffer,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(bytes_per_row),
                     rows_per_image: Some(view_port_size.height as u32),

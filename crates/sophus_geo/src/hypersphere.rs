@@ -78,12 +78,8 @@ pub type LineCircleIntersection<S, const DM: usize, const DN: usize> =
 pub type LineSphereIntersection<S, const DM: usize, const DN: usize> =
     LineHypersphereIntersection<S, 3, DM, DN>;
 
-impl<
-        S: IsSingleScalar<DM, DN> + PartialOrd,
-        const DIM: usize,
-        const DM: usize,
-        const DN: usize,
-    > HyperSphere<S, DIM, 1, DM, DN>
+impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DIM: usize, const DM: usize, const DN: usize>
+    HyperSphere<S, DIM, 1, DM, DN>
 {
     /// Function to calculate the intersection between a line: l: o + t*d,
     /// and a hypersphere.

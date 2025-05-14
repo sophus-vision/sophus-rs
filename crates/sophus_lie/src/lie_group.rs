@@ -19,8 +19,8 @@ use sophus_autodiff::{
 };
 
 use crate::{
-    prelude::*,
     IsLieGroupImpl,
+    prelude::*,
 };
 
 extern crate alloc;
@@ -85,16 +85,16 @@ pub struct LieGroup<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
-    > LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
+> LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     /// group adjoint
     pub fn adj(&self) -> S::Matrix<DOF, DOF> {
@@ -347,16 +347,16 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
-    > IsParamsImpl<S, PARAMS, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
+> IsParamsImpl<S, PARAMS, BATCH, DM, DN>
     for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     fn are_params_valid<P>(params: P) -> S::Mask
@@ -376,16 +376,16 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
-    > HasParams<S, PARAMS, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
+> HasParams<S, PARAMS, BATCH, DM, DN>
     for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     fn from_params<P>(params: P) -> Self
@@ -419,17 +419,16 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
-    > IsTangent<S, DOF, BATCH, DM, DN>
-    for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
+> IsTangent<S, DOF, BATCH, DM, DN> for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     fn tangent_examples() -> alloc::vec::Vec<<S as IsScalar<BATCH, DM, DN>>::Vector<DOF>> {
         G::tangent_examples()
@@ -437,16 +436,16 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
-    > IsLieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
+> IsLieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>
     for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     type G = G;

@@ -3,15 +3,15 @@ use core::borrow::Borrow;
 use sophus_image::ImageSize;
 
 use crate::{
+    BrownConradyCamera,
+    KannalaBrandtCamera,
+    PinholeCamera,
     camera_enum::{
         EnhancedUnifiedCamera,
         GeneralCameraEnum,
         PerspectiveCameraEnum,
     },
     prelude::*,
-    BrownConradyCamera,
-    KannalaBrandtCamera,
-    PinholeCamera,
 };
 
 extern crate alloc;
@@ -40,12 +40,12 @@ pub type DynCamera<S, const BATCH: usize, const DM: usize, const DN: usize> =
 pub type DynCameraF64 = DynCamera<f64, 1, 0, 0>;
 
 impl<
-        S: IsScalar<BATCH, DM, DN> + 'static + Send + Sync,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        CameraType: IsPerspectiveCamera<S, BATCH, DM, DN> + IsCamera<S, BATCH, DM, DN>,
-    > DynCameraFacade<S, BATCH, DM, DN, CameraType>
+    S: IsScalar<BATCH, DM, DN> + 'static + Send + Sync,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    CameraType: IsPerspectiveCamera<S, BATCH, DM, DN> + IsCamera<S, BATCH, DM, DN>,
+> DynCameraFacade<S, BATCH, DM, DN, CameraType>
 {
     /// Create default pinhole from Image Size
     pub fn default_pinhole(image_size: ImageSize) -> Self {
@@ -185,11 +185,11 @@ impl<
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN> + 'static + Send + Sync,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > DynCamera<S, BATCH, DM, DN>
+    S: IsScalar<BATCH, DM, DN> + 'static + Send + Sync,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> DynCamera<S, BATCH, DM, DN>
 {
     /// Returns the pinhole parameters
     pub fn pinhole_params(&self) -> S::Vector<4> {
@@ -202,8 +202,8 @@ fn dyn_camera_tests() {
     use approx::assert_relative_eq;
     use sophus_autodiff::{
         linalg::{
-            VecF64,
             EPS_F64,
+            VecF64,
         },
         maps::VectorValuedVectorMap,
     };

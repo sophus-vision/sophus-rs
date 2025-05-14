@@ -18,9 +18,9 @@ use num_traits::Zero;
 use super::matrix::MatrixValuedDerivative;
 use crate::{
     dual::{
-        matrix::IsDualMatrixFromCurve,
         DualScalar,
         DualVector,
+        matrix::IsDualMatrixFromCurve,
     },
     linalg::{
         MatF64,
@@ -365,11 +365,7 @@ impl<const ROWS: usize, const COLS: usize, const DM: usize, const DN: usize>
     where
         Q: Borrow<Self>,
     {
-        if *mask {
-            *self
-        } else {
-            *other.borrow()
-        }
+        if *mask { *self } else { *other.borrow() }
     }
 
     fn transposed(&self) -> <DualScalar<DM, DN> as IsScalar<1, DM, DN>>::Matrix<COLS, ROWS> {

@@ -30,11 +30,11 @@ use super::{
 };
 use crate::{
     linalg::{
+        EPS_F64,
         MatF64,
         NumberCategory,
         SVec,
         VecF64,
-        EPS_F64,
     },
     prelude::*,
 };
@@ -453,11 +453,7 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
     }
 
     fn select(&self, mask: &Self::Mask, other: Self) -> Self {
-        if *mask {
-            *self
-        } else {
-            other
-        }
+        if *mask { *self } else { other }
     }
 
     fn greater_equal(&self, rhs: &Self) -> Self::Mask {

@@ -10,20 +10,20 @@ use sophus_geo::{
     UnitVector,
 };
 use sophus_lie::{
-    prelude::IsSingleScalar,
     Rotation2,
+    prelude::IsSingleScalar,
 };
 use sophus_renderer::renderables::{
-    named_line3,
     Color,
     LineSegment3,
     SceneRenderable,
+    named_line3,
 };
 
 use crate::examples::optics_sim::{
     element::{
-        gray_color,
         Element,
+        gray_color,
     },
     light_path::unproj2,
 };

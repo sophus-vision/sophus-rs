@@ -17,8 +17,8 @@ use crate::{
     nlls::{
         cost::{
             compare_idx::{
-                c_from_var_kind,
                 CompareIdx,
+                c_from_var_kind,
             },
             evaluated_cost::EvaluatedCost,
             evaluated_term::EvaluatedCostTerm,
@@ -94,12 +94,12 @@ pub struct CostFn<
 }
 
 impl<
-        const INPUT_DIM: usize,
-        const N: usize,
-        GlobalConstants: 'static + Send + Sync,
-        ResidualFn: HasResidualFn<INPUT_DIM, N, GlobalConstants, Args> + 'static,
-        Args: IsVarTuple<N> + 'static,
-    > CostFn<INPUT_DIM, N, GlobalConstants, ResidualFn, Args>
+    const INPUT_DIM: usize,
+    const N: usize,
+    GlobalConstants: 'static + Send + Sync,
+    ResidualFn: HasResidualFn<INPUT_DIM, N, GlobalConstants, Args> + 'static,
+    Args: IsVarTuple<N> + 'static,
+> CostFn<INPUT_DIM, N, GlobalConstants, ResidualFn, Args>
 {
     /// Create from global constants and cost terms.
     pub fn new_boxed(
@@ -141,12 +141,12 @@ pub enum CostError {
 }
 
 impl<
-        const INPUT_DIM: usize,
-        const N: usize,
-        GlobalConstants: 'static + Send + Sync,
-        ResidualFn: HasResidualFn<INPUT_DIM, N, GlobalConstants, Args> + 'static,
-        Args: IsVarTuple<N> + 'static,
-    > IsCostFn for CostFn<INPUT_DIM, N, GlobalConstants, ResidualFn, Args>
+    const INPUT_DIM: usize,
+    const N: usize,
+    GlobalConstants: 'static + Send + Sync,
+    ResidualFn: HasResidualFn<INPUT_DIM, N, GlobalConstants, Args> + 'static,
+    Args: IsVarTuple<N> + 'static,
+> IsCostFn for CostFn<INPUT_DIM, N, GlobalConstants, ResidualFn, Args>
 {
     fn eval(
         &self,

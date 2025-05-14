@@ -1,10 +1,12 @@
 mod pixel_line;
 mod pixel_point;
 
+use eframe::wgpu;
 pub use pixel_line::*;
 pub use pixel_point::*;
 
 use crate::{
+    RenderContext,
     pipeline_builder::{
         PipelineBuilder,
         PointVertex2,
@@ -17,7 +19,6 @@ use crate::{
     prelude::*,
     types::SceneFocusMarker,
     uniform_buffers::VertexShaderUniformBuffers,
-    RenderContext,
 };
 
 /// Renderer for pixel data

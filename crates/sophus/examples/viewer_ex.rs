@@ -15,26 +15,25 @@ use sophus_image::{
     MutImageF32,
 };
 use sophus_renderer::{
+    RenderContext,
     camera::{
         ClippingPlanes,
         RenderCamera,
         RenderCameraProperties,
     },
     renderables::{
+        Color,
+        ImageFrame,
         make_line2,
         make_line3,
         make_mesh3_at,
         make_point2,
         make_point3,
-        Color,
-        ImageFrame,
     },
-    RenderContext,
 };
 use sophus_viewer::{
+    SimpleViewer,
     packets::{
-        append_to_scene_packet,
-        create_scene_packet,
         ClearCondition,
         CurveVecStyle,
         CurveVecWithConfStyle,
@@ -43,8 +42,10 @@ use sophus_viewer::{
         Packet,
         PlotViewPacket,
         ScalarCurveStyle,
+        VerticalLine,
+        append_to_scene_packet,
+        create_scene_packet,
     },
-    SimpleViewer,
 };
 use thingbuf::mpsc::blocking::channel;
 
@@ -194,6 +195,11 @@ fn main() {
             let cos_x = x.cos();
             let tan_x = x.tan().clamp(-1.5, 1.5);
 
+            let v_line = VerticalLine {
+                x,
+                name: "now".to_owned(),
+            };
+
             let plot_packets = vec![
                 PlotViewPacket::append_to_curve(
                     ("scalar-curve", "sin"),
@@ -203,7 +209,7 @@ fn main() {
                         line_type: LineType::default(),
                     },
                     ClearCondition { max_x_range: TAU },
-                    Some(x - 0.2),
+                    Some(v_line.clone()),
                 ),
                 PlotViewPacket::append_to_curve_vec3(
                     ("curve-vec", ("sin_cos_tan")),
@@ -213,7 +219,7 @@ fn main() {
                         line_type: LineType::default(),
                     },
                     ClearCondition { max_x_range: TAU },
-                    Some(x - 0.2),
+                    Some(v_line.clone()),
                 ),
                 PlotViewPacket::append_to_curve_vec2_with_conf(
                     ("curve-vec +- e", ("sin_cos")),
@@ -222,7 +228,7 @@ fn main() {
                         colors: [Color::red(), Color::green()],
                     },
                     ClearCondition { max_x_range: TAU },
-                    Some(x - 0.2),
+                    Some(v_line.clone()),
                 ),
             ];
 

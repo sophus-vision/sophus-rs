@@ -139,6 +139,7 @@ fn evaluate_cost_and_build_linear_system(
         cost_system,
         eq_system,
         params.solver,
+        params.parallelize,
     ))
 }
 
@@ -263,7 +264,7 @@ pub fn optimize_nlls_with_eq_constraints(
             i, cost_system.lm_damping, merit, new_merit
         );
     }
-    info!("e^2: {:?} -> {:?}", initial_merit, merit);
+    info!("e^2: {initial_merit:?} -> {merit:?}");
 
     // Calculate the final gradient and hessian. This is not strictly necessary, but it is useful
     // for debugging, and not too expensive.

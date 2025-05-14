@@ -5,6 +5,7 @@ mod point;
 mod textured_mesh;
 
 pub use distortion::*;
+use eframe::wgpu;
 pub use line::*;
 pub use mesh::*;
 pub use point::*;
@@ -13,6 +14,7 @@ pub use textured_mesh::*;
 use wgpu::DepthStencilState;
 
 use crate::{
+    RenderContext,
     pipeline_builder::{
         PipelineBuilder,
         TargetTexture,
@@ -27,7 +29,6 @@ use crate::{
         RgbdTexture,
     },
     uniform_buffers::VertexShaderUniformBuffers,
-    RenderContext,
 };
 
 /// Scene renderer

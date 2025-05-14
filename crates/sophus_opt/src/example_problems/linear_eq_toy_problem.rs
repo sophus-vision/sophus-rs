@@ -3,15 +3,15 @@ use sophus_lie::prelude::IsMatrix;
 
 use crate::{
     nlls::{
-        costs::Quadratic1CostTerm,
-        eq_constraints::ExampleLinearEqConstraint,
-        optimize_nlls_with_eq_constraints,
         CostFn,
         CostTerms,
         EqConstraintFn,
         EqConstraints,
         LinearSolverType,
         OptParams,
+        costs::Quadratic1CostTerm,
+        eq_constraints::ExampleLinearEqConstraint,
+        optimize_nlls_with_eq_constraints,
     },
     variables::{
         VarBuilder,

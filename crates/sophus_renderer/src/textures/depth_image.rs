@@ -1,12 +1,12 @@
 use eframe::egui::mutex::Mutex;
 use sophus_autodiff::linalg::SVec;
 use sophus_image::{
-    color_map::BlueWhiteRedBlackColorMap,
-    prelude::*,
     ArcImage4U8,
     ArcImageF32,
     MutImage4U8,
     MutImageF32,
+    color_map::BlueWhiteRedBlackColorMap,
+    prelude::*,
 };
 
 use crate::camera::ClippingPlanesF32;

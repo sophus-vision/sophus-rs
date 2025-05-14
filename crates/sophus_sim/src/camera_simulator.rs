@@ -3,11 +3,11 @@ use alloc::vec::Vec;
 use sophus_image::ArcImage4U8;
 use sophus_lie::Isometry3F64;
 use sophus_renderer::{
+    OffscreenRenderer,
+    RenderContext,
     camera::RenderCameraProperties,
     renderables::SceneRenderable,
     textures::DepthImage,
-    OffscreenRenderer,
-    RenderContext,
 };
 
 extern crate alloc;

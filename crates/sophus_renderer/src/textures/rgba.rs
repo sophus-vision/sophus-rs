@@ -1,11 +1,14 @@
 use core::f32;
 
-use eframe::egui::{
-    self,
+use eframe::{
+    egui::{
+        self,
+    },
+    wgpu,
 };
 use sophus_image::{
-    ArcImage4U16,
     ArcImage4U8,
+    ArcImage4U16,
     ArcImageF32,
     ImageSize,
     ImageView4U8,
@@ -13,8 +16,8 @@ use sophus_image::{
 use wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
 
 use crate::{
-    types::DOG_MULTISAMPLE_COUNT,
     RenderContext,
+    types::DOG_MULTISAMPLE_COUNT,
 };
 
 /// rgba texture
@@ -173,15 +176,15 @@ impl RgbdTexture {
         });
 
         command_encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &self.final_texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &buffer,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(bytes_per_row),
                     rows_per_image: Some(h),

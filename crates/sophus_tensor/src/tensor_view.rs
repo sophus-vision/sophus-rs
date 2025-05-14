@@ -7,8 +7,8 @@ use sophus_autodiff::linalg::{
 };
 
 use crate::{
-    prelude::*,
     MutTensor,
+    prelude::*,
 };
 
 /// Tensor view
@@ -170,12 +170,12 @@ pub trait IsTensorView<
 macro_rules! tensor_view_is_view {
     ($scalar_rank:literal, $srank:literal, $drank:literal) => {
         impl<
-                'a,
-                Scalar: IsCoreScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS>,
-                const ROWS: usize,
-                const COLS: usize,
-            > TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS>
+            'a,
+            Scalar: IsCoreScalar + 'static,
+            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS>,
+            const ROWS: usize,
+            const COLS: usize,
+        > TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS>
         {
             /// Create a new tensor view from an ndarray of static tensors
             pub fn new(
@@ -218,12 +218,12 @@ macro_rules! tensor_view_is_view {
         }
 
         impl<
-                'a,
-                Scalar: IsCoreScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
-                const ROWS: usize,
-                const COLS: usize,
-            > IsTensorLike<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS>
+            'a,
+            Scalar: IsCoreScalar + 'static,
+            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
+            const ROWS: usize,
+            const COLS: usize,
+        > IsTensorLike<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS>
             for TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS>
         {
             fn elem_view<'b: 'a>(
@@ -265,12 +265,12 @@ macro_rules! tensor_view_is_view {
         }
 
         impl<
-                'a,
-                Scalar: IsCoreScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
-                const ROWS: usize,
-                const COLS: usize,
-            > IsTensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS>
+            'a,
+            Scalar: IsCoreScalar + 'static,
+            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
+            const ROWS: usize,
+            const COLS: usize,
+        > IsTensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS>
             for TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS>
         {
             fn view<'b: 'a>(
@@ -281,12 +281,12 @@ macro_rules! tensor_view_is_view {
         }
 
         impl<
-                'a,
-                Scalar: IsCoreScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
-                const ROWS: usize,
-                const COLS: usize,
-            > TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS>
+            'a,
+            Scalar: IsCoreScalar + 'static,
+            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
+            const ROWS: usize,
+            const COLS: usize,
+        > TensorView<'a, $scalar_rank, $drank, $srank, Scalar, STensor, ROWS, COLS>
         {
         }
     };

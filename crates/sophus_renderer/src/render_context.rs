@@ -1,6 +1,7 @@
 use eframe::{
     egui_wgpu,
     epaint::mutex::RwLock,
+    wgpu,
 };
 
 use crate::{
@@ -25,9 +26,9 @@ impl RenderContext {
     /// Creates a render context from a egui_wgpu render state
     pub fn from_render_state(render_state: &egui_wgpu::RenderState) -> Self {
         RenderContext {
-            wgpu_adapter: render_state.adapter.clone(),
-            wgpu_device: render_state.device.clone(),
-            wgpu_queue: render_state.queue.clone(),
+            wgpu_adapter: Arc::new(render_state.adapter.clone()),
+            wgpu_device: Arc::new(render_state.device.clone()),
+            wgpu_queue: Arc::new(render_state.queue.clone()),
             egui_wgpu_renderer: render_state.renderer.clone(),
         }
     }
@@ -35,7 +36,7 @@ impl RenderContext {
     /// Creates a new render context, include wgpu device, adapter and queue
     /// as well as egui_wgpu renderer.
     pub async fn new() -> Self {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
@@ -52,11 +53,14 @@ impl RenderContext {
             .await
             .unwrap();
 
+        const DITHERING: bool = false;
+
         let renderer = egui_wgpu::Renderer::new(
             &device,
             wgpu::TextureFormat::Rgba8Unorm,
             None,
             DOG_MULTISAMPLE_COUNT,
+            DITHERING,
         );
 
         RenderContext {

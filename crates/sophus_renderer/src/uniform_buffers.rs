@@ -1,18 +1,19 @@
+use eframe::wgpu;
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;
 use wgpu::{
-    util::DeviceExt,
     ShaderStages,
+    util::DeviceExt,
 };
 
 use crate::{
+    RenderContext,
     camera::RenderCameraProperties,
     prelude::*,
     types::{
         TranslationAndScaling,
         Zoom2dPod,
     },
-    RenderContext,
 };
 
 #[repr(C)]

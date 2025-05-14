@@ -1,9 +1,9 @@
 use sophus_tensor::MutTensorView;
 
 use crate::{
+    ImageSize,
     image_view::GenImageView,
     prelude::*,
-    ImageSize,
 };
 
 /// Mutable image view of a static tensors
@@ -26,12 +26,12 @@ pub struct GenMutImageView<
 macro_rules! mut_image_view {
     ($scalar_rank:literal, $srank:literal) => {
         impl<
-                'a,
-                Scalar: IsCoreScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
-                const ROWS: usize,
-                const COLS: usize,
-            > IsImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
+            'a,
+            Scalar: IsCoreScalar + 'static,
+            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
+            const ROWS: usize,
+            const COLS: usize,
+        > IsImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
             for GenMutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
         where
             ndarray::Dim<[ndarray::Ix; $scalar_rank]>: ndarray::Dimension,
@@ -56,12 +56,12 @@ macro_rules! mut_image_view {
         }
 
         impl<
-                'a,
-                Scalar: IsCoreScalar + 'static,
-                STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
-                const ROWS: usize,
-                const COLS: usize,
-            > IsMutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
+            'a,
+            Scalar: IsCoreScalar + 'static,
+            STensor: IsStaticTensor<Scalar, $srank, ROWS, COLS> + 'static,
+            const ROWS: usize,
+            const COLS: usize,
+        > IsMutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
             for GenMutImageView<'a, $scalar_rank, $srank, Scalar, STensor, ROWS, COLS>
         where
             MutTensorView<'a, $scalar_rank, 2, $srank, Scalar, STensor, ROWS, COLS>:

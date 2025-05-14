@@ -7,17 +7,17 @@ use super::{
     translation_product_product::TranslationProductGroupImpl,
 };
 use crate::{
-    lie_group::{
-        average::{
-            iterative_average,
-            IterativeAverageError,
-        },
-        LieGroup,
-    },
-    prelude::*,
     EmptySliceError,
     HasAverage,
     Rotation3,
+    lie_group::{
+        LieGroup,
+        average::{
+            IterativeAverageError,
+            iterative_average,
+        },
+    },
+    prelude::*,
 };
 
 /// 3d isometry - element of the Special Euclidean group SE(3)
@@ -166,8 +166,7 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
                     parent_from_body_estimate,
                 } => {
                     warn!(
-                        "iterative_average did not converge (iters={}), returning best guess.",
-                        max_iteration_count
+                        "iterative_average did not converge (iters={max_iteration_count}), returning best guess."
                     );
                     Ok(parent_from_body_estimate)
                 }

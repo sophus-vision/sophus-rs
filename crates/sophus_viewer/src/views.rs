@@ -18,8 +18,8 @@ pub use plot_view::*;
 pub(crate) use scene_view::*;
 use sophus_image::ImageSize;
 use sophus_renderer::{
-    camera::RenderCameraProperties,
     HasAspectRatio,
+    camera::RenderCameraProperties,
 };
 
 use crate::interactions::InteractionEnum;

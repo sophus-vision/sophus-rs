@@ -1,10 +1,13 @@
 use sophus_renderer::renderables::Color;
 
 use crate::{
-    packets::plot_view_packet::{
-        ClearCondition,
-        CurveTrait,
-        LineType,
+    packets::{
+        VerticalLine,
+        plot_view_packet::{
+            ClearCondition,
+            CurveTrait,
+            LineType,
+        },
     },
     prelude::*,
 };
@@ -19,7 +22,7 @@ pub struct CurveVec<const N: usize> {
     /// clear condition
     pub clear_cond: ClearCondition,
     /// vertical line
-    pub v_line: Option<f64>,
+    pub v_line: Option<VerticalLine>,
 }
 
 /// style of CurveVec
@@ -38,7 +41,7 @@ impl<const N: usize> CurveVec<N> {
         color: [Color; N],
         line_type: LineType,
         clear_cond: ClearCondition,
-        v_line: Option<f64>,
+        v_line: Option<VerticalLine>,
     ) -> Self {
         CurveVec {
             data,
@@ -57,7 +60,7 @@ impl<const N: usize> CurveTrait<[f64; N], CurveVecStyle<N>> for CurveVec<N> {
         &mut self.data
     }
 
-    fn update_vline(&mut self, v_line: Option<f64>) {
+    fn update_vline(&mut self, v_line: Option<VerticalLine>) {
         self.v_line = v_line;
     }
 

@@ -22,8 +22,6 @@ use sophus_autodiff::{
 };
 
 use crate::{
-    lie_group::LieGroup,
-    prelude::*,
     IsLieGroupImpl,
     IsRealLieGroupImpl,
     Isometry2,
@@ -34,19 +32,21 @@ use crate::{
     Rotation2F64,
     Rotation3,
     Rotation3F64,
+    lie_group::LieGroup,
+    prelude::*,
 };
 
 extern crate alloc;
 
 impl<
-        S: IsRealScalar<BATCH, RealScalar = S>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const BATCH: usize,
-        G: IsRealLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH>,
-    > LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, 0, 0, G>
+    S: IsRealScalar<BATCH, RealScalar = S>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const BATCH: usize,
+    G: IsRealLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH>,
+> LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, 0, 0, G>
 where
     SVector<S, DOF>: IsVector<S, DOF, BATCH, 0, 0>,
 {
@@ -147,16 +147,16 @@ where
 }
 
 impl<
-        S: IsScalar<BATCH, DM, DN>,
-        const DOF: usize,
-        const PARAMS: usize,
-        const POINT: usize,
-        const AMBIENT: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-        G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
-    > Display for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
+    S: IsScalar<BATCH, DM, DN>,
+    const DOF: usize,
+    const PARAMS: usize,
+    const POINT: usize,
+    const AMBIENT: usize,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+    G: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>,
+> Display for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:?}", self.compact())

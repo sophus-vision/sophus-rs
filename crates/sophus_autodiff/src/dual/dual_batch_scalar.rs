@@ -38,9 +38,9 @@ use crate::{
         BatchMatF64,
         BatchScalarF64,
         BatchVecF64,
+        EPS_F64,
         NumberCategory,
         SVec,
-        EPS_F64,
     },
     prelude::*,
 };

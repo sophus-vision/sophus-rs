@@ -66,13 +66,8 @@ pub struct DualBatchMatrix<
     pub(crate) inner: SMat<DualBatchScalar<BATCH, DM, DN>, ROWS, COLS>,
 }
 
-impl<
-        const ROWS: usize,
-        const COLS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > IsDualMatrix<DualBatchScalar<BATCH, DM, DN>, ROWS, COLS, BATCH, DM, DN>
+impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, const DN: usize>
+    IsDualMatrix<DualBatchScalar<BATCH, DM, DN>, ROWS, COLS, BATCH, DM, DN>
     for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
@@ -125,13 +120,8 @@ where
     }
 }
 
-impl<
-        const ROWS: usize,
-        const COLS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > PartialEq for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
+impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, const DN: usize>
+    PartialEq for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
     LaneCount<BATCH>: SupportedLaneCount,
@@ -141,13 +131,8 @@ where
     }
 }
 
-impl<
-        const ROWS: usize,
-        const COLS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > AbsDiffEq for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
+impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, const DN: usize>
+    AbsDiffEq for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
     LaneCount<BATCH>: SupportedLaneCount,
@@ -163,13 +148,8 @@ where
     }
 }
 
-impl<
-        const ROWS: usize,
-        const COLS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > RelativeEq for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
+impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, const DN: usize>
+    RelativeEq for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
     LaneCount<BATCH>: SupportedLaneCount,
@@ -188,13 +168,8 @@ where
     }
 }
 
-impl<
-        const ROWS: usize,
-        const COLS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > IsMatrix<DualBatchScalar<BATCH, DM, DN>, ROWS, COLS, BATCH, DM, DN>
+impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, const DN: usize>
+    IsMatrix<DualBatchScalar<BATCH, DM, DN>, ROWS, COLS, BATCH, DM, DN>
     for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
@@ -442,13 +417,8 @@ where
     }
 }
 
-impl<
-        const ROWS: usize,
-        const COLS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > Add for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
+impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, const DN: usize> Add
+    for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
     LaneCount<BATCH>: SupportedLaneCount,
@@ -462,13 +432,8 @@ where
     }
 }
 
-impl<
-        const ROWS: usize,
-        const COLS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > Sub for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
+impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, const DN: usize> Sub
+    for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
     LaneCount<BATCH>: SupportedLaneCount,
@@ -482,13 +447,8 @@ where
     }
 }
 
-impl<
-        const ROWS: usize,
-        const COLS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > Neg for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
+impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, const DN: usize> Neg
+    for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
     LaneCount<BATCH>: SupportedLaneCount,
@@ -500,13 +460,8 @@ where
     }
 }
 
-impl<
-        const ROWS: usize,
-        const COLS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > Zero for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
+impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, const DN: usize>
+    Zero for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
     LaneCount<BATCH>: SupportedLaneCount,
@@ -520,13 +475,8 @@ where
     }
 }
 
-impl<
-        const ROWS: usize,
-        const COLS: usize,
-        const BATCH: usize,
-        const DM: usize,
-        const DN: usize,
-    > Mul<DualBatchVector<COLS, BATCH, DM, DN>> for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
+impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, const DN: usize>
+    Mul<DualBatchVector<COLS, BATCH, DM, DN>> for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
     LaneCount<BATCH>: SupportedLaneCount,

@@ -398,11 +398,7 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1, 0, 0>
     where
         Q: Borrow<Self>,
     {
-        if *mask {
-            *self
-        } else {
-            *other.borrow()
-        }
+        if *mask { *self } else { *other.borrow() }
     }
 
     fn transposed(&self) -> MatF64<COLS, ROWS> {

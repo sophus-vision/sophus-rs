@@ -23,13 +23,13 @@ mod vector;
 use core::ops::Add;
 #[cfg(feature = "simd")]
 use core::simd::{
-    cmp::SimdPartialEq,
-    num::SimdFloat,
     LaneCount,
     Mask,
     Simd,
     SimdElement,
     SupportedLaneCount,
+    cmp::SimdPartialEq,
+    num::SimdFloat,
 };
 
 #[cfg(feature = "simd")]

@@ -7,19 +7,19 @@ use std::{
 };
 
 use crate::{
+    ImageSize,
+    MutImage2U8,
+    MutImage2U16,
+    MutImage3U8,
+    MutImage3U16,
+    MutImage4U8,
+    MutImage4U16,
+    MutImageU8,
+    MutImageU16,
     intensity_image::{
         dyn_intensity_image::DynIntensityMutImage,
         intensity_image_view::IsIntensityViewImageU,
     },
-    ImageSize,
-    MutImage2U16,
-    MutImage2U8,
-    MutImage3U16,
-    MutImage3U8,
-    MutImage4U16,
-    MutImage4U8,
-    MutImageU16,
-    MutImageU8,
 };
 
 /// Save an image of unsigned integers as a PNG file

@@ -14,15 +14,16 @@ members = [
   "crates/sophus_viewer",
   "crates/sophus_sim",
 ]
-resolver = "2"
+resolver = "3"
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 include = ["**/*.rs", "**/*.wgsl", "**/*.md", "**/Cargo.toml"]
 keywords = ["robotics", "optimization"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/sophus-vision/sophus-rs/"
 version = "0.15.0"
+rust-version = "1.86.0"
 
 [workspace.dependencies]
 sophus = { path = "crates/sophus", version = "0.15.0" }
@@ -46,25 +47,25 @@ bytemuck = { version = "1.20.0", features = ["derive"] }
 concat-arrays = "0.1"
 dyn-clone = "1.0"
 env_logger = "0.11"
-faer = "0.20.1"
+faer = { version = "0.22.6" }
 linked-hash-map = "0.5"
 log = "0.4"
 nalgebra = { version = "0.33.2", features = ["rand", "bytemuck"] }
-ndarray = { version = "0.15", features = ["approx-0_5"] }
+ndarray = { version = "0.16", features = ["approx"] }
+pollster = { version = "0.4" }
 num-traits = "0.2"
-rand = "0.8"
+rand = "0.9"
 rustc_version = "0.4"
 snafu = "0.8.5"
 typenum = { version = "1.17", features = ["const-generics"] }
-winit = { version = "0.30.5", features = ["android-native-activity"] }
+winit = { version = "0.30.10", features = ["android-native-activity"] }
 
 # viewer
-eframe = { version = "0.28.1", features = ["wgpu"] }
-egui-wgpu = "0.28.1"
-egui_plot = "0.28.1"
-egui_extras = "0.28.1"
+eframe = { version = "0.31.1", features = ["wgpu"] }
+egui-wgpu = "0.31.1"
+egui_plot = "0.32.1"
+egui_extras = "0.31.1"
 thingbuf = "0.1.6"
-wgpu = "0.20.1"
 
 [profile.release]
 debug = 1

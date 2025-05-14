@@ -13,8 +13,6 @@ use sophus_autodiff::{
 };
 
 use crate::{
-    lie_group::LieGroup,
-    prelude::*,
     EmptySliceError,
     HasAverage,
     HasDisambiguate,
@@ -22,6 +20,8 @@ use crate::{
     IsLieGroupImpl,
     IsRealLieFactorGroupImpl,
     IsRealLieGroupImpl,
+    lie_group::LieGroup,
+    prelude::*,
 };
 
 extern crate alloc;

@@ -83,7 +83,7 @@ impl PlotView {
                                 new_value.scalar_curve.data.clone(),
                                 new_value.scalar_curve.style,
                                 new_value.scalar_curve.clear_cond,
-                                new_value.scalar_curve.v_line,
+                                new_value.scalar_curve.v_line.clone(),
                             );
                         }
                         GraphType::Vec3(_) => {}
@@ -108,7 +108,7 @@ impl PlotView {
                                 new_value.scalar_curve.data.clone(),
                                 new_value.scalar_curve.style,
                                 new_value.scalar_curve.clear_cond,
-                                new_value.scalar_curve.v_line,
+                                new_value.scalar_curve.v_line.clone(),
                             );
                         }
                         GraphType::Vec3Conf(_) => {}
@@ -132,7 +132,7 @@ impl PlotView {
                                 new_value.scalar_curve.data.clone(),
                                 new_value.scalar_curve.style,
                                 new_value.scalar_curve.clear_cond,
-                                new_value.scalar_curve.v_line,
+                                new_value.scalar_curve.v_line.clone(),
                             );
                         }
                         GraphType::Vec3Conf(_) => {}
@@ -157,7 +157,7 @@ impl PlotView {
                                 new_value.scalar_curve.data.clone(),
                                 new_value.scalar_curve.style,
                                 new_value.scalar_curve.clear_cond,
-                                new_value.scalar_curve.v_line,
+                                new_value.scalar_curve.v_line.clone(),
                             );
                         }
                         GraphType::Vec2(_) => {}
@@ -181,7 +181,7 @@ impl PlotView {
                                 new_value.scalar_curve.data.clone(),
                                 new_value.scalar_curve.style,
                                 new_value.scalar_curve.clear_cond,
-                                new_value.scalar_curve.v_line,
+                                new_value.scalar_curve.v_line.clone(),
                             );
                         }
                         GraphType::Vec2(_) => {}

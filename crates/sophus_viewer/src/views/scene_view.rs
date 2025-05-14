@@ -1,16 +1,16 @@
 use linked_hash_map::LinkedHashMap;
 use log::warn;
 use sophus_renderer::{
-    camera::RenderIntrinsics,
     HasAspectRatio,
     OffscreenRenderer,
     RenderContext,
+    camera::RenderIntrinsics,
 };
 
 use crate::{
     interactions::{
-        orbit_interaction::OrbitalInteraction,
         InteractionEnum,
+        orbit_interaction::OrbitalInteraction,
     },
     packets::{
         SceneViewCreation,

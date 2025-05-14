@@ -7,9 +7,9 @@ use core::{
 use log::warn;
 use sophus_autodiff::{
     linalg::{
-        cross,
-        MatF64,
         EPS_F64,
+        MatF64,
+        cross,
     },
     manifold::IsTangent,
     params::{
@@ -19,20 +19,20 @@ use sophus_autodiff::{
 };
 
 use crate::{
-    lie_group::{
-        average::{
-            iterative_average,
-            IterativeAverageError,
-        },
-        LieGroup,
-    },
-    prelude::*,
     EmptySliceError,
     HasAverage,
     HasDisambiguate,
     IsLieGroupImpl,
     IsRealLieFactorGroupImpl,
     IsRealLieGroupImpl,
+    lie_group::{
+        LieGroup,
+        average::{
+            IterativeAverageError,
+            iterative_average,
+        },
+    },
+    prelude::*,
 };
 
 extern crate alloc;
@@ -1098,8 +1098,7 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
                     parent_from_body_estimate,
                 } => {
                     warn!(
-                        "iterative_average did not converge (iters={}), returning best guess.",
-                        max_iteration_count
+                        "iterative_average did not converge (iters={max_iteration_count}), returning best guess."
                     );
                     Ok(parent_from_body_estimate)
                 }
@@ -1116,21 +1115,21 @@ fn from_matrix_test() {
     for q in Rotation3F64::element_examples() {
         let mat: MatF64<3, 3> = q.matrix();
 
-        info!("mat = {:?}", mat);
+        info!("mat = {mat:?}");
         let q2: Rotation3F64 = Rotation3::try_from_mat(mat).unwrap();
         let mat2 = q2.matrix();
 
-        info!("mat2 = {:?}", mat2);
+        info!("mat2 = {mat2:?}");
         assert_relative_eq!(mat, mat2, epsilon = EPS_F64);
     }
 
     // Iterate over all tangent too, just to get more examples.
     for t in Rotation3F64::tangent_examples() {
         let mat: MatF64<3, 3> = Rotation3F64::exp(t).matrix();
-        info!("mat = {:?}", mat);
+        info!("mat = {mat:?}");
         let t2: Rotation3F64 = Rotation3::try_from_mat(mat).unwrap();
         let mat2 = t2.matrix();
-        info!("mat2 = {:?}", mat2);
+        info!("mat2 = {mat2:?}");
         assert_relative_eq!(mat, mat2, epsilon = EPS_F64);
     }
 }

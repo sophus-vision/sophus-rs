@@ -1,5 +1,5 @@
 use faer::{
-    prelude::SpSolver,
+    prelude::Solve,
     sparse::FaerError,
 };
 
@@ -22,7 +22,7 @@ impl IsSparseSymmetricLinearSystem for SparseQr {
         b: &nalgebra::DVector<f64>,
     ) -> Result<nalgebra::DVector<f64>, NllsError> {
         let dim = upper_triangular.scalar_dimension();
-        let csr = faer::sparse::SparseColMat::try_new_from_triplets(
+        let csc = faer::sparse::SparseColMat::try_new_from_triplets(
             dim,
             dim,
             &upper_triangular.to_symmetric_scalar_triplets(),
@@ -30,9 +30,9 @@ impl IsSparseSymmetricLinearSystem for SparseQr {
         .unwrap();
         let mut x = b.clone();
         let x_slice_mut = x.as_mut_slice();
-        let mut x_ref = faer::mat::from_column_major_slice_mut(x_slice_mut, dim, 1);
+        let mut x_ref = faer::MatMut::<f64>::from_column_major_slice_mut(x_slice_mut, dim, 1);
 
-        match csr.sp_qr() {
+        match csc.sp_qr() {
             Ok(qr) => {
                 qr.solve_in_place(faer::reborrow::ReborrowMut::rb_mut(&mut x_ref));
                 Ok(x)
