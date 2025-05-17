@@ -2,7 +2,7 @@ use log::warn;
 
 use super::{
     rotation3::Rotation3Impl,
-    translation_product_product::TranslationProductGroupImpl,
+    affine_group_template::AffineGroupTemplateImpl,
 };
 use crate::{
     EmptySliceError,
@@ -35,7 +35,7 @@ pub type Isometry3F64 = Isometry3<f64, 1, 0, 0>;
 
 /// 3d isometry implementation details
 pub type Isometry3Impl<S, const BATCH: usize, const DM: usize, const DN: usize> =
-    TranslationProductGroupImpl<
+    AffineGroupTemplateImpl<
         S,
         6,
         7,
