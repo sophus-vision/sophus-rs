@@ -93,21 +93,13 @@ pub trait IsCamera<
 >
 {
     /// Creates a new pinhole camera
-    fn new_pinhole<P>(params: P, image_size: ImageSize) -> Self
-    where
-        P: Borrow<S::Vector<4>>;
+    fn new_pinhole(params: S::Vector<4>, image_size: ImageSize) -> Self;
     /// Creates a new Kannala-Brandt camera
-    fn new_kannala_brandt<P>(params: P, image_size: ImageSize) -> Self
-    where
-        P: Borrow<S::Vector<8>>;
+    fn new_kannala_brandt(params: S::Vector<8>, image_size: ImageSize) -> Self;
     /// Creates a new Brown-Conrady camera
-    fn new_brown_conrady<P>(params: P, image_size: ImageSize) -> Self
-    where
-        P: Borrow<S::Vector<12>>;
+    fn new_brown_conrady(params: S::Vector<12>, image_size: ImageSize) -> Self;
     /// Creates a new Enhanced Unified camera
-    fn new_enhanced_unified<P>(params: P, image_size: ImageSize) -> Self
-    where
-        P: Borrow<S::Vector<6>>;
+    fn new_enhanced_unified(params: S::Vector<6>, image_size: ImageSize) -> Self;
 
     /// Returns the image size
     fn image_size(&self) -> ImageSize;

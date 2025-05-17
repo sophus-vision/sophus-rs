@@ -432,6 +432,17 @@ where
         }
     }
 
+     fn tanh(&self) -> Self {
+        let tanh_x = self.real_part.tanh();
+        Self {
+            real_part: tanh_x,
+            infinitesimal_part: self.infinitesimal_part.map(|dij_val| {
+                let one = BatchScalarF64::<BATCH>::from_f64(1.0);
+                dij_val * (one - tanh_x * tanh_x)
+            }),
+        }
+    }
+
     fn acos(&self) -> Self {
         // d/dx acos(x) = -1 / sqrt(1 - x^2)
         let val = self.real_part.acos();

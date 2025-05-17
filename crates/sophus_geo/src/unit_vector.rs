@@ -109,9 +109,7 @@ impl<
     const DN: usize,
 > IsParamsImpl<S, DIM, BATCH, DM, DN> for UnitVectorImpl<S, DOF, DIM, BATCH, DM, DN>
 {
-    fn are_params_valid<P>(params: P) -> S::Mask
-    where
-        P: Borrow<S::Vector<DIM>>,
+    fn are_params_valid(params: S::Vector<DIM>) -> S::Mask
     {
         let eps = S::from_f64(EPS_F64);
         (params.borrow().squared_norm() - S::from_f64(1.0))
@@ -260,11 +258,11 @@ impl<
     /// Tries to create new unit vector from direction vector.
     ///
     /// Returns [None] if vector has not unit length.
-    pub fn try_from(vector: &S::Vector<DIM>) -> Option<Self> {
+    pub fn try_from(vector: S::Vector<DIM>) -> Option<Self> {
         if !Self::are_params_valid(vector).all() {
             return None;
         }
-        Some(Self { params: *vector })
+        Some(Self { params: vector })
     }
 
     /// Creates unit vector from non-zero direction vector by normalizing it.
@@ -305,9 +303,7 @@ impl<
     const DN: usize,
 > IsParamsImpl<S, DIM, BATCH, DM, DN> for UnitVector<S, DOF, DIM, BATCH, DM, DN>
 {
-    fn are_params_valid<P>(params: P) -> S::Mask
-    where
-        P: Borrow<S::Vector<DIM>>,
+    fn are_params_valid(params: S::Vector<DIM>) -> S::Mask
     {
         UnitVectorImpl::<S, DOF, DIM, BATCH, DM, DN>::are_params_valid(params)
     }
@@ -330,16 +326,12 @@ impl<
     const DN: usize,
 > HasParams<S, DIM, BATCH, DM, DN> for UnitVector<S, DOF, DIM, BATCH, DM, DN>
 {
-    fn from_params<P>(params: P) -> Self
-    where
-        P: Borrow<S::Vector<DIM>>,
+    fn from_params(params: S::Vector<DIM>) -> Self
     {
-        Self::try_from(params.borrow()).unwrap()
+        Self::try_from(params).unwrap()
     }
 
-    fn set_params<P>(&mut self, params: P)
-    where
-        P: Borrow<S::Vector<DIM>>,
+    fn set_params(&mut self, params: S::Vector<DIM>)
     {
         self.params = *Self::from_params(params).params();
     }

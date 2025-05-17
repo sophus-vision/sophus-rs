@@ -20,8 +20,8 @@ extern crate alloc;
 
 /// Template of an affine group.
 ///
-/// It is a semi-direct product of the commutative translation group (Euclidean vector space) and a
-/// factor group. It has the following form:
+/// It is a semi-direct product of a factor group and a commutative translation group (Euclidean
+/// vector space). It has the following form:
 ///
 /// ```ascii
 /// ---------
@@ -31,8 +31,8 @@ extern crate alloc;
 /// ---------
 /// ```
 ///
-/// We call ``A`` the factor group and ``b`` the translation. The standard group action aka the "transform"
-/// function has the following form: ``A x + b``.
+/// We call ``A`` the factor group and ``b`` the translation. The standard group action aka the
+/// "transform" function has the following form: ``A x + b``.
 #[derive(Debug, Copy, Clone, Default)]
 pub struct AffineGroupTemplateImpl<
     S: IsScalar<BATCH, DM, DN>,
@@ -64,44 +64,78 @@ impl<
     F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
 > AffineGroupTemplateImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
-    /// translation part of the group parameters
-    pub fn translation(params: &S::Vector<PARAMS>) -> S::Vector<POINT> {
-        params.get_fixed_subvec::<POINT>(0)
-    }
-
     /// factor part of the group parameters
     pub fn factor_params(params: &S::Vector<PARAMS>) -> S::Vector<SPARAMS> {
-        params.get_fixed_subvec::<SPARAMS>(POINT)
+        params.get_fixed_subvec::<SPARAMS>(0)
     }
 
-    /// create group parameters from translation and factor parameters
+    /// translation part of the group parameters
+    pub fn translation(params: &S::Vector<PARAMS>) -> S::Vector<POINT> {
+        params.get_fixed_subvec::<POINT>(SPARAMS)
+    }
+
+    /// create group parameters from factor and translation parameters
     pub fn params_from(
-        translation: &S::Vector<POINT>,
         factor_params: &S::Vector<SPARAMS>,
+        translation: &S::Vector<POINT>,
     ) -> S::Vector<PARAMS> {
-        S::Vector::block_vec2(*translation, *factor_params)
-    }
-
-    /// translation part of the tangent vector
-    fn translation_tangent(tangent: &S::Vector<DOF>) -> S::Vector<POINT> {
-        tangent.get_fixed_subvec::<POINT>(0)
+        S::Vector::block_vec2(*factor_params, *translation)
     }
 
     /// factor part of the tangent vector
     fn factor_tangent(tangent: &S::Vector<DOF>) -> S::Vector<SDOF> {
-        tangent.get_fixed_subvec::<SDOF>(POINT)
+        tangent.get_fixed_subvec::<SDOF>(0)
     }
 
-    /// create tangent vector from translation and factor tangent
+    /// translation part of the tangent vector
+    fn translation_tangent(tangent: &S::Vector<DOF>) -> S::Vector<POINT> {
+        tangent.get_fixed_subvec::<POINT>(SDOF)
+    }
+
+    /// create tangent vector from factor and translation tangent
     fn tangent_from(
-        translation: &S::Vector<POINT>,
         factor_tangent: &S::Vector<SDOF>,
+        translation: &S::Vector<POINT>,
     ) -> S::Vector<DOF> {
-        S::Vector::block_vec2(*translation, *factor_tangent)
+        S::Vector::block_vec2(*factor_tangent, *translation)
     }
 
     fn translation_examples() -> alloc::vec::Vec<S::Vector<POINT>> {
         example_points::<S, POINT, BATCH, DM, DN>()
+    }
+
+    /// create group parameters from factor parameters and translation
+    pub fn params_examples() -> alloc::vec::Vec<S::Vector<PARAMS>> {
+        let mut examples = alloc::vec![];
+
+        let factor_examples = F::params_examples();
+        let translation_examples = Self::translation_examples();
+
+        let max_len = core::cmp::max(factor_examples.len(), translation_examples.len());
+
+        for i in 0..max_len {
+            let factor_params = &factor_examples[i % factor_examples.len()];
+            let translation = &translation_examples[i % translation_examples.len()];
+            examples.push(Self::params_from(factor_params, translation));
+        }
+        examples
+    }
+
+    /// create tangent vector from factor tangent and translation tangent
+    pub fn tangent_examples() -> alloc::vec::Vec<S::Vector<DOF>> {
+        let mut examples = alloc::vec![];
+
+        let factor_examples = F::tangent_examples();
+        let translation_examples = Self::translation_examples();
+
+        let max_len = core::cmp::max(factor_examples.len(), translation_examples.len());
+
+        for i in 0..max_len {
+            let factor_tangent = &factor_examples[i % factor_examples.len()];
+            let translation = &translation_examples[i % translation_examples.len()];
+            examples.push(Self::tangent_from(factor_tangent, translation));
+        }
+        examples
     }
 }
 
@@ -122,8 +156,8 @@ impl<
 {
     fn disambiguate(params: S::Vector<PARAMS>) -> S::Vector<PARAMS> {
         Self::params_from(
-            &Self::translation(&params),
             &F::disambiguate(Self::factor_params(&params)),
+            &Self::translation(&params),
         )
     }
 }
@@ -143,36 +177,18 @@ impl<
 > IsParamsImpl<S, PARAMS, BATCH, DM, DN>
     for AffineGroupTemplateImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
-    fn are_params_valid<P>(params: P) -> S::Mask
-    where
-        P: Borrow<S::Vector<PARAMS>>,
-    {
+    fn are_params_valid(params: S::Vector<PARAMS>) -> S::Mask {
         F::are_params_valid(Self::factor_params(params.borrow()))
     }
 
     fn params_examples() -> alloc::vec::Vec<S::Vector<PARAMS>> {
-        let mut examples = alloc::vec![];
-
-        let factor_examples = F::params_examples();
-        let translation_examples = Self::translation_examples();
-
-        // Determine the maximum length of factor and translation examples
-        let max_len = core::cmp::max(factor_examples.len(), translation_examples.len());
-
-        for i in 0..max_len {
-            // Wrap around indices if one vector is shorter than the other
-            let factor_params = &factor_examples[i % factor_examples.len()];
-            let translation = &translation_examples[i % translation_examples.len()];
-
-            examples.push(Self::params_from(translation, factor_params));
-        }
-        examples
+        Self::params_examples()
     }
 
     fn invalid_params_examples() -> alloc::vec::Vec<S::Vector<PARAMS>> {
         alloc::vec![Self::params_from(
-            &S::Vector::zeros(),
             &F::invalid_params_examples()[0],
+            &S::Vector::zeros(),
         )]
     }
 }
@@ -193,21 +209,7 @@ impl<
     for AffineGroupTemplateImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
     fn tangent_examples() -> alloc::vec::Vec<S::Vector<DOF>> {
-        let mut examples = alloc::vec![];
-
-        let factor_examples = F::tangent_examples();
-        let translation_examples = Self::translation_examples();
-
-        // Determine the maximum length of factor and translation examples
-        let max_len = core::cmp::max(factor_examples.len(), translation_examples.len());
-
-        for i in 0..max_len {
-            // Wrap around indices if one vector is shorter than the other
-            let factor_params = &factor_examples[i % factor_examples.len()];
-            let translation = &translation_examples[i % translation_examples.len()];
-            examples.push(Self::tangent_from(translation, factor_params));
-        }
-        examples
+        Self::tangent_examples()
     }
 }
 
@@ -246,42 +248,37 @@ impl<
     const IS_PARALLEL_LINE_PRESERVING: bool = true;
 
     fn identity_params() -> S::Vector<PARAMS> {
-        Self::params_from(&S::Vector::zeros(), &Factor::identity_params())
+        Self::params_from(&Factor::identity_params(), &S::Vector::zeros())
     }
-
-    //    Manifold / Lie Group concepts
 
     fn adj(params: &S::Vector<PARAMS>) -> S::Matrix<DOF, DOF> {
         let factor_params = Self::factor_params(params);
         let translation = Self::translation(params);
 
-        S::Matrix::block_mat2x2::<POINT, SDOF, POINT, SDOF>(
+        S::Matrix::block_mat2x2::<SDOF, POINT, SDOF, POINT>(
+            (Factor::adj(&factor_params), S::Matrix::zeros()),
             (
-                Factor::matrix(&factor_params),
                 Factor::adj_of_translation(&factor_params, &translation),
+                Factor::matrix(&factor_params),
             ),
-            (S::Matrix::zeros(), Factor::adj(&factor_params)),
         )
     }
 
     fn exp(omega: &S::Vector<DOF>) -> S::Vector<PARAMS> {
+        let factor_tangent = Self::factor_tangent(omega);
         let translation = Self::translation_tangent(omega);
-        let factor_params = Factor::exp(&Self::factor_tangent(omega));
-
-        let mat_v = Factor::mat_v(&Self::factor_tangent(omega));
-        Self::params_from(&(mat_v * translation), &factor_params)
+        let factor_params = Factor::exp(&factor_tangent);
+        let mat_v = Factor::mat_v(&factor_tangent);
+        Self::params_from(&factor_params, &(mat_v * translation))
     }
 
     fn log(params: &S::Vector<PARAMS>) -> S::Vector<DOF> {
-        let translation = Self::translation(params);
-
         let factor_params = Self::factor_params(params);
-
+        let translation = Self::translation(params);
         let factor_tangent = Factor::log(&factor_params);
         let mat_v_inv = Factor::mat_v_inverse(&factor_tangent);
         let translation_tangent = mat_v_inv * translation;
-
-        Self::tangent_from(&translation_tangent, &factor_tangent)
+        Self::tangent_from(&factor_tangent, &translation_tangent)
     }
 
     fn hat(omega: &S::Vector<DOF>) -> S::Matrix<AMBIENT, AMBIENT> {
@@ -297,10 +294,8 @@ impl<
     fn vee(hat: &S::Matrix<AMBIENT, AMBIENT>) -> S::Vector<DOF> {
         let factor_tangent = Factor::vee(&hat.get_fixed_submat::<POINT, POINT>(0, 0));
         let translation_tangent = hat.get_fixed_submat::<POINT, 1>(0, POINT);
-        Self::tangent_from(&translation_tangent.get_col_vec(0), &factor_tangent)
+        Self::tangent_from(&factor_tangent, &translation_tangent.get_col_vec(0))
     }
-
-    // group operations
 
     fn group_mul(params1: &S::Vector<PARAMS>, params2: &S::Vector<PARAMS>) -> S::Vector<PARAMS> {
         let factor_params1 = Self::factor_params(params1);
@@ -310,7 +305,7 @@ impl<
         let factor_params = Factor::group_mul(&factor_params1, &factor_params2);
         let f = Factor::transform(&factor_params1, &translation2);
         let translation = f + translation1;
-        Self::params_from(&translation, &factor_params)
+        Self::params_from(&factor_params, &translation)
     }
 
     fn inverse(params: &S::Vector<PARAMS>) -> S::Vector<PARAMS> {
@@ -318,7 +313,7 @@ impl<
         let translation = Self::translation(params);
         let factor_params = Factor::inverse(&factor_params);
         let translation = -Factor::transform(&factor_params, &translation);
-        Self::params_from(&translation, &factor_params)
+        Self::params_from(&factor_params, &translation)
     }
 
     fn transform(params: &S::Vector<PARAMS>, point: &S::Vector<POINT>) -> S::Vector<POINT> {
@@ -353,12 +348,12 @@ impl<
 
     fn ad(tangent: &S::Vector<DOF>) -> S::Matrix<DOF, DOF> {
         let o = S::Matrix::<SDOF, POINT>::zeros();
-        S::Matrix::block_mat2x2::<POINT, SDOF, POINT, SDOF>(
+        S::Matrix::block_mat2x2::<SDOF, POINT, SDOF, POINT>(
+            (Factor::ad(&Self::factor_tangent(tangent)), o),
             (
-                Factor::hat(&Self::factor_tangent(tangent)),
                 Factor::ad_of_translation(&Self::translation_tangent(tangent)),
+                Factor::hat(&Self::factor_tangent(tangent)),
             ),
-            (o, Factor::ad(&Self::factor_tangent(tangent))),
         )
     }
 
@@ -416,37 +411,25 @@ impl<
     const BATCH: usize,
     Factor: IsRealLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH>,
 > IsRealLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH>
-    for AffineGroupTemplateImpl<
-        S,
-        DOF,
-        PARAMS,
-        POINT,
-        AMBIENT,
-        SDOF,
-        SPARAMS,
-        BATCH,
-        0,
-        0,
-        Factor,
-    >
+    for AffineGroupTemplateImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, 0, 0, Factor>
 {
     fn dx_exp_x_at_0() -> S::Matrix<PARAMS, DOF> {
-        S::Matrix::block_mat2x2::<POINT, SPARAMS, POINT, SDOF>(
+        S::Matrix::block_mat2x2::<SPARAMS, POINT, SDOF, POINT>(
             (
-                S::Matrix::<POINT, POINT>::identity(),
-                S::Matrix::<POINT, SDOF>::zeros(),
+                Factor::dx_exp_x_at_0(),
+                S::Matrix::<SPARAMS, POINT>::zeros(),
             ),
             (
-                S::Matrix::<SPARAMS, POINT>::zeros(),
-                Factor::dx_exp_x_at_0(),
+                S::Matrix::<POINT, SDOF>::zeros(),
+                S::Matrix::<POINT, POINT>::identity(),
             ),
         )
     }
 
     fn dx_exp_x_times_point_at_0(point: &S::Vector<POINT>) -> S::Matrix<POINT, DOF> {
-        S::Matrix::block_mat1x2(
-            S::Matrix::<POINT, POINT>::identity(),
+        S::Matrix::block_mat1x2::<SDOF, POINT>(
             Factor::dx_exp_x_times_point_at_0(point),
+            S::Matrix::<POINT, POINT>::identity(),
         )
     }
 
@@ -461,12 +444,12 @@ impl<
             dx_mat_v_tangent.set_col_vec(i, dx_mat_v[i] * *trans_tangent);
         }
 
-        S::Matrix::block_mat2x2::<POINT, SPARAMS, POINT, SDOF>(
-            (Factor::mat_v(factor_tangent), dx_mat_v_tangent),
+        S::Matrix::block_mat2x2::<SPARAMS, POINT, SDOF, POINT>(
             (
-                S::Matrix::<SPARAMS, POINT>::zeros(),
                 Factor::dx_exp(factor_tangent),
+                S::Matrix::<SPARAMS, POINT>::zeros(),
             ),
+            (dx_mat_v_tangent, Factor::mat_v(factor_tangent)),
         )
     }
 
@@ -488,9 +471,9 @@ impl<
             dx_mat_v_inv_tangent = dx_mat_v_inv_tangent + m;
         }
 
-        S::Matrix::block_mat2x2::<POINT, SDOF, POINT, SPARAMS>(
-            (Factor::mat_v_inverse(&factor_tangent), dx_mat_v_inv_tangent),
-            (S::Matrix::<SDOF, POINT>::zeros(), dx_log_x),
+        S::Matrix::block_mat2x2::<SDOF, POINT, SPARAMS, POINT>(
+            (dx_log_x, S::Matrix::<SDOF, POINT>::zeros()),
+            (dx_mat_v_inv_tangent, Factor::mat_v_inverse(&factor_tangent)),
         )
     }
 
@@ -500,14 +483,14 @@ impl<
 
         let b_trans = &Self::translation(b);
 
-        S::Matrix::block_mat2x2::<POINT, SPARAMS, POINT, SPARAMS>(
+        S::Matrix::block_mat2x2::<SPARAMS, POINT, SPARAMS, POINT>(
             (
-                S::Matrix::<POINT, POINT>::identity(),
-                Factor::dparams_matrix_times_point(a_factor_params, b_trans),
+                Factor::da_a_mul_b(a_factor_params, b_factor_params),
+                S::Matrix::<SPARAMS, POINT>::zeros(),
             ),
             (
-                S::Matrix::<SPARAMS, POINT>::zeros(),
-                Factor::da_a_mul_b(a_factor_params, b_factor_params),
+                Factor::dparams_matrix_times_point(a_factor_params, b_trans),
+                S::Matrix::<POINT, POINT>::identity(),
             ),
         )
     }
@@ -516,14 +499,14 @@ impl<
         let a_factor_params = &Self::factor_params(a);
         let b_factor_params = &Self::factor_params(b);
 
-        S::Matrix::block_mat2x2::<POINT, SPARAMS, POINT, SPARAMS>(
+        S::Matrix::block_mat2x2::<SPARAMS, POINT, SPARAMS, POINT>(
             (
-                Factor::matrix(a_factor_params),
-                S::Matrix::<POINT, SPARAMS>::zeros(),
+                Factor::db_a_mul_b(a_factor_params, b_factor_params),
+                S::Matrix::<SPARAMS, POINT>::zeros(),
             ),
             (
-                S::Matrix::<SPARAMS, POINT>::zeros(),
-                Factor::db_a_mul_b(a_factor_params, b_factor_params),
+                S::Matrix::<POINT, SPARAMS>::zeros(),
+                Factor::matrix(a_factor_params),
             ),
         )
     }
@@ -536,12 +519,12 @@ impl<
         let factor_params = &Self::factor_params(params);
 
         if col_idx < POINT {
-            S::Matrix::block_mat1x2::<POINT, SPARAMS>(
-                S::Matrix::zeros(),
+            S::Matrix::block_mat1x2::<SPARAMS, POINT>(
                 Factor::dparams_matrix(factor_params, col_idx),
+                S::Matrix::zeros(),
             )
         } else {
-            S::Matrix::block_mat1x2::<POINT, SPARAMS>(S::Matrix::identity(), S::Matrix::zeros())
+            S::Matrix::block_mat1x2::<SPARAMS, POINT>(S::Matrix::zeros(), S::Matrix::identity())
         }
     }
 }
@@ -610,29 +593,29 @@ impl<
         FactorImpl,
     >;
 
-    fn from_translation_and_factor<F>(translation: S::Vector<POINT>, factor: F) -> Self
-    where
-        F: Borrow<LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, DM, DN, FactorImpl>>,
-    {
-        let params = Self::Impl::params_from(&translation, factor.borrow().params());
+    fn from_factor_and_translation(
+        factor: LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, DM, DN, FactorImpl>,
+        translation: S::Vector<POINT>,
+    ) -> Self {
+        let params = Self::Impl::params_from(factor.borrow().params(), &translation);
         Self::from_params(params)
     }
 
     fn set_translation(&mut self, translation: S::Vector<POINT>) {
-        self.set_params(Self::G::params_from(&translation, self.factor().params()))
+        self.set_params(Self::G::params_from(self.factor().params(), &translation))
     }
 
     fn translation(&self) -> <S as IsScalar<BATCH, DM, DN>>::Vector<POINT> {
         Self::Impl::translation(self.params())
     }
 
-    fn set_factor<F>(&mut self, factor: F)
-    where
-        F: Borrow<LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, DM, DN, FactorImpl>>,
-    {
+    fn set_factor(
+        &mut self,
+        factor: LieGroup<S, SDOF, SPARAMS, POINT, POINT, BATCH, DM, DN, FactorImpl>,
+    ) {
         self.set_params(Self::G::params_from(
-            &self.translation(),
             factor.borrow().params(),
+            &self.translation(),
         ))
     }
 

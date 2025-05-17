@@ -62,13 +62,13 @@ impl CamCalibProblem {
     pub fn new(spurious_matches: bool) -> Self {
         let true_world_from_cameras = alloc::vec![
             Isometry3::identity(),
-            Isometry3::from_translation_and_factor(
+            Isometry3::from_rotation_and_translation(
+                                Rotation3::identity(),
                 VecF64::<3>::new(0.0, 1.0, 0.0),
-                Rotation3::identity(),
             ),
-            Isometry3::from_translation_and_factor(
-                VecF64::<3>::new(0.0, 2.0, 0.0),
+            Isometry3::from_rotation_and_translation(
                 Rotation3::identity(),
+                                VecF64::<3>::new(0.0, 2.0, 0.0),
             ),
         ];
         use rand::prelude::*;

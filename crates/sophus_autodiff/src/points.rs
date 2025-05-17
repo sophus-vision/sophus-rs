@@ -133,6 +133,7 @@ pub fn example_points<
     const DN: usize,
 >() -> alloc::vec::Vec<S::Vector<POINT>> {
     let points4 = alloc::vec![
+        S::Vector::<4>::from_f64_array([5.0, 0.4, 1.1, 2.0]),
         S::Vector::<4>::from_f64_array([0.1, 0.0, 0.0, 0.0]),
         S::Vector::<4>::from_f64_array([1.0, 4.0, 1.0, 0.5]),
         S::Vector::<4>::from_f64_array([0.7, 5.0, 1.1, (-5.0)]),

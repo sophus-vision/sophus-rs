@@ -29,9 +29,7 @@ pub struct KannalaBrandtDistortionImpl<
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     IsParamsImpl<S, 8, BATCH, DM, DN> for KannalaBrandtDistortionImpl<S, BATCH, DM, DN>
 {
-    fn are_params_valid<P>(_params: P) -> S::Mask
-    where
-        P: Borrow<S::Vector<8>>,
+    fn are_params_valid(_params: S::Vector<8>) -> S::Mask
     {
         S::Mask::all_true()
     }

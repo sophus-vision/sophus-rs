@@ -229,6 +229,9 @@ pub trait IsScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     /// Tangent.
     fn tan(&self) -> Self;
 
+    /// Hyperbolic tangent.
+    fn tanh(&self) -> Self;
+
     /// Interprets `self` as a single-element vector (1D).
     fn to_vec(&self) -> Self::Vector<1>;
 
@@ -381,6 +384,10 @@ impl IsScalar<1, 0, 0> for f64 {
 
     fn tan(&self) -> Self {
         f64::tan(*self)
+    }
+
+    fn tanh(&self) -> Self {
+        f64::tanh(*self)
     }
 
     fn acos(&self) -> Self {

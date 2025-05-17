@@ -29,13 +29,88 @@ use crate::{
 
 extern crate alloc;
 
-/// 2d rotation - element of the Special Orthogonal group SO(2)
+/// 2d rotations - element of the Special Orthogonal group SO(2)
+///
+/// ## Generic parameters
 ///
 ///  * BATCH
 ///     - batch dimension. If S is f64 or [sophus_autodiff::dual::DualScalar] then BATCH=1.
 ///  * DM, DN
 ///     - DM x DN is the static shape of the Jacobian to be computed if S == DualScalar<DM,DN>. If S
 ///       == f64, then DM==0, DN==0.
+///
+/// ## Overview
+///
+/// * **Tangent space**: 1 DoF - **angular** rate `ϑ`
+/// * **Internal parameters**:  2 – **[RE(z), IM(x)]**, unit complex number `z` (|z| = 1).
+/// * **Action space:** 2 (SO(2) acts on 2-d points)
+/// * **Matrix size:** 2 (represented as 2 × 2 matrices)
+///
+/// ### Group structure
+///
+/// The group of 2d rotations is represented by unit complex. The corresponding *matrix
+/// representation* is
+/// ```ascii
+///        ---------------------     --------------------
+///        |  RE(z)  | -IM(z) |     | cos(ϑ) | -sin(ϑ) |
+/// R : =  ---------------------  =  --------------------
+///        |  IM(z)  |  RE(z) |     | sin(ϑ) |  cos(ϑ) |
+///        ---------------------     --------------------
+/// ```
+/// z being a unit complex number, and ϑ the rotation angle.
+///
+///
+/// The *group operation* is complex multiplication:
+/// ```ascii
+/// zₗ ⊗ zᵣ =  (RE(zₗ)·RE(zᵣ) - IM(zₗ)·IM(zᵣ),  RE(zₗ)·IM(zᵣ) + IM(zₗ)·RE(zᵣ))
+/// ```
+/// In rotation matrix form, the group operation is defined as:
+///
+/// ```ascii
+/// Rₗ ⊗ Rᵣ =  Rₗ·Rᵣ
+/// ```
+///
+/// The inverse of a rotation is given by the complex conjugate:
+/// ```ascii
+/// q⁻¹ =  RE(q) - IM(q)
+/// ```
+/// In matrix form, the inverse of a rotation is given by the transpose:
+/// ```ascii
+/// R⁻¹ = Rᵀ
+/// ```
+///
+/// ### Lie group properties
+///
+/// The tangent space of the 32 rotation group is the space of 1d rotational velocities. Alternatively,
+/// it can be understood in the rotation angle `ϑ` around the z-axis in the 2d plane.
+///
+/// Tangent vectors are mapped to the Lie algebra matrix representation via the *hat* operator:
+///
+/// ```ascii
+///        -----------
+///        |  0 | -ϑ |
+/// ϑ^  =  -----------
+///        |  ϑ |  0 |
+///        -----------
+/// ```
+///
+/// The *exponential map*: ``exp: ℝ -> SO(2)`` from rotational velocities to 2d rotations:
+///
+/// ```ascii
+/// exp(x) = ( cos(ϑ), sin(ϑ) )
+/// ```
+///
+/// The logarithm map: ``log: SO(2) -> ℝ, log(z) = atan2(IM(z), RE(z))``.
+///
+/// Unlike most Lie groups, 2d rotations commute: `zₗ ⊗ zᵣ = zᵣ ⊗ zₗ`. Hence the *group
+/// adjoint* is trivial:
+/// ```ascii
+/// Adj(ϑ) = 1 · ϑ = ϑ
+/// ```
+/// as well as the *Lie algebra adjoint*:
+/// ```ascii
+/// ad(ϑ) = 0 · ϑ = 0
+/// ```
 pub type Rotation2<S, const B: usize, const DM: usize, const DN: usize> =
     LieGroup<S, 1, 2, 2, 2, B, DM, DN, Rotation2Impl<S, B, DM, DN>>;
 
@@ -44,7 +119,9 @@ pub type Rotation2<S, const B: usize, const DM: usize, const DN: usize> =
 /// See [Rotation2] for details.a
 pub type Rotation2F64 = Rotation2<f64, 1, 0, 0>;
 
-/// 2d rotation implementation details
+/// 2d rotation implementation.
+///
+/// See [Rotation3] for details.
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Rotation2Impl<
     S: IsScalar<BATCH, DM, DN>,
@@ -87,10 +164,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         ]
     }
 
-    fn are_params_valid<P>(params: P) -> S::Mask
-    where
-        P: Borrow<S::Vector<2>>,
-    {
+    fn are_params_valid(params: S::Vector<2>) -> S::Mask {
         let norm = params.borrow().norm();
         (norm - S::from_f64(1.0))
             .abs()

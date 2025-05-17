@@ -36,25 +36,20 @@ impl<
 > Camera<S, DISTORT, PARAMS, BATCH, DM, DN, Distort, Proj>
 {
     /// Creates a new camera
-    pub fn new<Q>(params: Q, image_size: ImageSize) -> Self
-    where
-        Q: Borrow<S::Vector<PARAMS>>,
+    pub fn new(params: S::Vector<PARAMS>, image_size: ImageSize) -> Self
     {
         Self::from_params_and_size(params, image_size)
     }
 
     /// Creates a new camera from parameters and image size
-    pub fn from_params_and_size<Q>(params: Q, size: ImageSize) -> Self
-    where
-        Q: Borrow<S::Vector<PARAMS>>,
+    pub fn from_params_and_size(params: S::Vector<PARAMS>, size: ImageSize) -> Self
     {
-        let params = params.borrow();
         assert!(
             Distort::are_params_valid(params).all(),
             "Invalid parameters for {params:?}"
         );
         Self {
-            params: *params,
+            params,
             phantom: core::marker::PhantomData,
             image_size: size,
         }

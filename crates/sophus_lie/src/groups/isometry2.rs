@@ -1,11 +1,11 @@
 use log::warn;
 
 use crate::{
+    AffineGroupTemplateImpl,
     EmptySliceError,
     HasAverage,
     Rotation2,
     Rotation2Impl,
-    AffineGroupTemplateImpl,
     lie_group::{
         LieGroup,
         average::{
@@ -16,13 +16,84 @@ use crate::{
     prelude::*,
 };
 
-/// 2d isometry - element of the Special Euclidean group SE(2)
+/// 2-d **isometry** – element of the Special Euclidean group **SE(2)**
 ///
-///  * BATCH
-///     - batch dimension. If S is f64 or [sophus_autodiff::dual::DualScalar] then BATCH=1.
-///  * DM, DN
-///     - DM x DN is the static shape of the Jacobian to be computed if S == DualScalar<DM,DN>. If S
-///       == f64, then DM==0, DN==0.
+/// ## Generic parameters
+/// * **BATCH** – batch dimension ( = 1 for plain `f64` or `DualScalar`).
+/// * **DM, DN** – static Jacobian shape when `S = DualScalar<DM,DN>` (both 0 when `S = f64`).
+///
+/// ## Overview
+///
+/// * **Tangent space:** 3 DoF – **[ ϑ , ν ]**, with `ϑ` the **angular** rate and `ν` the
+///   2-d **linear** rate.
+/// * **Internal parameters:** 4 – **[ z , t ]**, complex number `z` ( |q| = 1 ) and translation `t ∈
+///   ℝ²`.
+/// * **Action space:** 2 (SE(2) acts on 2-d points)
+/// * **Matrix size:** 2 (represented as 2 × 2 matrices)
+///
+/// ### Group structure
+///
+/// *Matrix representation*
+/// ```ascii
+/// ---------
+/// | R | p |
+/// ---------
+/// | O | 1 |
+/// ---------
+/// ```
+/// `R ∈ SO(2)`, `p ∈ ℝ²`.
+///
+/// *Group operation*
+/// ```ascii
+/// (Rₗ, pₗ) ⊗ (Rᵣ, pᵣ) = ( Rₗ·Rᵣ,  Rₗ·pᵣ + pₗ )
+/// ```
+/// *Inverse*
+/// ```ascii
+/// (R, p)⁻¹ = ( R⁻¹,  -R⁻¹·p )
+/// ```
+///
+/// ### Lie-group properties
+///
+/// **Hat operator** `x = [ ϑ, ν₀, ν₁, ν₂ ]`
+/// ```ascii
+///            -------------------
+///            |  0  | -ϑ  |  ν₀ |
+///  /ϑ \^     -------------------
+/// | ν₀ | =   |  ϑ  |  0  |  ν₁ |
+///  \ν₁/      -------------------
+///            |  0  |  0  |  0  |
+///            -------------------
+/// ```
+///
+/// **Exponential map** `exp : ℝ³ → SE(2)`
+/// ```ascii
+/// exp(ϑ,ν) = ( exp_so2(ϑ),  V(ϑ) · ν )
+/// ```
+/// where `V(ϑ)` is `Rotation2::mat_v`.
+///
+/// **Group adjoint** `Adj : SE(2) → GL(3)` (acts on `[ ϑ ; ν ]`)
+/// ```ascii
+///               |---------------|
+///               |  1    |  O₁ₓ₂ |
+///     /ϑ \      |---------------|    /ϑ \
+/// Adj| ν₀ |  =  |  p₁   |       | * | ν₀ |  = ( ϑ , p₁ν - ν₁ϑ + Rν )
+///     \ν₁/      |       |   R   |    \ν₁/
+///               | -p₀   |       |
+///               |---------------|
+/// ```
+///
+/// **Lie-algebra adjoint** `ad : se(2) → gl(3)`
+/// ```ascii
+///              |-----------------|
+///              |  0  |  0  |  0  |
+///    /φ \      -------------------   /φ \
+/// ad| τ₀ |  =  |  ν₁ |  0  | -ϑ  |  | τ₀ |  = ( ν₁φ - ν₀φ, -ϑτ₀, ϑτ₁ )
+///    \τ₁/      -------------------   \τ₁/
+///              | -ν₀ |  ϑ  |  0  |
+///              |-----------------|
+///
+///
+/// ```
 pub type Isometry2<S, const BATCH: usize, const DM: usize, const DN: usize> =
     LieGroup<S, 3, 4, 2, 3, BATCH, DM, DN, Isometry2Impl<S, BATCH, DM, DN>>;
 
@@ -31,41 +102,31 @@ pub type Isometry2<S, const BATCH: usize, const DM: usize, const DN: usize> =
 /// See [Isometry2] for details.
 pub type Isometry2F64 = Isometry2<f64, 1, 0, 0>;
 
-/// 2d isometry implementation details
+/// 2d isometry implementation.
+///
+/// See [Isometry2] for details.
 pub type Isometry2Impl<S, const BATCH: usize, const DM: usize, const DN: usize> =
-    AffineGroupTemplateImpl<
-        S,
-        3,
-        4,
-        2,
-        3,
-        1,
-        2,
-        BATCH,
-        DM,
-        DN,
-        Rotation2Impl<S, BATCH, DM, DN>,
-    >;
+    AffineGroupTemplateImpl<S, 3, 4, 2, 3, 1, 2, BATCH, DM, DN, Rotation2Impl<S, BATCH, DM, DN>>;
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     Isometry2<S, BATCH, DM, DN>
 {
-    /// create isometry from translation and rotation
-    pub fn from_translation_and_rotation(
-        translation: S::Vector<2>,
+    /// create isometry from rotation and translation
+    pub fn from_rotation_and_translation(
         rotation: Rotation2<S, BATCH, DM, DN>,
+        translation: S::Vector<2>,
     ) -> Self {
-        Self::from_translation_and_factor(translation, rotation)
+        Self::from_factor_and_translation(rotation, translation)
     }
 
     /// create isometry from translation
     pub fn from_translation(translation: S::Vector<2>) -> Self {
-        Self::from_translation_and_factor(translation, Rotation2::identity())
+        Self::from_factor_and_translation(Rotation2::identity(), translation)
     }
 
     /// create isometry from rotation
     pub fn from_rotation(rotation: Rotation2<S, BATCH, DM, DN>) -> Self {
-        Self::from_translation_and_factor(S::Vector::<2>::zeros(), rotation)
+        Self::from_factor_and_translation(rotation, S::Vector::<2>::zeros())
     }
 
     /// translate along x axis
@@ -96,7 +157,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 
 impl From<nalgebra::Isometry2<f64>> for Isometry2F64 {
     fn from(isometry: nalgebra::Isometry2<f64>) -> Self {
-        Self::from_translation_and_rotation(isometry.translation.vector, isometry.rotation.into())
+        Self::from_rotation_and_translation(isometry.rotation.into(), isometry.translation.vector)
     }
 }
 
@@ -171,9 +232,9 @@ fn test_nalgebra_interop() {
 
     use crate::Rotation2F64;
 
-    let isometry = Isometry2F64::from_translation_and_rotation(
-        VecF64::from_array([1.0, 2.0]),
+    let isometry = Isometry2F64::from_rotation_and_translation(
         Rotation2F64::exp(VecF64::<1>::new(0.5)),
+        VecF64::from_array([1.0, 2.0]),
     );
     let na_isometry: nalgebra::Isometry2<f64> = isometry.into();
     assert_eq!(isometry.translation(), na_isometry.translation.vector);

@@ -320,6 +320,12 @@ where
         }
     }
 
+    fn tanh(&self) -> Self {
+        BatchScalarF64 {
+            0: sleef::Sleef::tanh(self.0),
+        }
+    }
+
     fn acos(&self) -> Self {
         BatchScalarF64 {
             0: sleef::Sleef::acos(self.0),

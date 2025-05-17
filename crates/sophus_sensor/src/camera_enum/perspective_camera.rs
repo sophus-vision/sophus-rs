@@ -106,35 +106,23 @@ pub enum PerspectiveCameraEnum<
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     IsCamera<S, BATCH, DM, DN> for PerspectiveCameraEnum<S, BATCH, DM, DN>
 {
-    fn new_pinhole<P>(params: P, image_size: ImageSize) -> Self
-    where
-        P: Borrow<S::Vector<4>>,
+    fn new_pinhole(params: S::Vector<4>, image_size: ImageSize) -> Self
     {
-        let params = params.borrow();
         PerspectiveCameraEnum::Pinhole(PinholeCamera::new(params, image_size))
     }
 
-    fn new_kannala_brandt<P>(params: P, image_size: ImageSize) -> Self
-    where
-        P: Borrow<S::Vector<8>>,
+    fn new_kannala_brandt(params: S::Vector<8>, image_size: ImageSize) -> Self
     {
-        let params = params.borrow();
         PerspectiveCameraEnum::KannalaBrandt(KannalaBrandtCamera::new(params, image_size))
     }
 
-    fn new_brown_conrady<P>(params: P, image_size: ImageSize) -> Self
-    where
-        P: Borrow<S::Vector<12>>,
+    fn new_brown_conrady(params: S::Vector<12>, image_size: ImageSize) -> Self
     {
-        let params = params.borrow();
         PerspectiveCameraEnum::BrownConrady(BrownConradyCamera::new(params, image_size))
     }
 
-    fn new_enhanced_unified<P>(params: P, image_size: ImageSize) -> Self
-    where
-        P: Borrow<S::Vector<6>>,
+    fn new_enhanced_unified(params: S::Vector<6>, image_size: ImageSize) -> Self
     {
-        let params = params.borrow();
         PerspectiveCameraEnum::EnhancedUnified(EnhancedUnifiedCamera::new(params, image_size))
     }
 

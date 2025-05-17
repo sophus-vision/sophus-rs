@@ -169,7 +169,7 @@ macro_rules! def_real_group_test_template {
                         let dual_fn = |x: <$dual_scalar as IsScalar<$batch,PARAMS,1>>::Vector<PARAMS>|
                             -> <$dual_scalar as IsScalar<$batch,PARAMS,1>>::Vector<POINT>
                             {
-                                <$dual_group>::from_params(&x).matrix() * dual_p
+                                <$dual_group>::from_params(x).matrix() * dual_p
                             };
 
                         let auto_diff =

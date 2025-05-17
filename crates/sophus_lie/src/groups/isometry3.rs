@@ -1,8 +1,8 @@
 use log::warn;
 
 use super::{
-    rotation3::Rotation3Impl,
     affine_group_template::AffineGroupTemplateImpl,
+    rotation3::Rotation3Impl,
 };
 use crate::{
     EmptySliceError,
@@ -18,13 +18,80 @@ use crate::{
     prelude::*,
 };
 
-/// 3d isometry - element of the Special Euclidean group SE(3)
+/// 3-d **isometry** – element of the Special Euclidean group **SE(3)**
 ///
-///  * BATCH
-///     - batch dimension. If S is f64 or [sophus_autodiff::dual::DualScalar] then BATCH=1.
-///  * DM, DN
-///     - DM x DN is the static shape of the Jacobian to be computed if S == DualScalar<DM,DN>. If S
-///       == f64, then DM==0, DN==0.
+/// ## Generic parameters
+/// * **BATCH** – batch dimension ( = 1 for plain `f64` or `DualScalar`).
+/// * **DM, DN** – static Jacobian shape when `S = DualScalar<DM,DN>` (both 0 when `S = f64`).
+///
+/// ## Overview
+///
+/// * **Tangent space:** 6 DoF – **[ ω , ν ]**, with `ω` the 3-d **angular** rate and `ν` the
+///   3-d **linear** rate.
+/// * **Internal parameters:** 7 – **[ q , t ]**, quaternion `q` ( |q| = 1 ) and translation `t ∈
+///   ℝ³`.
+/// * **Action space:** 3 (SE(3) acts on 3-d points)
+/// * **Matrix size:** 4 (represented as 4 × 4 matrices)
+///
+/// ### Group structure
+///
+/// *Matrix representation*
+/// ```ascii
+/// ---------
+/// | R | p |
+/// ---------
+/// | O | 1 |
+/// ---------
+/// ```
+/// `R ∈ SO(3)`, `p ∈ ℝ³`.
+///
+/// *Group operation*
+/// ```ascii
+/// (Rₗ, pₗ) ⊗ (Rᵣ, pᵣ) = ( Rₗ·Rᵣ,  Rₗ·pᵣ + pₗ )
+/// ```
+/// *Inverse*
+/// ```ascii
+/// (R, p)⁻¹ = ( R⁻¹,  -R⁻¹·p )
+/// ```
+///
+/// ### Lie-group properties
+///
+/// **Hat operator** `x = [ ω₀, ω₁, ω₂, ν₀, ν₁, ν₂ ]`
+/// ```ascii
+///           ------------------------
+///           |  0  | -ω₂ |  ω₁ | ν₀ |
+///           ------------------------
+///  /ω\^     |  ω₂ |  0  | -ω₀ | ν₁ |
+///  ---   =  ------------------------
+///  \ν/      | -ω₁ |  ω₀ |  0  | ν₂ |
+///           ------------------------
+///           |  0  |  0  |  0  |  0 |
+///           ------------------------
+/// ```
+///
+/// **Exponential map** `exp : ℝ⁶ → SE(3)`
+/// ```ascii
+/// exp(ω,ν) = ( exp_so3(ω),  V(ω) · ν )
+/// ```
+/// where `V(ω)` is `Rotation3::mat_v`.
+///
+/// **Group adjoint** `Adj : SE(3) → GL(6)` (acts on `[ ω ; ν ]`)
+/// ```ascii
+///              |---------------|
+///     /ω\      |  R     | O₃ₓ₃ |   /ω\
+/// Adj| - |  =  |---------------| * |-|  = ( R ω , p × (R ω) + R ν )
+///     \ν/      | [p]ₓ·R |  R   |   \ν/
+///              |---------------|
+/// ```
+///
+/// **Lie-algebra adjoint** `ad : se(3) → gl(6)`
+/// ```ascii
+///             |-------------|
+///    /φ\      | [ω]ₓ | O₃ₓ₃ |    /φ\      /      ω × φ    \
+/// ad| - |  =  |-------------| * | - |  = | --------------- |
+///    \τ/      | [ν]ₓ | [ω]ₓ |    \τ/      \ ω × τ + ν × τ /
+///             |-------------|
+/// ```
 pub type Isometry3<S, const BATCH: usize, const DM: usize, const DN: usize> =
     LieGroup<S, 6, 7, 3, 4, BATCH, DM, DN, Isometry3Impl<S, BATCH, DM, DN>>;
 
@@ -33,41 +100,31 @@ pub type Isometry3<S, const BATCH: usize, const DM: usize, const DN: usize> =
 /// See [Isometry3] for details.
 pub type Isometry3F64 = Isometry3<f64, 1, 0, 0>;
 
-/// 3d isometry implementation details
+/// 3d isometry implementation.
+///
+/// See [Isometry3] for details.
 pub type Isometry3Impl<S, const BATCH: usize, const DM: usize, const DN: usize> =
-    AffineGroupTemplateImpl<
-        S,
-        6,
-        7,
-        3,
-        4,
-        3,
-        4,
-        BATCH,
-        DM,
-        DN,
-        Rotation3Impl<S, BATCH, DM, DN>,
-    >;
+    AffineGroupTemplateImpl<S, 6, 7, 3, 4, 3, 4, BATCH, DM, DN, Rotation3Impl<S, BATCH, DM, DN>>;
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     Isometry3<S, BATCH, DM, DN>
 {
-    /// create isometry from translation and rotation
-    pub fn from_translation_and_rotation(
-        translation: S::Vector<3>,
+    /// create isometry from rotation and translation
+    pub fn from_rotation_and_translation(
         rotation: Rotation3<S, BATCH, DM, DN>,
+        translation: S::Vector<3>,
     ) -> Self {
-        Self::from_translation_and_factor(translation, rotation)
+        Self::from_factor_and_translation(rotation, translation)
     }
 
     /// create isometry from translation
     pub fn from_translation(translation: S::Vector<3>) -> Self {
-        Self::from_translation_and_factor(translation, Rotation3::identity())
+        Self::from_factor_and_translation(Rotation3::identity(), translation)
     }
 
     /// create isometry from rotation
     pub fn from_rotation(rotation: Rotation3<S, BATCH, DM, DN>) -> Self {
-        Self::from_translation_and_factor(S::Vector::<3>::zeros(), rotation)
+        Self::from_factor_and_translation(rotation, S::Vector::<3>::zeros())
     }
 
     /// translate along x axis
@@ -145,7 +202,7 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
 
 impl From<nalgebra::Isometry3<f64>> for Isometry3F64 {
     fn from(isometry: nalgebra::Isometry3<f64>) -> Self {
-        Self::from_translation_and_rotation(isometry.translation.vector, isometry.rotation.into())
+        Self::from_rotation_and_translation(isometry.rotation.into(), isometry.translation.vector)
     }
 }
 
@@ -184,9 +241,9 @@ fn test_nalgebra_interop() {
     use approx::assert_relative_eq;
     use sophus_autodiff::linalg::VecF64;
 
-    let isometry = Isometry3F64::from_translation_and_rotation(
-        VecF64::from_array([1.0, 2.0, 3.0]),
+    let isometry = Isometry3F64::from_rotation_and_translation(
         Rotation3::rot_x(0.5),
+        VecF64::from_array([1.0, 2.0, 3.0]),
     );
     let na_isometry: nalgebra::Isometry3<f64> = isometry.into();
     assert_eq!(isometry.translation(), na_isometry.translation.vector);
