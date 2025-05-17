@@ -10,6 +10,16 @@ use crate::RenderContext;
 pub(crate) struct VisualDepthTexture {
     pub visual_texture: wgpu::Texture,
     pub(crate) egui_tex_id: egui::TextureId,
+    pub(crate) render_state: RenderContext,
+}
+
+impl Drop for VisualDepthTexture {
+    fn drop(&mut self) {
+        self.render_state
+            .egui_wgpu_renderer
+            .write()
+            .free_texture(&self.egui_tex_id);
+    }
 }
 
 impl VisualDepthTexture {
@@ -48,6 +58,7 @@ impl VisualDepthTexture {
         Self {
             visual_texture,
             egui_tex_id,
+            render_state: render_state.clone(),
         }
     }
 }

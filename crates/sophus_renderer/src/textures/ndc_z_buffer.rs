@@ -3,7 +3,7 @@ use sophus_image::ImageSize;
 
 use crate::{
     RenderContext,
-    types::DOG_MULTISAMPLE_COUNT,
+    types::SOPHUS_RENDER_MULTISAMPLE_COUNT,
 };
 
 #[derive(Debug)]
@@ -26,7 +26,7 @@ impl NdcZBuffer {
             label: Some("ndc depth multisample texture"),
             size,
             mip_level_count: 1,
-            sample_count: DOG_MULTISAMPLE_COUNT,
+            sample_count: SOPHUS_RENDER_MULTISAMPLE_COUNT,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Depth32Float,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT

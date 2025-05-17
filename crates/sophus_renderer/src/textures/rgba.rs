@@ -17,7 +17,7 @@ use wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
 
 use crate::{
     RenderContext,
-    types::DOG_MULTISAMPLE_COUNT,
+    types::SOPHUS_RENDER_MULTISAMPLE_COUNT,
 };
 
 /// rgba texture
@@ -36,6 +36,16 @@ pub struct RgbdTexture {
     /// rgba texture view distortedProcess
     pub final_texture_view: wgpu::TextureView,
     pub(crate) egui_tex_id: egui::TextureId,
+    pub(crate) render_context: RenderContext,
+}
+
+impl Drop for RgbdTexture {
+    fn drop(&mut self) {
+        self.render_context
+            .egui_wgpu_renderer
+            .write()
+            .free_texture(&self.egui_tex_id);
+    }
 }
 
 /// rgbd render result
@@ -81,7 +91,7 @@ impl RgbdTexture {
                         depth_or_array_layers: 1,
                     },
                     mip_level_count: 1,
-                    sample_count: DOG_MULTISAMPLE_COUNT,
+                    sample_count: SOPHUS_RENDER_MULTISAMPLE_COUNT,
                     dimension: wgpu::TextureDimension::D2,
                     format: wgpu::TextureFormat::Rgba8Unorm,
                     usage: wgpu::TextureUsages::RENDER_ATTACHMENT
@@ -154,6 +164,7 @@ impl RgbdTexture {
             egui_tex_id,
             resolved_texture,
             resolved_texture_view,
+            render_context: render_state.clone(),
         }
     }
 
