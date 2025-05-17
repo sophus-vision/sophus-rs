@@ -40,11 +40,110 @@ extern crate alloc;
 
 /// 3d rotations - element of the Special Orthogonal group SO(3)
 ///
+/// ## Generic parameters
+///
 ///  * BATCH
 ///     - batch dimension. If S is f64 or [sophus_autodiff::dual::DualScalar] then BATCH=1.
 ///  * DM, DN
 ///     - DM x DN is the static shape of the Jacobian to be computed if S == DualScalar<DM,DN>. If S
 ///       == f64, then DM==0, DN==0.
+///
+/// ## Overview
+///
+/// * **Tangent space**: DoF - **(ω₀, ω₁. ω₂)**, `ω` the 3-d **angular** rate
+/// * **Internal parameters**:  4 – **[RE(q), IM(q)₀, IM(q)₁, IM(q)₂]**, unit quaternion `q`
+///   (|q| = 1).
+/// * **Action space:** 3 (SO(3) acts on 3-d points)
+/// * **Matrix size:** 3 (represented as 3 × 3 matrices)
+///
+/// ### Group structure
+///
+/// The group of 3d rotations is represented by unit quaternions. The corresponding *matrix
+/// representation* is
+/// ```ascii
+///        -------------------------------------------------------------------------------------
+///  R : = |  IM(q) × u₀  + RE(q) · u₀ |  IM(q) × u₁  + RE(q) · u₁ |  IM(q) × u₂  + RE(q) · u₂ |
+///        -------------------------------------------------------------------------------------
+/// ```
+/// with ``uᵢ = 2 (IM(q) × eᵢ)`` and ``eᵢ`` being the i-th basis vector of the 3d space. ``R`` is a
+/// 3x3 rotation matrix with ``R·Rᵀ = I`` and ``det(R) = 1``.
+///
+///
+/// The *group operation* is quaternion multiplication:
+/// ```ascii
+/// qₗ ⊗ qᵣ =  RE(qₗ) · IM(qᵣ)  +  RE(qᵣ) · IM(qₗ)  +  IM(qₗ) × IM(qᵣ)
+/// ```
+/// In rotation matrix form, the group operation is defined as:
+///
+/// ```ascii
+/// Rₗ ⊗ Rᵣ =  Rₗ·Rᵣ
+/// ```
+///
+/// The inverse of a rotation is given by the quaternion conjugate:
+/// ```ascii
+/// q⁻¹ =  RE(q) - IM(q)
+/// ```
+/// In matrix form, the inverse of a rotation is given by the transpose:
+/// ```ascii
+/// R⁻¹ = Rᵀ
+/// ```
+///
+/// ### Lie group properties
+///
+/// The tangent space of the 3d rotation group is the space of rotational velocities. Alternatively,
+/// it can be understood in terms of axis-angle representation. Given a rotation around an axis
+/// ``v`` with angle ``θ``, the corresponding tangent vector is given by ``v · θ``.
+///
+/// Tangent vectors are mapped to the Lie algebra matrix representation via the *hat* operator:
+///
+/// ```ascii
+///        -------------------
+///        |  0  | -ω₂ |  ω₁ |
+///        -------------------
+/// ω^  =  |  ω₂ |  0  | -ω₀ |
+///        -------------------
+///        | -ω₁ |  ω₀ |  0  |
+///        -------------------
+/// ```
+///
+/// For the group of 3d rotations, also known as the Special Orthogonal group SO(3), the
+/// hat-operator is the skew-symmetric matrix operator: ``ω^ = [ω]ₓ``, which is closely related
+/// to the cross product: ``[ω]ₓ · y = x × y``.
+///
+/// The *exponential map*: ``exp: ℝ³ -> SO(3)`` from rotational velocities to 3d rotations given by
+/// the Rodrigues' rotation:
+///
+/// ```ascii
+/// exp(x) = cos(θ) · I + sin(θ) · [ω]ₓ + (1 - cos(θ)) · [ω]ₓ²
+/// ```
+/// The exponential map is surjective, meaning that every rotation can be represented by a
+/// tangent vector. Its inverse, the *logarithm map*: ``log: SO(3) -> ℝ³`` is restricted
+/// such that the rotation angle is in the range ``[-π, π]``.
+///
+/// Like most Lie groups, 3d rotations do not commute, i.e., in general ``R · Q · R⁻¹ ≠ Q``. Hence,
+/// it is of interest to as what ``R · Q · R⁻¹`` is equal to instead. This is called the *group
+/// adjoint*:
+/// ```ascii
+/// Adjᵪ: ℝ³ -> ℝ³, Adjᵪ(ω) = X ⊗ hat(ω) ⊗ X⁻¹.
+/// ```
+/// The adjoint is a linear map, hence there exists a matrix representation ``M`` such that
+/// ``Adjᵪ(ω) = M · ω``. For the group of 3d rotations, the adjoint of group element ``R`` is given
+/// by the rotation matrix itself:
+/// ```ascii
+/// Adj(ω) = R · ω
+/// ```
+///
+/// If one takes the derivative of the adjoint map, then
+/// one gets the *adjoint representation* of the: ``∂t Adjᵪ(ω) = UV - VU``.
+/// ```ascii
+/// adᵩ(ω) = (φ^·ω^ - ω^·φ^)ᵛ
+/// ```
+/// The adjoint representation is a linear map, hence there exists a matrix representation
+/// ``A`` such that ``adᵩ(ω) = A · ω``. For 3d rotations, the adjoint representation is
+/// given by the skew-symmetric matrix operator:
+/// ```ascii
+/// ad(ωᵣ)  =  [ωₗ]ₓ · ωᵣ  =  ωₗ × ωᵣ
+/// ```
 pub type Rotation3<S, const BATCH: usize, const DM: usize, const DN: usize> =
     LieGroup<S, 3, 4, 3, 3, BATCH, DM, DN, Rotation3Impl<S, BATCH, DM, DN>>;
 
@@ -53,7 +152,9 @@ pub type Rotation3<S, const BATCH: usize, const DM: usize, const DN: usize> =
 /// See [Rotation3] for details.
 pub type Rotation3F64 = Rotation3<f64, 1, 0, 0>;
 
-/// 3d rotation implementation details
+/// 3d rotation implementation.
+///
+/// See [Rotation3] for details.
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Rotation3Impl<
     S: IsScalar<BATCH, DM, DN>,
@@ -204,10 +305,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         ]
     }
 
-    fn are_params_valid<P>(params: P) -> S::Mask
-    where
-        P: Borrow<S::Vector<4>>,
-    {
+    fn are_params_valid(params: S::Vector<4>) -> S::Mask {
         let norm = params.borrow().norm();
         (norm - S::from_f64(1.0))
             .abs()
@@ -921,7 +1019,7 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
         // We expect: R * R^T = I   and   det(R) > 0
         //
         // (If R is orthogonal, then det(R) = +/-1.)
-        let max_abs = ((mat * mat.transpose()) - MatF64::identity()).abs().max();
+        let max_abs: f64 = ((mat * mat.transpose()) - MatF64::identity()).abs().max();
         max_abs < thr && mat.determinant() > 0.0
     }
 

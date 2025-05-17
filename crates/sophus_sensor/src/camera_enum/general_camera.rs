@@ -40,32 +40,24 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     IsCamera<S, BATCH, DM, DN> for GeneralCameraEnum<S, BATCH, DM, DN>
 {
-    fn new_pinhole<P>(params: P, image_size: ImageSize) -> Self
-    where
-        P: Borrow<S::Vector<4>>,
+    fn new_pinhole(params: S::Vector<4>, image_size: ImageSize) -> Self
     {
         Self::Perspective(PerspectiveCameraEnum::new_pinhole(params, image_size))
     }
 
-    fn new_kannala_brandt<P>(params: P, image_size: ImageSize) -> Self
-    where
-        P: Borrow<S::Vector<8>>,
+    fn new_kannala_brandt(params: S::Vector<8>, image_size: ImageSize) -> Self
     {
         Self::Perspective(PerspectiveCameraEnum::new_kannala_brandt(
             params, image_size,
         ))
     }
 
-    fn new_brown_conrady<P>(params: P, image_size: ImageSize) -> Self
-    where
-        P: Borrow<S::Vector<12>>,
+    fn new_brown_conrady(params: S::Vector<12>, image_size: ImageSize) -> Self
     {
         Self::Perspective(PerspectiveCameraEnum::new_brown_conrady(params, image_size))
     }
 
-    fn new_enhanced_unified<P>(params: P, image_size: ImageSize) -> Self
-    where
-        P: Borrow<S::Vector<6>>,
+    fn new_enhanced_unified(params: S::Vector<6>, image_size: ImageSize) -> Self
     {
         Self::Perspective(PerspectiveCameraEnum::new_enhanced_unified(
             params, image_size,

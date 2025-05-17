@@ -55,7 +55,7 @@ impl PoseCircleProblem {
             let angle = frac * core::f64::consts::TAU;
             let x = radius * angle.cos();
             let y = radius * angle.sin();
-            let p = VecF64::<3>::from_real_array([x, y, 0.1 * angle]);
+            let p = VecF64::<3>::from_real_array([0.1 * angle, x, y]);
             true_world_from_robot_poses.push(Isometry2::exp(p));
         }
 
@@ -65,7 +65,7 @@ impl PoseCircleProblem {
             let true_world_from_pose_m = true_world_from_robot_poses[m_idx];
             let true_world_from_pose_n = true_world_from_robot_poses[n_idx];
 
-            let p = VecF64::<3>::from_real_array([0.001, 0.001, 0.0001]);
+            let p = VecF64::<3>::from_real_array([0.0001, 0.001, 0.001]);
             let pose_m_from_pose_n =
                 Isometry2::exp(p) * true_world_from_pose_m.inverse() * true_world_from_pose_n;
 

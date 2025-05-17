@@ -100,38 +100,38 @@ impl<
     }
 
     /// Create a pinhole camera instance
-    pub fn new_pinhole(params: impl Borrow<S::Vector<4>>, image_size: ImageSize) -> Self {
+    pub fn new_pinhole(params: S::Vector<4>, image_size: ImageSize) -> Self {
         Self::from_model(CameraType::new_pinhole(params, image_size))
     }
 
     /// Create a Kannala-Brandt camera instance
-    pub fn new_kannala_brandt(params: impl Borrow<S::Vector<8>>, image_size: ImageSize) -> Self {
+    pub fn new_kannala_brandt(params: S::Vector<8>, image_size: ImageSize) -> Self {
         Self::from_model(CameraType::new_kannala_brandt(params, image_size))
     }
 
     /// Create a Brown-Conrady camera instance
-    pub fn new_brown_conrady(params: impl Borrow<S::Vector<12>>, image_size: ImageSize) -> Self {
+    pub fn new_brown_conrady(params: S::Vector<12>, image_size: ImageSize) -> Self {
         Self::from_model(CameraType::new_brown_conrady(params, image_size))
     }
 
     /// Create a enhanced unified camera instance
-    pub fn new_enhanced_unified(params: impl Borrow<S::Vector<6>>, image_size: ImageSize) -> Self {
+    pub fn new_enhanced_unified(params: S::Vector<6>, image_size: ImageSize) -> Self {
         Self::from_model(CameraType::new_enhanced_unified(params, image_size))
     }
 
     /// Projects a 3D point in the camera frame to a pixel in the image
-    pub fn cam_proj(&self, point_in_camera: impl Borrow<S::Vector<3>>) -> S::Vector<2> {
-        self.camera_type.cam_proj(point_in_camera.borrow())
+    pub fn cam_proj(&self, point_in_camera: S::Vector<3>) -> S::Vector<2> {
+        self.camera_type.cam_proj(point_in_camera)
     }
 
     /// Unprojects a pixel in the image to a 3D point in the camera frame - assuming z=1
-    pub fn cam_unproj(&self, pixel: impl Borrow<S::Vector<2>>) -> S::Vector<3> {
-        self.cam_unproj_with_z(pixel.borrow(), S::ones())
+    pub fn cam_unproj(&self, pixel: S::Vector<2>) -> S::Vector<3> {
+        self.cam_unproj_with_z(pixel, S::ones())
     }
 
     /// Unprojects a pixel in the image to a 3D point in the camera frame
-    pub fn cam_unproj_with_z(&self, pixel: impl Borrow<S::Vector<2>>, z: S) -> S::Vector<3> {
-        self.camera_type.cam_unproj_with_z(pixel.borrow(), z)
+    pub fn cam_unproj_with_z(&self, pixel: S::Vector<2>, z: S) -> S::Vector<3> {
+        self.camera_type.cam_unproj_with_z(pixel, z)
     }
 
     /// Distortion - maps a point in the camera z=1 plane to a distorted point

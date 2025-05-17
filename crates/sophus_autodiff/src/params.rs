@@ -2,8 +2,6 @@ use alloc::{
     vec,
     vec::Vec,
 };
-use core::borrow::Borrow;
-
 use crate::{
     linalg::VecF64,
     points::example_points,
@@ -45,13 +43,9 @@ pub trait HasParams<
 >: IsParamsImpl<S, PARAMS, BATCH, DM, DN>
 {
     /// Create instance from parameters.
-    fn from_params<P>(params: P) -> Self
-    where
-        P: Borrow<S::Vector<PARAMS>>;
+    fn from_params(params: S::Vector<PARAMS>) -> Self;
     /// Set parameter values.
-    fn set_params<P>(&mut self, params: P)
-    where
-        P: Borrow<S::Vector<PARAMS>>;
+    fn set_params(&mut self, params: S::Vector<PARAMS>);
     /// Get parameter values.
     fn params(&self) -> &S::Vector<PARAMS>;
 }
@@ -78,9 +72,7 @@ pub trait IsParamsImpl<
 >
 {
     /// Is the parameter vector valid?
-    fn are_params_valid<P>(params: P) -> S::Mask
-    where
-        P: Borrow<S::Vector<PARAMS>>;
+    fn are_params_valid(params: S::Vector<PARAMS>) -> S::Mask;
     /// Returns examples of valid parameters.
     ///
     /// This is useful for internal and external unit/regression/integration tests.
@@ -97,9 +89,7 @@ pub trait IsParamsImpl<
 }
 
 impl<const N: usize> IsParamsImpl<f64, N, 1, 0, 0> for VecF64<N> {
-    fn are_params_valid<P>(_params: P) -> bool
-    where
-        P: Borrow<VecF64<N>>,
+    fn are_params_valid(_params: VecF64<N>) -> bool
     {
         true
     }
@@ -114,18 +104,14 @@ impl<const N: usize> IsParamsImpl<f64, N, 1, 0, 0> for VecF64<N> {
 }
 
 impl<const N: usize> HasParams<f64, N, 1, 0, 0> for VecF64<N> {
-    fn from_params<P>(params: P) -> Self
-    where
-        P: Borrow<VecF64<N>>,
+    fn from_params(params: VecF64<N>) -> Self
     {
-        *params.borrow()
+        params
     }
 
-    fn set_params<P>(&mut self, params: P)
-    where
-        P: Borrow<VecF64<N>>,
+    fn set_params(&mut self, params: VecF64<N>)
     {
-        *self = *params.borrow();
+        *self = params;
     }
 
     fn params(&self) -> &VecF64<N> {

@@ -377,7 +377,7 @@ macro_rules! def_real_group_test_template {
                             ::from_real_vector(*g.params());
                         let dual_g = <$dual_group>::from_params
                             (
-                                &dual_params,
+                                dual_params,
                             );
                         let dual_log_x = |t: <$dual_scalar as IsScalar<$batch, DOF, 1>>::Vector<DOF>|
                             -> <$dual_scalar as IsScalar<$batch, DOF, 1>>::Vector<DOF>
@@ -394,7 +394,7 @@ macro_rules! def_real_group_test_template {
                         let dual_log_x = |g: <$dual_scalar_p as IsScalar<$batch, PARAMS, 1>>::Vector<PARAMS>|
                             -> <$dual_scalar_p as IsScalar<$batch, PARAMS, 1>>::Vector<DOF>
                             {
-                                <$dual_group_p>::from_params(&g).log()
+                                <$dual_group_p>::from_params(g).log()
                             };
                         let auto_diff =
                             dual_log_x(<$dual_scalar_p>::vector_var(*g.params())).jacobian();
@@ -411,7 +411,7 @@ macro_rules! def_real_group_test_template {
                             (
                                 *a.params()
                             );
-                        let dual_a = <$dual_group>::from_params(&dual_params_a);
+                        let dual_a = <$dual_group>::from_params(dual_params_a);
                         let dual_params_b =
                             <$dual_scalar as IsScalar<$batch, DOF, 1>>::Vector::from_real_vector
                             (
@@ -419,12 +419,12 @@ macro_rules! def_real_group_test_template {
                             );
                         let dual_b = <$dual_group>::from_params
                             (
-                                &dual_params_b,
+                                dual_params_b,
                             );
                         let dual_log_x = |t: <$dual_scalar as IsScalar<$batch, DOF, 1>>::Vector<DOF>|
                             -> <$dual_scalar as IsScalar<$batch, DOF, 1>>::Vector<DOF>
                             {
-                                (&dual_a *
+                                (dual_a *
                                         &<$dual_group>::exp(&t)
                                         .group_mul(&dual_b)
                                     ).log()
@@ -524,7 +524,7 @@ macro_rules! def_real_group_test_template {
                         let dual_mul_x = |vv: <$dual_scalar_p as IsScalar<$batch,PARAMS,1>>::Vector<PARAMS>|
                             -> <$dual_scalar_p as IsScalar<$batch,PARAMS,1>>::Vector<PARAMS>
                             {
-                                <$dual_group_p>::from_params(&vv)
+                                <$dual_group_p>::from_params(vv)
                                 .group_mul(&b_dual).params().clone()
                             };
 
@@ -537,7 +537,7 @@ macro_rules! def_real_group_test_template {
                         let dual_mul_x = |vv: <$dual_scalar_p as IsScalar<$batch, PARAMS, 1>>::Vector<PARAMS>|
                             -> <$dual_scalar_p as IsScalar<$batch, PARAMS, 1>>::Vector<PARAMS>
                             {
-                                a_dual.group_mul(& LieGroup::from_params(&vv)).params().clone()
+                                a_dual.group_mul(&LieGroup::from_params(vv)).params().clone()
                             };
 
                         let auto_diff =
@@ -564,7 +564,7 @@ macro_rules! def_real_group_test_template {
                         let  dual_fn = |
                             v: <$dual_scalar_p as IsScalar<$batch, PARAMS, 1>>::Vector<PARAMS>,
                         | -> <$dual_scalar_p as IsScalar<$batch, PARAMS, 1>>::Vector<POINT> {
-                            let m =  <$dual_group_p>::from_params(&v).compact();
+                            let m =  <$dual_group_p>::from_params(v).compact();
                             m.get_col_vec(i)
                         };
                         let auto_d =

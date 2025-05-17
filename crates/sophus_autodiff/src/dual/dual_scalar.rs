@@ -362,6 +362,16 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
         }
     }
 
+    fn tanh(&self) -> Self {
+        let tanh_x = self.real_part.tanh();
+        Self {
+            real_part: tanh_x,
+            infinitesimal_part: self
+                .infinitesimal_part
+                .map(|dij_val| dij_val * (1.0 - tanh_x * tanh_x)),
+        }
+    }
+
     fn acos(&self) -> Self {
         // d/dx (acos(x)) = -1 / sqrt(1 - x^2)
         let denom = 1.0 - self.real_part * self.real_part;

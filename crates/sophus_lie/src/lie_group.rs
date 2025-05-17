@@ -225,25 +225,34 @@ impl<
     }
 
     fn adjoint_tests() {
-        let group_examples: alloc::vec::Vec<_> = Self::element_examples();
-        let tangent_examples: alloc::vec::Vec<S::Vector<DOF>> = G::tangent_examples();
+        let group_examples = Self::element_examples();
+        let basis: alloc::vec::Vec<S::Vector<DOF>> = (0..DOF)
+            .map(|i| {
+                let mut e = S::Vector::<DOF>::zeros();
+                *e.elem_mut(i) = S::ones();
+                e
+            })
+            .collect();
 
         for g in &group_examples {
-            let mat: S::Matrix<AMBIENT, AMBIENT> = g.matrix();
-            let mat_adj = g.adj();
+            let mat_g = g.matrix();
+            let inv_mat_g = g.inverse().matrix();
 
-            for x in &tangent_examples {
-                let mat_adj_x = mat_adj * *x;
+            let mut ad_ref = S::Matrix::<DOF, DOF>::zeros();
 
-                let inv_mat: S::Matrix<AMBIENT, AMBIENT> = g.inverse().matrix();
-                let mat_adj_x2 = Self::vee(mat.mat_mul(Self::hat(x).mat_mul(inv_mat)));
-                assert_relative_eq!(
-                    mat_adj_x.real_vector(),
-                    mat_adj_x2.real_vector(),
-                    epsilon = 0.0001
-                );
+            for i in 0..DOF {
+                let col_i = Self::vee(mat_g.mat_mul(Self::hat(basis[i]).mat_mul(inv_mat_g)));
+                ad_ref.set_col_vec(i, col_i);
             }
+
+            let ad_impl = g.adj();
+            assert_relative_eq!(
+                ad_impl.real_matrix(),
+                ad_ref.real_matrix(),
+                epsilon = 0.0001
+            );
         }
+        let tangent_examples: alloc::vec::Vec<S::Vector<DOF>> = G::tangent_examples();
         for a in &tangent_examples {
             for b in &tangent_examples {
                 let ad_a = Self::ad(a);
@@ -359,10 +368,7 @@ impl<
 > IsParamsImpl<S, PARAMS, BATCH, DM, DN>
     for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
-    fn are_params_valid<P>(params: P) -> S::Mask
-    where
-        P: for<'a> Borrow<S::Vector<PARAMS>>,
-    {
+    fn are_params_valid(params: S::Vector<PARAMS>) -> S::Mask {
         G::are_params_valid(params)
     }
 
@@ -388,29 +394,20 @@ impl<
 > HasParams<S, PARAMS, BATCH, DM, DN>
     for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
-    fn from_params<P>(params: P) -> Self
-    where
-        P: for<'a> Borrow<S::Vector<PARAMS>>,
-    {
-        let params = params.borrow();
-
+    fn from_params(params: S::Vector<PARAMS>) -> Self {
         assert!(
             G::are_params_valid(params).all(),
             "Invalid parameters for {:?}",
             params.real_vector()
         );
         Self {
-            params: G::disambiguate(*params),
+            params: G::disambiguate(params),
             phantom: core::marker::PhantomData,
         }
     }
 
-    fn set_params<P>(&mut self, params: P)
-    where
-        P: for<'a> Borrow<S::Vector<PARAMS>>,
-    {
-        let params = params.borrow();
-        self.params = G::disambiguate(*params);
+    fn set_params(&mut self, params: S::Vector<PARAMS>) {
+        self.params = G::disambiguate(params);
     }
 
     fn params(&self) -> &S::Vector<PARAMS> {

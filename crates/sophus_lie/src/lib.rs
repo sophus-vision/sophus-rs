@@ -39,20 +39,17 @@ pub mod prelude {
     };
 }
 
-use core::{
-    borrow::Borrow,
-    fmt::Debug,
-};
+use core::fmt::Debug;
 
 use sophus_autodiff::prelude::*;
 
 pub use crate::{
     groups::{
+        affine_group_template::*,
         isometry2::*,
         isometry3::*,
         rotation2::*,
         rotation3::*,
-        affine_group_template::*,
     },
     lie_group::{
         LieGroup,
@@ -340,9 +337,7 @@ pub trait IsTranslationProductGroup<
     type Impl;
 
     /// Create from translation and factor group element
-    fn from_translation_and_factor<F>(translation: S::Vector<POINT>, factor: F) -> Self
-    where
-        F: Borrow<FactorGroup>;
+    fn from_factor_and_translation(factor: FactorGroup, translation: S::Vector<POINT>) -> Self;
 
     /// set translation
     fn set_translation(&mut self, translation: S::Vector<POINT>);
@@ -350,9 +345,7 @@ pub trait IsTranslationProductGroup<
     fn translation(&self) -> S::Vector<POINT>;
 
     /// set factor group element
-    fn set_factor<F>(&mut self, factor: F)
-    where
-        F: Borrow<FactorGroup>;
+    fn set_factor(&mut self, factor: FactorGroup);
 
     /// get factor group element
     fn factor(&self) -> FactorGroup;

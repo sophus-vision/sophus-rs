@@ -85,9 +85,9 @@ let foo_in_world = VecF64::<3>::new(1.0, 2.0, 3.0);
 
 // Combine them into an SE(3) transform.
 let world_from_foo_isometry
-    = Isometry3F64::from_translation_and_rotation(
-        foo_in_world,
-        world_from_foo_rotation);
+    = Isometry3F64::from_rotation_and_translation(
+        world_from_foo_rotation,
+        foo_in_world);
 
 // Apply world_from_foo_isometry to a 3D point in the foo reference frame.
 let point_in_foo = VecF64::<3>::new(10.0, 0.0, 0.0);
