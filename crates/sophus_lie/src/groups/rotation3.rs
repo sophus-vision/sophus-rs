@@ -1,37 +1,18 @@
-use core::{
-    borrow::Borrow,
-    f64,
-    marker::PhantomData,
-};
+use core::{borrow::Borrow, f64, marker::PhantomData};
 
 use log::warn;
 use sophus_autodiff::{
-    linalg::{
-        EPS_F64,
-        MatF64,
-        VecF64,
-        cross,
-    },
+    linalg::{EPS_F64, MatF64, VecF64, cross},
     manifold::IsTangent,
-    params::{
-        HasParams,
-        IsParamsImpl,
-    },
+    params::{HasParams, IsParamsImpl},
 };
 
 use crate::{
-    EmptySliceError,
-    HasAverage,
-    HasDisambiguate,
-    IsLieGroupImpl,
-    IsRealLieFactorGroupImpl,
+    EmptySliceError, HasAverage, HasDisambiguate, IsLieGroupImpl, IsRealLieFactorGroupImpl,
     IsRealLieGroupImpl,
     lie_group::{
         LieGroup,
-        average::{
-            IterativeAverageError,
-            iterative_average,
-        },
+        average::{IterativeAverageError, iterative_average},
     },
     prelude::*,
 };
@@ -40,11 +21,64 @@ extern crate alloc;
 
 /// 3d rotations - element of the Special Orthogonal group SO(3)
 ///
+/// ## Generic parameters
+///
 ///  * BATCH
 ///     - batch dimension. If S is f64 or [sophus_autodiff::dual::DualScalar] then BATCH=1.
 ///  * DM, DN
 ///     - DM x DN is the static shape of the Jacobian to be computed if S == DualScalar<DM,DN>. If S
 ///       == f64, then DM==0, DN==0.
+///
+/// ## Overview
+///
+/// * Degrees of freedom:
+///   - 3 DoF for rotations
+/// * Internal parameters:
+///    - ``q.real, q.imag[0], q.imag[1], q.imag[2]``, with ``q`` being a quaternion number with
+///      unit norm: ``|z| = 1``.
+/// * Group dimension:
+///    - 3d Rotations act on 3d points.
+/// * Dimension of ambient space:
+///    - 3d rotations are 3x3 matrices.
+///
+///
+/// ### hat operator
+///
+/// ```ascii
+///            -------------------------
+///            |  0    | -x[2] |  x[1] |
+///            -------------------------
+/// hat(x)  =  |  x[2] |  0    | -x[0] |
+///            -------------------------
+///            | -x[1] |  x[o] |  0    |
+///            -------------------------
+///
+/// ```
+///
+/// ### matrix representation
+/// ```ascii
+/// -----
+/// | R |
+/// -----
+/// ````
+/// where ``R`` is a 3x3 matrix with ``R Rᵀ = I`` and ``det(R) = 1``.
+///
+///
+/// ### Group adjoint
+///
+/// ```ascii
+/// --------
+/// | x  R |
+/// --------
+/// ```
+///
+/// ### Lie algebra adjoint
+///
+/// ```ascii
+/// -------
+/// | [x] |
+/// -------
+/// ```
 pub type Rotation3<S, const BATCH: usize, const DM: usize, const DN: usize> =
     LieGroup<S, 3, 4, 3, 3, BATCH, DM, DN, Rotation3Impl<S, BATCH, DM, DN>>;
 
@@ -1082,8 +1116,7 @@ fn rotation3_prop_tests() {
     use sophus_autodiff::linalg::BatchScalarF64;
 
     use crate::lie_group::{
-        factor_lie_group::RealFactorLieGroupTest,
-        real_lie_group::RealLieGroupTest,
+        factor_lie_group::RealFactorLieGroupTest, real_lie_group::RealLieGroupTest,
     };
 
     Rotation3F64::test_suite();
