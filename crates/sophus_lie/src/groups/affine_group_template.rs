@@ -18,12 +18,23 @@ use crate::{
 
 extern crate alloc;
 
-/// implementation of a translation product group
+/// Template of an affine group.
 ///
 /// It is a semi-direct product of the commutative translation group (Euclidean vector space) and a
-/// factor group.
+/// factor group. It has the following form:
+///
+/// ```ascii
+/// ---------
+/// | A | b |
+/// ---------
+/// | 0 | 1 |
+/// ---------
+/// ```
+///
+/// We call ``A`` the factor group and ``b`` the translation. The standard group action aka the "transform"
+/// function has the following form: ``A x + b``.
 #[derive(Debug, Copy, Clone, Default)]
-pub struct TranslationProductGroupImpl<
+pub struct AffineGroupTemplateImpl<
     S: IsScalar<BATCH, DM, DN>,
     const DOF: usize,
     const PARAMS: usize,
@@ -51,7 +62,7 @@ impl<
     const DM: usize,
     const DN: usize,
     F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
-> TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
+> AffineGroupTemplateImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
     /// translation part of the group parameters
     pub fn translation(params: &S::Vector<PARAMS>) -> S::Vector<POINT> {
@@ -107,7 +118,7 @@ impl<
     const DN: usize,
     F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
 > HasDisambiguate<S, PARAMS, BATCH, DM, DN>
-    for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
+    for AffineGroupTemplateImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
     fn disambiguate(params: S::Vector<PARAMS>) -> S::Vector<PARAMS> {
         Self::params_from(
@@ -130,7 +141,7 @@ impl<
     const DN: usize,
     F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
 > IsParamsImpl<S, PARAMS, BATCH, DM, DN>
-    for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
+    for AffineGroupTemplateImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
     fn are_params_valid<P>(params: P) -> S::Mask
     where
@@ -179,7 +190,7 @@ impl<
     const DN: usize,
     F: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
 > IsTangent<S, DOF, BATCH, DM, DN>
-    for TranslationProductGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
+    for AffineGroupTemplateImpl<S, DOF, PARAMS, POINT, AMBIENT, SDOF, SPARAMS, BATCH, DM, DN, F>
 {
     fn tangent_examples() -> alloc::vec::Vec<S::Vector<DOF>> {
         let mut examples = alloc::vec![];
@@ -213,7 +224,7 @@ impl<
     const DN: usize,
     Factor: IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
 > IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN>
-    for TranslationProductGroupImpl<
+    for AffineGroupTemplateImpl<
         S,
         DOF,
         PARAMS,
@@ -351,7 +362,7 @@ impl<
         )
     }
 
-    type GenG<S2: IsScalar<BATCH, DM, DN>> = TranslationProductGroupImpl<
+    type GenG<S2: IsScalar<BATCH, DM, DN>> = AffineGroupTemplateImpl<
         S2,
         DOF,
         PARAMS,
@@ -365,7 +376,7 @@ impl<
         Factor::GenFactorG<S2, DM, DN>,
     >;
 
-    type RealG = TranslationProductGroupImpl<
+    type RealG = AffineGroupTemplateImpl<
         S::RealScalar,
         DOF,
         PARAMS,
@@ -379,7 +390,7 @@ impl<
         Factor::GenFactorG<S::RealScalar, 0, 0>,
     >;
 
-    type DualG<const M: usize, const N: usize> = TranslationProductGroupImpl<
+    type DualG<const M: usize, const N: usize> = AffineGroupTemplateImpl<
         S::DualScalar<M, N>,
         DOF,
         PARAMS,
@@ -405,7 +416,7 @@ impl<
     const BATCH: usize,
     Factor: IsRealLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH>,
 > IsRealLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH>
-    for TranslationProductGroupImpl<
+    for AffineGroupTemplateImpl<
         S,
         DOF,
         PARAMS,
@@ -570,7 +581,7 @@ impl<
         BATCH,
         DM,
         DN,
-        TranslationProductGroupImpl<
+        AffineGroupTemplateImpl<
             S,
             DOF,
             PARAMS,
@@ -585,7 +596,7 @@ impl<
         >,
     >
 {
-    type Impl = TranslationProductGroupImpl<
+    type Impl = AffineGroupTemplateImpl<
         S,
         DOF,
         PARAMS,

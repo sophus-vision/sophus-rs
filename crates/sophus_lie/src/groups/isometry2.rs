@@ -5,7 +5,7 @@ use crate::{
     HasAverage,
     Rotation2,
     Rotation2Impl,
-    TranslationProductGroupImpl,
+    AffineGroupTemplateImpl,
     lie_group::{
         LieGroup,
         average::{
@@ -33,7 +33,7 @@ pub type Isometry2F64 = Isometry2<f64, 1, 0, 0>;
 
 /// 2d isometry implementation details
 pub type Isometry2Impl<S, const BATCH: usize, const DM: usize, const DN: usize> =
-    TranslationProductGroupImpl<
+    AffineGroupTemplateImpl<
         S,
         3,
         4,

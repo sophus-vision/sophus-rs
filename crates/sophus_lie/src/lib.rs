@@ -52,7 +52,7 @@ pub use crate::{
         isometry3::*,
         rotation2::*,
         rotation3::*,
-        translation_product_product::*,
+        affine_group_template::*,
     },
     lie_group::{
         LieGroup,
