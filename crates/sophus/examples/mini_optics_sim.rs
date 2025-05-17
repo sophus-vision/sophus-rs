@@ -98,8 +98,8 @@ impl eframe::App for OpticsViewer {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.base.update_data();
 
-        egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
-            self.base.update_bottom_status_bar(ui, ctx);
+        egui::TopBottomPanel::top("top").show(ctx, |ui| {
+            self.base.update_top_bar(ui, ctx);
         });
 
         egui::SidePanel::left("left").show(ctx, |ui| {
@@ -121,13 +121,16 @@ impl eframe::App for OpticsViewer {
             ui.separator();
             ui.add(Slider::new(&mut self.elements.detector.x, 0.100..=2.000).text("detector.x"));
             ui.separator();
-            ui.add(Slider::new(&mut self.elements.aperture.x, 0.100..=1.000).text("aperture.x"));
             ui.add(
                 Slider::new(&mut self.elements.aperture.radius, 0.001..=0.25)
                     .text("aperture radius"),
             );
         });
         self.send_update();
+
+        egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
+            self.base.update_bottom_status_bar(ui, ctx);
+        });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             self.base.update_central_panel(ui, ctx);
@@ -210,8 +213,9 @@ impl OpticsViewer {
                 ));
             }
 
+            let angle_range = top_angle - bottom_angle;
             for j in 0..100 {
-                let angle = bottom_angle + j as f64 * 0.01 * (top_angle - bottom_angle);
+                let angle = bottom_angle + j as f64 * 0.01 * angle_range;
 
                 let mut path = LightPath::from(
                     format!("path_{i}_{j}"),
@@ -229,7 +233,7 @@ impl OpticsViewer {
                     let pixel = (point * 90.0 + 25.0).round() as usize;
 
                     if (0..image.image_size().height).contains(&pixel) {
-                        *image.mut_pixel(0, pixel) += 0.01;
+                        *image.mut_pixel(0, pixel) += 0.1 * angle_range as f32;
                     }
                 }
             }

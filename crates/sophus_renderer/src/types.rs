@@ -100,4 +100,4 @@ pub struct SceneFocusMarker {
 }
 
 /// multisample count
-pub const DOG_MULTISAMPLE_COUNT: u32 = 4;
+pub const SOPHUS_RENDER_MULTISAMPLE_COUNT: u32 = 4;

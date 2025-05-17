@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use eframe::{
     egui_wgpu,
     epaint::mutex::RwLock,
@@ -6,7 +8,7 @@ use eframe::{
 
 use crate::{
     prelude::*,
-    types::DOG_MULTISAMPLE_COUNT,
+    types::SOPHUS_RENDER_MULTISAMPLE_COUNT,
 };
 
 /// The render context
@@ -20,6 +22,16 @@ pub struct RenderContext {
     pub wgpu_queue: Arc<wgpu::Queue>,
     /// adapter
     pub wgpu_adapter: Arc<wgpu::Adapter>,
+}
+
+impl Debug for RenderContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RenderContext")
+            .field("wgpu_device", &self.wgpu_device)
+            .field("wgpu_queue", &self.wgpu_queue)
+            .field("wgpu_adapter", &self.wgpu_adapter)
+            .finish()
+    }
 }
 
 impl RenderContext {
@@ -59,7 +71,7 @@ impl RenderContext {
             &device,
             wgpu::TextureFormat::Rgba8Unorm,
             None,
-            DOG_MULTISAMPLE_COUNT,
+            SOPHUS_RENDER_MULTISAMPLE_COUNT,
             DITHERING,
         );
 

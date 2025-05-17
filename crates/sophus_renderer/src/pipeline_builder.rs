@@ -8,7 +8,7 @@ use wgpu::DepthStencilState;
 use crate::{
     RenderContext,
     prelude::*,
-    types::DOG_MULTISAMPLE_COUNT,
+    types::SOPHUS_RENDER_MULTISAMPLE_COUNT,
     uniform_buffers::VertexShaderUniformBuffers,
 };
 
@@ -235,7 +235,7 @@ impl PipelineBuilder {
             depth_stencil: self.depth_stencil.clone(),
             multisample: match self.pipeline_type {
                 PipelineType::Scene => wgpu::MultisampleState {
-                    count: DOG_MULTISAMPLE_COUNT,
+                    count: SOPHUS_RENDER_MULTISAMPLE_COUNT,
                     mask: !0,
                     alpha_to_coverage_enabled: false,
                 },

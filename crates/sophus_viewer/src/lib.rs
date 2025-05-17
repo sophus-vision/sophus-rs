@@ -68,7 +68,7 @@ pub fn recommened_eframe_native_options() -> eframe::NativeOptions {
     eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default().with_inner_size([850.0, 480.0]),
         renderer: eframe::Renderer::Wgpu,
-        multisampling: sophus_renderer::DOG_MULTISAMPLE_COUNT as u16,
+        multisampling: sophus_renderer::SOPHUS_RENDER_MULTISAMPLE_COUNT as u16,
         ..Default::default()
     }
 }
