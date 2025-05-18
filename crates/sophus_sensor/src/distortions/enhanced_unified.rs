@@ -33,8 +33,7 @@ pub struct EnhancedUnifiedDistortionImpl<
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     IsParamsImpl<S, 6, BATCH, DM, DN> for EnhancedUnifiedDistortionImpl<S, BATCH, DM, DN>
 {
-    fn are_params_valid(_params: S::Vector<6>) -> S::Mask
-    {
+    fn are_params_valid(_params: S::Vector<6>) -> S::Mask {
         S::Mask::all_true()
     }
 

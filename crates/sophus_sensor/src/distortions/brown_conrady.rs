@@ -31,8 +31,7 @@ pub struct BrownConradyDistortionImpl<
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     IsParamsImpl<S, 12, BATCH, DM, DN> for BrownConradyDistortionImpl<S, BATCH, DM, DN>
 {
-     fn are_params_valid(_params: S::Vector<12>) -> S::Mask
-    {
+    fn are_params_valid(_params: S::Vector<12>) -> S::Mask {
         S::Mask::all_true()
     }
 

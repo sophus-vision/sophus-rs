@@ -155,3 +155,8 @@ retrieve from the solution using [crate::variables::VarFamilies::get_members].
 This crate is part of the [sophus umbrella crate](https://crates.io/crates/sophus).
 It re-exports the relevant prelude types under [prelude], so you can
 seamlessly interoperate with the rest of the sophus-rs types.
+
+Also check out alternative non-linear least squares crates:
+
+ * [fact-rs](https://crates.io/crates/factrs)
+ * [tiny-solver-rs](https://crates.io/crates/tiny-solver)

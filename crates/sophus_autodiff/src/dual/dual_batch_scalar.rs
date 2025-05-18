@@ -432,7 +432,7 @@ where
         }
     }
 
-     fn tanh(&self) -> Self {
+    fn tanh(&self) -> Self {
         let tanh_x = self.real_part.tanh();
         Self {
             real_part: tanh_x,

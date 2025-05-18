@@ -46,8 +46,10 @@ use sophus_autodiff::prelude::*;
 pub use crate::{
     groups::{
         affine_group_template::*,
+        galilean3::*,
         isometry2::*,
         isometry3::*,
+        rotation_boost3::*,
         rotation2::*,
         rotation3::*,
     },

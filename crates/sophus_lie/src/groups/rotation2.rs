@@ -42,7 +42,7 @@ extern crate alloc;
 /// ## Overview
 ///
 /// * **Tangent space**: 1 DoF - **angular** rate `ϑ`
-/// * **Internal parameters**:  2 – **[RE(z), IM(x)]**, unit complex number `z` (|z| = 1).
+/// * **Internal parameters**:  2 – **[RE(z), IM(z)]**, unit complex number `z` (|z| = 1).
 /// * **Action space:** 2 (SO(2) acts on 2-d points)
 /// * **Matrix size:** 2 (represented as 2 × 2 matrices)
 ///
@@ -51,18 +51,18 @@ extern crate alloc;
 /// The group of 2d rotations is represented by unit complex. The corresponding *matrix
 /// representation* is
 /// ```ascii
-///        ---------------------     --------------------
-///        |  RE(z)  | -IM(z) |     | cos(ϑ) | -sin(ϑ) |
-/// R : =  ---------------------  =  --------------------
-///        |  IM(z)  |  RE(z) |     | sin(ϑ) |  cos(ϑ) |
-///        ---------------------     --------------------
+///        /                  \     /                  \
+///        |  RE(z)    -IM(z) |     | cos(ϑ)   -sin(ϑ) |
+/// R : =  |                  |  =  |                  |
+///        |  IM(z)     RE(z) |     | sin(ϑ)    cos(ϑ) |
+///        \                  /     \                  /
 /// ```
 /// z being a unit complex number, and ϑ the rotation angle.
 ///
 ///
 /// The *group operation* is complex multiplication:
 /// ```ascii
-/// zₗ ⊗ zᵣ =  (RE(zₗ)·RE(zᵣ) - IM(zₗ)·IM(zᵣ),  RE(zₗ)·IM(zᵣ) + IM(zₗ)·RE(zᵣ))
+/// zₗ ⊗ zᵣ =  (RE(zₗ)·RE(zᵣ) - IM(zₗ)·IM(zᵣ);  RE(zₗ)·IM(zᵣ) + IM(zₗ)·RE(zᵣ))
 /// ```
 /// In rotation matrix form, the group operation is defined as:
 ///
@@ -81,8 +81,8 @@ extern crate alloc;
 ///
 /// ### Lie group properties
 ///
-/// The tangent space of the 32 rotation group is the space of 1d rotational velocities. Alternatively,
-/// it can be understood in the rotation angle `ϑ` around the z-axis in the 2d plane.
+/// The tangent space of the 32 rotation group is the space of 1d rotational velocities.
+/// Alternatively, it can be understood in the rotation angle `ϑ` around the z-axis in the 2d plane.
 ///
 /// Tangent vectors are mapped to the Lie algebra matrix representation via the *hat* operator:
 ///
@@ -121,7 +121,7 @@ pub type Rotation2F64 = Rotation2<f64, 1, 0, 0>;
 
 /// 2d rotation implementation.
 ///
-/// See [Rotation3] for details.
+/// See [Rotation2] for details.
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Rotation2Impl<
     S: IsScalar<BATCH, DM, DN>,

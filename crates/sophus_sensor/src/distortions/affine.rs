@@ -28,8 +28,7 @@ pub struct AffineDistortionImpl<
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     IsParamsImpl<S, 4, BATCH, DM, DN> for AffineDistortionImpl<S, BATCH, DM, DN>
 {
-    fn are_params_valid(_params: S::Vector<4>) -> S::Mask
-    {
+    fn are_params_valid(_params: S::Vector<4>) -> S::Mask {
         S::Mask::all_true()
     }
 

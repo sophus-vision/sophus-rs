@@ -36,14 +36,12 @@ impl<
 > Camera<S, DISTORT, PARAMS, BATCH, DM, DN, Distort, Proj>
 {
     /// Creates a new camera
-    pub fn new(params: S::Vector<PARAMS>, image_size: ImageSize) -> Self
-    {
+    pub fn new(params: S::Vector<PARAMS>, image_size: ImageSize) -> Self {
         Self::from_params_and_size(params, image_size)
     }
 
     /// Creates a new camera from parameters and image size
-    pub fn from_params_and_size(params: S::Vector<PARAMS>, size: ImageSize) -> Self
-    {
+    pub fn from_params_and_size(params: S::Vector<PARAMS>, size: ImageSize) -> Self {
         assert!(
             Distort::are_params_valid(params).all(),
             "Invalid parameters for {params:?}"
