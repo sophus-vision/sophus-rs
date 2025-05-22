@@ -51,8 +51,8 @@ extern crate alloc;
 /// ## Overview
 ///
 /// * **Tangent space**: DoF - **(ω₀, ω₁. ω₂)**, `ω` the 3-d **angular** rate
-/// * **Internal parameters**:  4 – **[RE(q), IM(q)₀, IM(q)₁, IM(q)₂]**, unit quaternion `q`
-///   (|q| = 1).
+/// * **Internal parameters**:  4 – **[RE(q), IM(q)₀, IM(q)₁, IM(q)₂]**, unit quaternion `q` (|q| =
+///   1).
 /// * **Action space:** 3 (SO(3) acts on 3-d points)
 /// * **Matrix size:** 3 (represented as 3 × 3 matrices)
 ///
@@ -61,19 +61,26 @@ extern crate alloc;
 /// The group of 3d rotations is represented by unit quaternions. The corresponding *matrix
 /// representation* is
 /// ```ascii
-///        -------------------------------------------------------------------------------------
-///  R : = |  IM(q) × u₀  + RE(q) · u₀ |  IM(q) × u₁  + RE(q) · u₁ |  IM(q) × u₂  + RE(q) · u₂ |
-///        -------------------------------------------------------------------------------------
+/// R   =  (r² - vᵀv)I + 2vᵀv + 2r[v]ₓ
+///
+///
+///        / 1 - 2(y·y + z·z)     2(x·y - r·z)       2(x·z r·y)     \
+///        |                                                        |
+///     =  |   2(x·y + r·z)     1 - 2(x·x + z·z)     2(y·z - r·x)   |
+///        |                                                        |
+///        \   2(x·z - r·y)       2(y·z + r·x)     1 - 2(x·x + y·y) /
 /// ```
-/// with ``uᵢ = 2 (IM(q) × eᵢ)`` and ``eᵢ`` being the i-th basis vector of the 3d space. ``R`` is a
+/// with ``q = [r, v] = [r, (x, y, z)].`` ``R`` is a
 /// 3x3 rotation matrix with ``R·Rᵀ = I`` and ``det(R) = 1``.
 ///
 ///
 /// The *group operation* is quaternion multiplication:
 /// ```ascii
-/// qₗ ⊗ qᵣ =  RE(qₗ) · IM(qᵣ)  +  RE(qᵣ) · IM(qₗ)  +  IM(qₗ) × IM(qᵣ)
+/// qₗ ⊗ qᵣ =  rₗ · vᵣ  +  qᵣ · vₗ  +  vₗ × qᵣ
 /// ```
-/// In rotation matrix form, the group operation is defined as:
+/// where ``qₗ = [rₗ, vₗ]`` and ``qᵣ = [rᵣ, vᵣ]`` are the left and right quaternion operands.
+///
+/// In rotation matrix form, the group operation is simply matrix multiplication:
 ///
 /// ```ascii
 /// Rₗ ⊗ Rᵣ =  Rₗ·Rᵣ
@@ -97,13 +104,13 @@ extern crate alloc;
 /// Tangent vectors are mapped to the Lie algebra matrix representation via the *hat* operator:
 ///
 /// ```ascii
-///        -------------------
-///        |  0  | -ω₂ |  ω₁ |
-///        -------------------
-/// ω^  =  |  ω₂ |  0  | -ω₀ |
-///        -------------------
-///        | -ω₁ |  ω₀ |  0  |
-///        -------------------
+///        /                 \
+///        |  0    -ω₂    ω₁ |
+///        |                 |
+/// ω^  =  |  ω₂    0    -ω₀ |
+///        |                 |
+///        | -ω₁    ω₀    0  |
+///        \                 /
 /// ```
 ///
 /// For the group of 3d rotations, also known as the Special Orthogonal group SO(3), the
@@ -441,27 +448,45 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     }
 
     fn matrix(params: &S::Vector<4>) -> S::Matrix<3, 3> {
-        let ivec = params.get_fixed_subvec::<3>(1);
-        let re = &params.elem(0);
+        let r = params.elem(0);
+        let x = params.elem(1);
+        let y = params.elem(2);
+        let z = params.elem(3);
+        let one = S::from_f64(1.0);
+        let two = S::from_f64(2.0);
 
-        let unit_x = S::Vector::from_f64_array([1.0, 0.0, 0.0]);
-        let unit_y = S::Vector::from_f64_array([0.0, 1.0, 0.0]);
-        let unit_z = S::Vector::from_f64_array([0.0, 0.0, 1.0]);
+        let two_x = two * x;
+        let two_y = two * y;
+        let two_z = two * z;
+        let two_r = two * r;
 
-        let two = &S::from_f64(2.0);
+        let two_xx = two_x * x;
+        let two_yy = two_y * y;
+        let two_zz = two_z * z;
+        let two_xy = two_x * y;
+        let two_xz = two_x * z;
+        let two_yz = two_y * z;
+        let two_rx = two_r * x;
+        let two_ry = two_r * y;
+        let two_rz = two_r * z;
 
-        let uv_x: S::Vector<3> = cross::<S, BATCH, DM, DN>(ivec, unit_x).scaled(two);
-        let uv_y: S::Vector<3> = cross::<S, BATCH, DM, DN>(ivec, unit_y).scaled(two);
-        let uv_z: S::Vector<3> = cross::<S, BATCH, DM, DN>(ivec, unit_z).scaled(two);
-
-        let col_x = unit_x + cross::<S, BATCH, DM, DN>(ivec, uv_x) + uv_x.scaled(re);
-        let col_y = unit_y + cross::<S, BATCH, DM, DN>(ivec, uv_y) + uv_y.scaled(re);
-        let col_z = unit_z + cross::<S, BATCH, DM, DN>(ivec, uv_z) + uv_z.scaled(re);
-
-        S::Matrix::block_mat1x2::<1, 2>(
-            col_x.to_mat(),
-            S::Matrix::block_mat1x2(col_y.to_mat(), col_z.to_mat()),
-        )
+        S::Matrix::from_array2([
+            [
+                one - (two_yy + two_zz),
+                (two_xy - two_rz),
+                (two_xz + two_ry),
+            ],
+            [
+                (two_xy + two_rz),
+                one - (two_xx + two_zz),
+                (two_yz - two_rx),
+            ],
+            [
+                (two_xz - two_ry),
+                (two_yz + two_rx),
+                one - (two_xx + two_yy),
+            ],
+        ])
     }
 
     fn ad(omega: &S::Vector<3>) -> S::Matrix<3, 3> {

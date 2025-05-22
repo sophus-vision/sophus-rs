@@ -109,8 +109,7 @@ impl<
     const DN: usize,
 > IsParamsImpl<S, DIM, BATCH, DM, DN> for UnitVectorImpl<S, DOF, DIM, BATCH, DM, DN>
 {
-    fn are_params_valid(params: S::Vector<DIM>) -> S::Mask
-    {
+    fn are_params_valid(params: S::Vector<DIM>) -> S::Mask {
         let eps = S::from_f64(EPS_F64);
         (params.borrow().squared_norm() - S::from_f64(1.0))
             .abs()
@@ -303,8 +302,7 @@ impl<
     const DN: usize,
 > IsParamsImpl<S, DIM, BATCH, DM, DN> for UnitVector<S, DOF, DIM, BATCH, DM, DN>
 {
-    fn are_params_valid(params: S::Vector<DIM>) -> S::Mask
-    {
+    fn are_params_valid(params: S::Vector<DIM>) -> S::Mask {
         UnitVectorImpl::<S, DOF, DIM, BATCH, DM, DN>::are_params_valid(params)
     }
 
@@ -326,13 +324,11 @@ impl<
     const DN: usize,
 > HasParams<S, DIM, BATCH, DM, DN> for UnitVector<S, DOF, DIM, BATCH, DM, DN>
 {
-    fn from_params(params: S::Vector<DIM>) -> Self
-    {
+    fn from_params(params: S::Vector<DIM>) -> Self {
         Self::try_from(params).unwrap()
     }
 
-    fn set_params(&mut self, params: S::Vector<DIM>)
-    {
+    fn set_params(&mut self, params: S::Vector<DIM>) {
         self.params = *Self::from_params(params).params();
     }
 

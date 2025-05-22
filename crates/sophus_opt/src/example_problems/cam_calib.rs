@@ -63,12 +63,12 @@ impl CamCalibProblem {
         let true_world_from_cameras = alloc::vec![
             Isometry3::identity(),
             Isometry3::from_rotation_and_translation(
-                                Rotation3::identity(),
+                Rotation3::identity(),
                 VecF64::<3>::new(0.0, 1.0, 0.0),
             ),
             Isometry3::from_rotation_and_translation(
                 Rotation3::identity(),
-                                VecF64::<3>::new(0.0, 2.0, 0.0),
+                VecF64::<3>::new(0.0, 2.0, 0.0),
             ),
         ];
         use rand::prelude::*;

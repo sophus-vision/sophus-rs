@@ -24,10 +24,10 @@ use crate::{
 ///
 /// ## Overview
 ///
-/// * **Tangent space:** 3 DoF – **[ ϑ , ν ]**, with `ϑ` the **angular** rate and `ν` the
-///   2-d **linear** rate.
-/// * **Internal parameters:** 4 – **[ z , t ]**, complex number `z` ( |q| = 1 ) and translation `t ∈
-///   ℝ²`.
+/// * **Tangent space:** 3 DoF – **[ ϑ , ν ]**, with `ϑ` the **angular** rate and `ν` the 2-d
+///   **linear** rate.
+/// * **Internal parameters:** 4 – **[ z , t ]**, complex number `z` ( |q| = 1 ) and translation `t
+///   ∈ ℝ²`.
 /// * **Action space:** 2 (SE(2) acts on 2-d points)
 /// * **Matrix size:** 2 (represented as 2 × 2 matrices)
 ///
@@ -49,7 +49,7 @@ use crate::{
 /// ```
 /// *Inverse*
 /// ```ascii
-/// (R, p)⁻¹ = ( R⁻¹,  -R⁻¹·p )
+/// (R, p)⁻¹ = ( Rᵀ,  -Rᵀ·p )
 /// ```
 ///
 /// ### Lie-group properties
@@ -71,28 +71,36 @@ use crate::{
 /// ```
 /// where `V(ϑ)` is `Rotation2::mat_v`.
 ///
-/// **Group adjoint** `Adj : SE(2) → GL(3)` (acts on `[ ϑ ; ν ]`)
+/// **Group adjoint** `Adj : SE(2) → ℝ³ˣ³` (acts on `[ ϑ ; ν ]`)
 /// ```ascii
-///               |---------------|
+///               -----------------
 ///               |  1    |  O₁ₓ₂ |
-///     /ϑ \      |---------------|    /ϑ \
-/// Adj| ν₀ |  =  |  p₁   |       | * | ν₀ |  = ( ϑ , p₁ν - ν₁ϑ + Rν )
-///     \ν₁/      |       |   R   |    \ν₁/
+///     /ϑ \      |---------------|
+/// Adj| ν₀ |  =  |  p₁   |       |
+///     \ν₁/      |       |   R   |
 ///               | -p₀   |       |
-///               |---------------|
+///               -----------------
 /// ```
 ///
-/// **Lie-algebra adjoint** `ad : se(2) → gl(3)`
+/// `Adj(A,p)` acts on `(ϑ; ν)`
 /// ```ascii
-///              |-----------------|
+/// Adj(R,p) · (ϑ; ν₀; ν₁)  =  ( ϑ , p₁ϑ - ν₁ϑ + Rν )
+/// ```
+///
+/// **Lie-algebra adjoint** `ad : se(2) →  ℝ³ˣ³`
+/// ```ascii
+///              -------------------
 ///              |  0  |  0  |  0  |
-///    /φ \      -------------------   /φ \
-/// ad| τ₀ |  =  |  ν₁ |  0  | -ϑ  |  | τ₀ |  = ( ν₁φ - ν₀φ, -ϑτ₀, ϑτ₁ )
-///    \τ₁/      -------------------   \τ₁/
+///    /φ \      |-----------------|
+/// ad| τ₀ |  =  |  ν₁ |  0  | -ϑ  |
+///    \τ₁/      |-----------------|
 ///              | -ν₀ |  ϑ  |  0  |
-///              |-----------------|
+///              -------------------
+/// ```
 ///
-///
+/// ad(α; ν)` acts on `(φ; τ)`
+/// ```ascii
+/// ad(α; ν) · (φ; τ₀; τ₁)  =  ( ν₁φ - ν₀φ, -ϑτ₀, ϑτ₁ )
 /// ```
 pub type Isometry2<S, const BATCH: usize, const DM: usize, const DN: usize> =
     LieGroup<S, 3, 4, 2, 3, BATCH, DM, DN, Isometry2Impl<S, BATCH, DM, DN>>;

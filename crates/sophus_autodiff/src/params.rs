@@ -2,6 +2,7 @@ use alloc::{
     vec,
     vec::Vec,
 };
+
 use crate::{
     linalg::VecF64,
     points::example_points,
@@ -89,8 +90,7 @@ pub trait IsParamsImpl<
 }
 
 impl<const N: usize> IsParamsImpl<f64, N, 1, 0, 0> for VecF64<N> {
-    fn are_params_valid(_params: VecF64<N>) -> bool
-    {
+    fn are_params_valid(_params: VecF64<N>) -> bool {
         true
     }
 
@@ -104,13 +104,11 @@ impl<const N: usize> IsParamsImpl<f64, N, 1, 0, 0> for VecF64<N> {
 }
 
 impl<const N: usize> HasParams<f64, N, 1, 0, 0> for VecF64<N> {
-    fn from_params(params: VecF64<N>) -> Self
-    {
+    fn from_params(params: VecF64<N>) -> Self {
         params
     }
 
-    fn set_params(&mut self, params: VecF64<N>)
-    {
+    fn set_params(&mut self, params: VecF64<N>) {
         *self = params;
     }
 

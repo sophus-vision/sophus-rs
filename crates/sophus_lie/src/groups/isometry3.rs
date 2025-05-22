@@ -26,9 +26,9 @@ use crate::{
 ///
 /// ## Overview
 ///
-/// * **Tangent space:** 6 DoF – **[ ω , ν ]**, with `ω` the 3-d **angular** rate and `ν` the
-///   3-d **linear** rate.
-/// * **Internal parameters:** 7 – **[ q , t ]**, quaternion `q` ( |q| = 1 ) and translation `t ∈
+/// * **Tangent space:** 6 DoF – **[ ω , ν ]**, with `ω` the 3-d **angular** rate and `ν` the 3-d
+///   **linear** rate.
+/// * **Internal parameters:** 7 – **[ q , p ]**, quaternion `q` ( |q| = 1 ) and translation `p ∈
 ///   ℝ³`.
 /// * **Action space:** 3 (SE(3) acts on 3-d points)
 /// * **Matrix size:** 4 (represented as 4 × 4 matrices)
@@ -37,11 +37,11 @@ use crate::{
 ///
 /// *Matrix representation*
 /// ```ascii
-/// ---------
-/// | R | p |
-/// ---------
-/// | O | 1 |
-/// ---------
+/// /          \
+/// | R      p |
+/// |          |
+/// | O₁ₓ₃   1 |
+/// \          /
 /// ```
 /// `R ∈ SO(3)`, `p ∈ ℝ³`.
 ///
@@ -51,22 +51,18 @@ use crate::{
 /// ```
 /// *Inverse*
 /// ```ascii
-/// (R, p)⁻¹ = ( R⁻¹,  -R⁻¹·p )
+/// (R, p)⁻¹ = ( Rᵀ,  -Rᵀ·p )
 /// ```
 ///
 /// ### Lie-group properties
 ///
-/// **Hat operator** `x = [ ω₀, ω₁, ω₂, ν₀, ν₁, ν₂ ]`
+/// **Hat operator**
 /// ```ascii
-///           ------------------------
-///           |  0  | -ω₂ |  ω₁ | ν₀ |
-///           ------------------------
-///  /ω\^     |  ω₂ |  0  | -ω₀ | ν₁ |
-///  ---   =  ------------------------
-///  \ν/      | -ω₁ |  ω₀ |  0  | ν₂ |
-///           ------------------------
-///           |  0  |  0  |  0  |  0 |
-///           ------------------------
+///           /          \
+///           | [ω]ₓ   ν |
+/// (ω,ν)^ =  |          |
+///           | O₁ₓ₃   0 |
+///           \          /
 /// ```
 ///
 /// **Exponential map** `exp : ℝ⁶ → SE(3)`
@@ -75,22 +71,32 @@ use crate::{
 /// ```
 /// where `V(ω)` is `Rotation3::mat_v`.
 ///
-/// **Group adjoint** `Adj : SE(3) → GL(6)` (acts on `[ ω ; ν ]`)
+/// **Group adjoint** `Adj : SE(3) → ℝ⁶ˣ⁶`
 /// ```ascii
-///              |---------------|
-///     /ω\      |  R     | O₃ₓ₃ |   /ω\
-/// Adj| - |  =  |---------------| * |-|  = ( R ω , p × (R ω) + R ν )
-///     \ν/      | [p]ₓ·R |  R   |   \ν/
-///              |---------------|
+///              /               \
+///              |  R       O₃ₓ₃ |
+/// Adj(R,p)  =  |               |
+///              | [p]ₓ·R    R   |
+///              \               /
 /// ```
 ///
-/// **Lie-algebra adjoint** `ad : se(3) → gl(6)`
+/// `Adj(A,p)` acts on `(ω; ν)`
 /// ```ascii
-///             |-------------|
-///    /φ\      | [ω]ₓ | O₃ₓ₃ |    /φ\      /      ω × φ    \
-/// ad| - |  =  |-------------| * | - |  = | --------------- |
-///    \τ/      | [ν]ₓ | [ω]ₓ |    \τ/      \ ω × τ + ν × τ /
-///             |-------------|
+/// Adj(R,p) · (ω; ν)  =  ( R ω , p × (R ω) + R ν )
+/// ```
+///
+/// **Lie-algebra adjoint** `ad : se(3) → ℝ⁶ˣ⁶`
+/// ```ascii
+///             /             \
+///             | [ω]ₓ   O₃ₓ₃ |
+/// ad(ω; ν) =  |             |
+///             | [ν]ₓ   [ω]ₓ |
+///             \             /
+/// ```
+///
+/// `ad(α; ν)` acts on tangent vectors `(φ; τ)`
+/// ```ascii
+/// ad(α; ν) · (φ; τ)  =  ( ω × φ ;  ω × τ + ν × τ )
 /// ```
 pub type Isometry3<S, const BATCH: usize, const DM: usize, const DN: usize> =
     LieGroup<S, 6, 7, 3, 4, BATCH, DM, DN, Isometry3Impl<S, BATCH, DM, DN>>;

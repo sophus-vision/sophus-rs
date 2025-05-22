@@ -20,19 +20,97 @@ extern crate alloc;
 
 /// Template of an affine group.
 ///
-/// It is a semi-direct product of a factor group and a commutative translation group (Euclidean
-/// vector space). It has the following form:
+/// It is a semi-direct product  `G ⋊ ℝᴺ` of a group `G ⊂ GL(M)` and a commutative translation group
+/// (Euclidean vector space).
+///
+/// ## Overview
+/// * **Tangent space:** K+N DoF – **[ α , ν ]**, with `α` being a tangent vector in `𝖌` and `ν` the
+///   N-d **linear** rate.
+/// * **Internal parameters:** M + N – **[ a , p ]**, with `a` being the `M`-dimensional parameter
+///   vector of ``A`` and translation `p ∈ ℝ³`.
+/// * **Action space:** N (G ⋊ ℝᴺ acts on 3-d points)
+/// * **Matrix size:** N+1 (represented as 4 × 4 matrices)
+///
+/// ### Group structure
+///
+/// `G ⋊ ℝᴺ` has the following *matrix representation*
 ///
 /// ```ascii
 /// ---------
-/// | A | b |
+/// | A | p |
 /// ---------
 /// | 0 | 1 |
 /// ---------
 /// ```
 ///
-/// We call ``A`` the factor group and ``b`` the translation. The standard group action aka the
-/// "transform" function has the following form: ``A x + b``.
+/// We call ``A ∈ G`` an element of the group ``G`` and ``p ∈ ℝᴺ`` the translation vector.
+/// Let `𝖌` be the `K`-dimensional Lie algebra of the group `G`. To emphasis that `G` is part of
+/// the semi-direct product `G ⋊ ℝᴺ`, we call it the *factor group*. In order to use a Lie group
+/// as a factor group, it must implement the trait [IsLieFactorGroupImpl].
+///
+/// It acts on points in `ℝᴺ` by the following affine transformation:
+///
+/// ```ascii
+/// (A, p) ⊗ x = A·x + p
+/// ```
+///
+/// *Group operation*
+/// ```ascii
+/// (Aₗ, pₗ) ⊗ (Aᵣ, pᵣ) = ( Aₗ·Aᵣ,  Aₗ·pᵣ + pₗ )
+/// ```
+/// *Inverse*
+/// ```ascii
+/// (A, p)⁻¹ = ( R⁻¹,  -A⁻¹·p )
+/// ```
+/// ### Lie-group properties
+///
+/// **Hat operator**
+/// ```ascii
+///           ----------
+///  /α\^     | α^ | ν |
+///  ---   =  ----------
+///  \ν/      | O  | 0 |
+///           ----------
+/// ```
+/// where `α^` is the hat operator of the factor group `G`.
+///
+/// **Exponential map** `exp : ℝᴷ⁺ᴺ → G ⋊ ℝ`
+/// ```ascii
+/// exp(α,ν) = ( exp_𝖌(α),  V(α) · ν )
+/// ```
+/// where  `exp_𝖌` is the exponential map of `G` and `V(α)` is [IsLieFactorGroupImpl::mat_v].
+///
+/// **Group adjoint** `Adj : G ⋊ ℝ → ℝ⁽ᴷ⁺ᴺ⁾ˣ⁽ᴷ⁺ᴺ⁾`
+/// ```ascii
+///              -----------------
+///              | Adj_𝖌(A)  | O |
+/// Adj(A,p)  =  |---------------|
+///              | Adjt(p)·A | A |
+///              -----------------
+/// ```
+/// where `Adj_𝖌(A)` is the adjoint representation of the factor group `G` and `Adjt(p)` is
+/// [IsLieFactorGroupImpl::adj_of_translation]. `Adj(A,p)` acts on `(α; ν)`
+///
+/// ```ascii
+/// Adj(A,p) · (α; ν)  =  ( Adj_𝖌(A)·α ;  Adjt(p)·A ν + A ν )
+/// ```
+///
+///
+/// **Lie-algebra adjoint** `ad : 𝖌 → ℝ⁽ᴷ⁺ᴺ⁾ˣ⁽ᴷ⁺ᴺ⁾`
+/// ```ascii
+///              |-------------|
+///              | ad(α)  | O  |
+/// ad(α; ν)  =  |-------------|
+///              | adt(ν) | α^ |
+///              |-------------|
+/// ```
+///
+/// `ad(α)` is the adjoint representation of the factor group `G` and `adt(ν)` is
+/// [IsLieFactorGroupImpl::ad_of_translation]. `ad(α; ν)` acts on `(φ; τ)`
+///
+/// ```ascii
+/// ad(α; ν) · (φ; τ)  =  ( ad(α) φ ;  adt(ν) φ + α × τ )
+/// ```
 #[derive(Debug, Copy, Clone, Default)]
 pub struct AffineGroupTemplateImpl<
     S: IsScalar<BATCH, DM, DN>,

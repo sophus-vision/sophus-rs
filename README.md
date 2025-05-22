@@ -238,6 +238,11 @@ approx::assert_abs_diff_eq!(
 );
 ```
 
+Also check out alternative non-linear least squares crates:
+
+ * [fact-rs](https://crates.io/crates/factrs)
+ * [tiny-solver-rs](https://crates.io/crates/tiny-solver)
+
 ## And more...
 
 such unit vector, splines, image classes, camera models, and some visualization
