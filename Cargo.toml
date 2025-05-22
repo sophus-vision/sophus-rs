@@ -23,7 +23,7 @@ keywords = ["robotics", "optimization"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/sophus-vision/sophus-rs/"
 version = "0.15.0"
-rust-version = "1.86.0"
+rust-version = "1.87.0"
 
 [workspace.dependencies]
 sophus = { path = "crates/sophus", version = "0.15.0" }

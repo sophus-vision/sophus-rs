@@ -1,32 +1,17 @@
-use core::{
-    borrow::Borrow,
-    marker::PhantomData,
-};
+use core::{borrow::Borrow, marker::PhantomData};
+use std::println;
 
 use sophus_autodiff::{
-    linalg::{
-        EPS_F64,
-        VecF64,
-    },
+    linalg::{EPS_F64, VecF64},
     manifold::IsTangent,
-    params::{
-        HasParams,
-        IsParamsImpl,
-    },
+    params::{HasParams, IsParamsImpl},
 };
 
+use crate::HasDisambiguate;
 use crate::{
-    EmptySliceError,
-    HasAverage,
-    HasDisambiguate,
-    IsLieFactorGroupImpl,
-    IsLieGroupImpl,
-    IsRealLieFactorGroupImpl,
-    IsRealLieGroupImpl,
-    lie_group::LieGroup,
-    prelude::*,
+    EmptySliceError, HasAverage, IsLieFactorGroupImpl, IsLieGroupImpl, IsRealLieFactorGroupImpl,
+    IsRealLieGroupImpl, Rotation3, Rotation3Impl, lie_group::LieGroup, prelude::*,
 };
-
 extern crate alloc;
 
 /// 2d rotations - element of the Special Orthogonal group SO(2)
@@ -141,7 +126,6 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     HasDisambiguate<S, 2, BATCH, DM, DN> for Rotation2Impl<S, BATCH, DM, DN>
 {
 }
-
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     IsParamsImpl<S, 2, BATCH, DM, DN> for Rotation2Impl<S, BATCH, DM, DN>
 {
@@ -286,13 +270,6 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 1, 2, 2, 
         S::Matrix::<2, 1>::from_array2([[-theta.sin()], [theta.cos()]])
     }
 
-    fn dx_log_x(params: &S::Vector<2>) -> S::Matrix<1, 2> {
-        let x_0 = params.elem(0);
-        let x_1 = params.elem(1);
-        let x_sq = x_0 * x_0 + x_1 * x_1;
-        S::Matrix::from_array2([[-x_1 / x_sq, x_0 / x_sq]])
-    }
-
     fn da_a_mul_b(_a: &S::Vector<2>, b: &S::Vector<2>) -> S::Matrix<2, 2> {
         Self::matrix(b)
     }
@@ -313,6 +290,14 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 1, 2, 2, 
             1 => S::Matrix::from_f64_array2([[0.0, -1.0], [1.0, 0.0]]),
             _ => panic!("Invalid column index: {}", col_idx),
         }
+    }
+
+    fn left_jacobian(_tangent: S::Vector<1>) -> S::Matrix<1, 1> {
+        S::Matrix::identity()
+    }
+
+    fn inv_left_jacobian(_tangent: S::Vector<1>) -> <S>::Matrix<1, 1> {
+        S::Matrix::identity()
     }
 }
 
@@ -429,6 +414,14 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 1, 
             [-S::from_f64(0.5), c],
         ])]
     }
+
+    fn q_left_block(rho: S::Vector<2>, tangent: S::Vector<1>) -> S::Matrix<2, 1> {
+        let q = Rotation3Impl::<S, BATCH, 0, 0>::q_left_block(
+            S::Vector::<3>::from_array([rho.elem(0), rho.elem(1), S::zeros()]),
+            S::Vector::<3>::from_array([S::zeros(), S::zeros(), tangent.elem(0)]),
+        );
+        S::Vector::<2>::from_array([q.elem([0, 2]), q.elem([1, 2])]).to_mat()
+    }
 }
 
 impl From<nalgebra::UnitComplex<f64>> for Rotation2F64 {
@@ -479,8 +472,7 @@ fn rotation2_prop_tests() {
     use sophus_autodiff::linalg::BatchScalarF64;
 
     use crate::lie_group::{
-        factor_lie_group::RealFactorLieGroupTest,
-        real_lie_group::RealLieGroupTest,
+        factor_lie_group::RealFactorLieGroupTest, real_lie_group::RealLieGroupTest,
     };
 
     Rotation2F64::test_suite();

@@ -202,9 +202,6 @@ pub trait IsRealLieGroupImpl<
     /// derivative of exponential map at the identity
     fn dx_exp_x_at_0() -> S::Matrix<PARAMS, DOF>;
 
-    /// derivative of logarithmic map
-    fn dx_log_x(params: &S::Vector<PARAMS>) -> S::Matrix<DOF, PARAMS>;
-
     /// derivative of exponential map times a point at the identity
     fn dx_exp_x_times_point_at_0(point: &S::Vector<POINT>) -> S::Matrix<POINT, DOF>;
 
@@ -215,6 +212,14 @@ pub trait IsRealLieGroupImpl<
 
     /// are there multiple shortest paths to the identity?
     fn has_shortest_path_ambiguity(params: &S::Vector<PARAMS>) -> S::Mask;
+
+    /// **Left Jacobian** Jₗ(ξ) ∈ ℝ^{DOF×DOF}.
+    ///
+    /// Satisfies `exp(ξ) · exp(δ) ≃ exp(Jₗ(ξ) · δ)` to first order.
+    fn left_jacobian(tangent: S::Vector<DOF>) -> S::Matrix<DOF, DOF>;
+
+    /// Inverse of the left Jacobian, i.e. Jₗ⁻¹(ξ).
+    fn inv_left_jacobian(tangent: S::Vector<DOF>) -> S::Matrix<DOF, DOF>;
 }
 
 /// Lie Factor Group
@@ -276,6 +281,20 @@ pub trait IsRealLieFactorGroupImpl<
         params: &S::Vector<PARAMS>,
         point: &S::Vector<POINT>,
     ) -> S::Matrix<POINT, PARAMS>;
+
+    /// **Translation block** \(Q_L(\rho,\phi)\in\mathbb R^{POINT\times POINT}\)
+    /// that fulfils
+    /// `J_left(ρ,φ) = [[J_left(φ) , Q_L(ρ,φ)] ; [0 , J_left(φ)]]`.
+    ///
+    /// * `translation`  —  ρ  (the POINT-dim vector in the twist)
+    /// * `tangent`      —  φ  (the DOF-dim factor-group part of the twist)
+    ///
+    /// For SO (3) as the factor and ρ,φ∈ℝ³ this is the familiar
+    /// closed form shown in Barfoot §7.3, Sola 2022 appendix C, etc.
+    fn q_left_block(
+        translation: S::Vector<POINT>,
+        tangent: S::Vector<DOF>,
+    ) -> S::Matrix<POINT, DOF>;
 }
 
 /// Lie Group trait
