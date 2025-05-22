@@ -531,30 +531,6 @@ impl<
         )
     }
 
-    fn dx_log_x(params: &S::Vector<PARAMS>) -> S::Matrix<DOF, PARAMS> {
-        let factor_params = &Self::factor_params(params);
-        let trans = &Self::translation(params);
-        let factor_tangent = Factor::log(factor_params);
-
-        let dx_log_x = Factor::dx_log_x(factor_params);
-        let dx_mat_v_inverse = Factor::dx_mat_v_inverse(&factor_tangent);
-
-        let mut dx_mat_v_inv_tangent = S::Matrix::<POINT, SPARAMS>::zeros();
-
-        for i in 0..SDOF {
-            let v: S::Vector<POINT> = dx_mat_v_inverse[i] * *trans;
-            let r: S::Vector<SPARAMS> = dx_log_x.get_row_vec(i);
-
-            let m = v.outer(r);
-            dx_mat_v_inv_tangent = dx_mat_v_inv_tangent + m;
-        }
-
-        S::Matrix::block_mat2x2::<SDOF, POINT, SPARAMS, POINT>(
-            (dx_log_x, S::Matrix::<SDOF, POINT>::zeros()),
-            (dx_mat_v_inv_tangent, Factor::mat_v_inverse(&factor_tangent)),
-        )
-    }
-
     fn da_a_mul_b(a: &S::Vector<PARAMS>, b: &S::Vector<PARAMS>) -> S::Matrix<PARAMS, PARAMS> {
         let a_factor_params = &Self::factor_params(a);
         let b_factor_params = &Self::factor_params(b);
@@ -604,6 +580,45 @@ impl<
         } else {
             S::Matrix::block_mat1x2::<SPARAMS, POINT>(S::Matrix::zeros(), S::Matrix::identity())
         }
+    }
+
+    fn left_jacobian(tangent: <S>::Vector<DOF>) -> <S>::Matrix<DOF, DOF> {
+        // split ξ into factor and translation parts
+        let phi = Self::factor_tangent(&tangent); // SDOF
+        let rho = Self::translation_tangent(&tangent); // POINT
+
+        // factor-group blocks
+        let jl_phi = Factor::left_jacobian(phi); // SDOF × SDOF
+        // translation block (V-matrix)
+        let v_phi = Factor::mat_v(&phi); // POINT × POINT
+        // coupling block
+        let q_l = Factor::q_left_block(rho, phi); // POINT × SDOF
+
+        // zero block (SDOF × POINT)
+        let z_top = S::Matrix::<SDOF, POINT>::zeros();
+
+
+        // assemble 2×2 block matrix
+        S::Matrix::block_mat2x2::<SDOF, POINT, SDOF, POINT>((jl_phi.clone(), z_top), (q_l, v_phi))
+    }
+
+    fn inv_left_jacobian(tangent: <S>::Vector<DOF>) -> <S>::Matrix<DOF, DOF> {
+        let phi = Self::factor_tangent(&tangent);
+        let rho = Self::translation_tangent(&tangent);
+
+        // factor-group inverse Jacobian
+        let jl_inv = Factor::inv_left_jacobian(phi); // SDOF × SDOF
+        // inverse of V-matrix
+        let v_inv = Factor::mat_v_inverse(&phi); // POINT × POINT
+        // coupling
+        let q_l = Factor::q_left_block(rho, phi); // POINT × SDOF
+
+        // zero block (SDOF × POINT)
+        let z_top = S::Matrix::<SDOF, POINT>::zeros();
+
+        // bottom-left = − V⁻¹ · Q_L · J_l⁻¹
+        let bl = -(v_inv.clone().mat_mul(q_l).mat_mul(jl_inv.clone()));
+        S::Matrix::block_mat2x2::<SDOF, POINT, SDOF, POINT>((jl_inv.clone(), z_top), (bl, v_inv))
     }
 }
 

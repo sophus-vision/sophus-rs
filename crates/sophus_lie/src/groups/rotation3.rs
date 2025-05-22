@@ -1,22 +1,10 @@
-use core::{
-    borrow::Borrow,
-    f64,
-    marker::PhantomData,
-};
+use core::{borrow::Borrow, f64, marker::PhantomData};
 
 use log::warn;
 use sophus_autodiff::{
-    linalg::{
-        EPS_F64,
-        MatF64,
-        VecF64,
-        cross,
-    },
+    linalg::{EPS_F64, MatF64, VecF64, cross},
     manifold::IsTangent,
-    params::{
-        HasParams,
-        IsParamsImpl,
-    },
+    params::{HasParams, IsParamsImpl},
 };
 
 use crate::{
@@ -28,14 +16,10 @@ use crate::{
     IsRealLieGroupImpl,
     lie_group::{
         LieGroup,
-        average::{
-            IterativeAverageError,
-            iterative_average,
-        },
+        average::{IterativeAverageError, iterative_average},
     },
     prelude::*,
 };
-
 extern crate alloc;
 
 /// 3d rotations - element of the Special Orthogonal group SO(3)
@@ -639,41 +623,50 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
         dx0.select(&near_zero, dx)
     }
 
-    fn dx_log_x(params: &S::Vector<4>) -> S::Matrix<3, 4> {
-        let ivec: S::Vector<3> = params.get_fixed_subvec::<3>(1);
-        let w = params.elem(0);
-        let squared_n = ivec.squared_norm();
-
-        let near_zero = squared_n.less_equal(&S::from_f64(EPS_F64));
-
-        let m0 = S::Matrix::<3, 4>::block_mat1x2(
-            S::Matrix::<3, 1>::zeros(),
-            S::Matrix::<3, 3>::identity().scaled(S::from_f64(2.0)),
-        );
-
-        let n = squared_n.sqrt();
-        let theta = S::from_f64(2.0) * n.atan2(w);
-
-        let dw_ivec_theta: S::Vector<3> = ivec.scaled(S::from_f64(-2.0) / (squared_n + w * w));
-        let factor =
-            S::from_f64(2.0) * w / (squared_n * (squared_n + w * w)) - theta / (squared_n * n);
-
-        let mm = ivec.outer(ivec).scaled(factor);
-
-        m0.select(
-            &near_zero,
-            S::Matrix::block_mat1x2(
-                dw_ivec_theta.to_mat(),
-                S::Matrix::<3, 3>::identity().scaled(theta / n) + mm,
-            ),
-        )
-    }
-
     fn has_shortest_path_ambiguity(params: &S::Vector<4>) -> S::Mask {
         let theta = Self::log(params).norm();
         (theta - S::from_f64(core::f64::consts::PI))
             .abs()
             .less_equal(&S::from_f64(EPS_F64.sqrt()))
+    }
+
+    fn left_jacobian(omega: S::Vector<3>) -> S::Matrix<3, 3> {
+        let theta_sq = omega.squared_norm();
+        let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
+        let id = S::Matrix::<3, 3>::identity();
+        let omega_hat = Self::hat(&omega);
+
+        // series: I - ½ ω^
+        let jl0 = id - omega_hat.scaled(S::from_f64(0.5));
+
+        // exact expression
+        let theta = theta_sq.sqrt();
+        let a = (S::ones() - theta.cos()) / theta_sq; // (1 - cosθ)/θ²
+        let b = (theta - theta.sin()) / (theta_sq * theta); // (θ - sinθ)/θ³
+        let jl = id + omega_hat.scaled(a) + omega_hat.mat_mul(&omega_hat).scaled(b);
+
+        jl0.select(&near_zero, jl)
+    }
+
+    /// Inverse left Jacobian  Jₗ⁻¹(ω).
+    fn inv_left_jacobian(omega: S::Vector<3>) -> S::Matrix<3, 3> {
+        let theta_sq = omega.squared_norm();
+        let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
+        let id = S::Matrix::<3, 3>::identity();
+        let omega_hat = Self::hat(&omega);
+
+        // series: I + ½ ω^
+        let jli0 = id + omega_hat.scaled(S::from_f64(0.5));
+
+        // exact expression
+        let theta = theta_sq.sqrt();
+        let sin_theta = theta.sin();
+        let cos_theta = theta.cos();
+        let c = (S::ones() / theta_sq)
+            - (S::from_f64(1.0) + cos_theta) / (S::from_f64(2.0) * theta * sin_theta); // Fernandez-Cuevas form
+        let jli = id - omega_hat.scaled(S::from_f64(0.5)) + omega_hat.mat_mul(&omega_hat).scaled(c);
+
+        jli0.select(&near_zero, jli)
     }
 
     fn dparams_matrix(params: &<S>::Vector<4>, col_idx: usize) -> <S>::Matrix<3, 4> {
@@ -1003,6 +996,51 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
 
         l
     }
+
+    fn q_left_block(translation: S::Vector<3>, tangent: S::Vector<3>) -> S::Matrix<3, 3> {
+        let theta_sq = tangent.squared_norm();
+        let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
+        let rho_hat: S::Matrix<3, 3> = Rotation3::<S, BATCH, 0, 0>::hat(&translation);
+        let phi_hat: S::Matrix<3, 3> = Rotation3::<S, BATCH, 0, 0>::hat(tangent);
+
+        // ---- 2-nd-order BCH series: ½ ρ̂ + 1⁄6 φ̂ρ̂
+        let q0 = rho_hat.scaled(S::from_f64(0.5))
+            + phi_hat.mat_mul(&rho_hat).scaled(S::from_f64(1.0 / 6.0));
+
+        // ---- exact Barfoot / Sola closed form
+        let theta = theta_sq.sqrt();
+        let (sin_t, cos_t) = (theta.sin(), theta.cos());
+        let a = S::from_f64(0.5);
+        let b = (theta - sin_t) / (theta * theta * theta); //  (θ−sinθ)/θ³
+        let c = (theta * theta + S::from_f64(2.0) * cos_t - S::from_f64(2.0))
+            / (S::from_f64(2.0) * (theta * theta * theta * theta)); //  (θ²+2cosθ−2)/2θ⁴
+        let d = (S::from_f64(2.0) * theta - S::from_f64(3.0) * sin_t + theta * cos_t)
+            / (S::from_f64(2.0) * (theta * theta * theta * theta * theta)); //  (2θ−3sinθ+θcosθ)/2θ⁵
+
+        let q = rho_hat.scaled(a)
+            + (phi_hat.mat_mul(&rho_hat)
+                + rho_hat.mat_mul(&phi_hat)
+                + phi_hat.mat_mul(&rho_hat).mat_mul(&phi_hat))
+            .scaled(b)
+            + (phi_hat.mat_mul(&phi_hat).mat_mul(&rho_hat)
+                + rho_hat.mat_mul(&phi_hat).mat_mul(&phi_hat)
+                - phi_hat
+                    .mat_mul(&rho_hat)
+                    .mat_mul(&phi_hat)
+                    .scaled(S::from_f64(3.0)))
+            .scaled(c)
+            + (phi_hat
+                .mat_mul(&rho_hat)
+                .mat_mul(&phi_hat)
+                .mat_mul(&phi_hat)
+                + phi_hat
+                    .mat_mul(&phi_hat)
+                    .mat_mul(&rho_hat)
+                    .mat_mul(&phi_hat))
+            .scaled(d);
+
+        q0.select(&near_zero, q)
+    }
 }
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
@@ -1205,8 +1243,7 @@ fn rotation3_prop_tests() {
     use sophus_autodiff::linalg::BatchScalarF64;
 
     use crate::lie_group::{
-        factor_lie_group::RealFactorLieGroupTest,
-        real_lie_group::RealLieGroupTest,
+        factor_lie_group::RealFactorLieGroupTest, real_lie_group::RealLieGroupTest,
     };
 
     Rotation3F64::test_suite();

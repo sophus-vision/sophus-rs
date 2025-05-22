@@ -1,34 +1,18 @@
 use core::{
     borrow::Borrow,
     fmt::Debug,
-    ops::{
-        Add,
-        Neg,
-        Sub,
-    },
+    ops::{Add, Neg, Sub},
 };
 
-use approx::{
-    AbsDiffEq,
-    RelativeEq,
-};
+use approx::{AbsDiffEq, RelativeEq};
 
 use super::{
     dual_matrix::DualMatrix,
     dual_scalar::DualScalar,
-    vector::{
-        HasJacobian,
-        IsDualVectorFromCurve,
-        VectorValuedDerivative,
-    },
+    vector::{HasJacobian, IsDualVectorFromCurve, VectorValuedDerivative},
 };
 use crate::{
-    linalg::{
-        MatF64,
-        SMat,
-        SVec,
-        VecF64,
-    },
+    linalg::{MatF64, SMat, SVec, VecF64},
     prelude::*,
 };
 
@@ -264,6 +248,25 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
             .copy_from(&top_row.inner);
         m.inner
             .fixed_view_mut::<R1, 1>(R0, 0)
+            .copy_from(&bot_row.inner);
+        m
+    }
+
+    fn block_vec3<const R0: usize, const R1: usize, const R2: usize>(
+        top_row: DualVector<R0, DM, DN>,
+        middle_row: DualVector<R1, DM, DN>,
+        bot_row: DualVector<R2, DM, DN>,
+    ) -> Self {
+        assert_eq!(R0 + R1 + R2, ROWS);
+        let mut m = Self::zeros();
+        m.inner
+            .fixed_view_mut::<R0, 1>(0, 0)
+            .copy_from(&top_row.inner);
+        m.inner
+            .fixed_view_mut::<R1, 1>(R0, 0)
+            .copy_from(&middle_row.inner);
+        m.inner
+            .fixed_view_mut::<R2, 1>(R1, 0)
             .copy_from(&bot_row.inner);
         m
     }
