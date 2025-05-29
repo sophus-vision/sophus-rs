@@ -342,6 +342,17 @@ impl<
         )
     }
 
+    fn ad(tangent: &S::Vector<DOF>) -> S::Matrix<DOF, DOF> {
+        let o = S::Matrix::<SDOF, POINT>::zeros();
+        S::Matrix::block_mat2x2::<SDOF, POINT, SDOF, POINT>(
+            (Factor::ad(&Self::factor_tangent(tangent)), o),
+            (
+                Factor::ad_of_translation(&Self::translation_tangent(tangent)),
+                Factor::hat(&Self::factor_tangent(tangent)),
+            ),
+        )
+    }
+
     fn exp(omega: &S::Vector<DOF>) -> S::Vector<PARAMS> {
         let factor_tangent = Self::factor_tangent(omega);
         let translation = Self::translation_tangent(omega);
@@ -420,17 +431,6 @@ impl<
             (
                 S::Matrix::<1, POINT>::zeros(),
                 S::Matrix::<1, 1>::identity(),
-            ),
-        )
-    }
-
-    fn ad(tangent: &S::Vector<DOF>) -> S::Matrix<DOF, DOF> {
-        let o = S::Matrix::<SDOF, POINT>::zeros();
-        S::Matrix::block_mat2x2::<SDOF, POINT, SDOF, POINT>(
-            (Factor::ad(&Self::factor_tangent(tangent)), o),
-            (
-                Factor::ad_of_translation(&Self::translation_tangent(tangent)),
-                Factor::hat(&Self::factor_tangent(tangent)),
             ),
         )
     }
@@ -531,30 +531,6 @@ impl<
         )
     }
 
-    fn dx_log_x(params: &S::Vector<PARAMS>) -> S::Matrix<DOF, PARAMS> {
-        let factor_params = &Self::factor_params(params);
-        let trans = &Self::translation(params);
-        let factor_tangent = Factor::log(factor_params);
-
-        let dx_log_x = Factor::dx_log_x(factor_params);
-        let dx_mat_v_inverse = Factor::dx_mat_v_inverse(&factor_tangent);
-
-        let mut dx_mat_v_inv_tangent = S::Matrix::<POINT, SPARAMS>::zeros();
-
-        for i in 0..SDOF {
-            let v: S::Vector<POINT> = dx_mat_v_inverse[i] * *trans;
-            let r: S::Vector<SPARAMS> = dx_log_x.get_row_vec(i);
-
-            let m = v.outer(r);
-            dx_mat_v_inv_tangent = dx_mat_v_inv_tangent + m;
-        }
-
-        S::Matrix::block_mat2x2::<SDOF, POINT, SPARAMS, POINT>(
-            (dx_log_x, S::Matrix::<SDOF, POINT>::zeros()),
-            (dx_mat_v_inv_tangent, Factor::mat_v_inverse(&factor_tangent)),
-        )
-    }
-
     fn da_a_mul_b(a: &S::Vector<PARAMS>, b: &S::Vector<PARAMS>) -> S::Matrix<PARAMS, PARAMS> {
         let a_factor_params = &Self::factor_params(a);
         let b_factor_params = &Self::factor_params(b);
@@ -605,6 +581,43 @@ impl<
             S::Matrix::block_mat1x2::<SPARAMS, POINT>(S::Matrix::zeros(), S::Matrix::identity())
         }
     }
+
+    fn left_jacobian(tangent: <S>::Vector<DOF>) -> <S>::Matrix<DOF, DOF> {
+        // split tangent into factor and translation parts
+        let upsilon = Self::translation_tangent(&tangent); // POINT
+        let alpha = Self::factor_tangent(&tangent); // SDOF
+
+        // factor-group blocks
+        let jl_omega = Factor::left_jacobian(alpha); // SDOF × SDOF
+        // translation block (V-matrix)
+        let mat_v = Factor::mat_v(&alpha); // POINT × POINT
+
+        // coupling block
+        let q_l = Factor::left_jacobian_of_translation(alpha, upsilon); // POINT × SDOF
+        // zero block
+        let z_top = S::Matrix::<SDOF, POINT>::zeros();
+
+        S::Matrix::block_mat2x2::<SDOF, POINT, SDOF, POINT>((jl_omega.clone(), z_top), (q_l, mat_v))
+    }
+
+    fn inv_left_jacobian(tangent: <S>::Vector<DOF>) -> <S>::Matrix<DOF, DOF> {
+        let alpha = Self::factor_tangent(&tangent);
+        let upsilon = Self::translation_tangent(&tangent);
+
+        // factor-group inverse Jacobian
+        let jl_inv = Factor::inv_left_jacobian(alpha); // SDOF × SDOF
+        // inverse of V-matrix
+        let v_inv = Factor::mat_v_inverse(&alpha); // POINT × POINT
+
+        // coupling
+        let q_l = Factor::left_jacobian_of_translation(alpha, upsilon); // POINT × SDOF
+        // zero block
+        let z_top = S::Matrix::<SDOF, POINT>::zeros();
+
+        // bottom-left = − V⁻¹ · Q_L · J_l⁻¹
+        let bl = -(v_inv.clone().mat_mul(q_l).mat_mul(jl_inv.clone()));
+        S::Matrix::block_mat2x2::<SDOF, POINT, SDOF, POINT>((jl_inv.clone(), z_top), (bl, v_inv))
+    }
 }
 
 impl<
@@ -620,7 +633,7 @@ impl<
     const DN: usize,
     FactorImpl: crate::IsLieFactorGroupImpl<S, SDOF, SPARAMS, POINT, BATCH, DM, DN>,
 >
-    IsTranslationProductGroup<
+    IsAffineGroup<
         S,
         DOF,
         PARAMS,

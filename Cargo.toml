@@ -23,7 +23,7 @@ keywords = ["robotics", "optimization"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/sophus-vision/sophus-rs/"
 version = "0.15.0"
-rust-version = "1.86.0"
+rust-version = "1.87.0"
 
 [workspace.dependencies]
 sophus = { path = "crates/sophus", version = "0.15.0" }
@@ -56,9 +56,9 @@ pollster = { version = "0.4" }
 num-traits = "0.2"
 rand = "0.9"
 rustc_version = "0.4"
-snafu = "0.8.5"
+snafu = "0.8.6"
 typenum = { version = "1.17", features = ["const-generics"] }
-winit = { version = "0.30.10", features = ["android-native-activity"] }
+winit = { version = "0.30.11", features = ["android-native-activity"] }
 
 # viewer
 eframe = { version = "0.31.1", features = ["wgpu"] }

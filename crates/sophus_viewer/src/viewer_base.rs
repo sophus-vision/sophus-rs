@@ -21,7 +21,7 @@ use sophus_image::{
     ArcImageF32,
     ImageSize,
 };
-use sophus_lie::prelude::IsTranslationProductGroup;
+use sophus_lie::prelude::IsAffineGroup;
 use sophus_renderer::{
     HasAspectRatio,
     RenderContext,

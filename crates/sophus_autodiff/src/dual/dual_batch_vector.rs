@@ -329,12 +329,31 @@ where
         m
     }
 
-    fn scaled<U>(&self, s: U) -> Self
-    where
-        U: Borrow<DualBatchScalar<BATCH, DM, DN>>,
-    {
+     fn block_vec3<const R0: usize, const R1: usize, const R2: usize>(
+        top_row: DualBatchVector<R0, BATCH, DM, DN>,
+        mid_row: DualBatchVector<R1, BATCH, DM, DN>,
+        bot_row: DualBatchVector<R2, BATCH, DM, DN>,
+    ) -> Self {
+        assert_eq!(R0 + R1+ R2, ROWS);
+
+        assert_eq!(ROWS, R0 + R1+ R2);
+        let mut m = Self::zeros();
+
+        m.inner
+            .fixed_view_mut::<R0, 1>(0, 0)
+            .copy_from(&top_row.inner);
+         m.inner
+            .fixed_view_mut::<R1, 1>(R0, 0)
+            .copy_from(&mid_row.inner);
+        m.inner
+            .fixed_view_mut::<R2, 1>(R1, 0)
+            .copy_from(&bot_row.inner);
+        m
+    }
+
+    fn scaled(&self, s: DualBatchScalar<BATCH, DM, DN>) -> Self {
         Self {
-            inner: self.inner * *s.borrow(),
+            inner: self.inner * s,
         }
     }
 

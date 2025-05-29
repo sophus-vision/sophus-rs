@@ -5,7 +5,7 @@ use sophus_image::{
     ImageSize,
 };
 use sophus_lie::{
-    IsTranslationProductGroup,
+    IsAffineGroup,
     Isometry3,
     Isometry3F64,
 };

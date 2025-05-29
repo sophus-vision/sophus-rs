@@ -1,26 +1,14 @@
 use core::{
     borrow::Borrow,
     fmt::Debug,
-    ops::{
-        Add,
-        Index,
-        IndexMut,
-        Neg,
-        Sub,
-    },
+    ops::{Add, Index, IndexMut, Neg, Sub},
 };
 
-use approx::{
-    AbsDiffEq,
-    RelativeEq,
-};
+use approx::{AbsDiffEq, RelativeEq};
 
 use crate::{
     dual::DualVector,
-    linalg::{
-        MatF64,
-        VecF64,
-    },
+    linalg::{MatF64, VecF64},
     prelude::*,
 };
 
@@ -55,6 +43,14 @@ pub trait IsVector<
     fn block_vec2<const R0: usize, const R1: usize>(
         top_row: S::Vector<R0>,
         bot_row: S::Vector<R1>,
+    ) -> Self;
+
+    /// Creates a new vector by concatenating three vectors `top_row`, 'mid_row' and `bot_row`.
+    /// The resulting vector has dimension `R0 + R1 + R2`.
+    fn block_vec3<const R0: usize, const R1: usize, const R2: usize>(
+        top_row: S::Vector<R0>,
+        mid_row: S::Vector<R1>,
+        bot_row: S::Vector<R2>,
     ) -> Self;
 
     /// Computes the dot product (inner product) with another vector.
@@ -135,9 +131,7 @@ pub trait IsVector<
         O: Borrow<Self>;
 
     /// Scales the vector by a scalar `v` (e.g., `self * v`).
-    fn scaled<U>(&self, v: U) -> Self
-    where
-        U: Borrow<S>;
+    fn scaled(&self, v: S) -> Self;
 
     /// Returns the squared Euclidean norm of this vector.
     fn squared_norm(&self) -> S;
@@ -232,6 +226,21 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1, 0, 0> for VecF64<ROWS> {
         m
     }
 
+    fn block_vec3<const R0: usize, const R1: usize, const R2: usize>(
+        top_row: VecF64<R0>,
+        middle_row: VecF64<R1>,
+        bot_row: VecF64<R2>,
+    ) -> Self {
+        assert_eq!(ROWS, R0 + R1 + R2);
+        let mut m = Self::zeros();
+
+        m.fixed_view_mut::<R0, 1>(0, 0).copy_from(&top_row);
+        m.fixed_view_mut::<R1, 1>(R0, 0).copy_from(&middle_row);
+        m.fixed_view_mut::<R2, 1>(R1, 0).copy_from(&bot_row);
+
+        m
+    }
+
     fn from_array<A>(vals: A) -> VecF64<ROWS>
     where
         A: Borrow<[f64; ROWS]>,
@@ -291,11 +300,9 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1, 0, 0> for VecF64<ROWS> {
         *self
     }
 
-    fn scaled<U>(&self, v: U) -> Self
-    where
-        U: Borrow<f64>,
+    fn scaled(&self, v: f64) -> Self
     {
-        self * *v.borrow()
+        self * v
     }
 
     fn dot<V>(&self, rhs: V) -> f64

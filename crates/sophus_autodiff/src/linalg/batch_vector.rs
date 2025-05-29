@@ -34,6 +34,20 @@ where
         m
     }
 
+    fn block_vec3<const R0: usize, const R1: usize, const R2: usize>(
+        top_row: BatchVecF64<R0, BATCH>,
+        mid_row: BatchVecF64<R1, BATCH>,
+        bot_row: BatchVecF64<R2, BATCH>,
+    ) -> Self {
+        assert_eq!(ROWS, R0 + R1+ R2);
+        let mut m = Self::zeros();
+
+        m.fixed_view_mut::<R0, 1>(0, 0).copy_from(&top_row);
+        m.fixed_view_mut::<R1, 1>(R0, 0).copy_from(&mid_row);
+        m.fixed_view_mut::<R2, 1>(R1, 0).copy_from(&bot_row);
+        m
+    }
+
     fn dot<V>(&self, rhs: V) -> BatchScalarF64<BATCH>
     where
         V: Borrow<Self>,
@@ -105,11 +119,9 @@ where
         *self
     }
 
-    fn scaled<S>(&self, v: S) -> Self
-    where
-        S: Borrow<BatchScalarF64<BATCH>>,
+    fn scaled(&self, v: BatchScalarF64<BATCH>) -> Self
     {
-        self * *v.borrow()
+        self * v
     }
 
     fn squared_norm(&self) -> BatchScalarF64<BATCH> {
