@@ -26,7 +26,6 @@ use crate::{
     lie_group::LieGroup,
     prelude::*,
 };
-
 extern crate alloc;
 
 /// 2d rotations - element of the Special Orthogonal group SO(2)
@@ -141,7 +140,6 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     HasDisambiguate<S, 2, BATCH, DM, DN> for Rotation2Impl<S, BATCH, DM, DN>
 {
 }
-
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     IsParamsImpl<S, 2, BATCH, DM, DN> for Rotation2Impl<S, BATCH, DM, DN>
 {
@@ -208,6 +206,10 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         S::Matrix::<1, 1>::identity()
     }
 
+    fn ad(_tangent: &S::Vector<1>) -> S::Matrix<1, 1> {
+        S::Matrix::zeros()
+    }
+
     fn exp(omega: &S::Vector<1>) -> S::Vector<2> {
         // angle to complex number
         let angle = omega.elem(0);
@@ -264,10 +266,6 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let sin = params.elem(1);
         S::Matrix::<2, 2>::from_array2([[cos, -sin], [sin, cos]])
     }
-
-    fn ad(_tangent: &S::Vector<1>) -> S::Matrix<1, 1> {
-        S::Matrix::zeros()
-    }
 }
 
 impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 1, 2, 2, 2, BATCH>
@@ -284,13 +282,6 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 1, 2, 2, 
     fn dx_exp(tangent: &S::Vector<1>) -> S::Matrix<2, 1> {
         let theta = tangent.elem(0);
         S::Matrix::<2, 1>::from_array2([[-theta.sin()], [theta.cos()]])
-    }
-
-    fn dx_log_x(params: &S::Vector<2>) -> S::Matrix<1, 2> {
-        let x_0 = params.elem(0);
-        let x_1 = params.elem(1);
-        let x_sq = x_0 * x_0 + x_1 * x_1;
-        S::Matrix::from_array2([[-x_1 / x_sq, x_0 / x_sq]])
     }
 
     fn da_a_mul_b(_a: &S::Vector<2>, b: &S::Vector<2>) -> S::Matrix<2, 2> {
@@ -313,6 +304,14 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 1, 2, 2, 
             1 => S::Matrix::from_f64_array2([[0.0, -1.0], [1.0, 0.0]]),
             _ => panic!("Invalid column index: {}", col_idx),
         }
+    }
+
+    fn left_jacobian(_tangent: S::Vector<1>) -> S::Matrix<1, 1> {
+        S::Matrix::identity()
+    }
+
+    fn inv_left_jacobian(_tangent: S::Vector<1>) -> <S>::Matrix<1, 1> {
+        S::Matrix::identity()
     }
 }
 
@@ -428,6 +427,31 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 1, 
             [c, S::from_f64(0.5)],
             [-S::from_f64(0.5), c],
         ])]
+    }
+
+    fn left_jacobian_of_translation(alpha: S::Vector<1>, upsilon: S::Vector<2>) -> S::Matrix<2, 1> {
+        let theta = alpha.elem(0);
+        let theta_sq = theta * theta;
+        let x = upsilon.elem(0);
+        let y = upsilon.elem(1);
+        let sin_t = theta.sin();
+        let cos_t = theta.cos();
+        let two = S::from_f64(2.0);
+        let half = S::from_f64(0.5);
+        let sixth = S::from_f64(1.0 / 6.0);
+        let twenty_fourth = S::from_f64(1.0 / 24.0);
+        let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
+
+        let term0 = (theta * sixth).select(&near_zero, (theta - sin_t) / theta_sq);
+        let term1 = (theta_sq * twenty_fourth).select(
+            &near_zero,
+            (theta_sq + two * cos_t - two) / (two * theta_sq),
+        );
+
+        S::Matrix::<2, 1>::from_array2([
+            [y * half + x * term0 - y * term1],
+            [-x * half + x * term1 + y * term0],
+        ])
     }
 }
 

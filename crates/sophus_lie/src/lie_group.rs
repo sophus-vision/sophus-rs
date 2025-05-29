@@ -4,24 +4,15 @@ pub(crate) mod group_mul;
 pub(crate) mod lie_group_manifold;
 pub(crate) mod real_lie_group;
 
-use core::{
-    borrow::Borrow,
-    fmt::Debug,
-};
+use core::{borrow::Borrow, fmt::Debug};
 
 use approx::assert_relative_eq;
 use sophus_autodiff::{
     manifold::IsTangent,
-    params::{
-        HasParams,
-        IsParamsImpl,
-    },
+    params::{HasParams, IsParamsImpl},
 };
 
-use crate::{
-    IsLieGroupImpl,
-    prelude::*,
-};
+use crate::{IsLieGroupImpl, prelude::*};
 
 extern crate alloc;
 

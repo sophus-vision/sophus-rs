@@ -268,10 +268,26 @@ impl<const ROWS: usize, const DM: usize, const DN: usize>
         m
     }
 
-    fn scaled<U>(&self, s: U) -> Self
-    where
-        U: Borrow<DualScalar<DM, DN>>,
-    {
+    fn block_vec3<const R0: usize, const R1: usize, const R2: usize>(
+        top_row: DualVector<R0, DM, DN>,
+        middle_row: DualVector<R1, DM, DN>,
+        bot_row: DualVector<R2, DM, DN>,
+    ) -> Self {
+        assert_eq!(R0 + R1 + R2, ROWS);
+        let mut m = Self::zeros();
+        m.inner
+            .fixed_view_mut::<R0, 1>(0, 0)
+            .copy_from(&top_row.inner);
+        m.inner
+            .fixed_view_mut::<R1, 1>(R0, 0)
+            .copy_from(&middle_row.inner);
+        m.inner
+            .fixed_view_mut::<R2, 1>(R1, 0)
+            .copy_from(&bot_row.inner);
+        m
+    }
+
+    fn scaled(&self, s: DualScalar<DM, DN>) -> Self {
         // scale each element by s
         Self {
             inner: self.inner * *s.borrow(),

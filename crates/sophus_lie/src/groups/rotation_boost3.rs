@@ -1,24 +1,14 @@
 use core::marker::PhantomData;
 
 use sophus_autodiff::{
-    linalg::{
-        EPS_F64,
-        IsScalar,
-    },
+    linalg::{EPS_F64, IsScalar},
     manifold::IsTangent,
-    params::{
-        HasParams,
-        IsParamsImpl,
-    },
+    params::{HasParams, IsParamsImpl},
     prelude::*,
 };
 
 use crate::{
-    HasDisambiguate,
-    IsLieFactorGroupImpl,
-    IsLieGroupImpl,
-    Rotation3,
-    Rotation3Impl,
+    HasDisambiguate, IsLieFactorGroupImpl, IsLieGroupImpl, Rotation3, Rotation3Impl,
     lie_group::LieGroup,
 };
 

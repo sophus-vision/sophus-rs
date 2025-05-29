@@ -35,7 +35,6 @@ use crate::{
     },
     prelude::*,
 };
-
 extern crate alloc;
 
 /// 3d rotations - element of the Special Orthogonal group SO(3)
@@ -326,6 +325,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     fn tangent_examples() -> alloc::vec::Vec<S::Vector<3>> {
         alloc::vec![
             S::Vector::<3>::from_f64_array([0.0, 0.0, 0.0]),
+            S::Vector::<3>::from_f64_array([0.0001, 0.0, 0.0]),
             S::Vector::<3>::from_f64_array([1.0, 0.0, 0.0]),
             S::Vector::<3>::from_f64_array([0.0, 1.0, 0.0]),
             S::Vector::<3>::from_f64_array([0.0, 0.0, 1.0]),
@@ -354,6 +354,10 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 
     fn adj(params: &S::Vector<4>) -> S::Matrix<3, 3> {
         Self::matrix(params)
+    }
+
+    fn ad(omega: &S::Vector<3>) -> S::Matrix<3, 3> {
+        Self::hat(omega)
     }
 
     fn exp(omega: &S::Vector<3>) -> S::Vector<4> {
@@ -487,10 +491,6 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
                 one - (two_xx + two_yy),
             ],
         ])
-    }
-
-    fn ad(omega: &S::Vector<3>) -> S::Matrix<3, 3> {
-        Self::hat(omega)
     }
 
     type GenG<S2: IsScalar<BATCH, DM, DN>> = Rotation3Impl<S2, BATCH, DM, DN>;
@@ -639,41 +639,46 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
         dx0.select(&near_zero, dx)
     }
 
-    fn dx_log_x(params: &S::Vector<4>) -> S::Matrix<3, 4> {
-        let ivec: S::Vector<3> = params.get_fixed_subvec::<3>(1);
-        let w = params.elem(0);
-        let squared_n = ivec.squared_norm();
-
-        let near_zero = squared_n.less_equal(&S::from_f64(EPS_F64));
-
-        let m0 = S::Matrix::<3, 4>::block_mat1x2(
-            S::Matrix::<3, 1>::zeros(),
-            S::Matrix::<3, 3>::identity().scaled(S::from_f64(2.0)),
-        );
-
-        let n = squared_n.sqrt();
-        let theta = S::from_f64(2.0) * n.atan2(w);
-
-        let dw_ivec_theta: S::Vector<3> = ivec.scaled(S::from_f64(-2.0) / (squared_n + w * w));
-        let factor =
-            S::from_f64(2.0) * w / (squared_n * (squared_n + w * w)) - theta / (squared_n * n);
-
-        let mm = ivec.outer(ivec).scaled(factor);
-
-        m0.select(
-            &near_zero,
-            S::Matrix::block_mat1x2(
-                dw_ivec_theta.to_mat(),
-                S::Matrix::<3, 3>::identity().scaled(theta / n) + mm,
-            ),
-        )
-    }
-
     fn has_shortest_path_ambiguity(params: &S::Vector<4>) -> S::Mask {
         let theta = Self::log(params).norm();
         (theta - S::from_f64(core::f64::consts::PI))
             .abs()
             .less_equal(&S::from_f64(EPS_F64.sqrt()))
+    }
+
+    fn left_jacobian(omega: S::Vector<3>) -> S::Matrix<3, 3> {
+        let theta_sq = omega.squared_norm();
+        let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
+        let id = S::Matrix::<3, 3>::identity();
+        let omega_hat = Self::hat(&omega);
+
+        let jl0 = id - omega_hat.scaled(S::from_f64(0.5));
+
+        let theta = theta_sq.sqrt();
+        let a = (S::ones() - theta.cos()) / theta_sq;
+        let b = (theta - theta.sin()) / (theta_sq * theta);
+        let jl = id + omega_hat.scaled(a) + omega_hat.mat_mul(&omega_hat).scaled(b);
+
+        jl0.select(&near_zero, jl)
+    }
+
+    /// Inverse left Jacobian  Jₗ⁻¹(ω).
+    fn inv_left_jacobian(omega: S::Vector<3>) -> S::Matrix<3, 3> {
+        let theta_sq = omega.squared_norm();
+        let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
+        let id = S::Matrix::<3, 3>::identity();
+        let omega_hat = Self::hat(&omega);
+
+        let jli0 = id + omega_hat.scaled(S::from_f64(0.5));
+
+        let theta = theta_sq.sqrt();
+        let sin_theta = theta.sin();
+        let cos_theta = theta.cos();
+        let c = (S::ones() / theta_sq)
+            - (S::from_f64(1.0) + cos_theta) / (S::from_f64(2.0) * theta * sin_theta);
+        let jli = id - omega_hat.scaled(S::from_f64(0.5)) + omega_hat.mat_mul(&omega_hat).scaled(c);
+
+        jli0.select(&near_zero, jli)
     }
 
     fn dparams_matrix(params: &<S>::Vector<4>, col_idx: usize) -> <S>::Matrix<3, 4> {
@@ -1002,6 +1007,54 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
         let l: [S::Matrix<3, 3>; 3] = [set(0), set(1), set(2)];
 
         l
+    }
+
+    fn left_jacobian_of_translation(omega: S::Vector<3>, upsilon: S::Vector<3>) -> S::Matrix<3, 3> {
+        let theta_sq = omega.squared_norm();
+        let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
+        let upsilon_hat: S::Matrix<3, 3> = Rotation3::<S, BATCH, 0, 0>::hat(&upsilon);
+        let omega_hat: S::Matrix<3, 3> = Rotation3::<S, BATCH, 0, 0>::hat(omega);
+
+        // 2-nd-order BCH series:
+        let q0 = upsilon_hat.scaled(S::from_f64(0.5))
+            + omega_hat
+                .mat_mul(&upsilon_hat)
+                .scaled(S::from_f64(1.0 / 6.0));
+
+        // Exact closed form, see Barfoot (Eq. 7.86)
+        // http://asrl.utias.utoronto.ca/~tdb/bib/barfoot_ser17.pdf
+        let theta = theta_sq.sqrt();
+        let (sin_t, cos_t) = (theta.sin(), theta.cos());
+        let a = S::from_f64(0.5);
+        let b = (theta - sin_t) / (theta * theta * theta);
+        let c = (theta * theta + S::from_f64(2.0) * cos_t - S::from_f64(2.0))
+            / (S::from_f64(2.0) * (theta * theta * theta * theta));
+        let d = (S::from_f64(2.0) * theta - S::from_f64(3.0) * sin_t + theta * cos_t)
+            / (S::from_f64(2.0) * (theta * theta * theta * theta * theta));
+
+        let q = upsilon_hat.scaled(a)
+            + (omega_hat.mat_mul(&upsilon_hat)
+                + upsilon_hat.mat_mul(&omega_hat)
+                + omega_hat.mat_mul(&upsilon_hat).mat_mul(&omega_hat))
+            .scaled(b)
+            + (omega_hat.mat_mul(&omega_hat).mat_mul(&upsilon_hat)
+                + upsilon_hat.mat_mul(&omega_hat).mat_mul(&omega_hat)
+                - omega_hat
+                    .mat_mul(&upsilon_hat)
+                    .mat_mul(&omega_hat)
+                    .scaled(S::from_f64(3.0)))
+            .scaled(c)
+            + (omega_hat
+                .mat_mul(&upsilon_hat)
+                .mat_mul(&omega_hat)
+                .mat_mul(&omega_hat)
+                + omega_hat
+                    .mat_mul(&omega_hat)
+                    .mat_mul(&upsilon_hat)
+                    .mat_mul(&omega_hat))
+            .scaled(d);
+
+        q0.select(&near_zero, q)
     }
 }
 

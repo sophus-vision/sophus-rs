@@ -34,8 +34,8 @@ pub mod prelude {
     pub use sophus_autodiff::prelude::*;
 
     pub use crate::{
+        IsAffineGroup,
         IsLieGroup,
-        IsTranslationProductGroup,
     };
 }
 
@@ -202,9 +202,6 @@ pub trait IsRealLieGroupImpl<
     /// derivative of exponential map at the identity
     fn dx_exp_x_at_0() -> S::Matrix<PARAMS, DOF>;
 
-    /// derivative of logarithmic map
-    fn dx_log_x(params: &S::Vector<PARAMS>) -> S::Matrix<DOF, PARAMS>;
-
     /// derivative of exponential map times a point at the identity
     fn dx_exp_x_times_point_at_0(point: &S::Vector<POINT>) -> S::Matrix<POINT, DOF>;
 
@@ -215,6 +212,18 @@ pub trait IsRealLieGroupImpl<
 
     /// are there multiple shortest paths to the identity?
     fn has_shortest_path_ambiguity(params: &S::Vector<PARAMS>) -> S::Mask;
+
+    /// **Left Jacobian** Jₗ(u) ∈ ℝ^{DOF×DOF}.
+    ///
+    /// Satisfies `exp(u) · exp(v) ≃ exp(Jₗ(u) · v)` to first order, for small `u`s.
+    ///
+    /// Note, for 3d rotations aka SO(3), the left Jacobian happens to be identical to the
+    /// V-matrix (used to calculate the exponential map of SE(3)). This is *not* true in general,
+    /// though. The left Jacobian is a DOFxDOF matrix and the V-matrix is a POINTxPOINT matrix.
+    fn left_jacobian(tangent: S::Vector<DOF>) -> S::Matrix<DOF, DOF>;
+
+    /// Inverse of the left Jacobian, i.e. Jₗ⁻¹(u).
+    fn inv_left_jacobian(tangent: S::Vector<DOF>) -> S::Matrix<DOF, DOF>;
 }
 
 /// Lie Factor Group
@@ -276,6 +285,24 @@ pub trait IsRealLieFactorGroupImpl<
         params: &S::Vector<PARAMS>,
         point: &S::Vector<POINT>,
     ) -> S::Matrix<POINT, PARAMS>;
+
+    /// Left Jacobian of a translation in the factor group.
+    ///
+    /// This coupling block, called Q matrix by Barfoot (Eq. 7.86) et al., is part of the
+    /// left Jacobian of an affine Lie group:
+    ///
+    /// ```ascii
+    ///                   / J_left(α)   O \
+    /// J_left(α, ν)  =  |                 |
+    ///                   \  Q(α, ν)    V /
+    /// ```
+    ///
+    /// Here, `J_left(α)` is the left Jacobian of the factor group, `V` is the V-matrix.
+    /// `Q(α, ν)` is what this function returns.
+    fn left_jacobian_of_translation(
+        alpha: S::Vector<DOF>,
+        upsilon: S::Vector<POINT>,
+    ) -> S::Matrix<POINT, DOF>;
 }
 
 /// Lie Group trait
@@ -320,8 +347,8 @@ pub trait IsLieGroup<
     >;
 }
 
-/// Lie Group trait for real scalar, f64
-pub trait IsTranslationProductGroup<
+/// Affine Lie Group trait.
+pub trait IsAffineGroup<
     S: IsScalar<BATCH, DM, DN>,
     const DOF: usize,
     const PARAMS: usize,
