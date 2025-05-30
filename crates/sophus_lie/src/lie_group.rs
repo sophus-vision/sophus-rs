@@ -4,15 +4,21 @@ pub(crate) mod group_mul;
 pub(crate) mod lie_group_manifold;
 pub(crate) mod real_lie_group;
 
-use core::{borrow::Borrow, fmt::Debug};
+use core::fmt::Debug;
 
 use approx::assert_relative_eq;
 use sophus_autodiff::{
     manifold::IsTangent,
-    params::{HasParams, IsParamsImpl},
+    params::{
+        HasParams,
+        IsParamsImpl,
+    },
 };
 
-use crate::{IsLieGroupImpl, prelude::*};
+use crate::{
+    IsLieGroupImpl,
+    prelude::*,
+};
 
 extern crate alloc;
 
@@ -92,12 +98,14 @@ impl<
         G::adj(&self.params)
     }
 
+    /// Adjoint representation of the Lie algebra
+    pub fn ad(tangent: S::Vector<DOF>) -> S::Matrix<DOF, DOF> {
+        G::ad(tangent)
+    }
+
     /// exponential map
-    pub fn exp<T>(omega: T) -> Self
-    where
-        T: Borrow<S::Vector<DOF>>,
-    {
-        Self::from_params(G::exp(omega.borrow()))
+    pub fn exp(omega: S::Vector<DOF>) -> Self {
+        Self::from_params(G::exp(omega))
     }
 
     /// Interpolate between "(w-1) * self" and "w * other".
@@ -113,19 +121,13 @@ impl<
     }
 
     /// hat operator: hat: R^d -> R^{a x a}
-    pub fn hat<T>(omega: T) -> S::Matrix<AMBIENT, AMBIENT>
-    where
-        T: Borrow<S::Vector<DOF>>,
-    {
-        G::hat(omega.borrow())
+    pub fn hat(omega: S::Vector<DOF>) -> S::Matrix<AMBIENT, AMBIENT> {
+        G::hat(omega)
     }
 
     /// vee operator: vee: R^{a x a} -> R^d
-    pub fn vee<M>(xi: M) -> S::Vector<DOF>
-    where
-        M: Borrow<S::Matrix<AMBIENT, AMBIENT>>,
-    {
-        G::vee(xi.borrow())
+    pub fn vee(xi: S::Matrix<AMBIENT, AMBIENT>) -> S::Vector<DOF> {
+        G::vee(xi)
     }
 
     /// identity element
@@ -134,8 +136,8 @@ impl<
     }
 
     /// group multiplication
-    pub fn group_mul(&self, other: &Self) -> Self {
-        Self::from_params(G::group_mul(&self.params, &other.params))
+    pub fn group_mul(&self, other: Self) -> Self {
+        Self::from_params(G::group_mul(&self.params, other.params))
     }
 
     /// group inverse
@@ -144,19 +146,13 @@ impl<
     }
 
     /// transform a point
-    pub fn transform<T>(&self, point: T) -> S::Vector<POINT>
-    where
-        T: Borrow<S::Vector<POINT>>,
-    {
-        G::transform(&self.params, point.borrow())
+    pub fn transform(&self, point: S::Vector<POINT>) -> S::Vector<POINT> {
+        G::transform(&self.params, point)
     }
 
     /// convert point to ambient space
-    pub fn to_ambient<P>(point: P) -> S::Vector<AMBIENT>
-    where
-        P: Borrow<S::Vector<POINT>>,
-    {
-        G::to_ambient(point.borrow())
+    pub fn to_ambient(point: S::Vector<POINT>) -> S::Vector<AMBIENT> {
+        G::to_ambient(point)
     }
 
     /// return compact matrix representation
@@ -167,14 +163,6 @@ impl<
     /// return square matrix representation
     pub fn matrix(&self) -> S::Matrix<AMBIENT, AMBIENT> {
         G::matrix(&self.params)
-    }
-
-    /// algebra adjoint
-    pub fn ad<T>(tangent: T) -> S::Matrix<DOF, DOF>
-    where
-        T: Borrow<S::Vector<DOF>>,
-    {
-        G::ad(tangent.borrow())
     }
 
     /// group element examples
@@ -244,10 +232,10 @@ impl<
             );
         }
         let tangent_examples: alloc::vec::Vec<S::Vector<DOF>> = G::tangent_examples();
-        for a in &tangent_examples {
-            for b in &tangent_examples {
+        for a in tangent_examples.clone() {
+            for b in tangent_examples.clone() {
                 let ad_a = Self::ad(a);
-                let ad_a_b = ad_a * *b;
+                let ad_a_b = ad_a * b;
                 let hat_ab = Self::hat(a).mat_mul(Self::hat(b));
                 let hat_ba = Self::hat(b).mat_mul(Self::hat(a));
 
@@ -275,9 +263,9 @@ impl<
             let t2 = -(g.log().real_vector());
             assert_relative_eq!(t, t2, epsilon = 0.0001);
         }
-        for omega in &tangent_examples {
+        for omega in tangent_examples {
             let exp_inverse = Self::exp(omega).inverse();
-            let neg_omega = -*omega;
+            let neg_omega = -omega;
 
             let exp_neg_omega = Self::exp(neg_omega);
             assert_relative_eq!(
@@ -291,7 +279,7 @@ impl<
     fn hat_tests() {
         let tangent_examples: alloc::vec::Vec<S::Vector<DOF>> = G::tangent_examples();
 
-        for omega in &tangent_examples {
+        for omega in tangent_examples {
             assert_relative_eq!(
                 omega.real_vector(),
                 Self::vee(Self::hat(omega)).real_vector(),

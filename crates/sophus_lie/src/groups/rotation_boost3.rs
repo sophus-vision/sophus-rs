@@ -1,14 +1,24 @@
 use core::marker::PhantomData;
 
 use sophus_autodiff::{
-    linalg::{EPS_F64, IsScalar},
+    linalg::{
+        EPS_F64,
+        IsScalar,
+    },
     manifold::IsTangent,
-    params::{HasParams, IsParamsImpl},
+    params::{
+        HasParams,
+        IsParamsImpl,
+    },
     prelude::*,
 };
 
 use crate::{
-    HasDisambiguate, IsLieFactorGroupImpl, IsLieGroupImpl, Rotation3, Rotation3Impl,
+    HasDisambiguate,
+    IsLieFactorGroupImpl,
+    IsLieGroupImpl,
+    Rotation3,
+    Rotation3Impl,
     lie_group::LieGroup,
 };
 
@@ -221,16 +231,16 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let beta = params.get_fixed_subvec::<3>(4);
 
         let r: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH, DM, DN>::matrix(&q);
-        let bhat_r: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH, DM, DN>::hat(&beta).mat_mul(r);
+        let bhat_r: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH, DM, DN>::hat(beta).mat_mul(r);
 
         S::Matrix::<6, 6>::block_mat2x2::<3, 3, 3, 3>((r, S::Matrix::zeros()), (bhat_r, r))
     }
 
-    fn group_mul(lhs: &S::Vector<7>, rhs: &S::Vector<7>) -> S::Vector<7> {
+    fn group_mul(lhs: &S::Vector<7>, rhs: S::Vector<7>) -> S::Vector<7> {
         // rotations
         let q1 = lhs.get_fixed_subvec::<4>(0);
         let q2 = rhs.get_fixed_subvec::<4>(0);
-        let q = Rotation3Impl::<S, BATCH, DM, DN>::group_mul(&q1, &q2);
+        let q = Rotation3Impl::<S, BATCH, DM, DN>::group_mul(&q1, q2);
 
         // boosts
         let beta1 = lhs.get_fixed_subvec::<3>(4);
@@ -252,12 +262,12 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         S::Vector::block_vec2(q_inv, beta_inv)
     }
 
-    fn exp(xi: &S::Vector<6>) -> S::Vector<7> {
+    fn exp(xi: S::Vector<6>) -> S::Vector<7> {
         let omega = xi.get_fixed_subvec::<3>(0);
         let v = xi.get_fixed_subvec::<3>(3);
 
         let q = Rotation3::<S, BATCH, DM, DN>::exp(omega);
-        let beta = Rotation3Impl::<S, BATCH, DM, DN>::mat_v(&omega) * v;
+        let beta = Rotation3Impl::<S, BATCH, DM, DN>::mat_v(omega) * v;
 
         S::Vector::block_vec2(*q.params(), beta)
     }
@@ -267,13 +277,13 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let beta = p.get_fixed_subvec::<3>(4);
 
         let ω = Rotation3Impl::<S, BATCH, DM, DN>::log(&q);
-        let v = Rotation3Impl::<S, BATCH, DM, DN>::mat_v_inverse(&ω) * beta;
+        let v = Rotation3Impl::<S, BATCH, DM, DN>::mat_v_inverse(ω) * beta;
 
         S::Vector::block_vec2(ω, v)
     }
 
-    fn hat(xi: &S::Vector<6>) -> S::Matrix<4, 4> {
-        let omega_hat = Rotation3Impl::<S, BATCH, DM, DN>::hat(&xi.get_fixed_subvec::<3>(0));
+    fn hat(xi: S::Vector<6>) -> S::Matrix<4, 4> {
+        let omega_hat = Rotation3Impl::<S, BATCH, DM, DN>::hat(xi.get_fixed_subvec::<3>(0));
         let beta = xi.get_fixed_subvec::<3>(3);
 
         S::Matrix::block_mat2x2::<1, 3, 1, 3>(
@@ -282,7 +292,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         )
     }
 
-    fn vee(m: &S::Matrix<4, 4>) -> S::Vector<6> {
+    fn vee(m: S::Matrix<4, 4>) -> S::Vector<6> {
         let mut omega = S::Vector::<3>::zeros();
         *omega.elem_mut(0) = m.elem([3, 2]);
         *omega.elem_mut(1) = m.elem([1, 3]);
@@ -292,21 +302,21 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         S::Vector::block_vec2(omega, beta)
     }
 
-    fn transform(p: &S::Vector<7>, event: &S::Vector<4>) -> S::Vector<4> {
-        Self::matrix(p) * *event
+    fn transform(p: &S::Vector<7>, event: S::Vector<4>) -> S::Vector<4> {
+        Self::matrix(p) * event
     }
 
-    fn to_ambient(point: &S::Vector<4>) -> S::Vector<4> {
-        *point
+    fn to_ambient(point: S::Vector<4>) -> S::Vector<4> {
+        point
     }
 
     fn compact(params: &S::Vector<7>) -> S::Matrix<4, 4> {
         Self::matrix(params)
     }
 
-    fn ad(xi: &S::Vector<6>) -> S::Matrix<6, 6> {
-        let omega_hat = Rotation3Impl::<S, BATCH, DM, DN>::hat(&xi.get_fixed_subvec::<3>(0));
-        let v_hat = Rotation3Impl::<S, BATCH, DM, DN>::hat(&xi.get_fixed_subvec::<3>(3));
+    fn ad(xi: S::Vector<6>) -> S::Matrix<6, 6> {
+        let omega_hat = Rotation3Impl::<S, BATCH, DM, DN>::hat(xi.get_fixed_subvec::<3>(0));
+        let v_hat = Rotation3Impl::<S, BATCH, DM, DN>::hat(xi.get_fixed_subvec::<3>(3));
         S::Matrix::<6, 6>::block_mat2x2::<3, 3, 3, 3>(
             (omega_hat, S::Matrix::zeros()),
             (v_hat, omega_hat),
@@ -340,10 +350,10 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     type DualFactorG<const M: usize, const N: usize> =
         RotationBoost3Impl<S::DualScalar<M, N>, BATCH, M, N>;
 
-    fn mat_v(tan: &S::Vector<6>) -> S::Matrix<4, 4> {
+    fn mat_v(tan: S::Vector<6>) -> S::Matrix<4, 4> {
         let omega = tan.get_fixed_subvec::<3>(0);
         let v = tan.get_fixed_subvec::<3>(3);
-        let mat_v = Rotation3Impl::<S, BATCH, DM, DN>::mat_v(&omega);
+        let mat_v = Rotation3Impl::<S, BATCH, DM, DN>::mat_v(omega);
         let col0 = mat_v * v.scaled(S::from_f64(0.5));
 
         S::Matrix::block_mat2x2::<1, 3, 1, 3>(
@@ -352,10 +362,10 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         )
     }
 
-    fn mat_v_inverse(tan: &S::Vector<6>) -> S::Matrix<4, 4> {
+    fn mat_v_inverse(tan: S::Vector<6>) -> S::Matrix<4, 4> {
         let omega = tan.get_fixed_subvec::<3>(0);
         let v = tan.get_fixed_subvec::<3>(3);
-        let v3_inv = Rotation3Impl::<S, BATCH, DM, DN>::mat_v_inverse(&omega);
+        let v3_inv = Rotation3Impl::<S, BATCH, DM, DN>::mat_v_inverse(omega);
         let half_v = v.scaled(S::from_f64(-0.5));
 
         S::Matrix::block_mat2x2::<1, 3, 1, 3>(
@@ -364,10 +374,10 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         )
     }
 
-    fn ad_of_translation(p: &S::Vector<4>) -> S::Matrix<4, 6> {
+    fn ad_of_translation(p: S::Vector<4>) -> S::Matrix<4, 6> {
         let t = p.elem(0);
         let x = p.get_fixed_subvec::<3>(1);
-        let x_hat = Rotation3Impl::<S, BATCH, DM, DN>::hat(&x);
+        let x_hat = Rotation3Impl::<S, BATCH, DM, DN>::hat(x);
 
         let mut mat_m = S::Matrix::<4, 6>::zeros();
         for r in 0..3 {
@@ -381,15 +391,14 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         mat_m
     }
 
-    fn adj_of_translation(params: &S::Vector<7>, p: &S::Vector<4>) -> S::Matrix<4, 6> {
+    fn adj_of_translation(params: &S::Vector<7>, p: S::Vector<4>) -> S::Matrix<4, 6> {
         let t = p.elem(0);
         let x = p.get_fixed_subvec::<3>(1);
         let q = params.get_fixed_subvec::<4>(0);
         let beta = params.get_fixed_subvec::<3>(4);
         let mat_r = Rotation3Impl::<S, BATCH, DM, DN>::matrix(&q);
 
-        let omega_block =
-            Rotation3Impl::<S, BATCH, DM, DN>::hat(&(x - beta.scaled(t))).mat_mul(mat_r);
+        let omega_block = Rotation3Impl::<S, BATCH, DM, DN>::hat(x - beta.scaled(t)).mat_mul(mat_r);
         let v_block = -(mat_r.scaled(t));
 
         S::Matrix::block_mat2x2::<1, 3, 3, 3>(
