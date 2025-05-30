@@ -29,44 +29,34 @@ impl<
 > LieGroup<S, DOF, PARAMS, POINT, POINT, BATCH, 0, 0, G>
 {
     /// V matrix - used in the exponential map
-    pub fn mat_v<T>(tangent: T) -> S::Matrix<POINT, POINT>
-    where
-        T: Borrow<S::Vector<DOF>>,
-    {
-        G::mat_v(tangent.borrow())
+    pub fn mat_v(tangent: S::Vector<DOF>) -> S::Matrix<POINT, POINT> {
+        G::mat_v(tangent)
     }
 
     /// V matrix inverse - used in the logarithmic map
-    pub fn mat_v_inverse<T>(tangent: T) -> S::Matrix<POINT, POINT>
-    where
-        T: Borrow<S::Vector<DOF>>,
-    {
-        G::mat_v_inverse(tangent.borrow())
+    pub fn mat_v_inverse(tangent: S::Vector<DOF>) -> S::Matrix<POINT, POINT> {
+        G::mat_v_inverse(tangent)
     }
 
     /// derivative of V matrix
-    pub fn dx_mat_v<T>(tangent: T) -> [S::Matrix<POINT, POINT>; DOF]
-    where
-        T: Borrow<S::Vector<DOF>>,
-    {
-        G::dx_mat_v(tangent.borrow())
+    pub fn dx_mat_v(tangent: S::Vector<DOF>) -> [S::Matrix<POINT, POINT>; DOF] {
+        G::dx_mat_v(tangent)
     }
 
     /// derivative of V matrix inverse
-    pub fn dx_mat_v_inverse<T>(tangent: T) -> [S::Matrix<POINT, POINT>; DOF]
-    where
-        T: Borrow<S::Vector<DOF>>,
-    {
-        G::dx_mat_v_inverse(tangent.borrow())
+    pub fn dx_mat_v_inverse(tangent: S::Vector<DOF>) -> [S::Matrix<POINT, POINT>; DOF] {
+        G::dx_mat_v_inverse(tangent)
     }
 
     /// derivative of V matrix times point
-    pub fn dparams_matrix_times_point<PA, PO>(params: PA, point: PO) -> S::Matrix<POINT, PARAMS>
+    pub fn dparams_matrix_times_point<PA>(
+        params: PA,
+        point: S::Vector<POINT>,
+    ) -> S::Matrix<POINT, PARAMS>
     where
         PA: Borrow<S::Vector<PARAMS>>,
-        PO: Borrow<S::Vector<POINT>>,
     {
-        G::dparams_matrix_times_point(params.borrow(), point.borrow())
+        G::dparams_matrix_times_point(params.borrow(), point)
     }
 }
 
@@ -96,8 +86,8 @@ macro_rules! def_real_group_test_template {
                 const POINT: usize = <$group>::POINT;
 
                 for t in <$group>::tangent_examples() {
-                    let mat_v = Self::mat_v(&t);
-                    let mat_v_inverse = Self::mat_v_inverse(&t);
+                    let mat_v = Self::mat_v(t);
+                    let mat_v_inverse = Self::mat_v_inverse(t);
 
                     assert_relative_eq!(
                         mat_v.mat_mul(mat_v_inverse),
@@ -120,12 +110,12 @@ macro_rules! def_real_group_test_template {
                 const PARAMS: usize = <$group>::PARAMS;
 
                 for t in <$group>::tangent_examples() {
-                    let mat_v_jacobian = Self::dx_mat_v(&t);
+                    let mat_v_jacobian = Self::dx_mat_v(t);
 
                     let mat_v_x = |t: <$scalar as IsScalar<$batch,0,0>>::Vector<DOF>|
                                 -> <$scalar as IsScalar<$batch,0,0>>::Matrix<POINT, POINT>
                             {
-                                Self::mat_v(&t)
+                                Self::mat_v(t)
                             };
 
                     let num_diff =
@@ -146,10 +136,10 @@ macro_rules! def_real_group_test_template {
                         }
                     }
 
-                    let mat_v_inv_jacobian = Self::dx_mat_v_inverse(&t);
+                    let mat_v_inv_jacobian = Self::dx_mat_v_inverse(t);
 
                     let mat_v_x_inv = |t: <$scalar as IsScalar<$batch,0,0>>::Vector<DOF>|
-                       -> <$scalar as IsScalar<$batch,0,0>>::Matrix<POINT, POINT> { Self::mat_v_inverse(&t) };
+                       -> <$scalar as IsScalar<$batch,0,0>>::Matrix<POINT, POINT> { Self::mat_v_inverse(t) };
                     let num_diff = MatrixValuedVectorMap::sym_diff_quotient(mat_v_x_inv, t, 0.0001);
 
                     for i in 0..DOF {
@@ -174,7 +164,7 @@ macro_rules! def_real_group_test_template {
 
                         let auto_diff =
                             dual_fn(<$dual_scalar>::vector_var(*a.params())).jacobian();
-                        let analytic_diff = Self::dparams_matrix_times_point(a.params(), &p);
+                        let analytic_diff = Self::dparams_matrix_times_point(a.params(), p);
                         assert_relative_eq!(analytic_diff, auto_diff, epsilon = 0.001);
                     }
                 }

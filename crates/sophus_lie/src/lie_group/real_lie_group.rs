@@ -1,9 +1,13 @@
 use core::{
     borrow::Borrow,
-    fmt::{Display, Formatter},
+    fmt::{
+        Display,
+        Formatter,
+    },
 };
 
 use approx::assert_relative_eq;
+use log::info;
 use nalgebra::SVector;
 #[cfg(feature = "simd")]
 use sophus_autodiff::dual::DualBatchScalar;
@@ -11,12 +15,26 @@ use sophus_autodiff::dual::DualBatchScalar;
 use sophus_autodiff::linalg::BatchScalarF64;
 use sophus_autodiff::{
     dual::DualScalar,
-    maps::{MatrixValuedVectorMap, VectorValuedMatrixMap, VectorValuedVectorMap},
+    maps::{
+        MatrixValuedVectorMap,
+        VectorValuedMatrixMap,
+        VectorValuedVectorMap,
+    },
 };
-use log::info;
+
 use crate::{
-    IsLieGroupImpl, IsRealLieGroupImpl, Isometry2, Isometry2F64, Isometry3, Isometry3F64,
-    Rotation2, Rotation2F64, Rotation3, Rotation3F64, lie_group::LieGroup, prelude::*,
+    IsLieGroupImpl,
+    IsRealLieGroupImpl,
+    Isometry2,
+    Isometry2F64,
+    Isometry3,
+    Isometry3F64,
+    Rotation2,
+    Rotation2F64,
+    Rotation3,
+    Rotation3F64,
+    lie_group::LieGroup,
+    prelude::*,
 };
 
 extern crate alloc;
@@ -39,11 +57,8 @@ where
     }
 
     /// derivative of exponential map times point at the identity
-    pub fn dx_exp_x_times_point_at_0<P>(point: P) -> S::Matrix<POINT, DOF>
-    where
-        P: Borrow<S::Vector<POINT>>,
-    {
-        G::dx_exp_x_times_point_at_0(point.borrow())
+    pub fn dx_exp_x_times_point_at_0(point: S::Vector<POINT>) -> S::Matrix<POINT, DOF> {
+        G::dx_exp_x_times_point_at_0(point)
     }
 
     /// are there multiple shortest paths to the identity?
@@ -52,11 +67,8 @@ where
     }
 
     /// derivative of exponential map
-    pub fn dx_exp<T>(tangent: T) -> S::Matrix<PARAMS, DOF>
-    where
-        T: Borrow<S::Vector<DOF>>,
-    {
-        G::dx_exp(tangent.borrow())
+    pub fn dx_exp(tangent: S::Vector<DOF>) -> S::Matrix<PARAMS, DOF> {
+        G::dx_exp(tangent)
     }
 
     /// dual representation of the group
@@ -80,25 +92,13 @@ where
     }
 
     /// derivative of group multiplication with respect to the first argument
-    pub fn da_a_mul_b<A, B>(a: A, b: B) -> S::Matrix<PARAMS, PARAMS>
-    where
-        A: Borrow<Self>,
-        B: Borrow<Self>,
-    {
-        let a = a.borrow();
-        let b = b.borrow();
-        G::da_a_mul_b(a.params(), b.params())
+    pub fn da_a_mul_b(a: Self, b: Self) -> S::Matrix<PARAMS, PARAMS> {
+        G::da_a_mul_b(*a.params(), *b.params())
     }
 
     /// derivative of group multiplication with respect to the second argument
-    pub fn db_a_mul_b<A, B>(a: A, b: B) -> S::Matrix<PARAMS, PARAMS>
-    where
-        A: Borrow<Self>,
-        B: Borrow<Self>,
-    {
-        let a = a.borrow();
-        let b = b.borrow();
-        G::db_a_mul_b(a.params(), b.params())
+    pub fn db_a_mul_b(a: Self, b: Self) -> S::Matrix<PARAMS, PARAMS> {
+        G::db_a_mul_b(*a.params(), *b.params())
     }
 
     /// derivative of matrix representation with respect to the internal parameters
@@ -113,7 +113,7 @@ where
     /// precondition: column index in [0, AMBIENT-1]
     pub fn dx_exp_x_time_matrix_at_0(&self, col_idx: usize) -> S::Matrix<POINT, DOF> {
         self.dparams_matrix(col_idx)
-            .mat_mul(Self::da_a_mul_b(Self::identity(), self))
+            .mat_mul(Self::da_a_mul_b(Self::identity(), *self))
             .mat_mul(Self::dx_exp_x_at_0())
     }
 
@@ -213,12 +213,12 @@ macro_rules! def_real_group_test_template {
                             <$scalar>::from_f64(rng.random_range(-1e-4..1e-4));
                     }
 
-                    let g1   = <$group>::exp(&xi)
-                                 .group_mul(&<$group>::exp(&delta));
+                    let g1   = <$group>::exp(xi)
+                                 .group_mul(<$group>::exp(delta));
                     let pred = jl * delta;
-                    let g2   = <$group>::exp(&xi)
-                                 .group_mul(&<$group>::identity())
-                                 .group_mul(&<$group>::exp(&pred)); // == exp(xi+Jδ)
+                    let g2   = <$group>::exp(xi)
+                                 .group_mul(<$group>::identity())
+                                 .group_mul(<$group>::exp(pred)); // == exp(xi+Jδ)
 
                     assert_relative_eq!(
                         g1.params(),
@@ -236,15 +236,15 @@ macro_rules! def_real_group_test_template {
                 let tangent_examples: alloc::vec::Vec<<$scalar as IsScalar<$batch,0,0>>::Vector<DOF>>
                     = <$group>::tangent_examples();
 
-                for a in &tangent_examples {
+                for a in tangent_examples.clone() {
                     let ad_a: <$scalar as IsScalar<$batch,0,0>>::Matrix<DOF, DOF> = <$group>::ad(a);
 
-                    for b in &tangent_examples {
+                    for b in tangent_examples.clone() {
                         if DOF > 0 {
                             let lambda = |x: <$scalar as IsScalar<$batch,0,0>>::Vector<DOF>| {
-                                let lhs = <$group>::hat(a).mat_mul(<$group>::hat(&x));
-                                let rhs = <$group>::hat(&x).mat_mul(<$group>::hat(a));
-                                <$group>::vee(&(lhs - rhs))
+                                let lhs = <$group>::hat(a).mat_mul(<$group>::hat(x));
+                                let rhs = <$group>::hat(x).mat_mul(<$group>::hat(a));
+                                <$group>::vee((lhs - rhs))
                             };
 
                             let num_diff_ad_a =
@@ -270,15 +270,15 @@ macro_rules! def_real_group_test_template {
                                 );
 
                              let ad_fn =   |x| {
-                                    let hat_x = <$dual_group>::hat(&x);
-                                    let hat_a = <$dual_group>::hat(&dual_a);
+                                    let hat_x = <$dual_group>::hat(x);
+                                    let hat_a = <$dual_group>::hat(dual_a);
                                     let mul = hat_a.mat_mul(hat_x)
                                         - hat_x.mat_mul(hat_a);
-                                    <$dual_group>::vee(&mul)
+                                    <$dual_group>::vee(mul)
                                 };
 
                             let auto_diff_ad_a
-                                = ad_fn(<$dual_scalar>::vector_var(*b)).jacobian();
+                                = ad_fn(<$dual_scalar>::vector_var(b)).jacobian();
 
 
                             assert_relative_eq!(
@@ -305,7 +305,7 @@ macro_rules! def_real_group_test_template {
                     // x == log(exp(x))
 
                     let log_exp_t: <$scalar as IsScalar<$batch,0,0>>::Vector<DOF> =
-                        Self::log(&Self::exp(&t));
+                        Self::log(&Self::exp(t));
                     assert_relative_eq!(t, log_exp_t, epsilon = 0.0001);
 
                     // dx exp(x).matrix
@@ -313,12 +313,12 @@ macro_rules! def_real_group_test_template {
                         let exp_t = |t: <$scalar as IsScalar<$batch,0,0>>::Vector<DOF>|
                             -> <$scalar as IsScalar<$batch,0,0>>::Vector<PARAMS>
                             {
-                                *Self::exp(&t).params()
+                                *Self::exp(t).params()
                             };
                         let dual_exp_t = |vv: <$dual_scalar as IsScalar<$batch, DOF,1>>::Vector<DOF>|
                             -> <$dual_scalar as IsScalar<$batch, DOF,1>>::Vector<PARAMS>
                             {
-                                <$dual_group>::exp(&vv).params().clone()
+                                <$dual_group>::exp(vv).params().clone()
                             };
 
                         let dx_exp_num_diff =
@@ -327,7 +327,7 @@ macro_rules! def_real_group_test_template {
 
                         assert_relative_eq!(dx_exp_auto_diff, dx_exp_num_diff, epsilon = 0.001);
 
-                        let dx_exp_analytic_diff = Self::dx_exp(&t);
+                        let dx_exp_analytic_diff = Self::dx_exp(t);
                         assert_relative_eq!(dx_exp_analytic_diff, dx_exp_num_diff, epsilon = 0.001);
                     }
                 }
@@ -337,12 +337,12 @@ macro_rules! def_real_group_test_template {
                     let exp_t = |t: <$scalar as IsScalar<$batch, 0, 0>>::Vector<DOF>|
                         -> <$scalar as IsScalar<$batch, 0, 0>>::Vector<PARAMS>
                         {
-                            *Self::exp(&t).params()
+                            *Self::exp(t).params()
                         };
                     let dual_exp_t = |vv: <$dual_scalar as IsScalar<$batch, DOF, 1>>::Vector<DOF>|
                         -> <$dual_scalar as IsScalar<$batch, DOF, 1>>::Vector<PARAMS>
                         {
-                            <$dual_group>::exp(&vv).params().clone()
+                            <$dual_group>::exp(vv).params().clone()
                         };
 
                     let analytic_diff = Self::dx_exp_x_at_0();
@@ -364,12 +364,12 @@ macro_rules! def_real_group_test_template {
                     let exp_t = |t: <$scalar as IsScalar<$batch, 0,0>>::Vector<DOF>|
                         -> <$scalar as IsScalar<$batch,0,0>>::Vector<POINT>
                         {
-                            Self::exp(&t).transform(point)
+                            Self::exp(t).transform(point)
                         };
                     let dual_exp_t = |vv: <$dual_scalar as IsScalar<$batch,DOF,1>>::Vector<DOF>|
                         -> <$dual_scalar as IsScalar<$batch,DOF,1>>::Vector<POINT>
                         {
-                            <$dual_group>::exp(&vv).transform(&<$dual_scalar as IsScalar<$batch, DOF,1>>
+                            <$dual_group>::exp(vv).transform(<$dual_scalar as IsScalar<$batch, DOF,1>>
                                 ::Vector::from_real_vector(point))
                         };
 
@@ -390,7 +390,7 @@ macro_rules! def_real_group_test_template {
                 for a in Self::element_examples() {
                     for b in Self::element_examples() {
 
-                        if ((a.group_mul(&b).has_shortest_path_ambiguity()).any()){
+                        if ((a.group_mul(b).has_shortest_path_ambiguity()).any()){
                             info!("Skipping test for a,b due to ambiguity.");
                             continue;
                         }
@@ -414,8 +414,8 @@ macro_rules! def_real_group_test_template {
                             -> <$dual_scalar as IsScalar<$batch, DOF, 1>>::Vector<DOF>
                             {
                                 (dual_a *
-                                        &<$dual_group>::exp(&t)
-                                        .group_mul(&dual_b)
+                                        &<$dual_group>::exp(t)
+                                        .group_mul(dual_b)
                                     ).log()
                             };
 
@@ -441,18 +441,18 @@ macro_rules! def_real_group_test_template {
                 for x in <$group>::tangent_examples() {
                     // x == vee(hat(x))
                     let vee_hat_x: <$scalar as IsScalar<$batch,0,0>>::Vector<DOF>
-                        = <$group>::vee(&<$group>::hat(&x));
+                        = <$group>::vee(<$group>::hat(x));
                     assert_relative_eq!(x, vee_hat_x, epsilon = 0.0001);
 
                     // dx hat(x)
                     {
                         let hat_x = |v|
                         {
-                            <$group>::hat(&v)
+                            <$group>::hat(v)
                         };
                         let dual_hat_x = |vv|
                         {
-                            <$dual_group>::hat(&vv)
+                            <$dual_group>::hat(vv)
                         };
 
                         let num_diff =
@@ -472,17 +472,17 @@ macro_rules! def_real_group_test_template {
 
                     // dx vee(y)
                     {
-                        let a = Self::hat(&x);
+                        let a = Self::hat(x);
                         let vee_x = |v: <$scalar as IsScalar<$batch,0,0>>::Matrix<AMBIENT, AMBIENT>|
                             -> <$scalar as IsScalar<$batch,0,0>>::Vector<DOF>
                         {
-                            <$group>::vee(&v)
+                            <$group>::vee(v)
                         };
                         let dual_vee_x =
                             |vv: <$dual_scalar_g as IsScalar<$batch, AMBIENT, AMBIENT>>::Matrix<AMBIENT, AMBIENT>|
                             -> <$dual_scalar_g as IsScalar<$batch, AMBIENT, AMBIENT>>::Vector<DOF>
                         {
-                            <$dual_group_g>::vee(&vv)
+                            <$dual_group_g>::vee(vv)
                         };
 
                         let num_diff =
@@ -516,25 +516,25 @@ macro_rules! def_real_group_test_template {
                             -> <$dual_scalar_p as IsScalar<$batch,PARAMS,1>>::Vector<PARAMS>
                             {
                                 <$dual_group_p>::from_params(vv)
-                                .group_mul(&b_dual).params().clone()
+                                .group_mul(b_dual).params().clone()
                             };
 
                         let auto_diff =
                             dual_mul_x(<$dual_scalar_p>::vector_var(*a.params())).jacobian();
 
-                        let analytic_diff = Self::da_a_mul_b(&a, &b);
+                        let analytic_diff = Self::da_a_mul_b(a, b);
                         assert_relative_eq!(analytic_diff, auto_diff, epsilon = 0.001);
 
                         let dual_mul_x = |vv: <$dual_scalar_p as IsScalar<$batch, PARAMS, 1>>::Vector<PARAMS>|
                             -> <$dual_scalar_p as IsScalar<$batch, PARAMS, 1>>::Vector<PARAMS>
                             {
-                                a_dual.group_mul(&LieGroup::from_params(vv)).params().clone()
+                                a_dual.group_mul(LieGroup::from_params(vv)).params().clone()
                             };
 
                         let auto_diff =
                             dual_mul_x(<$dual_scalar_p>::vector_var(*b.params())).jacobian();
 
-                        let analytic_diff = Self::db_a_mul_b(&a, &b);
+                        let analytic_diff = Self::db_a_mul_b(a, b);
                         assert_relative_eq!(analytic_diff, auto_diff, epsilon = 0.001);
                     }
                 }
@@ -611,14 +611,14 @@ macro_rules! def_real_group_test_template {
                     }
                 }
                 for alpha in [<$scalar>::from_f64(0.1), <$scalar>::from_f64(0.5), <$scalar>::from_f64(0.99)] {
-                    for foo_from_bar in &group_examples {
-                        for foo_from_daz in &group_examples {
+                    for foo_from_bar in group_examples.clone() {
+                        for foo_from_daz in group_examples.clone() {
                             if foo_from_bar.inverse().group_mul(foo_from_daz).has_shortest_path_ambiguity().any() {
                                 // interpolation not uniquely defined, let's skip these cases
                                 continue;
                             }
 
-                            let foo_from_quiz = foo_from_bar.interpolate(foo_from_daz, alpha);
+                            let foo_from_quiz = foo_from_bar.interpolate(&foo_from_daz, alpha);
 
                             // test left-invariance:
                             //
@@ -626,14 +626,14 @@ macro_rules! def_real_group_test_template {
                             //   == interp(dash_from_foo * foo_from_bar,
                             //             dash_from_foo * foo_from_daz)
 
-                            for dash_from_foo in &group_examples {
+                            for dash_from_foo in group_examples.clone() {
 
                                 let dash_from_quiz = dash_from_foo.group_mul(foo_from_bar).interpolate(
                                     &dash_from_foo.group_mul(foo_from_daz), alpha);
 
                                     approx::assert_relative_eq!(
                                         dash_from_quiz.matrix(),
-                                        dash_from_foo.group_mul(&foo_from_quiz).matrix(),
+                                        dash_from_foo.group_mul(foo_from_quiz).matrix(),
                                         epsilon = 0.0001
                                     );
                             }
@@ -653,28 +653,28 @@ macro_rules! def_real_group_test_template {
                             );
                         }
                     }
-                    for a_from_bar in &group_examples {
-                        for b_from_bar in &group_examples {
-                            if a_from_bar.group_mul(&b_from_bar.inverse()).has_shortest_path_ambiguity().any() {
+                    for a_from_bar in group_examples.clone() {
+                        for b_from_bar in group_examples.clone() {
+                            if a_from_bar.group_mul(b_from_bar.inverse()).has_shortest_path_ambiguity().any() {
                                 // interpolation not uniquely defined, let's skip these cases
                                 continue;
                             }
 
-                            let c_from_bar = a_from_bar.interpolate(b_from_bar, alpha);
+                            let c_from_bar = a_from_bar.interpolate(&b_from_bar, alpha);
 
                              // test right-invariance:
                             //
                             // interp(a_from_bar, b_from_bar) * bar_from_foo
                             //   == interp(a_from_bar * bar_from_foo,
                             //             b_from_bar * bar_from_foo)
-                            for bar_from_foo in &group_examples {
+                            for bar_from_foo in group_examples.clone() {
 
                                 let c_from_foo = a_from_bar.group_mul(bar_from_foo).interpolate(
                                     &b_from_bar.group_mul(bar_from_foo), alpha);
 
                                     approx::assert_relative_eq!(
                                         c_from_foo.matrix(),
-                                        c_from_bar.group_mul(&bar_from_foo).matrix(),
+                                        c_from_bar.group_mul(bar_from_foo).matrix(),
                                         epsilon = 0.0001
                                     );
                             }

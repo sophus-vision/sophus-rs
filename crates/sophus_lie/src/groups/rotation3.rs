@@ -356,11 +356,11 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         Self::matrix(params)
     }
 
-    fn ad(omega: &S::Vector<3>) -> S::Matrix<3, 3> {
+    fn ad(omega: S::Vector<3>) -> S::Matrix<3, 3> {
         Self::hat(omega)
     }
 
-    fn exp(omega: &S::Vector<3>) -> S::Vector<4> {
+    fn exp(omega: S::Vector<3>) -> S::Vector<4> {
         const EPS: f64 = EPS_F64;
         let theta_sq = omega.squared_norm();
 
@@ -410,7 +410,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         ivec.scaled(two_atan_nbyd_by_n)
     }
 
-    fn hat(omega: &S::Vector<3>) -> S::Matrix<3, 3> {
+    fn hat(omega: S::Vector<3>) -> S::Matrix<3, 3> {
         let o0 = omega.elem(0);
         let o1 = omega.elem(1);
         let o2 = omega.elem(2);
@@ -422,7 +422,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         ])
     }
 
-    fn vee(omega_hat: &S::Matrix<3, 3>) -> S::Vector<3> {
+    fn vee(omega_hat: S::Matrix<3, 3>) -> S::Vector<3> {
         S::Vector::<3>::from_array([
             omega_hat.elem([2, 1]),
             omega_hat.elem([0, 2]),
@@ -439,12 +439,12 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         ])
     }
 
-    fn transform(params: &S::Vector<4>, point: &S::Vector<3>) -> S::Vector<3> {
-        Self::matrix(params) * *point
+    fn transform(params: &S::Vector<4>, point: S::Vector<3>) -> S::Vector<3> {
+        Self::matrix(params) * point
     }
 
-    fn to_ambient(point: &S::Vector<3>) -> S::Vector<3> {
-        *point
+    fn to_ambient(point: S::Vector<3>) -> S::Vector<3> {
+        point
     }
 
     fn compact(params: &S::Vector<4>) -> S::Matrix<3, 3> {
@@ -497,7 +497,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     type RealG = Rotation3Impl<S::RealScalar, BATCH, 0, 0>;
     type DualG<const M: usize, const N: usize> = Rotation3Impl<S::DualScalar<M, N>, BATCH, M, N>;
 
-    fn group_mul(lhs_params: &S::Vector<4>, rhs_params: &S::Vector<4>) -> S::Vector<4> {
+    fn group_mul(lhs_params: &S::Vector<4>, rhs_params: S::Vector<4>) -> S::Vector<4> {
         let lhs_re = lhs_params.elem(0);
         let rhs_re = rhs_params.elem(0);
 
@@ -535,7 +535,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
         ])
     }
 
-    fn da_a_mul_b(a: &S::Vector<4>, b: &S::Vector<4>) -> S::Matrix<4, 4> {
+    fn da_a_mul_b(a: S::Vector<4>, b: S::Vector<4>) -> S::Matrix<4, 4> {
         let lhs_re = a.elem(0);
         let rhs_re = b.elem(0);
 
@@ -568,7 +568,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
         )
     }
 
-    fn db_a_mul_b(a: &S::Vector<4>, b: &S::Vector<4>) -> S::Matrix<4, 4> {
+    fn db_a_mul_b(a: S::Vector<4>, b: S::Vector<4>) -> S::Matrix<4, 4> {
         let lhs_re = a.elem(0);
         let rhs_re = b.elem(0);
         let lhs_ivec = a.get_fixed_subvec::<3>(1);
@@ -598,11 +598,11 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
         )
     }
 
-    fn dx_exp_x_times_point_at_0(point: &S::Vector<3>) -> S::Matrix<3, 3> {
-        Self::hat(&-*point)
+    fn dx_exp_x_times_point_at_0(point: S::Vector<3>) -> S::Matrix<3, 3> {
+        Self::hat(-point)
     }
 
-    fn dx_exp(omega: &S::Vector<3>) -> S::Matrix<4, 3> {
+    fn dx_exp(omega: S::Vector<3>) -> S::Matrix<4, 3> {
         let theta_sq = omega.squared_norm();
 
         let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
@@ -650,7 +650,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
         let theta_sq = omega.squared_norm();
         let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
         let id = S::Matrix::<3, 3>::identity();
-        let omega_hat = Self::hat(&omega);
+        let omega_hat = Self::hat(omega);
 
         let jl0 = id - omega_hat.scaled(S::from_f64(0.5));
 
@@ -667,7 +667,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
         let theta_sq = omega.squared_norm();
         let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
         let id = S::Matrix::<3, 3>::identity();
-        let omega_hat = Self::hat(&omega);
+        let omega_hat = Self::hat(omega);
 
         let jli0 = id + omega_hat.scaled(S::from_f64(0.5));
 
@@ -784,7 +784,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     type DualFactorG<const M: usize, const N: usize> =
         Rotation3Impl<S::DualScalar<M, N>, BATCH, M, N>;
 
-    fn mat_v(omega: &S::Vector<3>) -> S::Matrix<3, 3> {
+    fn mat_v(omega: S::Vector<3>) -> S::Matrix<3, 3> {
         let theta_sq = omega.squared_norm();
         let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH, DM, DN>::hat(omega);
         let mat_omega_sq = mat_omega.mat_mul(mat_omega);
@@ -801,7 +801,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         mat_v0.select(&near_zero, mat_v)
     }
 
-    fn mat_v_inverse(omega: &S::Vector<3>) -> S::Matrix<3, 3> {
+    fn mat_v_inverse(omega: S::Vector<3>) -> S::Matrix<3, 3> {
         let theta_sq = omega.dot(omega);
         let mat_omega: S::Matrix<3, 3> = Rotation3Impl::<S, BATCH, DM, DN>::hat(omega);
         let mat_omega_sq = mat_omega.mat_mul(mat_omega);
@@ -824,12 +824,12 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         mat_v_inv0.select(&near_zero, mat_v_inv)
     }
 
-    fn adj_of_translation(params: &S::Vector<4>, point: &S::Vector<3>) -> S::Matrix<3, 3> {
+    fn adj_of_translation(params: &S::Vector<4>, point: S::Vector<3>) -> S::Matrix<3, 3> {
         Rotation3Impl::<S, BATCH, DM, DN>::hat(point)
             .mat_mul(Rotation3Impl::<S, BATCH, DM, DN>::matrix(params))
     }
 
-    fn ad_of_translation(point: &S::Vector<3>) -> S::Matrix<3, 3> {
+    fn ad_of_translation(point: S::Vector<3>) -> S::Matrix<3, 3> {
         Rotation3Impl::<S, BATCH, DM, DN>::hat(point)
     }
 }
@@ -837,7 +837,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 4, 3, BATCH>
     for Rotation3Impl<S, BATCH, 0, 0>
 {
-    fn dx_mat_v(omega: &S::Vector<3>) -> [S::Matrix<3, 3>; 3] {
+    fn dx_mat_v(omega: S::Vector<3>) -> [S::Matrix<3, 3>; 3] {
         let theta_sq = omega.squared_norm();
         let theta_p4 = theta_sq * theta_sq;
         let dt_mat_omega_pos_idx = [[2, 1], [0, 2], [1, 0]];
@@ -905,7 +905,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
         l
     }
 
-    fn dparams_matrix_times_point(params: &S::Vector<4>, point: &S::Vector<3>) -> S::Matrix<3, 4> {
+    fn dparams_matrix_times_point(params: &S::Vector<4>, point: S::Vector<3>) -> S::Matrix<3, 4> {
         let r = params.elem(0);
         let ivec0 = params.elem(1);
         let ivec1 = params.elem(2);
@@ -943,7 +943,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
         ])
     }
 
-    fn dx_mat_v_inverse(omega: &S::Vector<3>) -> [S::Matrix<3, 3>; 3] {
+    fn dx_mat_v_inverse(omega: S::Vector<3>) -> [S::Matrix<3, 3>; 3] {
         let theta_sq = omega.squared_norm();
         let theta = theta_sq.sqrt();
         let half_theta = S::from_f64(0.5) * theta;
@@ -1012,7 +1012,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
     fn left_jacobian_of_translation(omega: S::Vector<3>, upsilon: S::Vector<3>) -> S::Matrix<3, 3> {
         let theta_sq = omega.squared_norm();
         let near_zero = theta_sq.less_equal(&S::from_f64(EPS_F64));
-        let upsilon_hat: S::Matrix<3, 3> = Rotation3::<S, BATCH, 0, 0>::hat(&upsilon);
+        let upsilon_hat: S::Matrix<3, 3> = Rotation3::<S, BATCH, 0, 0>::hat(upsilon);
         let omega_hat: S::Matrix<3, 3> = Rotation3::<S, BATCH, 0, 0>::hat(omega);
 
         // 2-nd-order BCH series:

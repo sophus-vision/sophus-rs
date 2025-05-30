@@ -31,7 +31,7 @@ impl<
     for LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>
 {
     fn oplus(&self, tangent: &<S as IsScalar<BATCH, DM, DN>>::Vector<DOF>) -> Self {
-        LieGroup::<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>::exp(tangent) * self
+        LieGroup::<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>::exp(*tangent) * self
     }
 
     fn ominus(&self, rhs: &Self) -> <S as IsScalar<BATCH, DM, DN>>::Vector<DOF> {

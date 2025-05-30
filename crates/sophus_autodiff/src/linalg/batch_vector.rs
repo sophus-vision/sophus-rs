@@ -39,7 +39,7 @@ where
         mid_row: BatchVecF64<R1, BATCH>,
         bot_row: BatchVecF64<R2, BATCH>,
     ) -> Self {
-        assert_eq!(ROWS, R0 + R1+ R2);
+        assert_eq!(ROWS, R0 + R1 + R2);
         let mut m = Self::zeros();
 
         m.fixed_view_mut::<R0, 1>(0, 0).copy_from(&top_row);
@@ -119,8 +119,7 @@ where
         *self
     }
 
-    fn scaled(&self, v: BatchScalarF64<BATCH>) -> Self
-    {
+    fn scaled(&self, v: BatchScalarF64<BATCH>) -> Self {
         self * v
     }
 
