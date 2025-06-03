@@ -20,7 +20,6 @@ pub struct Quaternion<
     const DN: usize,
 > {
     params: S::Vector<4>,
-    phantom: PhantomData<S>,
 }
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
@@ -30,7 +29,6 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     pub fn from_params(params: S::Vector<4>) -> Self {
         Self {
             params,
-            phantom: PhantomData,
         }
     }
 
