@@ -91,7 +91,7 @@ let world_from_foo_isometry
 
 // Apply world_from_foo_isometry to a 3D point in the foo reference frame.
 let point_in_foo = VecF64::<3>::new(10.0, 0.0, 0.0);
-let point_in_world = world_from_foo_isometry.transform(&point_in_foo);
+let point_in_world = world_from_foo_isometry.transform(point_in_foo);
 
 // Manually compute the expected transformation:
 //  - rotate (10, 0, 0) around z by 45°
@@ -108,7 +108,7 @@ approx::assert_abs_diff_eq!(
 // Map isometry to 6-dimensional tangent space.
 let omega = world_from_foo_isometry.log();
 // Map tangent space element back to the manifold.
-let roundtrip_world_from_foo_isometry = Isometry3F64::exp(&omega);
+let roundtrip_world_from_foo_isometry = Isometry3F64::exp(omega);
 approx::assert_abs_diff_eq!(roundtrip_world_from_foo_isometry.matrix(),
                             world_from_foo_isometry.matrix(),
                             epsilon = 1e-9);

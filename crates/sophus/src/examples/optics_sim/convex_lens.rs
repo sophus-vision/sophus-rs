@@ -92,7 +92,7 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
                 start: front_angles[0],
                 range: Rotation2::exp(VecF64::<1>::new(front_angles[0]))
                     .inverse()
-                    .group_mul(&Rotation2::<f64, 1, 0, 0>::exp(VecF64::<1>::new(
+                    .group_mul(Rotation2::<f64, 1, 0, 0>::exp(VecF64::<1>::new(
                         front_angles[1],
                     )))
                     .log()[0],
