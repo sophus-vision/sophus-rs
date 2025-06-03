@@ -52,7 +52,7 @@ pub fn iterative_average<
     if parent_from_body_transforms.is_empty() {
         return Err(IterativeAverageError::EmptySlice);
     }
-    let mut parent_from_body_average = parent_from_body_transforms[0].clone();
+    let mut parent_from_body_average = parent_from_body_transforms[0];
     let w = S::from_f64(1.0 / parent_from_body_transforms.len() as f64);
 
     // This implements the algorithm in the beginning of Sec. 4.2 in
@@ -67,7 +67,7 @@ pub fn iterative_average<
                     .scaled(w);
         }
         let refined_parent_from_body_average =
-            parent_from_body_average.clone() * LieGroup::exp(average_tangent);
+            parent_from_body_average * LieGroup::exp(average_tangent);
         let step = (refined_parent_from_body_average.inverse() * parent_from_body_average).log();
         if step.squared_norm() < S::from_f64(EPS_F64) {
             return Ok(refined_parent_from_body_average);

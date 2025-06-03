@@ -12,6 +12,7 @@ pub struct ReadmeDoctests;
 #[cfg(feature = "std")]
 extern crate std;
 
+mod complex;
 mod groups;
 mod lie_group;
 mod quaternion;
@@ -45,6 +46,7 @@ use core::fmt::Debug;
 use sophus_autodiff::prelude::*;
 
 pub use crate::{
+    complex::*,
     groups::{
         affine_group_template::*,
         galilean3::*,
@@ -54,13 +56,13 @@ pub use crate::{
         rotation2::*,
         rotation3::*,
     },
-    quaternion::*,
     lie_group::{
         LieGroup,
         average::*,
         factor_lie_group::*,
         real_lie_group::*,
     },
+    quaternion::*,
 };
 
 /// Disambiguate the parameters.

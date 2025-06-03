@@ -595,7 +595,7 @@ impl<
         // zero block
         let z_top = S::Matrix::<SDOF, POINT>::zeros();
 
-        S::Matrix::block_mat2x2::<SDOF, POINT, SDOF, POINT>((jl_omega.clone(), z_top), (q_l, mat_v))
+        S::Matrix::block_mat2x2::<SDOF, POINT, SDOF, POINT>((jl_omega, z_top), (q_l, mat_v))
     }
 
     fn inv_left_jacobian(tangent: <S>::Vector<DOF>) -> <S>::Matrix<DOF, DOF> {
@@ -613,8 +613,8 @@ impl<
         let z_top = S::Matrix::<SDOF, POINT>::zeros();
 
         // bottom-left = − V⁻¹ · Q_L · J_l⁻¹
-        let bl = -(v_inv.clone().mat_mul(q_l).mat_mul(jl_inv.clone()));
-        S::Matrix::block_mat2x2::<SDOF, POINT, SDOF, POINT>((jl_inv.clone(), z_top), (bl, v_inv))
+        let bl = -(v_inv.clone().mat_mul(q_l).mat_mul(jl_inv));
+        S::Matrix::block_mat2x2::<SDOF, POINT, SDOF, POINT>((jl_inv, z_top), (bl, v_inv))
     }
 }
 

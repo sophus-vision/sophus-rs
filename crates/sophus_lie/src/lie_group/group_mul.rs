@@ -45,7 +45,7 @@ impl<
     type Output = LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>;
 
     fn mul(self, rhs: &Self) -> Self::Output {
-        self.group_mul(rhs.clone())
+        self.group_mul(*rhs)
     }
 }
 
@@ -87,6 +87,6 @@ impl<
     type Output = LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>;
 
     fn mul(self, rhs: &LieGroup<S, DOF, PARAMS, POINT, AMBIENT, BATCH, DM, DN, G>) -> Self::Output {
-        self.group_mul(rhs.clone())
+        self.group_mul(*rhs)
     }
 }

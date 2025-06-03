@@ -4,11 +4,12 @@ use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 use sophus_autodiff::{
-    linalg::{cross, EPS_F64},
-    params::{HasParams, IsParamsImpl},
+    linalg::cross,
     manifold::IsManifold,
+    params::{HasParams, IsParamsImpl},
     points::example_points,
 };
+
 use crate::prelude::*;
 
 /// Quaternion represented as `(w, x, y, z)`.
@@ -27,9 +28,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 {
     /// Creates a quaternion from its parameter vector `(w, x, y, z)`.
     pub fn from_params(params: S::Vector<4>) -> Self {
-        Self {
-            params,
-        }
+        Self { params }
     }
 
     /// Returns the zero quaternion `(0,0,0,0)`.
@@ -65,7 +64,8 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     /// Quaternion multiplication.
     pub fn mult(&self, rhs: Self) -> Self {
         Self::from_params(QuaternionImpl::<S, BATCH, DM, DN>::mult(
-            &self.params, rhs.params,
+            &self.params,
+            rhs.params,
         ))
     }
 
@@ -169,7 +169,12 @@ pub type QuaternionF64 = Quaternion<f64, 1, 0, 0>;
 
 /// Implementation utilities for [`Quaternion`].
 #[derive(Clone, Copy, Debug)]
-pub struct QuaternionImpl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize> {
+pub struct QuaternionImpl<
+    S: IsScalar<BATCH, DM, DN>,
+    const BATCH: usize,
+    const DM: usize,
+    const DN: usize,
+> {
     phantom: PhantomData<S>,
 }
 
@@ -199,16 +204,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
             + lhs_ivec.scaled(rhs_re)
             + cross::<S, BATCH, DM, DN>(lhs_ivec, rhs_ivec);
 
-        let mut params = S::Vector::block_vec2(re.to_vec(), ivec);
-
-        if ((params.norm() - S::from_f64(1.0))
-            .abs()
-            .greater_equal(&S::from_f64(EPS_F64)))
-            .any()
-        {
-            params = params.normalized();
-        }
-        params
+        S::Vector::block_vec2(re.to_vec(), ivec)
     }
 
     /// Adds two quaternions component-wise.

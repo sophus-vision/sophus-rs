@@ -19,14 +19,14 @@ mod ray;
 pub mod region;
 mod unit_vector;
 
+pub use sophus_lie::Quaternion;
+
 pub use crate::{
     hyperplane::*,
     hypersphere::*,
     ray::*,
     unit_vector::*,
 };
-
-pub use sophus_lie::Quaternion;
 
 /// sophus_geo prelude.
 ///
