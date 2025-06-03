@@ -23,6 +23,7 @@ use crate::{
     IsLieGroupImpl,
     IsRealLieFactorGroupImpl,
     IsRealLieGroupImpl,
+    complex::ComplexImpl,
     lie_group::LieGroup,
     prelude::*,
 };
@@ -199,7 +200,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     const IS_PARALLEL_LINE_PRESERVING: bool = true;
 
     fn identity_params() -> S::Vector<2> {
-        S::Vector::<2>::from_array([S::ones(), S::zeros()])
+        ComplexImpl::<S, BATCH, DM, DN>::one()
     }
 
     fn adj(_params: &S::Vector<2>) -> S::Matrix<1, 1> {
@@ -235,25 +236,19 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     }
 
     fn group_mul(params1: &S::Vector<2>, params2: S::Vector<2>) -> S::Vector<2> {
-        let a = params1.elem(0);
-        let b = params1.elem(1);
-        let c = params2.elem(0);
-        let d = params2.elem(1);
-
-        S::Vector::<2>::from_array([a * c - d * b, a * d + b * c])
+        ComplexImpl::<S, BATCH, DM, DN>::mult(params1, params2)
     }
 
     fn inverse(params: &S::Vector<2>) -> S::Vector<2> {
-        S::Vector::<2>::from_array([params.elem(0), -params.elem(1)])
+        ComplexImpl::<S, BATCH, DM, DN>::conjugate(params)
     }
 
     fn transform(params: &S::Vector<2>, point: S::Vector<2>) -> S::Vector<2> {
         Self::matrix(params) * point
     }
 
-    fn to_ambient(point: S::Vector<2>) -> S::Vector<2> {
-        // homogeneous coordinates
-        point
+    fn to_ambient(params: S::Vector<2>) -> S::Vector<2> {
+        params
     }
 
     fn compact(params: &S::Vector<2>) -> S::Matrix<2, 2> {

@@ -112,7 +112,7 @@ impl<
     ///
     /// w is typically in [0, 1]. If w=0, self is returned. If w=1 other is returned.
     pub fn interpolate(&self, other: &Self, w: S) -> Self {
-        self * &Self::exp((self.inverse() * other).log().scaled(w))
+        self * Self::exp((self.inverse() * other).log().scaled(w))
     }
 
     /// logarithmic map

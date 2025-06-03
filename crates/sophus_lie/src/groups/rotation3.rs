@@ -25,7 +25,6 @@ use crate::{
     IsLieGroupImpl,
     IsRealLieFactorGroupImpl,
     IsRealLieGroupImpl,
-    quaternion::QuaternionImpl,
     lie_group::{
         LieGroup,
         average::{
@@ -34,6 +33,7 @@ use crate::{
         },
     },
     prelude::*,
+    quaternion::QuaternionImpl,
 };
 extern crate alloc;
 
@@ -631,7 +631,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
         let theta = theta_sq.sqrt();
         let a = (S::ones() - theta.cos()) / theta_sq;
         let b = (theta - theta.sin()) / (theta_sq * theta);
-        let jl = id + omega_hat.scaled(a) + omega_hat.mat_mul(&omega_hat).scaled(b);
+        let jl = id + omega_hat.scaled(a) + omega_hat.mat_mul(omega_hat).scaled(b);
 
         jl0.select(&near_zero, jl)
     }
@@ -650,7 +650,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 3, 4, 3, 
         let cos_theta = theta.cos();
         let c = (S::ones() / theta_sq)
             - (S::from_f64(1.0) + cos_theta) / (S::from_f64(2.0) * theta * sin_theta);
-        let jli = id - omega_hat.scaled(S::from_f64(0.5)) + omega_hat.mat_mul(&omega_hat).scaled(c);
+        let jli = id - omega_hat.scaled(S::from_f64(0.5)) + omega_hat.mat_mul(omega_hat).scaled(c);
 
         jli0.select(&near_zero, jli)
     }
@@ -992,7 +992,7 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
         // 2-nd-order BCH series:
         let q0 = upsilon_hat.scaled(S::from_f64(0.5))
             + omega_hat
-                .mat_mul(&upsilon_hat)
+                .mat_mul(upsilon_hat)
                 .scaled(S::from_f64(1.0 / 6.0));
 
         // Exact closed form, see Barfoot (Eq. 7.86)
@@ -1007,25 +1007,25 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 3, 
             / (S::from_f64(2.0) * (theta * theta * theta * theta * theta));
 
         let q = upsilon_hat.scaled(a)
-            + (omega_hat.mat_mul(&upsilon_hat)
-                + upsilon_hat.mat_mul(&omega_hat)
-                + omega_hat.mat_mul(&upsilon_hat).mat_mul(&omega_hat))
+            + (omega_hat.mat_mul(upsilon_hat)
+                + upsilon_hat.mat_mul(omega_hat)
+                + omega_hat.mat_mul(upsilon_hat).mat_mul(omega_hat))
             .scaled(b)
-            + (omega_hat.mat_mul(&omega_hat).mat_mul(&upsilon_hat)
-                + upsilon_hat.mat_mul(&omega_hat).mat_mul(&omega_hat)
+            + (omega_hat.mat_mul(omega_hat).mat_mul(upsilon_hat)
+                + upsilon_hat.mat_mul(omega_hat).mat_mul(omega_hat)
                 - omega_hat
-                    .mat_mul(&upsilon_hat)
-                    .mat_mul(&omega_hat)
+                    .mat_mul(upsilon_hat)
+                    .mat_mul(omega_hat)
                     .scaled(S::from_f64(3.0)))
             .scaled(c)
             + (omega_hat
-                .mat_mul(&upsilon_hat)
-                .mat_mul(&omega_hat)
-                .mat_mul(&omega_hat)
+                .mat_mul(upsilon_hat)
+                .mat_mul(omega_hat)
+                .mat_mul(omega_hat)
                 + omega_hat
-                    .mat_mul(&omega_hat)
-                    .mat_mul(&upsilon_hat)
-                    .mat_mul(&omega_hat))
+                    .mat_mul(omega_hat)
+                    .mat_mul(upsilon_hat)
+                    .mat_mul(omega_hat))
             .scaled(d);
 
         q0.select(&near_zero, q)
