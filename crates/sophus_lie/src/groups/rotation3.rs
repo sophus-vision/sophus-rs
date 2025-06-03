@@ -10,7 +10,6 @@ use sophus_autodiff::{
         EPS_F64,
         MatF64,
         VecF64,
-        cross,
     },
     manifold::IsTangent,
     params::{
@@ -26,6 +25,7 @@ use crate::{
     IsLieGroupImpl,
     IsRealLieFactorGroupImpl,
     IsRealLieGroupImpl,
+    quaternion::QuaternionImpl,
     lie_group::{
         LieGroup,
         average::{
@@ -349,7 +349,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     const IS_PARALLEL_LINE_PRESERVING: bool = true;
 
     fn identity_params() -> S::Vector<4> {
-        S::Vector::<4>::from_f64_array([1.0, 0.0, 0.0, 0.0])
+        QuaternionImpl::<S, BATCH, DM, DN>::one()
     }
 
     fn adj(params: &S::Vector<4>) -> S::Matrix<3, 3> {
@@ -431,12 +431,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     }
 
     fn inverse(params: &S::Vector<4>) -> S::Vector<4> {
-        S::Vector::from_array([
-            params.elem(0),
-            -params.elem(1),
-            -params.elem(2),
-            -params.elem(3),
-        ])
+        QuaternionImpl::<S, BATCH, DM, DN>::conjugate(params)
     }
 
     fn transform(params: &S::Vector<4>, point: &S::Vector<3>) -> S::Vector<3> {
@@ -498,28 +493,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     type DualG<const M: usize, const N: usize> = Rotation3Impl<S::DualScalar<M, N>, BATCH, M, N>;
 
     fn group_mul(lhs_params: &S::Vector<4>, rhs_params: &S::Vector<4>) -> S::Vector<4> {
-        let lhs_re = lhs_params.elem(0);
-        let rhs_re = rhs_params.elem(0);
-
-        let lhs_ivec = lhs_params.get_fixed_subvec::<3>(1);
-        let rhs_ivec = rhs_params.get_fixed_subvec::<3>(1);
-
-        let re = lhs_re * rhs_re - lhs_ivec.dot(rhs_ivec);
-        let ivec = rhs_ivec.scaled(lhs_re)
-            + lhs_ivec.scaled(rhs_re)
-            + cross::<S, BATCH, DM, DN>(lhs_ivec, rhs_ivec);
-
-        let mut params = S::Vector::block_vec2(re.to_vec(), ivec);
-
-        if ((params.norm() - S::from_f64(1.0))
-            .abs()
-            .greater_equal(&S::from_f64(EPS_F64)))
-        .any()
-        {
-            // todo: use tailor approximation for norm close to 1
-            params = params.normalized();
-        }
-        params
+        QuaternionImpl::<S, BATCH, DM, DN>::multiplication(lhs_params, rhs_params)
     }
 }
 

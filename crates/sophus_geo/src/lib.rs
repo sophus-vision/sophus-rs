@@ -26,6 +26,8 @@ pub use crate::{
     unit_vector::*,
 };
 
+pub use sophus_lie::Quaternion;
+
 /// sophus_geo prelude.
 ///
 /// It is recommended to import this prelude when working with `sophus_geo types:

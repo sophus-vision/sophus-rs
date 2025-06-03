@@ -14,6 +14,7 @@ extern crate std;
 
 mod groups;
 mod lie_group;
+mod quaternion;
 
 /// sophus_lie prelude.
 ///
@@ -53,6 +54,7 @@ pub use crate::{
         rotation2::*,
         rotation3::*,
     },
+    quaternion::*,
     lie_group::{
         LieGroup,
         average::*,
