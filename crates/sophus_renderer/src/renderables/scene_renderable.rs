@@ -2,11 +2,17 @@ mod axes;
 
 pub use axes::*;
 use sophus_autodiff::linalg::SVec;
-use sophus_lie::{Isometry3, Isometry3F64};
+use sophus_lie::{
+    Isometry3,
+    Isometry3F64,
+};
 
 use crate::{
     prelude::*,
-    renderables::{color::Color, pixel_renderable::HasToVec2F32},
+    renderables::{
+        color::Color,
+        pixel_renderable::HasToVec2F32,
+    },
 };
 
 /// scene renderable

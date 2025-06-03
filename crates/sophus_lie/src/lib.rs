@@ -114,6 +114,7 @@ pub trait IsLieGroupImpl<
     + IsTangent<S, DOF, BATCH, DM, DN>
     + HasDisambiguate<S, PARAMS, BATCH, DM, DN>
     + Clone
+    + Copy
     + Debug
 {
     /// Generic scalar, real scalar, and dual scalar
@@ -145,24 +146,24 @@ pub trait IsLieGroupImpl<
     fn adj(params: &S::Vector<PARAMS>) -> S::Matrix<DOF, DOF>;
 
     /// algebra adjoint
-    fn ad(tangent: &S::Vector<DOF>) -> S::Matrix<DOF, DOF>;
+    fn ad(tangent: S::Vector<DOF>) -> S::Matrix<DOF, DOF>;
 
     /// exponential map
-    fn exp(omega: &S::Vector<DOF>) -> S::Vector<PARAMS>;
+    fn exp(omega: S::Vector<DOF>) -> S::Vector<PARAMS>;
 
     /// logarithmic map
     fn log(params: &S::Vector<PARAMS>) -> S::Vector<DOF>;
 
     /// hat operator
-    fn hat(omega: &S::Vector<DOF>) -> S::Matrix<AMBIENT, AMBIENT>;
+    fn hat(omega: S::Vector<DOF>) -> S::Matrix<AMBIENT, AMBIENT>;
 
     /// vee operator
-    fn vee(hat: &S::Matrix<AMBIENT, AMBIENT>) -> S::Vector<DOF>;
+    fn vee(hat: S::Matrix<AMBIENT, AMBIENT>) -> S::Vector<DOF>;
 
     // group operations
 
     /// group multiplication
-    fn group_mul(params1: &S::Vector<PARAMS>, params2: &S::Vector<PARAMS>) -> S::Vector<PARAMS>;
+    fn group_mul(params1: &S::Vector<PARAMS>, params2: S::Vector<PARAMS>) -> S::Vector<PARAMS>;
 
     /// group inverse
     fn inverse(params: &S::Vector<PARAMS>) -> S::Vector<PARAMS>;
@@ -170,10 +171,10 @@ pub trait IsLieGroupImpl<
     // Group actions
 
     /// group action on a point
-    fn transform(params: &S::Vector<PARAMS>, point: &S::Vector<POINT>) -> S::Vector<POINT>;
+    fn transform(params: &S::Vector<PARAMS>, point: S::Vector<POINT>) -> S::Vector<POINT>;
 
     /// convert minimal manifold representation to ambient manifold representation
-    fn to_ambient(params: &S::Vector<POINT>) -> S::Vector<AMBIENT>;
+    fn to_ambient(point: S::Vector<POINT>) -> S::Vector<AMBIENT>;
 
     /// return compact matrix representation
     fn compact(params: &S::Vector<PARAMS>) -> S::Matrix<POINT, AMBIENT>;
@@ -193,19 +194,19 @@ pub trait IsRealLieGroupImpl<
 >: IsLieGroupImpl<S, DOF, PARAMS, POINT, AMBIENT, BATCH, 0, 0>
 {
     /// derivative of group multiplication with respect to the first argument
-    fn da_a_mul_b(a: &S::Vector<PARAMS>, b: &S::Vector<PARAMS>) -> S::Matrix<PARAMS, PARAMS>;
+    fn da_a_mul_b(a: S::Vector<PARAMS>, b: S::Vector<PARAMS>) -> S::Matrix<PARAMS, PARAMS>;
 
     /// derivative of group multiplication with respect to the second argument
-    fn db_a_mul_b(a: &S::Vector<PARAMS>, b: &S::Vector<PARAMS>) -> S::Matrix<PARAMS, PARAMS>;
+    fn db_a_mul_b(a: S::Vector<PARAMS>, b: S::Vector<PARAMS>) -> S::Matrix<PARAMS, PARAMS>;
 
     /// derivative of exponential map
-    fn dx_exp(tangent: &S::Vector<DOF>) -> S::Matrix<PARAMS, DOF>;
+    fn dx_exp(tangent: S::Vector<DOF>) -> S::Matrix<PARAMS, DOF>;
 
     /// derivative of exponential map at the identity
     fn dx_exp_x_at_0() -> S::Matrix<PARAMS, DOF>;
 
     /// derivative of exponential map times a point at the identity
-    fn dx_exp_x_times_point_at_0(point: &S::Vector<POINT>) -> S::Matrix<POINT, DOF>;
+    fn dx_exp_x_times_point_at_0(point: S::Vector<POINT>) -> S::Matrix<POINT, DOF>;
 
     /// derivative of matrix representation with respect to the internal parameters
     ///
@@ -249,19 +250,19 @@ pub trait IsLieFactorGroupImpl<
     type DualFactorG<const M: usize, const N: usize>: IsLieFactorGroupImpl<S::DualScalar<M, N>, DOF, PARAMS, POINT, BATCH, M, N>;
 
     /// V matrix - used by semi-direct product exponential
-    fn mat_v(tangent: &S::Vector<DOF>) -> S::Matrix<POINT, POINT>;
+    fn mat_v(tangent: S::Vector<DOF>) -> S::Matrix<POINT, POINT>;
 
     /// V matrix inverse - used by semi-direct product logarithm
-    fn mat_v_inverse(tangent: &S::Vector<DOF>) -> S::Matrix<POINT, POINT>;
+    fn mat_v_inverse(tangent: S::Vector<DOF>) -> S::Matrix<POINT, POINT>;
 
     /// group adjoint of translation
     fn adj_of_translation(
         params: &S::Vector<PARAMS>,
-        point: &S::Vector<POINT>,
+        point: S::Vector<POINT>,
     ) -> S::Matrix<POINT, DOF>;
 
     /// algebra adjoint of translation
-    fn ad_of_translation(point: &S::Vector<POINT>) -> S::Matrix<POINT, DOF>;
+    fn ad_of_translation(point: S::Vector<POINT>) -> S::Matrix<POINT, DOF>;
 }
 
 /// Lie Factor Group implementation trait for real scalar, f64
@@ -277,15 +278,15 @@ pub trait IsRealLieFactorGroupImpl<
     + IsRealLieGroupImpl<S, DOF, PARAMS, POINT, POINT, BATCH>
 {
     /// derivative of V matrix
-    fn dx_mat_v(tangent: &S::Vector<DOF>) -> [S::Matrix<POINT, POINT>; DOF];
+    fn dx_mat_v(tangent: S::Vector<DOF>) -> [S::Matrix<POINT, POINT>; DOF];
 
     /// derivative of V matrix inverse
-    fn dx_mat_v_inverse(tangent: &S::Vector<DOF>) -> [S::Matrix<POINT, POINT>; DOF];
+    fn dx_mat_v_inverse(tangent: S::Vector<DOF>) -> [S::Matrix<POINT, POINT>; DOF];
 
     /// derivative of group transformation times a point with respect to the group parameters
     fn dparams_matrix_times_point(
         params: &S::Vector<PARAMS>,
-        point: &S::Vector<POINT>,
+        point: S::Vector<POINT>,
     ) -> S::Matrix<POINT, PARAMS>;
 
     /// Left Jacobian of a translation in the factor group.

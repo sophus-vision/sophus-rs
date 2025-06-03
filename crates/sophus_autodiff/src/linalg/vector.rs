@@ -1,14 +1,26 @@
 use core::{
     borrow::Borrow,
     fmt::Debug,
-    ops::{Add, Index, IndexMut, Neg, Sub},
+    ops::{
+        Add,
+        Index,
+        IndexMut,
+        Neg,
+        Sub,
+    },
 };
 
-use approx::{AbsDiffEq, RelativeEq};
+use approx::{
+    AbsDiffEq,
+    RelativeEq,
+};
 
 use crate::{
     dual::DualVector,
-    linalg::{MatF64, VecF64},
+    linalg::{
+        MatF64,
+        VecF64,
+    },
     prelude::*,
 };
 
@@ -300,8 +312,7 @@ impl<const ROWS: usize> IsVector<f64, ROWS, 1, 0, 0> for VecF64<ROWS> {
         *self
     }
 
-    fn scaled(&self, v: f64) -> Self
-    {
+    fn scaled(&self, v: f64) -> Self {
         self * v
     }
 

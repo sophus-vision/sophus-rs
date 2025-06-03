@@ -206,11 +206,11 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         S::Matrix::<1, 1>::identity()
     }
 
-    fn ad(_tangent: &S::Vector<1>) -> S::Matrix<1, 1> {
+    fn ad(_tangent: S::Vector<1>) -> S::Matrix<1, 1> {
         S::Matrix::zeros()
     }
 
-    fn exp(omega: &S::Vector<1>) -> S::Vector<2> {
+    fn exp(omega: S::Vector<1>) -> S::Vector<2> {
         // angle to complex number
         let angle = omega.elem(0);
         let cos = angle.cos();
@@ -224,17 +224,17 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         S::Vector::<1>::from_array([angle])
     }
 
-    fn hat(omega: &S::Vector<1>) -> S::Matrix<2, 2> {
+    fn hat(omega: S::Vector<1>) -> S::Matrix<2, 2> {
         let angle = omega.elem(0);
         S::Matrix::<2, 2>::from_array2([[S::zeros(), -angle], [angle, S::zeros()]])
     }
 
-    fn vee(hat: &S::Matrix<2, 2>) -> S::Vector<1> {
+    fn vee(hat: S::Matrix<2, 2>) -> S::Vector<1> {
         let angle = hat.elem([1, 0]);
         S::Vector::<1>::from_array([angle])
     }
 
-    fn group_mul(params1: &S::Vector<2>, params2: &S::Vector<2>) -> S::Vector<2> {
+    fn group_mul(params1: &S::Vector<2>, params2: S::Vector<2>) -> S::Vector<2> {
         let a = params1.elem(0);
         let b = params1.elem(1);
         let c = params2.elem(0);
@@ -247,13 +247,13 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         S::Vector::<2>::from_array([params.elem(0), -params.elem(1)])
     }
 
-    fn transform(params: &S::Vector<2>, point: &S::Vector<2>) -> S::Vector<2> {
-        Self::matrix(params) * *point
+    fn transform(params: &S::Vector<2>, point: S::Vector<2>) -> S::Vector<2> {
+        Self::matrix(params) * point
     }
 
-    fn to_ambient(params: &S::Vector<2>) -> S::Vector<2> {
+    fn to_ambient(point: S::Vector<2>) -> S::Vector<2> {
         // homogeneous coordinates
-        *params
+        point
     }
 
     fn compact(params: &S::Vector<2>) -> S::Matrix<2, 2> {
@@ -275,21 +275,21 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieGroupImpl<S, 1, 2, 2, 
         S::Matrix::from_real_scalar_array2([[S::RealScalar::zeros()], [S::RealScalar::ones()]])
     }
 
-    fn dx_exp_x_times_point_at_0(point: &S::Vector<2>) -> S::Matrix<2, 1> {
+    fn dx_exp_x_times_point_at_0(point: S::Vector<2>) -> S::Matrix<2, 1> {
         S::Matrix::from_array2([[-point.elem(1)], [point.elem(0)]])
     }
 
-    fn dx_exp(tangent: &S::Vector<1>) -> S::Matrix<2, 1> {
+    fn dx_exp(tangent: S::Vector<1>) -> S::Matrix<2, 1> {
         let theta = tangent.elem(0);
         S::Matrix::<2, 1>::from_array2([[-theta.sin()], [theta.cos()]])
     }
 
-    fn da_a_mul_b(_a: &S::Vector<2>, b: &S::Vector<2>) -> S::Matrix<2, 2> {
-        Self::matrix(b)
+    fn da_a_mul_b(_a: S::Vector<2>, b: S::Vector<2>) -> S::Matrix<2, 2> {
+        Self::matrix(&b)
     }
 
-    fn db_a_mul_b(a: &S::Vector<2>, _b: &S::Vector<2>) -> S::Matrix<2, 2> {
-        Self::matrix(a)
+    fn db_a_mul_b(a: S::Vector<2>, _b: S::Vector<2>) -> S::Matrix<2, 2> {
+        Self::matrix(&a)
     }
 
     fn has_shortest_path_ambiguity(params: &S::Vector<2>) -> S::Mask {
@@ -337,7 +337,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     type DualFactorG<const M: usize, const N: usize> =
         Rotation2Impl<S::DualScalar<M, N>, BATCH, M, N>;
 
-    fn mat_v(v: &S::Vector<1>) -> S::Matrix<2, 2> {
+    fn mat_v(v: S::Vector<1>) -> S::Matrix<2, 2> {
         let theta = v.elem(0);
         let abs_theta = theta.abs();
 
@@ -356,7 +356,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         ])
     }
 
-    fn mat_v_inverse(tangent: &S::Vector<1>) -> S::Matrix<2, 2> {
+    fn mat_v_inverse(tangent: S::Vector<1>) -> S::Matrix<2, 2> {
         let theta = tangent.elem(0);
         let halftheta = S::from_f64(0.5) * theta;
 
@@ -375,11 +375,11 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         ])
     }
 
-    fn adj_of_translation(_params: &S::Vector<2>, point: &S::Vector<2>) -> S::Matrix<2, 1> {
+    fn adj_of_translation(_params: &S::Vector<2>, point: S::Vector<2>) -> S::Matrix<2, 1> {
         S::Matrix::<2, 1>::from_array2([[point.elem(1)], [-point.elem(0)]])
     }
 
-    fn ad_of_translation(point: &S::Vector<2>) -> S::Matrix<2, 1> {
+    fn ad_of_translation(point: S::Vector<2>) -> S::Matrix<2, 1> {
         S::Matrix::<2, 1>::from_array2([[point.elem(1)], [-point.elem(0)]])
     }
 }
@@ -387,7 +387,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 1, 2, 2, BATCH>
     for Rotation2Impl<S, BATCH, 0, 0>
 {
-    fn dx_mat_v(tangent: &S::Vector<1>) -> [S::Matrix<2, 2>; 1] {
+    fn dx_mat_v(tangent: S::Vector<1>) -> [S::Matrix<2, 2>; 1] {
         let theta = tangent.elem(0);
         let theta_sq = theta * theta;
         let sin_theta = theta.sin();
@@ -405,13 +405,13 @@ impl<S: IsRealScalar<BATCH>, const BATCH: usize> IsRealLieFactorGroupImpl<S, 1, 
         [S::Matrix::<2, 2>::from_array2([[m00, m01], [-m01, m00]])]
     }
 
-    fn dparams_matrix_times_point(_params: &S::Vector<2>, point: &S::Vector<2>) -> S::Matrix<2, 2> {
+    fn dparams_matrix_times_point(_params: &S::Vector<2>, point: S::Vector<2>) -> S::Matrix<2, 2> {
         let px = point.elem(0);
         let py = point.elem(1);
         S::Matrix::from_array2([[px, -py], [py, px]])
     }
 
-    fn dx_mat_v_inverse(tangent: &S::Vector<1>) -> [S::Matrix<2, 2>; 1] {
+    fn dx_mat_v_inverse(tangent: S::Vector<1>) -> [S::Matrix<2, 2>; 1] {
         let theta = tangent.elem(0);
         let sin_theta = theta.sin();
         let cos_theta = theta.cos();
