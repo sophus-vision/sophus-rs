@@ -1,8 +1,3 @@
-//! Utilities for 2x2 complex matrices.
-//!
-//! This struct mirrors [`Quaternion`] and [`Complex`] and simply stores
-//! the eight real components of a 2×2 complex matrix.
-
 extern crate alloc;
 
 use alloc::vec::Vec;
@@ -10,14 +5,19 @@ use core::marker::PhantomData;
 
 use sophus_autodiff::{
     manifold::IsManifold,
-    params::{HasParams, IsParamsImpl},
+    params::{
+        HasParams,
+        IsParamsImpl,
+    },
     points::example_points,
 };
 
 use crate::prelude::*;
 
-/// 2×2 complex matrix represented as
-/// `(re00, im00, re01, im01, re10, im10, re11, im11)`.
+/// SL(2,ℂ) - Complex linear group of rank 2.
+///
+/// This is the group of complex 2x2 matrices with determinant 1. Here it is simply
+/// stored as a list of 8 scalars: `(re00, im00, re01, im01, re10, im10, re11, im11)`.
 #[derive(Clone, Debug)]
 pub struct Sl2c<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize> {
     params: S::Vector<8>,
@@ -27,6 +27,8 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     Sl2c<S, BATCH, DM, DN>
 {
     /// Creates a matrix from its parameter vector.
+    #[inline]
+    #[must_use]
     pub fn from_params(params: S::Vector<8>) -> Self {
         Self { params }
     }
@@ -75,7 +77,9 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 
     /// Conjugate transpose.
     pub fn conjugate_transpose(&self) -> Self {
-        Self::from_params(Sl2cImpl::<S, BATCH, DM, DN>::conjugate_transpose(&self.params))
+        Self::from_params(Sl2cImpl::<S, BATCH, DM, DN>::conjugate_transpose(
+            &self.params,
+        ))
     }
 
     /// Inverse matrix.
@@ -187,9 +191,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
 
     /// Returns the identity matrix.
     pub fn one() -> S::Vector<8> {
-        S::Vector::<8>::from_f64_array([
-            1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
-        ])
+        S::Vector::<8>::from_f64_array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0])
     }
 
     /// Multiplies two matrices.
@@ -212,8 +214,8 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
             [rhs.elem(5), rhs.elem(7)],
         ]);
 
-        let re = lhs_re.mat_mul(&rhs_re) - lhs_im.mat_mul(&rhs_im);
-        let im = lhs_re.mat_mul(&rhs_im) + lhs_im.mat_mul(&rhs_re);
+        let re = lhs_re.mat_mul(rhs_re) - lhs_im.mat_mul(rhs_im);
+        let im = lhs_re.mat_mul(rhs_im) + lhs_im.mat_mul(rhs_re);
 
         S::Vector::<8>::from_array([
             re.elem([0, 0]),
@@ -266,10 +268,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     }
 
     fn complex_mult(a_re: S, a_im: S, b_re: S, b_im: S) -> (S, S) {
-        (
-            a_re * b_re - a_im * b_im,
-            a_re * b_im + a_im * b_re,
-        )
+        (a_re * b_re - a_im * b_im, a_re * b_im + a_im * b_re)
     }
 
     fn determinant(m: &S::Vector<8>) -> (S, S) {
@@ -308,9 +307,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let (e2_re, e2_im) = Self::complex_mult(-c_re, -c_im, inv_det_re, inv_det_im);
         let (e3_re, e3_im) = Self::complex_mult(a_re, a_im, inv_det_re, inv_det_im);
 
-        S::Vector::<8>::from_array([
-            e0_re, e0_im, e1_re, e1_im, e2_re, e2_im, e3_re, e3_im,
-        ])
+        S::Vector::<8>::from_array([e0_re, e0_im, e1_re, e1_im, e2_re, e2_im, e3_re, e3_im])
     }
 
     /// Frobenius norm of the matrix.
@@ -321,5 +318,26 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     /// Squared Frobenius norm of the matrix.
     pub fn squared_norm(m: &S::Vector<8>) -> S {
         m.squared_norm()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        ComplexF64,
+        Sl2cImpl,
+    };
+
+    #[test]
+    fn test_complex_mult_helper() {
+        let a = ComplexF64::from_real_imag(0.5, 0.7);
+        let b = ComplexF64::from_real_imag(1.0, -0.2);
+
+        let ab = a * b;
+        let a_mul_b =
+            Sl2cImpl::<f64, 1, 0, 0>::complex_mult(a.real(), a.imag(), b.real(), b.imag());
+
+        assert_eq!(ab.real(), a_mul_b.0);
+        assert_eq!(ab.imag(), a_mul_b.1);
     }
 }

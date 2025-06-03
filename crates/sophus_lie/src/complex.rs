@@ -1,9 +1,3 @@
-//! Complex number utilities.
-//!
-//! This module defines [`Complex`], a light–weight analogue to [`Quaternion`]
-//! for two dimensional complex numbers.  It mirrors the API of
-//! `Quaternion` so that it can be used as a building block for 2d rotations.
-
 extern crate alloc;
 
 use alloc::vec::Vec;
@@ -21,7 +15,7 @@ use sophus_autodiff::{
 use crate::prelude::*;
 
 /// Complex number represented as `(re, im)`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct Complex<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
 {
     params: S::Vector<2>,
@@ -30,7 +24,16 @@ pub struct Complex<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usi
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     Complex<S, BATCH, DM, DN>
 {
+    /// Creates a complex number from real and imaginary scalar.
+    #[inline]
+    #[must_use]
+    pub fn from_real_imag(real: S, imag: S) -> Self {
+        Self::from_params(S::Vector::<2>::from_array([real, imag]))
+    }
+
     /// Creates a complex number from its parameter vector `(re, im)`.
+    #[inline]
+    #[must_use]
     pub fn from_params(params: S::Vector<2>) -> Self {
         Self { params }
     }
