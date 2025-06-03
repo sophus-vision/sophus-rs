@@ -20,6 +20,7 @@ pub struct Quaternion<
     const DN: usize,
 > {
     params: S::Vector<4>,
+    phantom: PhantomData<S>,
 }
 
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
@@ -29,6 +30,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     pub fn from_params(params: S::Vector<4>) -> Self {
         Self {
             params,
+            phantom: PhantomData,
         }
     }
 
@@ -63,14 +65,14 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     }
 
     /// Quaternion multiplication.
-    pub fn mul_q(&self, rhs: &Self) -> Self {
-        Self::from_params(QuaternionImpl::<S, BATCH, DM, DN>::multiplication(
+    pub fn mult(&self, rhs: &Self) -> Self {
+        Self::from_params(QuaternionImpl::<S, BATCH, DM, DN>::mult(
             &self.params, &rhs.params,
         ))
     }
 
     /// Quaternion addition.
-    pub fn add_q(&self, rhs: &Self) -> Self {
+    pub fn add(&self, rhs: &Self) -> Self {
         Self::from_params(self.params + rhs.params)
     }
 
@@ -106,7 +108,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        self.add_q(&rhs)
+        self.add(rhs)
     }
 }
 
@@ -116,7 +118,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        self.mul_q(&rhs)
+        self.mult(&rhs)
     }
 }
 
@@ -187,7 +189,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     }
 
     /// Multiplies two quaternions.
-    pub fn multiplication(lhs: &S::Vector<4>, rhs: &S::Vector<4>) -> S::Vector<4> {
+    pub fn mult(lhs: &S::Vector<4>, rhs: &S::Vector<4>) -> S::Vector<4> {
         let lhs_re = lhs.elem(0);
         let rhs_re = rhs.elem(0);
 
@@ -212,7 +214,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     }
 
     /// Adds two quaternions component-wise.
-    pub fn addition(a: &S::Vector<4>, b: &S::Vector<4>) -> S::Vector<4> {
+    pub fn add(a: &S::Vector<4>, b: &S::Vector<4>) -> S::Vector<4> {
         *a + *b
     }
 

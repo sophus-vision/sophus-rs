@@ -493,7 +493,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
     type DualG<const M: usize, const N: usize> = Rotation3Impl<S::DualScalar<M, N>, BATCH, M, N>;
 
     fn group_mul(lhs_params: &S::Vector<4>, rhs_params: &S::Vector<4>) -> S::Vector<4> {
-        QuaternionImpl::<S, BATCH, DM, DN>::multiplication(lhs_params, rhs_params)
+        QuaternionImpl::<S, BATCH, DM, DN>::mult(lhs_params, rhs_params)
     }
 }
 
