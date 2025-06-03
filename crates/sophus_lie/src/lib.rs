@@ -16,6 +16,7 @@ mod complex;
 mod groups;
 mod lie_group;
 mod quaternion;
+mod sl2c;
 
 /// sophus_lie prelude.
 ///
@@ -63,6 +64,7 @@ pub use crate::{
         real_lie_group::*,
     },
     quaternion::*,
+    sl2c::*,
 };
 
 /// Disambiguate the parameters.

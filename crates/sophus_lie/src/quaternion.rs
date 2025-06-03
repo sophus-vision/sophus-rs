@@ -6,14 +6,17 @@ use core::marker::PhantomData;
 use sophus_autodiff::{
     linalg::cross,
     manifold::IsManifold,
-    params::{HasParams, IsParamsImpl},
+    params::{
+        HasParams,
+        IsParamsImpl,
+    },
     points::example_points,
 };
 
 use crate::prelude::*;
 
-/// Quaternion represented as `(w, x, y, z)`.
-#[derive(Clone, Debug)]
+/// Quaternion represented as `(r, x, y, z)`.
+#[derive(Clone, Debug, Copy)]
 pub struct Quaternion<
     S: IsScalar<BATCH, DM, DN>,
     const BATCH: usize,
@@ -26,7 +29,21 @@ pub struct Quaternion<
 impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: usize>
     Quaternion<S, BATCH, DM, DN>
 {
-    /// Creates a quaternion from its parameter vector `(w, x, y, z)`.
+    /// Creates a complex number from real scalar and imaginary 3-vector.
+    #[inline]
+    #[must_use]
+    pub fn from_real_imag(real: S, imag: S::Vector<3>) -> Self {
+        Self::from_params(S::Vector::<4>::from_array([
+            real,
+            imag.elem(0),
+            imag.elem(1),
+            imag.elem(2),
+        ]))
+    }
+
+    /// Creates a quaternion from its parameter vector `(r, x, y, z)`.
+    #[inline]
+    #[must_use]
     pub fn from_params(params: S::Vector<4>) -> Self {
         Self { params }
     }
@@ -51,7 +68,7 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         &mut self.params
     }
 
-    /// Returns the real component `w`.
+    /// Returns the real component `r`.
     pub fn real(&self) -> S {
         self.params.elem(0)
     }
