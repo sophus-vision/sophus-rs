@@ -54,6 +54,7 @@ pub use crate::{
         isometry2::*,
         isometry3::*,
         rotation_boost3::*,
+        lorenz3::*,
         rotation2::*,
         rotation3::*,
     },

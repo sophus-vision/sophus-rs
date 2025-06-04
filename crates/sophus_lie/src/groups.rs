@@ -5,3 +5,4 @@ pub(crate) mod isometry3;
 pub(crate) mod rotation2;
 pub(crate) mod rotation3;
 pub(crate) mod rotation_boost3;
+pub(crate) mod lorenz3;
