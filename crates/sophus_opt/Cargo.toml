@@ -31,6 +31,7 @@ snafu.workspace = true
 rustc_version.workspace = true
 
 [features]
+default = ["std"]
 simd = [
   "sophus_autodiff/simd",
   "sophus_image/simd",
@@ -43,4 +44,3 @@ std = [
   "sophus_lie/std",
   "sophus_sensor/std",
 ]
-default = ["std"]
