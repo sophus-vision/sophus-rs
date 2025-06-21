@@ -1,3 +1,4 @@
+use rand_chacha::ChaCha12Rng;
 use sophus_autodiff::linalg::{
     MatF64,
     VecF64,
@@ -72,7 +73,7 @@ impl CamCalibProblem {
             ),
         ];
         use rand::prelude::*;
-        let mut rng = StdRng::seed_from_u64(0);
+        let mut rng = ChaCha12Rng::from_seed(Default::default());
 
         let image_size = ImageSize {
             width: 640,
