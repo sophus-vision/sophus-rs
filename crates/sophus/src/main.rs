@@ -4,6 +4,15 @@
 use std::sync::Arc;
 
 use eframe::egui;
+use sophus::examples::optics_sim::{
+    aperture_stop::ApertureStop,
+    convex_lens::BiConvexLens2,
+    detector::Detector,
+    element::Element,
+    light_path::LightPath,
+    refine_chief_ray_angle,
+    scene_point::ScenePoints,
+};
 use sophus_autodiff::linalg::VecF64;
 use sophus_geo::Circle;
 use sophus_image::{
@@ -37,44 +46,12 @@ use sophus_viewer::{
         create_scene_packet,
     },
 };
-use sophus_wasm::examples::optics_sim::{
-    aperture_stop::ApertureStop,
-    convex_lens::BiConvexLens2,
-    detector::Detector,
-    element::Element,
-    light_path::LightPath,
-    refine_chief_ray_angle,
-    scene_point::ScenePoints,
-};
 use thingbuf::mpsc::blocking::{
     Sender,
     channel,
 };
 
 use crate::egui::Slider;
-
-// When compiling natively:
-#[cfg(not(target_arch = "wasm32"))]
-fn main() -> eframe::Result {
-    env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
-
-    let native_options = eframe::NativeOptions {
-        viewport: eframe::egui::ViewportBuilder::default()
-            .with_inner_size([400.0, 300.0])
-            .with_min_inner_size([300.0, 220.0])
-            .with_icon(
-                // NOTE: Adding an icon is optional
-                eframe::icon_data::from_png_bytes(&include_bytes!("../assets/icon-256.png")[..])
-                    .expect("Failed to load icon"),
-            ),
-        ..Default::default()
-    };
-    eframe::run_native(
-        "eframe template",
-        native_options,
-        Box::new(|cc| Ok(Box::new(sophus_wasm::app::TemplateApp::new(cc)))),
-    )
-}
 
 pub struct OpticsElements {
     lens: Arc<BiConvexLens2<f64, 0, 0>>,
@@ -115,10 +92,22 @@ impl OpticsElements {
     }
 }
 
+#[derive(PartialEq)]
+enum SophusExamples {
+    Autodiff,
+    Lie,
+    Geo,
+    Opt,
+    OpticsSim,
+    Viewer,
+}
+
 pub struct OpticsViewer {
     base: ViewerBase,
     elements: OpticsElements,
     message_send: Sender<Vec<Packet>>,
+
+    selected_example: SophusExamples,
 }
 
 impl eframe::App for OpticsViewer {
@@ -126,6 +115,26 @@ impl eframe::App for OpticsViewer {
         self.base.update_data();
 
         egui::TopBottomPanel::top("top").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.selectable_value(
+                    &mut self.selected_example,
+                    SophusExamples::Autodiff,
+                    "autodiff",
+                );
+                ui.selectable_value(
+                    &mut self.selected_example,
+                    SophusExamples::Lie,
+                    "lie groups",
+                );
+                ui.selectable_value(&mut self.selected_example, SophusExamples::Geo, "geo");
+                ui.selectable_value(&mut self.selected_example, SophusExamples::Opt, "opt");
+                ui.selectable_value(
+                    &mut self.selected_example,
+                    SophusExamples::OpticsSim,
+                    "optics sim",
+                );
+                ui.selectable_value(&mut self.selected_example, SophusExamples::Viewer, "viewer");
+            });
             self.base.update_top_bar(ui, ctx);
         });
 
@@ -193,6 +202,7 @@ impl OpticsViewer {
             base: ViewerBase::new(render_state, ViewerBaseConfig { message_recv }),
             elements: OpticsElements::new(),
             message_send,
+            selected_example: SophusExamples::Autodiff,
         })
     }
 
@@ -293,6 +303,29 @@ impl OpticsViewer {
 
         self.message_send.send(packets).unwrap();
     }
+}
+
+// When compiling natively:
+#[cfg(not(target_arch = "wasm32"))]
+fn main() -> eframe::Result {
+    env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
+
+    let native_options = eframe::NativeOptions {
+        viewport: eframe::egui::ViewportBuilder::default()
+            .with_inner_size([400.0, 300.0])
+            .with_min_inner_size([300.0, 220.0])
+            .with_icon(
+                // NOTE: Adding an icon is optional
+                eframe::icon_data::from_png_bytes(&include_bytes!("../assets/icon-256.png")[..])
+                    .expect("Failed to load icon"),
+            ),
+        ..Default::default()
+    };
+    eframe::run_native(
+        "sophus-rs examples",
+        native_options,
+        Box::new(|cc| Ok(OpticsViewer::new(RenderContext::from_egui_cc(cc)))),
+    )
 }
 
 // When compiling to web using trunk:

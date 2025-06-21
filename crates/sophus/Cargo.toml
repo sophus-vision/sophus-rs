@@ -16,11 +16,11 @@ sophus_geo.workspace = true
 sophus_image.workspace = true
 sophus_lie.workspace = true
 sophus_opt.workspace = true
-sophus_tensor.workspace = true
-sophus_sensor.workspace = true
 sophus_renderer.workspace = true
+sophus_sensor.workspace = true
 sophus_sim.workspace = true
 sophus_spline.workspace = true
+sophus_tensor.workspace = true
 sophus_timeseries.workspace = true
 sophus_viewer.workspace = true
 
@@ -33,15 +33,17 @@ eframe.workspace = true
 egui-wgpu.workspace = true
 egui_extras.workspace = true
 env_logger.workspace = true
+log.workspace = true
 pollster.workspace = true
 rand.workspace = true
+serde.workspace = true
 thingbuf.workspace = true
 
 [build-dependencies]
 rustc_version.workspace = true
 
-
 [features]
+default = ["std"]
 simd = [
   "sophus_autodiff/simd",
   "sophus_image/simd",
@@ -56,7 +58,6 @@ std = [
   "sophus_opt/std",
   "sophus_sensor/std",
 ]
-default = ["std"]
 
 [[example]]
 name = "camera_sim"
@@ -65,3 +66,16 @@ required-features = ["std"]
 [[example]]
 name = "viewer_ex"
 required-features = ["std"]
+
+# native:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+env_logger = "0.11.8"
+
+# web:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures = "0.4.50" 
+web-sys = "0.3.70" # to access the DOM (to hide the loading text)
+
+[package.metadata.docs.rs]
+all-features = true
+targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]

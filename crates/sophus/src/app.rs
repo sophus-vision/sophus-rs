@@ -51,25 +51,25 @@ use sophus_opt::{
     },
 };
 
-// We want to fit the isometry `T ∈ SE(2)` to a prior distribution
-// `N(E(T), W⁻¹)`, where `E(T)` is the prior mean and `W⁻¹` is the prior
-// covariance matrix.
+/// We want to fit the isometry `T ∈ SE(2)` to a prior distribution
+/// `N(E(T), W⁻¹)`, where `E(T)` is the prior mean and `W⁻¹` is the prior
+/// covariance matrix.
 
-// (1) First we define the residual cost term.
+/// (1) First we define the residual cost term.
 #[derive(Clone, Debug)]
 pub struct Isometry2PriorCostTerm {
-    // Prior mean, `E(T)` of type [Isometry2F64].
+    /// Prior mean, `E(T)` of type [Isometry2F64].
     pub isometry_prior_mean: Isometry2F64,
-    // `W`, which is the inverse of the prior covariance matrix.
+    /// `W`, which is the inverse of the prior covariance matrix.
     pub isometry_prior_precision: MatF64<3, 3>,
-    // We only have one variable, so this will be `[0]`.
+    /// We only have one variable, so this will be `[0]`.
     pub entity_indices: [usize; 1],
 }
 
 impl Isometry2PriorCostTerm {
-    // (2) Then we define  residual function for the cost term:
-    //
-    // `g(T) = log[T * E(T)⁻¹]`
+    /// (2) Then we define  residual function for the cost term:
+    ///
+    /// `g(T) = log[T * E(T)⁻¹]`
     pub fn residual<Scalar: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize>(
         isometry: Isometry2<Scalar, 1, DM, DN>,
         isometry_prior_mean: Isometry2<Scalar, 1, DM, DN>,
@@ -78,7 +78,7 @@ impl Isometry2PriorCostTerm {
     }
 }
 
-// (3) Implement the `HasResidualFn` trait for the cost term.
+/// (3) Implement the `HasResidualFn` trait for the cost term.
 impl HasResidualFn<3, 1, (), Isometry2F64> for Isometry2PriorCostTerm {
     fn idx_ref(&self) -> &[usize; 1] {
         &self.entity_indices

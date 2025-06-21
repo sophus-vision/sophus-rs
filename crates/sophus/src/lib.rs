@@ -33,6 +33,9 @@ pub use sophus_timeseries as timeseries;
 #[doc(inline)]
 pub use sophus_viewer as viewer;
 
+/// wasm app
+pub mod app;
+
 /// Non-comprehensive list of examples.
 ///
 /// This is *not a comprehensive list* of examples for the *sophus umbrella crate*.
