@@ -66,7 +66,7 @@ pub struct ViewerBase {
 
 pub(crate) struct ResponseStruct {
     pub(crate) ui_response: egui::Response,
-    pub(crate) z_image: ArcImageF32,
+    //  pub(crate) z_image: ArcImageF32,
     pub(crate) scales: ViewportScale,
     pub(crate) view_port_size: ImageSize,
 }
@@ -111,7 +111,7 @@ impl ViewerBase {
                             &response.ui_response,
                             &response.scales,
                             response.view_port_size,
-                            &response.z_image,
+                            // &response.z_image,
                         );
                         view_port_size = response.view_port_size
                     }
@@ -125,7 +125,7 @@ impl ViewerBase {
                             &response.ui_response,
                             &response.scales,
                             response.view_port_size,
-                            &response.z_image,
+                            //   &response.z_image,
                         );
                         view_port_size = response.view_port_size
                     }
@@ -331,7 +331,7 @@ impl ViewerBase {
                                         view.intrinsics().image_size(),
                                         adjusted_size,
                                     ),
-                                    z_image: render_result.depth_image.ndc_z_image,
+                                    //  z_image: render_result.depth_image.ndc_z_image,
                                     view_port_size: adjusted_size.image_size(),
                                 },
                             );
@@ -371,7 +371,7 @@ impl ViewerBase {
                                         view.intrinsics().image_size(),
                                         adjusted_size,
                                     ),
-                                    z_image: render_result.depth_image.ndc_z_image,
+                                    // z_image: render_result.depth_image.ndc_z_image,
                                     view_port_size: adjusted_size.image_size(),
                                 },
                             );

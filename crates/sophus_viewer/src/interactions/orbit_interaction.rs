@@ -93,7 +93,7 @@ impl OrbitalInteraction {
         response: &egui::Response,
         scales: &ViewportScale,
         viewport_size: ImageSize,
-        z_buffer: &ArcImageF32,
+        //z_buffer: &ArcImageF32,
     ) {
         let last_pointer_pos = response.ctx.input(|i| i.pointer.latest_pos());
         if last_pointer_pos.is_none() {
@@ -124,7 +124,7 @@ impl OrbitalInteraction {
             *active_view = self.view_name.clone();
 
             let uv_in_virtual_camera = scales.apply(uv_viewport);
-            let ndc_z = self.get_ndc_z(uv_viewport, z_buffer);
+            let ndc_z = 0.5; //self.get_ndc_z(uv_viewport, z_buffer);
 
             self.maybe_scene_focus = Some(SceneFocus {
                 ndc_z: ndc_z as f32,
@@ -208,7 +208,7 @@ impl OrbitalInteraction {
         locked_to_birds_eye_orientation: bool,
         response: &egui::Response,
         scales: &ViewportScale,
-        z_buffer: &ArcImageF32,
+        //  z_buffer: &ArcImageF32,
     ) {
         let delta_x = response.drag_delta().x;
         let delta_y = response.drag_delta().y;
@@ -227,7 +227,7 @@ impl OrbitalInteraction {
 
             let uv_in_virtual_camera = scales.apply(uv_viewport);
 
-            let ndc_z = self.get_ndc_z(uv_viewport, z_buffer);
+            let ndc_z = 0.5; // self.get_ndc_z(uv_viewport, z_buffer);
 
             self.maybe_scene_focus = Some(SceneFocus {
                 ndc_z: ndc_z as f32,
@@ -297,7 +297,7 @@ impl OrbitalInteraction {
         response: &egui::Response,
         scales: &ViewportScale,
         view_port_size: ImageSize,
-        z_buffer: &ArcImageF32,
+        //  z_buffer: &ArcImageF32,
     ) {
         self.process_pointer(
             active_view,
@@ -305,9 +305,9 @@ impl OrbitalInteraction {
             locked_to_birds_eye_orientation,
             response,
             scales,
-            z_buffer,
+            //  z_buffer,
         );
-        self.process_scrolls(active_view, cam, response, scales, view_port_size, z_buffer);
+        self.process_scrolls(active_view, cam, response, scales, view_port_size);
     }
 
     /// Get zoom

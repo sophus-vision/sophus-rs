@@ -116,7 +116,7 @@ impl InteractionEnum {
         response: &egui::Response,
         scales: &ViewportScale,
         view_port_size: ImageSize,
-        z_buffer: &ArcImageF32,
+        // z_buffer: &ArcImageF32,
     ) {
         match self {
             InteractionEnum::Orbital(orbit) => orbit.process_event(
@@ -126,7 +126,7 @@ impl InteractionEnum {
                 response,
                 scales,
                 view_port_size,
-                z_buffer,
+                // z_buffer,
             ),
             InteractionEnum::InPlane(inplane) => {
                 inplane.process_event(active_view, cam, response, scales, view_port_size)

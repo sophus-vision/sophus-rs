@@ -16,9 +16,8 @@ pub struct RenderResult {
     /// rgba egui texture id
     pub rgba_egui_tex_id: egui::TextureId,
 
-    /// depth image
-    pub depth_image: DepthImage,
-
+    // /// depth image
+    // pub depth_image: DepthImage,
     /// depth egui texture id
     pub depth_egui_tex_id: egui::TextureId,
 }

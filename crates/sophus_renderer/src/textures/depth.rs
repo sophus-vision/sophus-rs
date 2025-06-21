@@ -1,4 +1,5 @@
 use eframe::wgpu;
+use log::info;
 use sophus_image::{
     ArcImageF32,
     ImageSize,
@@ -42,6 +43,8 @@ impl DepthTextures {
     pub(crate) fn new(render_state: &RenderContext, view_port_size: &ImageSize) -> Self {
         let depth_buffer_size = DepthTextures::bytes_per_row(view_port_size.width as u32)
             * view_port_size.height as u32;
+
+        info!("depth_buffer_size!!! {depth_buffer_size}");
         let staging_buffer = render_state
             .wgpu_device
             .create_buffer(&wgpu::BufferDescriptor {
@@ -87,6 +90,8 @@ impl DepthTextures {
         view_port_size: &ImageSize,
         clipping_planes: &ClippingPlanesF64,
     ) -> DepthImage {
+        info!("start depth!!!");
+
         let w = view_port_size.width;
         let h = view_port_size.height;
 
@@ -121,14 +126,24 @@ impl DepthTextures {
 
         // Read staging buffer
         let buffer_slice = self.staging_buffer.slice(..);
-        buffer_slice.map_async(wgpu::MapMode::Read, move |_result| {});
+        log::info!("111");
+
+        buffer_slice.map_async(wgpu::MapMode::Read, move |r| {
+            if r.is_err() {
+                log::info!("map_async failed – most likely the copy was out-of-bounds");
+            }
+        });
+        log::info!("222");
+
         device.poll(wgpu::Maintain::Wait);
+        log::info!("333");
 
         let depth_image;
 
         #[allow(unused_assignments)]
         {
             let data = buffer_slice.get_mapped_range();
+            log::info!("444");
 
             let view = ImageViewF32::from_stride_and_slice(
                 ImageSize {
@@ -141,6 +156,7 @@ impl DepthTextures {
             depth_image = ArcImageF32::make_copy_from(&view);
         }
         self.staging_buffer.unmap();
+        info!("end depth!!!");
 
         DepthImage::new(depth_image, clipping_planes.cast())
     }

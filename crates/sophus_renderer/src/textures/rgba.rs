@@ -6,6 +6,7 @@ use eframe::{
     },
     wgpu,
 };
+use log::info;
 use sophus_image::{
     ArcImage4U8,
     ArcImage4U16,
@@ -175,6 +176,8 @@ impl RgbdTexture {
         mut command_encoder: wgpu::CommandEncoder,
         view_port_size: &ImageSize,
     ) -> ArcImage4U8 {
+        info!("foo!!!");
+
         let w = view_port_size.width as u32;
         let h = view_port_size.height as u32;
         let bytes_per_row = RgbdTexture::bytes_per_row_u8(w);

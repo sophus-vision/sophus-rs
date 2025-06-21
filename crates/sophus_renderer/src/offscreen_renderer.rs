@@ -324,12 +324,12 @@ impl OffscreenRenderer {
         self.pixel
             .paint(&mut command_encoder, &self.textures.rgbd.final_texture_view);
 
-        let depth_image = self.textures.depth.download_depth_image(
-            &self.render_context,
-            command_encoder,
-            &params.view_port_size,
-            &self.camera_properties.clipping_planes,
-        );
+        // let depth_image = self.textures.depth.download_depth_image(
+        //     &self.render_context,
+        //     command_encoder,
+        //     &params.view_port_size,
+        //     &self.camera_properties.clipping_planes,
+        // );
 
         self.pixel
             .show_interaction_marker(&self.render_context, &params.maybe_marker);
@@ -348,16 +348,16 @@ impl OffscreenRenderer {
             ));
         }
 
-        if params.compute_depth_texture {
-            self.textures
-                .depth
-                .compute_visual_depth_texture(&self.render_context, &depth_image);
-        }
+        // if params.compute_depth_texture {
+        //     self.textures
+        //         .depth
+        //         .compute_visual_depth_texture(&self.render_context, &depth_image);
+        // }
 
         RenderResult {
             rgba_image,
             rgba_egui_tex_id: self.textures.rgbd.egui_tex_id,
-            depth_image,
+            //  depth_image,
             depth_egui_tex_id: self.textures.depth.visual_depth_texture.egui_tex_id,
         }
     }
