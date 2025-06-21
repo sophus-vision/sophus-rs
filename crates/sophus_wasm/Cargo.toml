@@ -1,0 +1,31 @@
+[package]
+description = "wasm"
+name = "sophus_wasm"
+readme = "README.md"
+
+edition.workspace = true
+include.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
+
+[dependencies]
+sophus_autodiff.workspace = true
+
+eframe.workspace = true
+log.workspace = true
+serde.workspace = true
+
+# native:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+env_logger = "0.11.8"
+
+# web:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures = "0.4.50" 
+web-sys = "0.3.70" # to access the DOM (to hide the loading text)
