@@ -204,13 +204,11 @@ macro_rules! def_real_group_test_template {
 
                     // 2) first–order BCH check  exp(xi)·exp(δ) ≈ exp(xi + J δ)
                     //    with a tiny random δ
-                    use rand::Rng;
-                    let mut rng = rand::rng();
                     let mut delta =
                         <$scalar as IsScalar<$batch,0,0>>::Vector::<DOF>::zeros();
                     for k in 0..DOF {
                         *sophus_autodiff::linalg::IsVector::elem_mut(&mut delta, k as usize)=
-                            <$scalar>::from_f64(rng.random_range(-1e-4..1e-4));
+                            <$scalar>::from_f64(-1e-4);
                     }
 
                     let g1   = <$group>::exp(xi)
