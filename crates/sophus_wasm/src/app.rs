@@ -22,6 +22,96 @@ impl Default for TemplateApp {
     }
 }
 
+use sophus_autodiff::{
+    dual::DualVector,
+    linalg::{
+        MatF64,
+        VecF64,
+    },
+};
+use sophus_lie::{
+    Isometry2,
+    Isometry2F64,
+    Rotation2F64,
+};
+use sophus_opt::{
+    nlls::{
+        CostFn,
+        CostTerms,
+        EvaluatedCostTerm,
+        OptParams,
+        optimize_nlls,
+    },
+    prelude::*,
+    robust_kernel,
+    variables::{
+        VarBuilder,
+        VarFamily,
+        VarKind,
+    },
+};
+
+// We want to fit the isometry `T ∈ SE(2)` to a prior distribution
+// `N(E(T), W⁻¹)`, where `E(T)` is the prior mean and `W⁻¹` is the prior
+// covariance matrix.
+
+// (1) First we define the residual cost term.
+#[derive(Clone, Debug)]
+pub struct Isometry2PriorCostTerm {
+    // Prior mean, `E(T)` of type [Isometry2F64].
+    pub isometry_prior_mean: Isometry2F64,
+    // `W`, which is the inverse of the prior covariance matrix.
+    pub isometry_prior_precision: MatF64<3, 3>,
+    // We only have one variable, so this will be `[0]`.
+    pub entity_indices: [usize; 1],
+}
+
+impl Isometry2PriorCostTerm {
+    // (2) Then we define  residual function for the cost term:
+    //
+    // `g(T) = log[T * E(T)⁻¹]`
+    pub fn residual<Scalar: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize>(
+        isometry: Isometry2<Scalar, 1, DM, DN>,
+        isometry_prior_mean: Isometry2<Scalar, 1, DM, DN>,
+    ) -> Scalar::Vector<3> {
+        (isometry * isometry_prior_mean.inverse()).log()
+    }
+}
+
+// (3) Implement the `HasResidualFn` trait for the cost term.
+impl HasResidualFn<3, 1, (), Isometry2F64> for Isometry2PriorCostTerm {
+    fn idx_ref(&self) -> &[usize; 1] {
+        &self.entity_indices
+    }
+
+    fn eval(
+        &self,
+        _global_constants: &(),
+        idx: [usize; 1],
+        args: Isometry2F64,
+        var_kinds: [VarKind; 1],
+        robust_kernel: Option<robust_kernel::RobustKernel>,
+    ) -> EvaluatedCostTerm<3, 1> {
+        let isometry: Isometry2F64 = args;
+
+        let residual = Self::residual(isometry, self.isometry_prior_mean);
+        let dx_res_fn = |x: DualVector<3, 3, 1>| -> DualVector<3, 3, 1> {
+            Self::residual(
+                Isometry2::exp(x) * isometry.to_dual_c(),
+                self.isometry_prior_mean.to_dual_c(),
+            )
+        };
+
+        (|| dx_res_fn(DualVector::var(VecF64::<3>::zeros())).jacobian(),).make(
+            idx,
+            var_kinds,
+            residual,
+            robust_kernel,
+            Some(self.isometry_prior_precision),
+        )
+    }
+}
+
 impl TemplateApp {
     /// Called once before the first frame.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
@@ -73,6 +163,43 @@ impl eframe::App for TemplateApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             // The central panel the region left after adding TopPanel's and SidePanel's
             ui.heading("eframe template");
+
+            let prior_world_from_robot = Isometry2F64::from_translation(VecF64::<2>::new(1.0, 2.0));
+
+            // (4) Define the cost terms, by specifying the residual function
+            // `g(T) = Isometry2PriorCostTerm` as well as providing the prior distribution.
+            const POSE: &str = "poses";
+            let obs_pose_a_from_pose_b_poses = CostTerms::new(
+                [POSE],
+                vec![Isometry2PriorCostTerm {
+                    isometry_prior_mean: prior_world_from_robot,
+                    isometry_prior_precision: MatF64::<3, 3>::identity(),
+                    entity_indices: [0],
+                }],
+            );
+
+            // (5) Define the decision variables. In this case, we only have one variable,
+            // and we initialize it with the identity transformation.
+            let est_world_from_robot = Isometry2F64::identity();
+            let variables = VarBuilder::new()
+                .add_family(
+                    POSE,
+                    VarFamily::new(VarKind::Free, vec![est_world_from_robot]),
+                )
+                .build();
+
+            // (6) Perform the non-linear least squares optimization.
+            let solution = optimize_nlls(
+                variables,
+                vec![CostFn::new_boxed((), obs_pose_a_from_pose_b_poses.clone())],
+                OptParams::default(),
+            )
+            .unwrap();
+
+            // (7) Retrieve the refined transformation and compare it with the prior one.
+            let refined_world_from_robot = solution.variables.get_members::<Isometry2F64>(POSE)[0];
+
+            ui.label(format!("Write something: {:?}", refined_world_from_robot));
 
             ui.horizontal(|ui| {
                 ui.label("Write something: ");
