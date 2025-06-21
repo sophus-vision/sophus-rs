@@ -22,6 +22,7 @@ sophus_lie.workspace = true
 sophus_opt.workspace = true
 sophus_renderer.workspace = true
 sophus_sensor.workspace = true
+sophus_sim.workspace = true
 sophus_timeseries.workspace = true
 sophus_viewer.workspace = true
 

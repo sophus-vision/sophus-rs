@@ -21,8 +21,8 @@ pub struct CameraSimulator {
 pub struct SimulatedImage {
     /// rgba
     pub rgba_image: ArcImage4U8,
-    /// depth
-    pub depth_image: DepthImage,
+    // /// depth
+    // pub depth_image: DepthImage,
 }
 
 impl CameraSimulator {
@@ -50,7 +50,7 @@ impl CameraSimulator {
 
         SimulatedImage {
             rgba_image: result.rgba_image.unwrap(),
-            depth_image: result.depth_image,
+            //depth_image: result.depth_image,
         }
     }
 }
