@@ -174,7 +174,7 @@ impl OrbitalInteraction {
 
         if smooth_scroll_delta.x != 0.0 {
             let delta_z: f64 = (smooth_scroll_delta.x) as f64;
-            let delta = 0.002 * VecF64::<6>::new(0.0, 0.0, 0.0, 0.0, 0.0, delta_z);
+            let delta = 0.002 * VecF64::<6>::new(0.0, 0.0, delta_z, 0.0, 0.0, 0.0);
             let camera_from_scene_point = Isometry3::from_translation(focus_point_in_camera);
 
             self.scene_from_camera = self.scene_from_camera
@@ -251,7 +251,7 @@ impl OrbitalInteraction {
             let pixel = scene_focus.uv_in_virtual_camera;
             let depth = scene_focus.metric_depth(&self.clipping_planes);
             let delta =
-                0.01 * VecF64::<6>::new(0.0, 0.0, 0.0, -delta_y as f64, delta_x as f64, 0.0);
+                0.01 * VecF64::<6>::new(-delta_y as f64, delta_x as f64, 0.0, 0.0, 0.0, 0.0);
             let camera_from_scene_point =
                 Isometry3::from_translation(cam.cam_unproj_with_z(&pixel, depth));
             self.scene_from_camera = self.scene_from_camera
