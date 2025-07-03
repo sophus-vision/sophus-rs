@@ -63,6 +63,10 @@ impl PlotView {
     }
 
     pub fn update(views: &mut LinkedHashMap<String, View>, packet: PlotViewPacket) {
+        if let PlotViewPacket::Delete(plot_name) = &packet {
+            views.remove(plot_name);
+            return;
+        }
         Self::create_if_new(views, &packet);
 
         let view = views.get_mut(&packet.name()).unwrap();
@@ -192,6 +196,7 @@ impl PlotView {
                         show_graph: true,
                     });
             }
+            PlotViewPacket::Delete(_) => unreachable!(),
         }
     }
 }

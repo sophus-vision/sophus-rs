@@ -24,13 +24,18 @@ log.workspace = true
 nalgebra.workspace = true
 ndarray.workspace = true
 rand.workspace = true
-rayon = "1.10"
+rand_chacha.workspace = true
 snafu.workspace = true
+
+# native:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rayon = "1.10"
 
 [build-dependencies]
 rustc_version.workspace = true
 
 [features]
+default = ["std"]
 simd = [
   "sophus_autodiff/simd",
   "sophus_image/simd",
@@ -43,4 +48,3 @@ std = [
   "sophus_lie/std",
   "sophus_sensor/std",
 ]
-default = ["std"]

@@ -179,123 +179,150 @@ impl<
 
         let reduction_ranges = self.cost_terms.reduction_ranges.as_ref().unwrap();
 
-        #[derive(Debug)]
-        enum ParallelizationStrategy {
-            None,
-            OuterLoop,
-            InnerLoop,
-        }
-        const OUTER_LOOP_THRESHOLD: usize = 100;
-        const INNER_LOOP_THRESHOLD: f64 = 100.0;
-        const REDUCTION_RATIO_THRESHOLD: f64 = 1.0;
-
-        let average_inner_loop_size =
-            self.cost_terms.collection.len() as f64 / reduction_ranges.len() as f64;
-        let reduction_ratio = average_inner_loop_size / reduction_ranges.len() as f64;
-
-        let parallelization_strategy = match parallelize {
-            true => {
-                if reduction_ranges.len() >= OUTER_LOOP_THRESHOLD
-                    && reduction_ratio < REDUCTION_RATIO_THRESHOLD
-                {
-                    // There are many outer terms, and significantly less inner terms on average
-                    ParallelizationStrategy::OuterLoop
-                } else if average_inner_loop_size >= INNER_LOOP_THRESHOLD {
-                    // There are many inner terms on average.
-                    ParallelizationStrategy::InnerLoop
-                } else {
-                    ParallelizationStrategy::None
-                }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            #[derive(Debug)]
+            enum ParallelizationStrategy {
+                None,
+                OuterLoop,
+                InnerLoop,
             }
-            false => ParallelizationStrategy::None,
-        };
+            const OUTER_LOOP_THRESHOLD: usize = 100;
+            const INNER_LOOP_THRESHOLD: f64 = 100.0;
+            const REDUCTION_RATIO_THRESHOLD: f64 = 1.0;
 
-        match parallelization_strategy {
-            ParallelizationStrategy::None => {
-                evaluated_terms.terms.reserve(reduction_ranges.len());
-                for range in reduction_ranges.iter() {
-                    let mut evaluated_term_sum: Option<EvaluatedCostTerm<INPUT_DIM, N>> = None;
+            let average_inner_loop_size =
+                self.cost_terms.collection.len() as f64 / reduction_ranges.len() as f64;
+            let reduction_ratio = average_inner_loop_size / reduction_ranges.len() as f64;
 
-                    for term in self.cost_terms.collection[range.start..range.end].iter() {
-                        match evaluated_term_sum {
-                            Some(mut sum) => {
-                                sum.reduce(eval_res(term));
-                                evaluated_term_sum = Some(sum);
-                            }
-                            None => evaluated_term_sum = Some(eval_res(term)),
-                        }
+            let parallelization_strategy = match parallelize {
+                true => {
+                    if reduction_ranges.len() >= OUTER_LOOP_THRESHOLD
+                        && reduction_ratio < REDUCTION_RATIO_THRESHOLD
+                    {
+                        // There are many outer terms, and significantly less inner terms on average
+                        ParallelizationStrategy::OuterLoop
+                    } else if average_inner_loop_size >= INNER_LOOP_THRESHOLD {
+                        // There are many inner terms on average.
+                        ParallelizationStrategy::InnerLoop
+                    } else {
+                        ParallelizationStrategy::None
                     }
+                }
+                false => ParallelizationStrategy::None,
+            };
 
-                    evaluated_terms.terms.push(evaluated_term_sum.unwrap());
+            match parallelization_strategy {
+                ParallelizationStrategy::None => {
+                    evaluated_terms.terms.reserve(reduction_ranges.len());
+                    for range in reduction_ranges.iter() {
+                        let mut evaluated_term_sum: Option<EvaluatedCostTerm<INPUT_DIM, N>> = None;
+
+                        for term in self.cost_terms.collection[range.start..range.end].iter() {
+                            match evaluated_term_sum {
+                                Some(mut sum) => {
+                                    sum.reduce(eval_res(term));
+                                    evaluated_term_sum = Some(sum);
+                                }
+                                None => evaluated_term_sum = Some(eval_res(term)),
+                            }
+                        }
+
+                        evaluated_terms.terms.push(evaluated_term_sum.unwrap());
+                    }
+                }
+                ParallelizationStrategy::OuterLoop => {
+                    use rayon::prelude::*;
+
+                    evaluated_terms.terms = reduction_ranges
+                        .par_iter() // parallelize over the outer terms
+                        .map(|range| {
+                            let evaluated_term_sum = self.cost_terms.collection
+                                [range.start..range.end]
+                                .iter() // sequential inner loop
+                                .fold(
+                                    None,
+                                    |acc: Option<EvaluatedCostTerm<INPUT_DIM, N>>, term| {
+                                        let evaluated_term = eval_res(term);
+                                        match acc {
+                                            Some(mut sum) => {
+                                                sum.reduce(evaluated_term);
+                                                Some(sum)
+                                            }
+                                            None => Some(evaluated_term),
+                                        }
+                                    },
+                                );
+
+                            evaluated_term_sum.unwrap()
+                        })
+                        .collect();
+                }
+                ParallelizationStrategy::InnerLoop => {
+                    use rayon::prelude::*;
+
+                    evaluated_terms.terms = reduction_ranges
+                        .iter() // sequential outer loop
+                        .map(|range| {
+                            // We know on average there are many inner terms, however, there might
+                            // be outliers.
+                            //
+                            // todo: Consider adding an if statement here and only parallelize the
+                            //       inner loop if the range length is greater than some threshold.
+                            let evaluated_term_sum = self.cost_terms.collection
+                                [range.start..range.end]
+                                .par_iter() // parallelize over the inner terms
+                                .fold(
+                                    || None,
+                                    |acc: Option<EvaluatedCostTerm<INPUT_DIM, N>>, term| {
+                                        let evaluated_term = eval_res(term);
+                                        match acc {
+                                            Some(mut sum) => {
+                                                sum.reduce(evaluated_term);
+                                                Some(sum)
+                                            }
+                                            None => Some(evaluated_term),
+                                        }
+                                    },
+                                )
+                                .reduce(
+                                    || None,
+                                    |acc, evaluated_term| match (acc, evaluated_term) {
+                                        (Some(mut sum), Some(evaluated_term)) => {
+                                            sum.reduce(evaluated_term);
+                                            Some(sum)
+                                        }
+                                        (None, Some(evaluated_term)) => Some(evaluated_term),
+                                        _ => None,
+                                    },
+                                );
+
+                            evaluated_term_sum.unwrap()
+                        })
+                        .collect();
                 }
             }
-            ParallelizationStrategy::OuterLoop => {
-                use rayon::prelude::*;
+        }
 
-                evaluated_terms.terms = reduction_ranges
-                    .par_iter() // parallelize over the outer terms
-                    .map(|range| {
-                        let evaluated_term_sum = self.cost_terms.collection[range.start..range.end]
-                            .iter() // sequential inner loop
-                            .fold(
-                                None,
-                                |acc: Option<EvaluatedCostTerm<INPUT_DIM, N>>, term| {
-                                    let evaluated_term = eval_res(term);
-                                    match acc {
-                                        Some(mut sum) => {
-                                            sum.reduce(evaluated_term);
-                                            Some(sum)
-                                        }
-                                        None => Some(evaluated_term),
-                                    }
-                                },
-                            );
+        #[cfg(target_arch = "wasm32")]
+        {
+            let _ignore = parallelize;
 
-                        evaluated_term_sum.unwrap()
-                    })
-                    .collect();
-            }
-            ParallelizationStrategy::InnerLoop => {
-                use rayon::prelude::*;
+            evaluated_terms.terms.reserve(reduction_ranges.len());
+            for range in reduction_ranges.iter() {
+                let mut evaluated_term_sum: Option<EvaluatedCostTerm<INPUT_DIM, N>> = None;
 
-                evaluated_terms.terms = reduction_ranges
-                    .iter() // sequential outer loop
-                    .map(|range| {
-                        // We know on average there are many inner terms, however, there might be
-                        // outliers.
-                        //
-                        // todo: Consider adding an if statement here and only parallelize the
-                        //       inner loop if the range length is greater than some threshold.
-                        let evaluated_term_sum = self.cost_terms.collection[range.start..range.end]
-                            .par_iter() // parallelize over the inner terms
-                            .fold(
-                                || None,
-                                |acc: Option<EvaluatedCostTerm<INPUT_DIM, N>>, term| {
-                                    let evaluated_term = eval_res(term);
-                                    match acc {
-                                        Some(mut sum) => {
-                                            sum.reduce(evaluated_term);
-                                            Some(sum)
-                                        }
-                                        None => Some(evaluated_term),
-                                    }
-                                },
-                            )
-                            .reduce(
-                                || None,
-                                |acc, evaluated_term| match (acc, evaluated_term) {
-                                    (Some(mut sum), Some(evaluated_term)) => {
-                                        sum.reduce(evaluated_term);
-                                        Some(sum)
-                                    }
-                                    (None, Some(evaluated_term)) => Some(evaluated_term),
-                                    _ => None,
-                                },
-                            );
+                for term in self.cost_terms.collection[range.start..range.end].iter() {
+                    match evaluated_term_sum {
+                        Some(mut sum) => {
+                            sum.reduce(eval_res(term));
+                            evaluated_term_sum = Some(sum);
+                        }
+                        None => evaluated_term_sum = Some(eval_res(term)),
+                    }
+                }
 
-                        evaluated_term_sum.unwrap()
-                    })
-                    .collect();
+                evaluated_terms.terms.push(evaluated_term_sum.unwrap());
             }
         }
 

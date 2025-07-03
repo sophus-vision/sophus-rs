@@ -48,7 +48,7 @@ impl PixelRenderer {
 
     pub(crate) fn show_interaction_marker(
         &self,
-        state: &RenderContext,
+        context: &RenderContext,
         marker: &Option<SceneFocusMarker>,
     ) {
         *self.point_renderer.show_interaction_marker.lock() = match marker {
@@ -64,7 +64,7 @@ impl PixelRenderer {
                         _point_size: 5.0,
                     });
                 }
-                state.wgpu_queue.write_buffer(
+                context.wgpu_queue.write_buffer(
                     &self.point_renderer.interaction_vertex_buffer,
                     0,
                     bytemuck::cast_slice(&vertex_data),

@@ -107,6 +107,8 @@ impl InteractionEnum {
     }
 
     /// Process event
+    ///
+    /// Precondition: z_buffer must not be None if self is [InteractionEnum::Orbital].
     #[allow(clippy::too_many_arguments)]
     pub fn process_event(
         &mut self,
@@ -116,7 +118,7 @@ impl InteractionEnum {
         response: &egui::Response,
         scales: &ViewportScale,
         view_port_size: ImageSize,
-        z_buffer: &ArcImageF32,
+        z_buffer: Option<ArcImageF32>,
     ) {
         match self {
             InteractionEnum::Orbital(orbit) => orbit.process_event(
@@ -126,7 +128,7 @@ impl InteractionEnum {
                 response,
                 scales,
                 view_port_size,
-                z_buffer,
+                &z_buffer.unwrap(),
             ),
             InteractionEnum::InPlane(inplane) => {
                 inplane.process_event(active_view, cam, response, scales, view_port_size)

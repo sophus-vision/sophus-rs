@@ -4,7 +4,10 @@ mod ndc_z_buffer;
 mod rgba;
 mod visual_depth;
 
-pub(crate) use depth::DepthTextures;
+pub use depth::{
+    DepthTextures,
+    download_depth,
+};
 pub use depth_image::*;
 pub use rgba::*;
 use sophus_image::ImageSize;

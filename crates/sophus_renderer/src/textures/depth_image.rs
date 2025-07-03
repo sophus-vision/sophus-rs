@@ -12,6 +12,7 @@ use sophus_image::{
 use crate::camera::ClippingPlanesF32;
 
 /// depth image
+#[derive(Clone)]
 pub struct DepthImage {
     /// ndc depth values
     pub ndc_z_image: ArcImageF32,

@@ -14,7 +14,6 @@ version.workspace = true
 approx.workspace = true
 log.workspace = true
 nalgebra.workspace = true
-ndarray.workspace = true
 num-traits.workspace = true
 snafu.workspace = true
 typenum.workspace = true
@@ -25,6 +24,6 @@ sleef = {version = "0.3", optional = true}
 rustc_version.workspace = true
 
 [features]
+default = ["std"]
 simd = ["sleef"]
 std = []
-default = ["std"]

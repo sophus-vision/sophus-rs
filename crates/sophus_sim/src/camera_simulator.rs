@@ -7,7 +7,10 @@ use sophus_renderer::{
     RenderContext,
     camera::RenderCameraProperties,
     renderables::SceneRenderable,
-    textures::DepthImage,
+    textures::{
+        DepthImage,
+        download_depth,
+    },
 };
 
 extern crate alloc;
@@ -38,19 +41,29 @@ impl CameraSimulator {
         self.renderer.update_scene(renderables);
     }
 
-    /// render
-    pub fn render(&mut self, scene_from_camera: Isometry3F64) -> SimulatedImage {
+    /// render the simulated scene and returns corresponding simulated camera image.
+    pub async fn render(&mut self, scene_from_camera: Isometry3F64) -> SimulatedImage {
         let view_port_size = self.renderer.intrinsics().image_size();
 
-        let result = self
+        let render_result = self
             .renderer
             .render_params(&view_port_size, &scene_from_camera)
             .download_rgba(true)
             .render();
 
+        let clipping_planes = self.renderer.camera_properties.clipping_planes.cast();
+
+        let render_result = download_depth(
+            true,
+            clipping_planes,
+            self.renderer.render_context.clone(),
+            &view_port_size,
+            &render_result,
+        )
+        .await;
         SimulatedImage {
-            rgba_image: result.rgba_image.unwrap(),
-            depth_image: result.depth_image,
+            rgba_image: render_result.rgba_image.unwrap(),
+            depth_image: render_result.depth_image,
         }
     }
 }

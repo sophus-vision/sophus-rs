@@ -15,6 +15,12 @@ Robotics applications. It is a spin-off of the
 In addition to Lie groups, sophus-rs also includes other geometric/maths
 concepts.
 
+This crates supports wasm. Check out the web-demo:
+<https://sophus-vision.github.io/sophus-rs/>.
+Note: The web app is based on egui and wgpu. It requires a bleeding edge browser
+with WebGPU support. Recent Chrome versions on MacOS and Windows should work out
+of the box.
+
 ## Automatic differentiation
 
 sophus-rs provides an automatic differentiation using dual numbers such as
@@ -62,15 +68,14 @@ expecting a `2x3` Jacobian, each element of the 2d dual vector must represent
 
 sophus-rs provides a number of Lie groups, including:
 
- * The group of 2D rotations, [lie::Rotation2], also known as the
+* The group of 2D rotations, [lie::Rotation2], also known as the
    Special Orthogonal group SO(2),
- * the group of 3D rotations, [lie::Rotation3], also known as the
+* the group of 3D rotations, [lie::Rotation3], also known as the
    Special Orthogonal group SO(3),
- * the group of 2d isometries, [lie::Isometry2], also known as the
+* the group of 2d isometries, [lie::Isometry2], also known as the
    Special Euclidean group SE(2), and
- * the group of 3d isometries, [lie::Isometry3], also known as the
+* the group of 3d isometries, [lie::Isometry3], also known as the
    Spevial Euclidean group SE(3).
-
 
 ```rust
 use sophus::autodiff::linalg::VecF64;
@@ -240,14 +245,13 @@ approx::assert_abs_diff_eq!(
 
 Also check out alternative non-linear least squares crates:
 
- * [fact-rs](https://crates.io/crates/factrs)
- * [tiny-solver-rs](https://crates.io/crates/tiny-solver)
+* [fact-rs](https://crates.io/crates/factrs)
+* [tiny-solver-rs](https://crates.io/crates/tiny-solver)
 
-## And more...
+## And more
 
 such unit vector, splines, image classes, camera models, and some visualization
 tools. Check out the [documentation](https://docs.rs/sophus) for more information.
-
 
 ## Building
 
@@ -275,7 +279,7 @@ sub-crates (modules) under the `sophus::` namespace. For example, the automatic 
 sub-crate can be accessed via `use sophus::autodiff`, and the lie group sub-crate via
 `use sophus::lie`, etc.
 
-- If you want all of sophus’s functionalities at once (geometry, AD, manifolds, etc.),
+* If you want all of sophus’s functionalities at once (geometry, AD, manifolds, etc.),
   simply add `sophus` in your `Cargo.toml`, and then in your Rust code:
 
   ```rust
@@ -284,7 +288,7 @@ sub-crate can be accessed via `use sophus::autodiff`, and the lie group sub-crat
   // ...
   ```
 
-- If you only need the autodiff functionalities in isolation, you can also depend on the
+* If you only need the autodiff functionalities in isolation, you can also depend on the
   standalone crate underlying `sophus_autodiff`.
 
    ```rust

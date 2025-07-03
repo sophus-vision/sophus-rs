@@ -9,7 +9,6 @@ optimization on manifolds  and Lie groups through the
 [sophus_autodiff::manifold::IsVariable] trait and the
 [sophus-lie](https://crates.io/crates/sophus-lie) crate.
 
-
 ## Example
 
 ```rust
@@ -149,7 +148,6 @@ passing in tuning parameters [crate::nlls::OptParams]; we are using the
 default here. Upon convergence, the solver returns updated variables that we
 retrieve from the solution using [crate::variables::VarFamilies::get_members].
 
-
 ## Integration with sophus-rs
 
 This crate is part of the [sophus umbrella crate](https://crates.io/crates/sophus).
@@ -158,5 +156,5 @@ seamlessly interoperate with the rest of the sophus-rs types.
 
 Also check out alternative non-linear least squares crates:
 
- * [fact-rs](https://crates.io/crates/factrs)
- * [tiny-solver-rs](https://crates.io/crates/tiny-solver)
+* [fact-rs](https://crates.io/crates/factrs)
+* [tiny-solver-rs](https://crates.io/crates/tiny-solver)

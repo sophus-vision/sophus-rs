@@ -107,13 +107,13 @@ impl<T: HasTimeStamp> TimeSeries<T> {
 
     /// Find the nearest item in the time series to the given time stamp and return a reference to
     /// it.
-    pub fn find_nearest(&self, time: f64) -> Option<IndexedItem<T>> {
+    pub fn find_nearest(&'_ self, time: f64) -> Option<IndexedItem<'_, T>> {
         self.find_nearest_within(time, f64::INFINITY)
     }
 
     /// Find the nearest item in the time series to the given time stamp and return a reference to
     /// it.
-    pub fn find_nearest_within(&self, time: f64, max_dist: f64) -> Option<IndexedItem<T>> {
+    pub fn find_nearest_within(&'_ self, time: f64, max_dist: f64) -> Option<IndexedItem<'_, T>> {
         if !time.is_finite() {
             warn!("TimeSeries::find_nearest_within: skipping infinite time stamp {time}");
             return None;

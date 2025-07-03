@@ -23,7 +23,9 @@ bytemuck.workspace = true
 eframe.workspace = true
 egui_extras.workspace = true
 env_logger.workspace = true
+futures-intrusive.workspace = true
 linked-hash-map.workspace = true
+log.workspace = true
 num-traits.workspace = true
 snafu.workspace = true
 
@@ -31,6 +33,7 @@ snafu.workspace = true
 rustc_version.workspace = true
 
 [features]
+default = ["std"]
 std = [
   "sophus_autodiff/std",
   "sophus_image/std",
@@ -39,4 +42,3 @@ std = [
   "sophus_sensor/std",
   "sophus_tensor/std",
 ]
-default = ["std"]
