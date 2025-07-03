@@ -53,7 +53,7 @@ pub async fn run_offscreen() {
 
     sim.update_3d_renderables(renderables3d);
 
-    let result = sim.render(Isometry3::trans_z(-5.0));
+    let result = sim.render(Isometry3::trans_z(-5.0)).await;
 
     save_as_png(&result.rgba_image.image_view(), "rgba.png").unwrap();
 

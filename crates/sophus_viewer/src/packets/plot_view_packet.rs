@@ -79,6 +79,8 @@ pub enum LineType {
 /// Packet to populate a scene view
 #[derive(Clone, Debug)]
 pub enum PlotViewPacket {
+    /// Delete the plot view
+    Delete(String),
     /// a float value
     Scalar(NamedScalarCurve),
     /// a 2d vector curve
@@ -104,6 +106,7 @@ impl PlotViewPacket {
             PlotViewPacket::Vec3Conf(named_vec_conf_curve) => {
                 named_vec_conf_curve.plot_name.clone()
             }
+            PlotViewPacket::Delete(plot_name) => plot_name.clone(),
         }
     }
 }

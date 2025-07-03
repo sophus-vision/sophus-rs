@@ -1,6 +1,7 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
+#[cfg(not(target_arch = "wasm32"))]
 use std::num::NonZeroUsize;
 
 use faer::{
@@ -271,15 +272,24 @@ impl SimplicialSparseLdlt {
             perm_ref,
             ReborrowMut::rb_mut(&mut stack),
         );
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let par = if self.parallelize {
+            Par::Rayon(NonZeroUsize::new(rayon::current_num_threads()).unwrap())
+        } else {
+            Par::Seq
+        };
+
+        #[cfg(target_arch = "wasm32")]
+        let _ignore = self.parallelize;
+        #[cfg(target_arch = "wasm32")]
+        let par = Par::Seq;
+
         // (LDLᵀ)⁻¹
         ldlt.solve_in_place_with_conj(
             Conj::No,
             ReborrowMut::rb_mut(&mut x_ref),
-            if self.parallelize {
-                Par::Rayon(NonZeroUsize::new(rayon::current_num_threads()).unwrap())
-            } else {
-                Par::Seq
-            },
+            par,
             ReborrowMut::rb_mut(&mut stack),
         );
         // P x

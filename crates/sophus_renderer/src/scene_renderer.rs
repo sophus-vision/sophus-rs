@@ -78,7 +78,7 @@ impl SceneRenderer {
 
     pub(crate) fn paint<'rp>(
         &'rp self,
-        state: &RenderContext,
+        context: &RenderContext,
         scene_from_camera: &Isometry3F64,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         rgba: &'rp RgbdTexture,
@@ -114,7 +114,7 @@ impl SceneRenderer {
         render_pass.set_bind_group(0, &self.uniforms.render_bind_group, &[]);
 
         self.mesh_renderer.paint(
-            state,
+            context,
             scene_from_camera,
             &self.world_from_scene,
             &self.uniforms,
@@ -122,14 +122,14 @@ impl SceneRenderer {
             backface_culling,
         );
         self.point_renderer.paint(
-            state,
+            context,
             scene_from_camera,
             &self.world_from_scene,
             &self.uniforms,
             &mut render_pass,
         );
         self.line_renderer.paint(
-            state,
+            context,
             scene_from_camera,
             &self.world_from_scene,
             &self.uniforms,

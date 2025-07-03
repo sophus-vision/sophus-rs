@@ -1,0 +1,21 @@
+name: wasm
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup toolchain for wasm
+        run: |
+          rustup update stable
+          rustup default stable
+          rustup set profile minimal
+          rustup target add wasm32-unknown-unknown
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --lib --target wasm32-unknown-unknown

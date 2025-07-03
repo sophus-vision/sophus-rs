@@ -25,10 +25,10 @@ doc:
     cargo +nightly test --release --doc --all-features
 
 camera_sim:
-    cargo run --example camera_sim --release --features std
+    cargo run --bin camera_sim --release --features std
 
-mini_optics_sim:
-    cargo run --example mini_optics_sim --release --features std
+demo:
+    cargo run --bin demo --release --features std
 
-viewer_ex:
-    cargo run --example viewer_ex --release --features std
+wasm_demo:
+    trunk serve crates/sophus/index.html --release

@@ -18,12 +18,13 @@ log.workspace = true
 nalgebra.workspace = true
 num-traits.workspace = true
 rand.workspace = true
+rand_chacha.workspace = true
 snafu.workspace = true
 
 [build-dependencies]
 rustc_version.workspace = true
 
 [features]
+default = ["std"]
 simd = ["sophus_autodiff/simd"]
 std = ["sophus_autodiff/std"]
-default = ["std"]

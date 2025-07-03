@@ -26,7 +26,7 @@ impl ImageView {
     fn create_if_new(
         views: &mut LinkedHashMap<String, View>,
         packet: &ImageViewPacket,
-        state: &RenderContext,
+        context: &RenderContext,
     ) -> bool {
         if views.contains_key(&packet.view_label) {
             return false;
@@ -35,7 +35,7 @@ impl ImageView {
             views.insert(
                 packet.view_label.clone(),
                 View::Image(ImageView {
-                    renderer: OffscreenRenderer::new(state, frame.camera_properties()),
+                    renderer: OffscreenRenderer::new(context, frame.camera_properties()),
                     interaction: InteractionEnum::InPlane(InplaneInteraction::new(
                         &packet.view_label,
                     )),
@@ -51,9 +51,13 @@ impl ImageView {
     pub fn update(
         views: &mut LinkedHashMap<String, View>,
         packet: ImageViewPacket,
-        state: &RenderContext,
+        context: &RenderContext,
     ) {
-        Self::create_if_new(views, &packet, state);
+        if packet.delete {
+            views.remove(&packet.view_label);
+            return;
+        }
+        Self::create_if_new(views, &packet, context);
         let view = views.get_mut(&packet.view_label).unwrap();
 
         let view = match view {
@@ -67,7 +71,7 @@ impl ImageView {
             // We got a new frame, hence we need to clear all renderables and then add the
             // intrinsics and background image if present. The easiest and most error-proof way to
             // do this is to create a new SceneRenderer and PixelRenderer and replace the old ones.
-            view.renderer = OffscreenRenderer::new(state, &new_camera_properties);
+            view.renderer = OffscreenRenderer::new(context, &new_camera_properties);
 
             view.renderer
                 .reset_2d_frame(&new_camera_properties.intrinsics, frame.maybe_image());

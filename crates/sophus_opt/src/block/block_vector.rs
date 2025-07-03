@@ -105,10 +105,10 @@ impl BlockVector {
 
     /// Get a block
     pub fn get_block(
-        &self,
+        &'_ self,
         partition_idx: usize,
         block_index: usize,
-    ) -> nalgebra::DVectorView<f64> {
+    ) -> nalgebra::DVectorView<'_, f64> {
         let partition = &self.partitions[partition_idx];
         let scalar_offset = partition.scalar_offset + block_index * partition.block_dim;
         self.vec.rows(scalar_offset, partition.block_dim)

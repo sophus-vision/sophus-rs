@@ -1,4 +1,7 @@
-use eframe::egui;
+use eframe::{
+    egui,
+    wgpu,
+};
 use sophus_autodiff::linalg::VecF64;
 use sophus_image::ArcImage4U8;
 
@@ -8,19 +11,43 @@ use crate::{
     textures::DepthImage,
 };
 
-/// Render result
+/// The intermediate render result.
+///
+/// Depth textures are still on the GPU
+#[derive(Debug, Clone)]
 pub struct RenderResult {
+    /// rgba image
+    pub rgba_image: Option<ArcImage4U8>,
+
+    /// depth image - on the GPU
+    pub depth_texture: wgpu::Texture,
+    /// visual depth texture - on the GPU
+    pub visual_depth_texture: wgpu::Texture,
+    /// depth staging buffer - to download from the GPU
+    pub depth_staging_buffer: wgpu::Buffer,
+
+    /// rgba egui texture id
+    pub rgba_egui_tex_id: egui::TextureId,
+    /// depth egui texture id
+    pub depth_egui_tex_id: egui::TextureId,
+}
+
+/// The final render result.
+///
+/// Depth images are downloaded to the CPU / registered as egui textures.
+#[derive(Clone)]
+pub struct FinalRenderResult {
     /// rgba image
     pub rgba_image: Option<ArcImage4U8>,
 
     /// rgba egui texture id
     pub rgba_egui_tex_id: egui::TextureId,
 
-    /// depth image
-    pub depth_image: DepthImage,
-
     /// depth egui texture id
     pub depth_egui_tex_id: egui::TextureId,
+
+    /// depth image - on the CPU
+    pub depth_image: DepthImage,
 }
 
 /// aspect ratio

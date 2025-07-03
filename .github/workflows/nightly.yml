@@ -14,9 +14,7 @@ jobs:
       RUSTC_WRAPPER: "sccache"
 
     steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: "recursive"
+      - uses: actions/checkout@v4
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
       - uses: actions-rs/toolchain@v1

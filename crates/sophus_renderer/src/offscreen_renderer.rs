@@ -39,8 +39,10 @@ use crate::{
 
 /// Offscreen renderer
 pub struct OffscreenRenderer {
-    pub(crate) camera_properties: RenderCameraProperties,
-    render_context: RenderContext,
+    /// Camera properties
+    pub camera_properties: RenderCameraProperties,
+    /// Render context
+    pub render_context: RenderContext,
     /// Scene renderer
     pub scene: SceneRenderer,
     distortion: DistortionRenderer,
@@ -266,10 +268,10 @@ impl OffscreenRenderer {
 
     /// render
     pub fn render_params(
-        &mut self,
+        &'_ mut self,
         view_port_size: &ImageSize,
         world_from_camera: &Isometry3F64,
-    ) -> RenderBuilder {
+    ) -> RenderBuilder<'_> {
         RenderBuilder::new(*view_port_size, *world_from_camera, self)
     }
 
@@ -324,15 +326,11 @@ impl OffscreenRenderer {
         self.pixel
             .paint(&mut command_encoder, &self.textures.rgbd.final_texture_view);
 
-        let depth_image = self.textures.depth.download_depth_image(
-            &self.render_context,
-            command_encoder,
-            &params.view_port_size,
-            &self.camera_properties.clipping_planes,
-        );
-
         self.pixel
             .show_interaction_marker(&self.render_context, &params.maybe_marker);
+        self.render_context
+            .wgpu_queue
+            .submit(core::iter::once(command_encoder.finish()));
 
         let mut rgba_image = None;
 
@@ -348,17 +346,23 @@ impl OffscreenRenderer {
             ));
         }
 
-        if params.compute_depth_texture {
-            self.textures
-                .depth
-                .compute_visual_depth_texture(&self.render_context, &depth_image);
-        }
-
         RenderResult {
             rgba_image,
             rgba_egui_tex_id: self.textures.rgbd.egui_tex_id,
-            depth_image,
             depth_egui_tex_id: self.textures.depth.visual_depth_texture.egui_tex_id,
+            depth_texture: self
+                .textures
+                .depth
+                .main_render_ndc_z_texture
+                .final_texture
+                .clone(),
+            depth_staging_buffer: self.textures.depth.staging_buffer.clone(),
+            visual_depth_texture: self
+                .textures
+                .depth
+                .visual_depth_texture
+                .visual_texture
+                .clone(),
         }
     }
 }

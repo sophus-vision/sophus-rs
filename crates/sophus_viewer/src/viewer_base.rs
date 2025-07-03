@@ -6,9 +6,9 @@ use alloc::{
     vec::Vec,
 };
 
-use eframe::{
-    egui,
-    egui::Ui,
+use eframe::egui::{
+    self,
+    Ui,
 };
 use egui_plot::{
     LineStyle,
@@ -54,7 +54,7 @@ extern crate alloc;
 
 /// Viewer top-level struct.
 pub struct ViewerBase {
-    state: RenderContext,
+    context: RenderContext,
     views: LinkedHashMap<String, View>,
     message_recv: Receiver<Vec<Packet>>,
     show_depth: bool,
@@ -66,7 +66,7 @@ pub struct ViewerBase {
 
 pub(crate) struct ResponseStruct {
     pub(crate) ui_response: egui::Response,
-    pub(crate) z_image: ArcImageF32,
+    pub(crate) z_image: Option<ArcImageF32>,
     pub(crate) scales: ViewportScale,
     pub(crate) view_port_size: ImageSize,
 }
@@ -81,7 +81,7 @@ impl ViewerBase {
     /// Create a new viewer.
     pub fn new(render_state: RenderContext, config: ViewerBaseConfig) -> ViewerBase {
         ViewerBase {
-            state: render_state.clone(),
+            context: render_state.clone(),
             views: LinkedHashMap::new(),
             message_recv: config.message_recv,
             show_depth: false,
@@ -94,7 +94,7 @@ impl ViewerBase {
 
     /// Update the data.
     pub fn update_data(&mut self) {
-        Self::process_simple_packets(&mut self.views, &self.state, &self.message_recv);
+        Self::process_simple_packets(&mut self.views, &self.context, &self.message_recv);
     }
 
     /// Process events.
@@ -104,29 +104,33 @@ impl ViewerBase {
             match view {
                 View::Scene(view) => {
                     if let Some(response) = self.responses.get(view_label) {
-                        view.interaction.process_event(
-                            &mut self.active_view,
-                            &view.intrinsics(),
-                            view.locked_to_birds_eye_orientation,
-                            &response.ui_response,
-                            &response.scales,
-                            response.view_port_size,
-                            &response.z_image,
-                        );
+                        if response.z_image.is_some() {
+                            view.interaction.process_event(
+                                &mut self.active_view,
+                                &view.intrinsics(),
+                                view.locked_to_birds_eye_orientation,
+                                &response.ui_response,
+                                &response.scales,
+                                response.view_port_size,
+                                Some(response.z_image.as_ref().unwrap().clone()),
+                            );
+                        }
                         view_port_size = response.view_port_size
                     }
                 }
                 View::Image(view) => {
                     if let Some(response) = self.responses.get(view_label) {
-                        view.interaction.process_event(
-                            &mut self.active_view,
-                            &view.intrinsics(),
-                            true,
-                            &response.ui_response,
-                            &response.scales,
-                            response.view_port_size,
-                            &response.z_image,
-                        );
+                        if response.z_image.is_some() {
+                            view.interaction.process_event(
+                                &mut self.active_view,
+                                &view.intrinsics(),
+                                true,
+                                &response.ui_response,
+                                &response.scales,
+                                response.view_port_size,
+                                None,
+                            );
+                        }
                         view_port_size = response.view_port_size
                     }
                 }
@@ -290,51 +294,17 @@ impl ViewerBase {
                         get_adjusted_view_size(view_aspect_ratio, max_width, max_height);
                     match view {
                         View::Scene(view) => {
-                            let render_result = view
-                                .renderer
-                                .render_params(
-                                    &adjusted_size.image_size(),
-                                    &view.interaction.scene_from_camera(),
-                                )
-                                .zoom(view.interaction.zoom2d())
-                                .interaction(view.interaction.marker())
-                                .backface_culling(self.backface_culling)
-                                .compute_depth_texture(self.show_depth)
-                                .render();
-
-                            let egui_texture = if self.show_depth {
-                                render_result.depth_egui_tex_id
-                            } else {
-                                render_result.rgba_egui_tex_id
-                            };
-
-                            let ui_response = ui.add(
-                                egui::Image::new(egui::load::SizedTexture {
-                                    size: egui::Vec2::new(
-                                        adjusted_size.width,
-                                        adjusted_size.height,
-                                    ),
-                                    id: egui_texture,
-                                })
-                                .fit_to_exact_size(egui::Vec2 {
-                                    x: adjusted_size.width,
-                                    y: adjusted_size.height,
-                                })
-                                .sense(egui::Sense::click_and_drag()),
+                            let response = view.render(
+                                ui,
+                                self.show_depth,
+                                self.backface_culling,
+                                self.context.clone(),
+                                adjusted_size,
                             );
 
-                            self.responses.insert(
-                                view_label.clone(),
-                                ResponseStruct {
-                                    ui_response,
-                                    scales: ViewportScale::from_image_size_and_viewport_size(
-                                        view.intrinsics().image_size(),
-                                        adjusted_size,
-                                    ),
-                                    z_image: render_result.depth_image.ndc_z_image,
-                                    view_port_size: adjusted_size.image_size(),
-                                },
-                            );
+                            if let Some(response) = response {
+                                self.responses.insert(view_label.to_owned(), response);
+                            }
                         }
                         View::Image(view) => {
                             let render_result = view
@@ -371,7 +341,7 @@ impl ViewerBase {
                                         view.intrinsics().image_size(),
                                         adjusted_size,
                                     ),
-                                    z_image: render_result.depth_image.ndc_z_image,
+                                    z_image: None,
                                     view_port_size: adjusted_size.image_size(),
                                 },
                             );
@@ -566,7 +536,7 @@ impl ViewerBase {
 
     pub(crate) fn process_simple_packets(
         views: &mut LinkedHashMap<String, View>,
-        state: &RenderContext,
+        context: &RenderContext,
         message_recv: &Receiver<Vec<Packet>>,
     ) {
         loop {
@@ -577,8 +547,8 @@ impl ViewerBase {
             let stream = maybe_stream.unwrap();
             for packet in stream {
                 match packet {
-                    Packet::Scene(packet) => SceneView::update(views, packet, state),
-                    Packet::Image(packet) => ImageView::update(views, packet, state),
+                    Packet::Scene(packet) => SceneView::update(views, packet, context),
+                    Packet::Image(packet) => ImageView::update(views, packet, context),
                     Packet::Plot(packets) => {
                         for packet in packets {
                             PlotView::update(views, packet)

@@ -64,6 +64,7 @@ pub use viewer_base::*;
 pub use views::*;
 
 /// eframe native options - recommended for use with the sophus
+#[cfg(not(target_arch = "wasm32"))]
 pub fn recommened_eframe_native_options() -> eframe::NativeOptions {
     eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default().with_inner_size([850.0, 480.0]),

@@ -41,6 +41,18 @@ pub fn make_image_packet(
         pixel_renderables,
         scene_renderables,
         view_label: view_label.to_string(),
+        delete: false,
+    })
+}
+
+/// Delete an image packet
+pub fn delete_image_packet(view_label: &str) -> Packet {
+    Packet::Image(ImageViewPacket {
+        frame: None,
+        pixel_renderables: vec![],
+        scene_renderables: vec![],
+        view_label: view_label.to_string(),
+        delete: true,
     })
 }
 
@@ -56,6 +68,14 @@ pub fn create_scene_packet(
             initial_camera,
             locked_to_birds_eye_orientation,
         }),
+    })
+}
+
+/// Delete a scene packet
+pub fn delete_scene_packet(view_label: &str) -> Packet {
+    Packet::Scene(SceneViewPacket {
+        view_label: view_label.to_string(),
+        content: SceneViewPacketContent::Delete,
     })
 }
 

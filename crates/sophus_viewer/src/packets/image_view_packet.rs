@@ -23,4 +23,6 @@ pub struct ImageViewPacket {
     pub scene_renderables: Vec<SceneRenderable>,
     /// Name of the view
     pub view_label: String,
+    /// Delete the image view
+    pub delete: bool,
 }

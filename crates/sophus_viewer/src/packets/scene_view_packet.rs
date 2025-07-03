@@ -13,6 +13,8 @@ pub enum SceneViewPacketContent {
     Renderables(Vec<SceneRenderable>),
     /// create a new view
     Creation(SceneViewCreation),
+    /// delete the scene view
+    Delete,
     /// world-from-scene pose update
     WorldFromSceneUpdate(Isometry3F64),
 }

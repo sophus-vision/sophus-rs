@@ -171,7 +171,7 @@ impl RgbdTexture {
     /// Method to download ArcImage4U8
     pub fn download(
         &self,
-        state: &RenderContext,
+        context: &RenderContext,
         mut command_encoder: wgpu::CommandEncoder,
         view_port_size: &ImageSize,
     ) -> ArcImage4U8 {
@@ -179,7 +179,7 @@ impl RgbdTexture {
         let h = view_port_size.height as u32;
         let bytes_per_row = RgbdTexture::bytes_per_row_u8(w);
 
-        let buffer = state.wgpu_device.create_buffer(&wgpu::BufferDescriptor {
+        let buffer = context.wgpu_device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
             size: (bytes_per_row * h) as wgpu::BufferAddress,
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
@@ -208,7 +208,7 @@ impl RgbdTexture {
             },
         );
 
-        state.wgpu_queue.submit(Some(command_encoder.finish()));
+        context.wgpu_queue.submit(Some(command_encoder.finish()));
 
         #[allow(unused_assignments)]
         let rgba_image;
@@ -216,7 +216,7 @@ impl RgbdTexture {
             // Wait for buffer to be mapped and retrieve data
             let buffer_slice = buffer.slice(..);
             buffer_slice.map_async(wgpu::MapMode::Read, move |_result| {});
-            state.wgpu_device.poll(wgpu::Maintain::Wait);
+            context.wgpu_device.poll(wgpu::Maintain::Wait);
 
             let data = buffer_slice.get_mapped_range();
 

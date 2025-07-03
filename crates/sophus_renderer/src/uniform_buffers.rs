@@ -257,14 +257,14 @@ impl VertexShaderUniformBuffers {
 
     pub(crate) fn update(
         &self,
-        state: &RenderContext,
+        context: &RenderContext,
         zoom_2d: TranslationAndScaling,
         camera_properties: &RenderCameraProperties,
         viewport_size: ImageSize,
     ) {
         let frustum_uniforms = camera_properties.to_uniform();
 
-        state.wgpu_queue.write_buffer(
+        context.wgpu_queue.write_buffer(
             &self.camera_properties_buffer,
             0,
             bytemuck::cast_slice(&[frustum_uniforms]),
@@ -291,11 +291,11 @@ impl VertexShaderUniformBuffers {
             dummy: 1.0,
         };
 
-        state
+        context
             .wgpu_queue
             .write_buffer(&self.pinhole_buffer, 0, bytemuck::cast_slice(&[pinhole]));
 
-        state
+        context
             .wgpu_queue
             .write_buffer(&self.zoom_buffer, 0, bytemuck::cast_slice(&[zoom_uniform]));
     }

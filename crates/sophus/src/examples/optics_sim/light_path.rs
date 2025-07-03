@@ -104,18 +104,17 @@ impl Element for LightPath {
         let mut prev_ray = self.scene_point_ray.clone();
         let mut line_segments = vec![];
 
-        if self.chief_ray {
-            if let Some(point) =
+        if self.chief_ray
+            && let Some(point) =
                 LineF64::from_point_pair(VecF64::<2>::new(1.0, 0.0), VecF64::<2>::new(-1.0, 0.0))
                     .rays_intersect(&prev_ray)
-            {
-                line_segments.push(LineSegment3 {
-                    p0: unproj2(prev_ray.origin.cast()),
-                    p1: unproj2(point.cast()),
-                    color: gray_color(),
-                    line_width: 0.5,
-                });
-            }
+        {
+            line_segments.push(LineSegment3 {
+                p0: unproj2(prev_ray.origin.cast()),
+                p1: unproj2(point.cast()),
+                color: gray_color(),
+                line_width: 0.5,
+            });
         }
 
         for ray in self.rays.iter() {
