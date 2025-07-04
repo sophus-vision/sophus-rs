@@ -18,8 +18,8 @@ concepts.
 This crates supports wasm. Check out the web-demo:
 <https://sophus-vision.github.io/sophus-rs/>.
 Note: The web app is based on egui and wgpu. It requires a bleeding edge browser
-with WebGPU support. Recent Chrome versions on MacOS and Windows should work out
-of the box.
+with WebGPU support. Recent Chrome versions on MacOS, Windows and Android should
+work out of the box.
 
 ## Automatic differentiation
 
