@@ -154,7 +154,7 @@ impl ViewerBase {
     }
 
     /// Update bottom status bar
-    pub fn update_top_bar(&mut self, ui: &mut egui::Ui, _ctx: &egui::Context) {
+    pub fn update_top_bar(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
             egui::CollapsingHeader::new("Settings").show(ui, |ui| {
                 ui.horizontal(|ui| {
@@ -203,7 +203,11 @@ impl ViewerBase {
     }
 
     /// Update the left panel.
-    pub fn update_left_panel(&mut self, ui: &mut egui::Ui, _ctx: &egui::Context) {
+    pub fn update_left_panel(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+        if ui.button("Organize windows").clicked() {
+            ui.ctx().memory_mut(|mem| mem.reset_areas());
+        }
+
         for (view_label, view) in self.views.iter_mut() {
             ui.checkbox(view.enabled_mut(), view_label);
         }
@@ -211,7 +215,7 @@ impl ViewerBase {
     }
 
     /// Update bottom status bar
-    pub fn update_bottom_status_bar(&mut self, ui: &mut egui::Ui, _ctx: &egui::Context) {
+    pub fn update_bottom_status_bar(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         match self.active_view_info.as_ref() {
             Some(view_info) => {
                 if let Some(camera_properties) = view_info.camera_properties.as_ref() {
@@ -268,7 +272,7 @@ impl ViewerBase {
     }
 
     /// Update the central panel.
-    pub fn update_central_panel(&mut self, ui: &mut egui::Ui, _ctx: &egui::Context) {
+    pub fn update_central_panel(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         ui.scope(|ui0| {
             if self.views.is_empty() {
                 return;
@@ -289,68 +293,98 @@ impl ViewerBase {
                     if !view.enabled() {
                         continue;
                     }
+
                     let view_aspect_ratio = view.aspect_ratio();
                     let adjusted_size =
                         get_adjusted_view_size(view_aspect_ratio, max_width, max_height);
                     match view {
                         View::Scene(view) => {
-                            let response = view.render(
-                                ui,
-                                self.show_depth,
-                                self.backface_culling,
-                                self.context.clone(),
-                                adjusted_size,
-                            );
+                            let mut enabled = true;
+                            egui::Window::new(view_label)
+                                .resizable(true)
+                                .open(&mut enabled)
+                                .default_size(egui::vec2(adjusted_size.width, adjusted_size.height))
+                                .show(ctx, |ui| {
+                                    let response = view.render(
+                                        ui,
+                                        self.show_depth,
+                                        self.backface_culling,
+                                        self.context.clone(),
+                                        adjusted_size,
+                                    );
 
-                            if let Some(response) = response {
-                                self.responses.insert(view_label.to_owned(), response);
+                                    if let Some(response) = response {
+                                        self.responses.insert(view_label.to_owned(), response);
+                                    }
+                                });
+                            if !enabled {
+                                view.enabled = false;
                             }
                         }
                         View::Image(view) => {
-                            let render_result = view
-                                .renderer
-                                .render_params(
-                                    &adjusted_size.image_size(),
-                                    &view.interaction.scene_from_camera(),
-                                )
-                                .zoom(view.interaction.zoom2d())
-                                .interaction(view.interaction.marker())
-                                .backface_culling(self.backface_culling)
-                                .render();
+                            let mut enabled = true;
 
-                            let ui_response = ui.add(
-                                egui::Image::new(egui::load::SizedTexture {
-                                    size: egui::Vec2::new(
-                                        adjusted_size.width,
-                                        adjusted_size.height,
-                                    ),
-                                    id: render_result.rgba_egui_tex_id,
-                                })
-                                .fit_to_exact_size(egui::Vec2 {
-                                    x: adjusted_size.width,
-                                    y: adjusted_size.height,
-                                })
-                                .sense(egui::Sense::click_and_drag()),
-                            );
+                            egui::Window::new(view_label)
+                                .resizable(true)
+                                .open(&mut enabled)
+                                .default_size(egui::vec2(adjusted_size.width, adjusted_size.height))
+                                .show(ctx, |ui| {
+                                    let render_result = view
+                                        .renderer
+                                        .render_params(
+                                            &adjusted_size.image_size(),
+                                            &view.interaction.scene_from_camera(),
+                                        )
+                                        .zoom(view.interaction.zoom2d())
+                                        .interaction(view.interaction.marker())
+                                        .backface_culling(self.backface_culling)
+                                        .render();
 
-                            self.responses.insert(
-                                view_label.clone(),
-                                ResponseStruct {
-                                    ui_response,
-                                    scales: ViewportScale::from_image_size_and_viewport_size(
-                                        view.intrinsics().image_size(),
-                                        adjusted_size,
-                                    ),
-                                    z_image: None,
-                                    view_port_size: adjusted_size.image_size(),
-                                },
-                            );
+                                    let ui_response = ui.add(
+                                        egui::Image::new(egui::load::SizedTexture {
+                                            size: egui::Vec2::new(
+                                                adjusted_size.width,
+                                                adjusted_size.height,
+                                            ),
+                                            id: render_result.rgba_egui_tex_id,
+                                        })
+                                        .shrink_to_fit()
+                                        // .fit_to_exact_size(egui::Vec2 {
+                                        //     x: adjusted_size.width,
+                                        //     y: adjusted_size.height,
+                                        // })
+                                        .sense(egui::Sense::click_and_drag()),
+                                    );
+
+                                    let intrinsic_size = ui_response.intrinsic_size.unwrap();
+                                    self.responses.insert(
+                                        view_label.clone(),
+                                        ResponseStruct {
+                                            ui_response,
+                                            scales:
+                                                ViewportScale::from_image_size_and_viewport_size(
+                                                    view.intrinsics().image_size(),
+                                                    ViewportSize {
+                                                        width: intrinsic_size.x,
+                                                        height: intrinsic_size.y,
+                                                    },
+                                                ),
+                                            z_image: None,
+                                            view_port_size: adjusted_size.image_size(),
+                                        },
+                                    );
+                                });
+                            if !enabled {
+                                view.enabled = false;
+                            }
                         }
                         View::Plot(_) => {
                             // no-op
                         }
                     }
                 }
+
+                println!("before");
 
                 // for loop to show all the plots
                 for (view_label, view) in self.views.iter_mut() {
@@ -369,114 +403,144 @@ impl ViewerBase {
                             // no-op
                         }
                         View::Plot(view) => {
-                            Self::show_plot(ui, view, adjusted_size, view_label.clone());
+                            //Self::show_plot(ui, view, adjusted_size, view_label.clone());
+
+                            println!(
+                                "Showing plot for view: {} {} {}",
+                                view_label, adjusted_size.width, adjusted_size.height
+                            );
+
+                            Self::show_plot(ui, ctx, view, adjusted_size, view_label.clone());
                         }
                     }
                 }
+                println!("after");
             });
         });
     }
 
-    fn show_plot(ui: &mut Ui, view: &mut PlotView, adjusted_size: ViewportSize, plot_name: String) {
-        let plot = egui_plot::Plot::new(plot_name)
-            .legend(egui_plot::Legend::default().position(egui_plot::Corner::LeftTop))
-            .height(adjusted_size.height)
-            .width(adjusted_size.width);
+    fn show_plot(
+        ui: &mut Ui,
+        ctx: &egui::Context,
+        view: &mut PlotView,
+        adjusted_size: ViewportSize,
+        plot_name: String,
+    ) {
+        let mut enabled = true;
 
-        fn color_cnv(color: sophus_renderer::renderables::Color) -> egui::Color32 {
-            egui::Color32::from_rgb(
-                (color.r * 255.0).clamp(0.0, 255.0) as u8,
-                (color.g * 255.0).clamp(0.0, 255.0) as u8,
-                (color.b * 255.0).clamp(0.0, 255.0) as u8,
-            )
-        }
-        fn show_vec<const N: usize>(curve_name: &str, g: &CurveVec<N>, plot_ui: &mut PlotUi) {
-            if let Some(v_line) = &g.v_line {
-                plot_ui.add(
-                    VLine::new(v_line.name.clone(), v_line.x)
-                        .color(egui::Color32::from_rgb(255, 255, 255)),
-                );
-            }
-            let mut points = vec![];
-            for _ in 0..N {
-                points.push(Vec::new());
-            }
+        egui::Window::new(&plot_name)
+            .resizable(true)
+            .open(&mut enabled)
+            .default_size(egui::vec2(adjusted_size.width, adjusted_size.height))
+            .show(ctx, |ui| {
+                let sz = ui.available_size();
 
-            for (x, y) in &g.data {
-                for i in 0..N {
-                    points[i].push(egui_plot::PlotPoint::new(*x, y[i]));
+                let plot = egui_plot::Plot::new(plot_name.clone())
+                    .legend(egui_plot::Legend::default().position(egui_plot::Corner::LeftTop));
+                // .height(sz.x)
+                // .width(sz.y);
+
+                fn color_cnv(color: sophus_renderer::renderables::Color) -> egui::Color32 {
+                    egui::Color32::from_rgb(
+                        (color.r * 255.0).clamp(0.0, 255.0) as u8,
+                        (color.g * 255.0).clamp(0.0, 255.0) as u8,
+                        (color.b * 255.0).clamp(0.0, 255.0) as u8,
+                    )
                 }
-            }
-
-            match g.style.line_type {
-                LineType::LineStrip => {
-                    for (i, p) in points.iter().enumerate().take(N) {
-                        let plot_points = egui_plot::PlotPoints::Owned(p.clone());
-                        plot_ui.line(
-                            egui_plot::Line::new(format!("{curve_name}-{i}"), plot_points)
-                                .color(color_cnv(g.style.colors[i])),
+                fn show_vec<const N: usize>(
+                    curve_name: &str,
+                    g: &CurveVec<N>,
+                    plot_ui: &mut PlotUi,
+                ) {
+                    if let Some(v_line) = &g.v_line {
+                        plot_ui.add(
+                            VLine::new(v_line.name.clone(), v_line.x)
+                                .color(egui::Color32::from_rgb(255, 255, 255)),
                         );
                     }
-                }
-                LineType::Points => {
-                    for (i, p) in points.iter().enumerate().take(N) {
-                        let plot_points = egui_plot::PlotPoints::Owned(p.clone());
-                        plot_ui.line(
-                            egui_plot::Line::new(format!("{curve_name}-{i}"), plot_points)
-                                .color(color_cnv(g.style.colors[i])),
-                        );
+                    let mut points = vec![];
+                    for _ in 0..N {
+                        points.push(Vec::new());
+                    }
+
+                    for (x, y) in &g.data {
+                        for i in 0..N {
+                            points[i].push(egui_plot::PlotPoint::new(*x, y[i]));
+                        }
+                    }
+
+                    match g.style.line_type {
+                        LineType::LineStrip => {
+                            for (i, p) in points.iter().enumerate().take(N) {
+                                let plot_points = egui_plot::PlotPoints::Owned(p.clone());
+                                plot_ui.line(
+                                    egui_plot::Line::new(format!("{curve_name}-{i}"), plot_points)
+                                        .color(color_cnv(g.style.colors[i])),
+                                );
+                            }
+                        }
+                        LineType::Points => {
+                            for (i, p) in points.iter().enumerate().take(N) {
+                                let plot_points = egui_plot::PlotPoints::Owned(p.clone());
+                                plot_ui.line(
+                                    egui_plot::Line::new(format!("{curve_name}-{i}"), plot_points)
+                                        .color(color_cnv(g.style.colors[i])),
+                                );
+                            }
+                        }
                     }
                 }
-            }
-        }
-        fn show_vec_conf<const N: usize>(
-            curve_name: &str,
-            g: &CurveVecWithConf<N>,
-            plot_ui: &mut PlotUi,
-        ) {
-            if let Some(v_line) = &g.v_line {
-                plot_ui.add(
-                    VLine::new(v_line.name.clone(), v_line.x)
-                        .color(egui::Color32::from_rgb(255, 255, 255)),
-                );
-            }
-            let mut points = vec![];
-            let mut up_points = vec![];
-            let mut down_points = vec![];
-            for _ in 0..N {
-                points.push(Vec::new());
-                up_points.push(Vec::new());
-                down_points.push(Vec::new());
-            }
-
-            for (x, (y, e)) in &g.data {
-                for i in 0..N {
-                    points[i].push(egui_plot::PlotPoint::new(*x, y[i]));
-                    up_points[i].push(egui_plot::PlotPoint::new(*x, y[i] + e[i]));
-                    down_points[i].push(egui_plot::PlotPoint::new(*x, y[i] - e[i]));
-                }
-            }
-
-            let mut plot_points =
-                |points: Vec<Vec<egui_plot::PlotPoint>>, color: [Color; N], style: LineStyle| {
-                    for (i, p) in points.iter().enumerate().take(N) {
-                        let plot_points = egui_plot::PlotPoints::Owned(p.clone());
-                        plot_ui.line(
-                            egui_plot::Line::new(format!("{curve_name}-{i}"), plot_points)
-                                .color(color_cnv(color[i]))
-                                .style(style),
+                fn show_vec_conf<const N: usize>(
+                    curve_name: &str,
+                    g: &CurveVecWithConf<N>,
+                    plot_ui: &mut PlotUi,
+                ) {
+                    if let Some(v_line) = &g.v_line {
+                        plot_ui.add(
+                            VLine::new(v_line.name.clone(), v_line.x)
+                                .color(egui::Color32::from_rgb(255, 255, 255)),
                         );
                     }
-                };
+                    let mut points = vec![];
+                    let mut up_points = vec![];
+                    let mut down_points = vec![];
+                    for _ in 0..N {
+                        points.push(Vec::new());
+                        up_points.push(Vec::new());
+                        down_points.push(Vec::new());
+                    }
 
-            plot_points(points, g.style.colors, LineStyle::Solid);
-            plot_points(up_points, g.style.colors, LineStyle::dashed_dense());
-            plot_points(down_points, g.style.colors, LineStyle::dashed_dense());
-        }
+                    for (x, (y, e)) in &g.data {
+                        for i in 0..N {
+                            points[i].push(egui_plot::PlotPoint::new(*x, y[i]));
+                            up_points[i].push(egui_plot::PlotPoint::new(*x, y[i] + e[i]));
+                            down_points[i].push(egui_plot::PlotPoint::new(*x, y[i] - e[i]));
+                        }
+                    }
 
-        ui.add_sized(
-            [adjusted_size.width, adjusted_size.height],
-            |ui: &mut egui::Ui| {
+                    let mut plot_points =
+                        |points: Vec<Vec<egui_plot::PlotPoint>>,
+                         color: [Color; N],
+                         style: LineStyle| {
+                            for (i, p) in points.iter().enumerate().take(N) {
+                                let plot_points = egui_plot::PlotPoints::Owned(p.clone());
+                                plot_ui.line(
+                                    egui_plot::Line::new(format!("{curve_name}-{i}"), plot_points)
+                                        .color(color_cnv(color[i]))
+                                        .style(style),
+                                );
+                            }
+                        };
+
+                    plot_points(points, g.style.colors, LineStyle::Solid);
+                    plot_points(up_points, g.style.colors, LineStyle::dashed_dense());
+                    plot_points(down_points, g.style.colors, LineStyle::dashed_dense());
+                }
+
+                // ui.add_sized(
+                //     [adjusted_size.width, adjusted_size.height],
+                //     |ui: &mut egui::Ui| {
+
                 plot.show(ui, |plot_ui| {
                     for (curve_name, graph_data) in &mut view.curves {
                         if !graph_data.show_graph {
@@ -528,10 +592,12 @@ impl ViewerBase {
                             }
                         }
                     }
-                })
-                .response
-            },
-        );
+                });
+            });
+
+        if !enabled {
+            view.enabled = false;
+        }
     }
 
     pub(crate) fn process_simple_packets(

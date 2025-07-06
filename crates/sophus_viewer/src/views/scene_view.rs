@@ -59,10 +59,11 @@ fn show_image(
             size: egui::Vec2::new(adjusted_size.width, adjusted_size.height),
             id: egui_texture,
         })
-        .fit_to_exact_size(egui::Vec2 {
-            x: adjusted_size.width,
-            y: adjusted_size.height,
-        })
+        .shrink_to_fit()
+        // .fit_to_exact_size(egui::Vec2 {
+        //     x: adjusted_size.width,
+        //     y: adjusted_size.height,
+        // })
         .sense(egui::Sense::click_and_drag()),
     )
 }
@@ -168,12 +169,16 @@ impl SceneView {
         ));
 
         let ui_response = show_image(show_depth, &render_result, adjusted_size, ui);
+        let intrinsic_size = ui_response.intrinsic_size.unwrap();
 
         Some(ResponseStruct {
             ui_response,
             scales: ViewportScale::from_image_size_and_viewport_size(
                 self.intrinsics().image_size(),
-                adjusted_size,
+                ViewportSize {
+                    width: intrinsic_size.x,
+                    height: intrinsic_size.y,
+                },
             ),
             z_image: Some(render_result.depth_image.ndc_z_image.clone()),
             view_port_size: adjusted_size.image_size(),
