@@ -1,8 +1,15 @@
-use eframe::egui;
+use eframe::egui::{
+    self,
+    Image,
+    Pos2,
+    Resize,
+    Sense,
+};
 use sophus::examples::{
     optics_sim::OpticsSimWidget,
     viewer_example::ViewerExampleWidget,
 };
+use sophus_image::ImageSize;
 use sophus_renderer::RenderContext;
 use sophus_viewer::{
     ViewerBase,
@@ -22,6 +29,58 @@ enum Demo {
     Viewer,
 }
 
+#[derive(Clone, Copy, Debug)]
+struct BBox {
+    aspect: f32,
+}
+
+impl BBox {
+    fn size(self, height: f32) -> egui::Vec2 {
+        egui::Vec2::new(self.aspect * height, height)
+    }
+
+    fn height(boxes: &Vec<BBox>, total_width: f32) -> f32 {
+        let mut w_sum = 0.0;
+        for b in boxes {
+            w_sum += b.aspect;
+        }
+        let factor = total_width / w_sum;
+        factor
+    }
+
+    fn get(boxes: &Vec<BBox>, h: f32, clip: egui::Rect) -> Option<Vec<egui::Rect>> {
+        let mut x_offset = clip.min.x;
+
+        let mut y_offset = clip.min.y;
+
+        let mut res = vec![];
+
+        for b in boxes {
+            let size = b.size(h);
+
+            let w = size.x;
+
+            if x_offset + w > clip.max.x {
+                x_offset = clip.min.x;
+                y_offset += h;
+            }
+
+            if y_offset + h > clip.max.y || x_offset + w > clip.max.x {
+                return None;
+            }
+
+            res.push(egui::Rect::from_min_size(
+                egui::Pos2::new(x_offset, y_offset),
+                egui::Vec2::new(w, h),
+            ));
+
+            x_offset += w;
+        }
+
+        Some(res)
+    }
+}
+
 enum ViewerEnum {
     Optics(OpticsSimWidget),
     Viewer(ViewerExampleWidget),
@@ -32,11 +91,12 @@ pub struct DemoApp {
     message_send: Sender<Vec<Packet>>,
     selected_example: Demo,
     content: ViewerEnum,
+    h: f32,
 }
 
 impl eframe::App for DemoApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.base.update_data();
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.base.update_data(ctx, frame);
 
         egui::TopBottomPanel::top("top").show(ctx, |ui| {
             ui.horizontal_wrapped(|ui| {
@@ -123,6 +183,8 @@ impl eframe::App for DemoApp {
                     )
                     .text("aperture radius"),
                 );
+
+                ui.add(egui::Slider::new(&mut self.h, 0.0..=1000.0).text("My value"));
             }
         });
         match &mut self.content {
@@ -139,8 +201,137 @@ impl eframe::App for DemoApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
+            egui_extras::install_image_loaders(ctx);
 
-            self.base.update_central_panel(ui, ctx);
+            let boxes = vec![
+                ImageSize::new(150, 50),
+                ImageSize::new(15, 60),
+                ImageSize::new(150, 50),
+                ImageSize::new(100, 30),
+                ImageSize::new(150, 60),
+                ImageSize::new(150, 50),
+                ImageSize::new(100, 30),
+            ];
+
+            let boxes: Vec<BBox> = boxes
+                .iter()
+                .map(|b| BBox {
+                    aspect: b.width as f32 / b.height as f32,
+                })
+                .collect();
+
+            // let max_h = boxes
+            //     .iter()
+            //     .max_by(|x, y| x.height.cmp(&y.height))
+            //     .unwrap()
+            //     .height as f32;
+            let num = boxes.len();
+
+            // let w: Vec<f32> = boxes
+            //     .iter()
+            //     .map(|x| x.width as f32 / x.height as f32 * max_h)
+            //     .collect();
+
+            // let sum: f32 = w.iter().sum();
+
+            println!("{:?}", boxes);
+
+            let rect = ui.clip_rect();
+            let width = rect.width();
+
+            //  let factor = width / sum;
+
+            let total_width = rect.size().x;
+
+            let mut mi = 0.9 * BBox::height(&boxes, total_width);
+            let mut ma = rect.size().y;
+            let mut h = mi + ma / 2.0;
+
+            println!("mi:{}", mi);
+
+            assert!(BBox::get(&boxes, mi, rect).is_some());
+            assert!(BBox::get(&boxes, ma, rect).is_none());
+
+            for i in 0..10 {
+                h = mi + (ma - mi) * 0.5;
+
+                let bb = BBox::get(&boxes, h, rect);
+
+                println!("h = {}", h);
+
+                if bb.is_some() {
+                    mi = h;
+                } else {
+                    ma = h;
+                }
+            }
+            let bb = BBox::get(&boxes, mi, rect).unwrap();
+
+            for i in 0..num {
+                println!("{}", ui.clip_rect());
+
+                let bb = bb[i];
+
+                let r = egui::Window::new(format!("w{i}"))
+                    //.resizable(true)
+                    .movable(false)
+                    .title_bar(false)
+                    .collapsible(false)
+                    .fixed_pos(bb.min)
+                    .fixed_size(egui::Vec2::new(bb.size().x - 14.0, bb.size().y - 14.0))
+                    .show(ctx, |ui| {
+                        ui.add(
+                            egui::Image::new(egui::include_image!("../../assets/ferris.png"))
+                                .corner_radius(5)
+                                .shrink_to_fit()
+                                .maintain_aspect_ratio(false),
+                        )
+                    });
+            }
+
+            // println!(
+            //     "{}",
+            //     r.as_ref()
+            //         .unwrap()
+            //         .inner
+            //         .as_ref()
+            //         .unwrap()
+            //         .intrinsic_size
+            //         .unwrap()
+            // );
+            // let rect = r.unwrap().response.
+            // println!("{}", rect);
+
+            // self.base.update_central_panel(ui, ctx);
+
+            // ui.push_id("inner", |ui| {
+            //     let r = Resize::default().default_height(100.0).show(ui, |ui| {
+            //         let sz = ui.available_size();
+
+            //         ui.add(
+            //             egui::Image::new(egui::include_image!("../../assets/ferris.png"))
+            //                 .corner_radius(5)
+            //                 .shrink_to_fit()
+            //                 .maintain_aspect_ratio(true),
+            //         )
+            //     });
+            // });
+            // let r = Resize::default().default_height(100.0).show(ui, |ui| {
+            //     ui.add(
+            //         egui::Image::new(egui::include_image!("../../assets/ferris.png"))
+            //             .corner_radius(5),
+            //     )
+            // });
+            // let r = Resize::default().default_height(100.0).show(ui, |ui| {
+            //     ui.add(
+            //         egui::Image::new(egui::include_image!("../../assets/ferris.png"))
+            //             .corner_radius(5),
+            //     )
+            // });
+
+            // if r.1.interact_pointer_pos.is_some() {
+            //     println!("{}", r.1.intrinsic_size.unwrap());
+            // }
         });
 
         self.base.process_events();
@@ -159,6 +350,7 @@ impl DemoApp {
             message_send: message_send.clone(),
             selected_example: Demo::OpticsSim,
             content: ViewerEnum::Optics(OpticsSimWidget::new(message_send)),
+            h: 100.0,
         })
     }
 }

@@ -131,6 +131,7 @@ impl OffscreenRenderer {
 
     /// create new offscreen renderer
     pub fn new(render_context: &RenderContext, camera_properties: &RenderCameraProperties) -> Self {
+        println!("!!!rr");
         let depth_bias_state = wgpu::DepthBiasState {
             constant: 2,      // Adjust this value as needed
             slope_scale: 1.0, // Adjust this value as needed
@@ -277,7 +278,16 @@ impl OffscreenRenderer {
 
     fn render_impl(&mut self, params: &RenderParams) -> RenderResult {
         if self.textures.view_port_size != params.view_port_size {
+            println!(
+                "!!!!! {:?} {:?}",
+                self.textures.view_port_size, params.view_port_size
+            );
             self.textures = Textures::new(&self.render_context, &params.view_port_size);
+
+            println!(
+                "aa {:?} {:?}",
+                self.textures.view_port_size, params.view_port_size
+            );
         }
 
         self.uniforms.update(

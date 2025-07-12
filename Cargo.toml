@@ -54,7 +54,7 @@ eframe = {version = "0.31.1", default-features = false, features = [
   "x11",
 ]}
 egui-wgpu = "0.31.1"
-egui_extras = "0.31.1"
+egui_extras = {version = "0.31.1", features = ["image"]}
 egui_plot = "0.32.1"
 env_logger = "0.11"
 faer = {version = "0.22.6", default-features = false, features = ["linalg", "rayon"]}

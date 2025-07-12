@@ -6,9 +6,12 @@ use alloc::{
     vec::Vec,
 };
 
-use eframe::egui::{
-    self,
-    Ui,
+use eframe::{
+    egui::{
+        self,
+        Ui,
+    },
+    emath::History,
 };
 use egui_plot::{
     LineStyle,
@@ -62,6 +65,7 @@ pub struct ViewerBase {
     responses: BTreeMap<String, ResponseStruct>,
     active_view: String,
     active_view_info: Option<ActiveViewInfo>,
+    frame_times: History<f32>,
 }
 
 pub(crate) struct ResponseStruct {
@@ -78,8 +82,25 @@ pub struct ViewerBaseConfig {
 }
 
 impl ViewerBase {
+    fn on_new_frame(&mut self, now: f64, previous_frame_time: Option<f32>) {
+        let previous_frame_time = previous_frame_time.unwrap_or_default();
+        if let Some(latest) = self.frame_times.latest_mut() {
+            *latest = previous_frame_time; // rewrite history now that we know
+        }
+        self.frame_times.add(now, previous_frame_time); // projected
+    }
+
+    fn mean_frame_time(&self) -> f32 {
+        self.frame_times.average().unwrap_or_default()
+    }
+
+    fn fps(&self) -> f32 {
+        1.0 / self.frame_times.mean_time_interval().unwrap_or_default()
+    }
     /// Create a new viewer.
     pub fn new(render_state: RenderContext, config: ViewerBaseConfig) -> ViewerBase {
+        let max_age: f32 = 1.0;
+        let max_len = (max_age * 300.0).round() as usize;
         ViewerBase {
             context: render_state.clone(),
             views: LinkedHashMap::new(),
@@ -89,11 +110,14 @@ impl ViewerBase {
             responses: BTreeMap::new(),
             active_view_info: None,
             active_view: Default::default(),
+
+            frame_times: History::new(0..max_len, max_age),
         }
     }
 
     /// Update the data.
-    pub fn update_data(&mut self) {
+    pub fn update_data(&mut self, ctx: &egui::Context, frame: &eframe::Frame) {
+        self.on_new_frame(ctx.input(|i| i.time), frame.info().cpu_usage);
         Self::process_simple_packets(&mut self.views, &self.context, &self.message_recv);
     }
 
@@ -244,7 +268,7 @@ impl ViewerBase {
 
                         ui.label(format!(
                             "CAMERA position: ({:0.3}, {:0.3}, {:0.3}), quaternion: {:0.4}, \
-                            ({:0.4}, {:0.4}, {:0.4}), bird's eye view: {}",
+                            ({:0.4}, {:0.4}, {:0.4}), bird's eye view: {}, fps;: {}",
                             view_info.scene_from_camera.translation()[0],
                             view_info.scene_from_camera.translation()[1],
                             view_info.scene_from_camera.translation()[2],
@@ -252,16 +276,18 @@ impl ViewerBase {
                             scene_from_camera_quaternion[1],
                             scene_from_camera_quaternion[2],
                             scene_from_camera_quaternion[3],
-                            view_info.locked_to_birds_eye_orientation
+                            view_info.locked_to_birds_eye_orientation,
+                            self.fps()
                         ));
                     });
                 } else {
                     ui.label(format!(
-                        "{}: {}, view-port: {} x {}",
+                        "{}: {}, view-port: {} x {}, fps;: {}",
                         view_info.view_type,
                         view_info.active_view,
                         view_info.view_port_size.width,
                         view_info.view_port_size.height,
+                        self.fps()
                     ));
                 }
             }

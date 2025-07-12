@@ -29,8 +29,8 @@ impl SimpleViewer {
 }
 
 impl eframe::App for SimpleViewer {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.base.update_data();
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.base.update_data(ctx, &frame);
 
         egui::TopBottomPanel::top("top").show(ctx, |ui| {
             self.base.update_top_bar(ui, ctx);

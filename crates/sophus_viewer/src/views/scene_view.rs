@@ -5,6 +5,7 @@ use eframe::egui::{
 };
 use linked_hash_map::LinkedHashMap;
 use log::warn;
+use sophus_image::ImageSize;
 use sophus_renderer::{
     FinalRenderResult,
     HasAspectRatio,
@@ -36,6 +37,7 @@ pub(crate) struct SceneView {
     pub(crate) interaction: InteractionEnum,
     pub(crate) enabled: bool,
     pub(crate) locked_to_birds_eye_orientation: bool,
+    pub(crate) viewport_size: Option<ImageSize>,
     #[cfg(target_arch = "wasm32")]
     pub(crate) final_render_result_promise: Option<poll_promise::Promise<FinalRenderResult>>,
     #[cfg(target_arch = "wasm32")]
@@ -60,10 +62,6 @@ fn show_image(
             id: egui_texture,
         })
         .shrink_to_fit()
-        // .fit_to_exact_size(egui::Vec2 {
-        //     x: adjusted_size.width,
-        //     y: adjusted_size.height,
-        // })
         .sense(egui::Sense::click_and_drag()),
     )
 }
@@ -86,6 +84,7 @@ impl SceneView {
                 )),
                 enabled: true,
                 locked_to_birds_eye_orientation: creation.locked_to_birds_eye_orientation,
+                viewport_size: None,
                 #[cfg(target_arch = "wasm32")]
                 final_render_result: None,
                 #[cfg(target_arch = "wasm32")]
@@ -144,19 +143,22 @@ impl SceneView {
         context: RenderContext,
         adjusted_size: ViewportSize,
     ) -> Option<ResponseStruct> {
+        let mut view_port_size = adjusted_size.image_size();
+        if self.viewport_size.is_some() {
+            view_port_size = self.viewport_size.unwrap();
+        }
+
+        println!("{:?}", view_port_size);
+
         let render_result = self
             .renderer
-            .render_params(
-                &adjusted_size.image_size(),
-                &self.interaction.scene_from_camera(),
-            )
+            .render_params(&view_port_size, &self.interaction.scene_from_camera())
             .zoom(self.interaction.zoom2d())
             .interaction(self.interaction.marker())
             .backface_culling(backface_culling)
             .compute_depth_texture(show_depth)
             .render();
         let clipping_planes = self.renderer.camera_properties.clipping_planes.cast();
-        let view_port_size = adjusted_size.image_size();
 
         // This is a non-wasm target, so we can block on the async function to
         // download the depth texture on the GPU to the CPU.
@@ -171,6 +173,14 @@ impl SceneView {
         let ui_response = show_image(show_depth, &render_result, adjusted_size, ui);
         let intrinsic_size = ui_response.intrinsic_size.unwrap();
 
+        self.viewport_size = Some(
+            ViewportSize {
+                width: intrinsic_size.x,
+                height: intrinsic_size.y,
+            }
+            .image_size(),
+        );
+
         Some(ResponseStruct {
             ui_response,
             scales: ViewportScale::from_image_size_and_viewport_size(
@@ -181,7 +191,11 @@ impl SceneView {
                 },
             ),
             z_image: Some(render_result.depth_image.ndc_z_image.clone()),
-            view_port_size: adjusted_size.image_size(),
+            view_port_size: ViewportSize {
+                width: intrinsic_size.x,
+                height: intrinsic_size.y,
+            }
+            .image_size(),
         })
     }
 
