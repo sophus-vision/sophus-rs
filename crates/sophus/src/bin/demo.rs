@@ -35,6 +35,9 @@ struct BBox {
 }
 
 impl BBox {
+    const BORDER: f32 = 14.0;
+    const BAR_SIZE: f32 = 34.0;
+
     fn size(self, height: f32) -> egui::Vec2 {
         egui::Vec2::new(self.aspect * height, height)
     }
@@ -60,21 +63,23 @@ impl BBox {
 
             let w = size.x;
 
-            if x_offset + w > clip.max.x {
+            if x_offset + w + Self::BORDER > clip.max.x {
                 x_offset = clip.min.x;
-                y_offset += h;
+                y_offset += h + Self::BORDER + Self::BAR_SIZE;
             }
 
-            if y_offset + h > clip.max.y || x_offset + w > clip.max.x {
+            if y_offset + h + Self::BORDER + Self::BAR_SIZE > clip.max.y
+                || x_offset + Self::BORDER + w > clip.max.x
+            {
                 return None;
             }
 
             res.push(egui::Rect::from_min_size(
                 egui::Pos2::new(x_offset, y_offset),
-                egui::Vec2::new(w, h),
+                egui::Vec2::new(w + Self::BORDER, h + Self::BORDER + Self::BAR_SIZE),
             ));
 
-            x_offset += w;
+            x_offset += w + Self::BORDER;
         }
 
         Some(res)
@@ -275,16 +280,19 @@ impl eframe::App for DemoApp {
                 let r = egui::Window::new(format!("w{i}"))
                     //.resizable(true)
                     .movable(false)
-                    .title_bar(false)
+                    .title_bar(true)
                     .collapsible(false)
                     .fixed_pos(bb.min)
-                    .fixed_size(egui::Vec2::new(bb.size().x - 14.0, bb.size().y - 14.0))
+                    .fixed_size(egui::Vec2::new(bb.size().x, bb.size().y))
                     .show(ctx, |ui| {
                         ui.add(
                             egui::Image::new(egui::include_image!("../../assets/ferris.png"))
                                 .corner_radius(5)
-                                .shrink_to_fit()
-                                .maintain_aspect_ratio(false),
+                                .maintain_aspect_ratio(false)
+                                .fit_to_exact_size(egui::Vec2::new(
+                                    bb.size().x - BBox::BORDER,
+                                    bb.size().y - BBox::BORDER - BBox::BAR_SIZE,
+                                )),
                         )
                     });
             }
