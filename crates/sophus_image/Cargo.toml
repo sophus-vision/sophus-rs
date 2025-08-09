@@ -29,3 +29,6 @@ rustc_version.workspace = true
 simd = ["sophus_tensor/simd"]
 std = ["png", "tiff", "sophus_autodiff/std", "sophus_tensor/std"]
 default = ["std"]
+
+[package.metadata.docs.rs]
+all-features = true

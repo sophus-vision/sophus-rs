@@ -39,3 +39,6 @@ std = [
   "sophus_sensor/std",
 ]
 default = ["std"]
+
+[package.metadata.docs.rs]
+all-features = true

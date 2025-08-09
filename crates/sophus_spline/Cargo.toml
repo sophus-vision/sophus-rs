@@ -26,3 +26,6 @@ std = [
   "sophus_autodiff/std",
 ]
 default = ["std"]
+
+[package.metadata.docs.rs]
+all-features = true

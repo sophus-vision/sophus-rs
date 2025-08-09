@@ -27,3 +27,6 @@ rustc_version.workspace = true
 default = ["std"]
 simd = ["sleef"]
 std = []
+
+[package.metadata.docs.rs]
+all-features = true

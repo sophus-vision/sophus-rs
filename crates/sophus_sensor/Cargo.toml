@@ -32,3 +32,6 @@ std = [
   "sophus_image/std",
 ]
 default = ["std"]
+
+[package.metadata.docs.rs]
+all-features = true

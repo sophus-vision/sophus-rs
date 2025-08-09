@@ -24,3 +24,6 @@ rustc_version.workspace = true
 simd = ["sophus_geo/simd"]
 std = ["sophus_geo/std"]
 default = ["std"]
+
+[package.metadata.docs.rs]
+all-features = true

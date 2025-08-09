@@ -48,3 +48,6 @@ std = [
   "sophus_lie/std",
   "sophus_sensor/std",
 ]
+
+[package.metadata.docs.rs]
+all-features = true

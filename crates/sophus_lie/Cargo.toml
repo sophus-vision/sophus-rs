@@ -28,3 +28,6 @@ rustc_version.workspace = true
 default = ["std"]
 simd = ["sophus_autodiff/simd"]
 std = ["sophus_autodiff/std"]
+
+[package.metadata.docs.rs]
+all-features = true

@@ -2,7 +2,7 @@
 #![deny(missing_docs)]
 #![allow(clippy::needless_range_loop)]
 #![doc = include_str!(concat!("../", std::env!("CARGO_PKG_README")))]
-#![cfg_attr(nightly, feature(doc_auto_cfg))]
+#![cfg_attr(any(docsrs, nightly), feature(doc_auto_cfg))]
 
 #[doc = include_str!(concat!("../",  core::env!("CARGO_PKG_README")))]
 #[cfg(doctest)]
