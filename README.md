@@ -259,7 +259,7 @@ sophus-rs builds on stable.
 
 ```toml
 [dependencies]
-sophus = "0.15.0"
+sophus = "0.16.0"
 ```
 
 To allow for batch types, such as BatchScalarF64, the 'simd' feature is required. This feature
@@ -269,7 +269,7 @@ are no plans to rely on any other nightly features.
 
 ```toml
 [dependencies]
-sophus = { version = "0.15.0", features = ["simd"] }
+sophus = { version = "0.16.0", features = ["simd"] }
 ```
 
 ## Crate Structure and Usage
