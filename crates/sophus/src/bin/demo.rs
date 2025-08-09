@@ -39,16 +39,14 @@ impl eframe::App for DemoApp {
         self.base.update_data();
 
         egui::TopBottomPanel::top("top").show(ctx, |ui| {
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 ui.heading("sophus-rs demo");
 
                 let examples = [(Demo::OpticsSim, "optics sim"), (Demo::Viewer, "viewer")];
 
-                ui.horizontal(|ui| {
-                    for (example, label) in examples {
-                        ui.selectable_value(&mut self.selected_example, example, label);
-                    }
-                });
+                for (example, label) in examples {
+                    ui.selectable_value(&mut self.selected_example, example, label);
+                }
 
                 match self.selected_example {
                     Demo::OpticsSim => match &self.content {
@@ -67,7 +65,6 @@ impl eframe::App for DemoApp {
                         }
                     },
                 };
-
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                     ui.hyperlink("https://github.com/sophus-vision/sophus-rs/");
                 });
@@ -91,6 +88,7 @@ impl eframe::App for DemoApp {
                         &mut optics_viewer_content.elements.scene_points.p[0][1],
                         -1.000..=1.000,
                     )
+                    .orientation(egui::SliderOrientation::Vertical)
                     .text("p0.y"),
                 );
                 ui.separator();
@@ -106,6 +104,7 @@ impl eframe::App for DemoApp {
                         &mut optics_viewer_content.elements.scene_points.p[1][1],
                         -1.000..=1.000,
                     )
+                    .orientation(egui::SliderOrientation::Vertical)
                     .text("p1.y"),
                 );
                 ui.separator();
@@ -207,6 +206,17 @@ fn main() {
             .expect("Failed to find the_canvas_id")
             .dyn_into::<web_sys::HtmlCanvasElement>()
             .expect("the_canvas_id was not a HtmlCanvasElement");
+
+        if !eframe::wgpu::util::is_browser_webgpu_supported().await {
+            if let Some(loading_text) = document.get_element_by_id("loading_text") {
+                loading_text.set_inner_html(
+                    "<p> This browser does not support WebGPU. </p> \
+                    <a href=\"https://github.com/gpuweb/gpuweb/wiki/Implementation-Status\">\
+                    See here for details</a>",
+                );
+            }
+            panic!("This browser does not support WebGPU.");
+        }
 
         let start_result = eframe::WebRunner::new()
             .start(
