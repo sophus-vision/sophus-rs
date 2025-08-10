@@ -164,6 +164,7 @@ pub(crate) fn show_image(
                         id: egui_texture,
                     })
                     .shrink_to_fit()
+                    .sense(egui::Sense::click_and_drag())
                     .maintain_aspect_ratio(true),
                 )
             })
@@ -192,6 +193,7 @@ pub(crate) fn show_image(
                         id: egui_texture,
                     })
                     .maintain_aspect_ratio(false)
+                    .sense(egui::Sense::click_and_drag())
                     .fit_to_exact_size(egui::Vec2::new(
                         placement.rect.width() - WindowArea::BORDER,
                         placement.rect.height() - WindowArea::BORDER - bar_size,
