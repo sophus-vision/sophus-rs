@@ -24,8 +24,8 @@ use crate::{
         inplane_interaction::InplaneInteraction,
         orbit_interaction::OrbitalInteraction,
     },
+    layout::WindowPlacement,
     prelude::*,
-    views::ViewportSize,
 };
 
 /// Viewport scale
@@ -37,11 +37,11 @@ pub struct ViewportScale {
 impl ViewportScale {
     pub(crate) fn from_image_size_and_viewport_size(
         image_size: ImageSize,
-        view_port_size: ViewportSize,
+        placement: &WindowPlacement,
     ) -> ViewportScale {
         let scale = VecF64::<2>::new(
-            image_size.width as f64 / view_port_size.width as f64,
-            image_size.height as f64 / view_port_size.height as f64,
+            image_size.width as f64 / placement.rect.width() as f64,
+            image_size.height as f64 / placement.rect.height() as f64,
         );
         ViewportScale { scale }
     }

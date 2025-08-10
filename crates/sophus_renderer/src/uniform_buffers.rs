@@ -295,8 +295,10 @@ impl VertexShaderUniformBuffers {
             .wgpu_queue
             .write_buffer(&self.pinhole_buffer, 0, bytemuck::cast_slice(&[pinhole]));
 
-        context
-            .wgpu_queue
-            .write_buffer(&self.zoom_buffer, 0, bytemuck::cast_slice(&[zoom_uniform]));
+        context.wgpu_queue.write_buffer(
+            &self.zoom_buffer,
+            0,
+            bytemuck::cast_slice(&[zoom_uniform]),
+        );
     }
 }
