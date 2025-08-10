@@ -1,5 +1,6 @@
 use std::f64::consts::TAU;
 
+use log::warn;
 use sophus_autodiff::{
     linalg::{
         SVec,
@@ -14,7 +15,6 @@ use sophus_image::{
     MutImageF32,
     prelude::*,
 };
-use log::warn;
 use sophus_lie::Isometry3;
 use sophus_renderer::{
     camera::{
@@ -244,21 +244,20 @@ pub struct ViewerExampleWidget {
 
 impl Drop for ViewerExampleWidget {
     fn drop(&mut self) {
-         match self.message_send
-            .send(vec![
-                delete_scene_packet("scene - bird's eye"),
-                delete_scene_packet("scene - distorted"),
-                delete_image_packet("distorted image"),
-                delete_image_packet("tiny image"),
-                Packet::Plot(vec![PlotViewPacket::Delete("scalar-curve".to_owned())]),
-                Packet::Plot(vec![PlotViewPacket::Delete("curve-vec".to_owned())]),
-                Packet::Plot(vec![PlotViewPacket::Delete("curve-vec +- e".to_owned())]),
-            ]){
-                Ok(_) => {},
-                Err(_) => {
-                    warn!("Failed to send delete packets, viewer might not be running.");
-                },
+        match self.message_send.send(vec![
+            delete_scene_packet("scene - bird's eye"),
+            delete_scene_packet("scene - distorted"),
+            delete_image_packet("distorted image"),
+            delete_image_packet("tiny image"),
+            Packet::Plot(vec![PlotViewPacket::Delete("scalar-curve".to_owned())]),
+            Packet::Plot(vec![PlotViewPacket::Delete("curve-vec".to_owned())]),
+            Packet::Plot(vec![PlotViewPacket::Delete("curve-vec +- e".to_owned())]),
+        ]) {
+            Ok(_) => {}
+            Err(_) => {
+                warn!("Failed to send delete packets, viewer might not be running.");
             }
+        }
     }
 }
 

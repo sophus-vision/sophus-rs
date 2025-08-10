@@ -1,12 +1,9 @@
-use eframe::egui::{
-    self,
-    Response,
-    Ui,
-};
+use eframe::egui;
 use linked_hash_map::LinkedHashMap;
 use log::warn;
+#[cfg(target_arch = "wasm32")]
+use sophus_renderer::FinalRenderResult;
 use sophus_renderer::{
-    FinalRenderResult,
     HasAspectRatio,
     OffscreenRenderer,
     RenderContext,
@@ -17,10 +14,13 @@ use sophus_renderer::{
 use crate::{
     ResponseStruct,
     ViewportScale,
-    ViewportSize,
     interactions::{
         InteractionEnum,
         orbit_interaction::OrbitalInteraction,
+    },
+    layout::{
+        WindowPlacement,
+        show_image,
     },
     packets::{
         SceneViewCreation,
@@ -40,31 +40,6 @@ pub(crate) struct SceneView {
     pub(crate) final_render_result_promise: Option<poll_promise::Promise<FinalRenderResult>>,
     #[cfg(target_arch = "wasm32")]
     pub(crate) final_render_result: Option<FinalRenderResult>,
-}
-
-fn show_image(
-    show_depth: bool,
-    final_render_result: &FinalRenderResult,
-    adjusted_size: ViewportSize,
-    ui: &mut Ui,
-) -> Response {
-    let egui_texture = if show_depth {
-        final_render_result.depth_egui_tex_id
-    } else {
-        final_render_result.rgba_egui_tex_id
-    };
-
-    ui.add(
-        egui::Image::new(egui::load::SizedTexture {
-            size: egui::Vec2::new(adjusted_size.width, adjusted_size.height),
-            id: egui_texture,
-        })
-        .fit_to_exact_size(egui::Vec2 {
-            x: adjusted_size.width,
-            y: adjusted_size.height,
-        })
-        .sense(egui::Sense::click_and_drag()),
-    )
 }
 
 impl SceneView {
@@ -137,25 +112,23 @@ impl SceneView {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn render(
         &mut self,
-        ui: &mut Ui,
+        ctx: &egui::Context,
         show_depth: bool,
         backface_culling: bool,
         context: RenderContext,
-        adjusted_size: ViewportSize,
+        placement: &WindowPlacement,
     ) -> Option<ResponseStruct> {
+        let view_port_size = placement.viewport_size();
+
         let render_result = self
             .renderer
-            .render_params(
-                &adjusted_size.image_size(),
-                &self.interaction.scene_from_camera(),
-            )
+            .render_params(&view_port_size, &self.interaction.scene_from_camera())
             .zoom(self.interaction.zoom2d())
             .interaction(self.interaction.marker())
             .backface_culling(backface_culling)
             .compute_depth_texture(show_depth)
             .render();
         let clipping_planes = self.renderer.camera_properties.clipping_planes.cast();
-        let view_port_size = adjusted_size.image_size();
 
         // This is a non-wasm target, so we can block on the async function to
         // download the depth texture on the GPU to the CPU.
@@ -167,16 +140,23 @@ impl SceneView {
             &render_result,
         ));
 
-        let ui_response = show_image(show_depth, &render_result, adjusted_size, ui);
+        let egui_texture = if show_depth {
+            render_result.depth_egui_tex_id
+        } else {
+            render_result.rgba_egui_tex_id
+        };
+
+        let (ui_response, view_disabled) = show_image(ctx, egui_texture, placement);
 
         Some(ResponseStruct {
             ui_response,
             scales: ViewportScale::from_image_size_and_viewport_size(
                 self.intrinsics().image_size(),
-                adjusted_size,
+                placement,
             ),
             z_image: Some(render_result.depth_image.ndc_z_image.clone()),
-            view_port_size: adjusted_size.image_size(),
+            view_port_size,
+            view_disabled,
         })
     }
 
@@ -194,12 +174,14 @@ impl SceneView {
     #[cfg(target_arch = "wasm32")]
     pub fn render(
         &mut self,
-        ui: &mut Ui,
+        ctx: &egui::Context,
         show_depth: bool,
         backface_culling: bool,
         context: RenderContext,
-        adjusted_size: ViewportSize,
+        placement: &WindowPlacement,
     ) -> Option<ResponseStruct> {
+        let view_port_size = placement.viewport_size();
+
         if let Some(r) = self.final_render_result_promise.as_mut() {
             if let Some(final_render_result) = r.ready() {
                 self.final_render_result = Some(final_render_result.clone());
@@ -211,7 +193,7 @@ impl SceneView {
             let render_result = self
                 .renderer
                 .render_params(
-                    &adjusted_size.image_size(),
+                    &view_port_size,
                     &self.interaction.scene_from_camera(),
                 )
                 .zoom(self.interaction.zoom2d())
@@ -225,7 +207,6 @@ impl SceneView {
             // block. In particular, we cannot use mutable variables below the block, due to
             // lifetime. The async block outlives the function body.
             let context = context.clone();
-            let view_port_size = adjusted_size.image_size();
             let clipping_planes = self.renderer.camera_properties.clipping_planes.cast();
 
             self.final_render_result_promise =
@@ -241,16 +222,23 @@ impl SceneView {
                 }));
         }
         if let Some(final_render_result) = self.final_render_result.as_ref() {
-            let ui_response = show_image(show_depth, &final_render_result, adjusted_size, ui);
+            let egui_texture = if show_depth {
+                final_render_result.depth_egui_tex_id
+            } else {
+                final_render_result.rgba_egui_tex_id
+            };
+
+            let (ui_response, view_disabled) = show_image(ctx, egui_texture, placement);
 
             return Some(ResponseStruct {
                 ui_response,
                 scales: ViewportScale::from_image_size_and_viewport_size(
                     self.intrinsics().image_size(),
-                    adjusted_size,
+                    placement,
                 ),
                 z_image: Some(final_render_result.depth_image.ndc_z_image.clone()),
-                view_port_size: adjusted_size.image_size(),
+                view_port_size,
+                view_disabled,
             });
         }
         None

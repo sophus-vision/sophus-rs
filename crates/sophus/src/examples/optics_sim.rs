@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use log::warn;
 use sophus_autodiff::linalg::VecF64;
 use sophus_geo::Circle;
 use sophus_image::{
@@ -7,7 +8,6 @@ use sophus_image::{
     IsIntensityArcImage,
     MutImageF32,
 };
-use log::warn;
 use sophus_lie::Isometry3F64;
 use sophus_opt::{
     nlls::{
@@ -157,21 +157,16 @@ pub struct OpticsSimWidget {
 
 impl Drop for OpticsSimWidget {
     fn drop(&mut self) {
-       match self.message_send
-            .send(vec![
-                delete_scene_packet("scene"),
-                delete_image_packet("image"),
-            ]){
-                Ok(_) => {},
-                Err(_) => {
-                    warn!("Failed to send delete packets, viewer might not be running.");
-                }
+        match self.message_send.send(vec![
+            delete_scene_packet("scene"),
+            delete_image_packet("image"),
+        ]) {
+            Ok(_) => {}
+            Err(_) => {
+                warn!("Failed to send delete packets, viewer might not be running.");
             }
-
-
-
+        }
     }
-
 }
 
 impl OpticsSimWidget {
@@ -205,7 +200,7 @@ impl OpticsSimWidget {
         let mut light_path = vec![];
 
         let mut image = MutImageF32::from_image_size(ImageSize {
-            width: 30,
+            width: 5,
             height: 50,
         });
 

@@ -198,7 +198,7 @@ impl Color {
             _ => ColorBrightness::Dark,
         };
 
-        let saturation = if (index / 3) % 2 == 0 {
+        let saturation = if (index / 3).is_multiple_of(2) {
             ColorSaturation::Normal
         } else {
             ColorSaturation::Neon
@@ -221,7 +221,7 @@ impl Color {
             _ => ColorBrightness::Dark,
         };
 
-        let saturation = if (index / 3) % 2 == 0 {
+        let saturation = if (index / 3).is_multiple_of(2) {
             ColorSaturation::Normal
         } else {
             ColorSaturation::Neon
@@ -244,7 +244,7 @@ impl Color {
             _ => ColorBrightness::Dark,
         };
 
-        let saturation = if (index / 3) % 2 == 0 {
+        let saturation = if (index / 3).is_multiple_of(2) {
             ColorSaturation::Normal
         } else {
             ColorSaturation::Neon
@@ -261,7 +261,7 @@ impl Color {
             1 => ColorBrightness::Medium,
             _ => ColorBrightness::Dark,
         };
-        let saturation = if (index / 36) % 2 == 0 {
+        let saturation = if (index / 36).is_multiple_of(2) {
             ColorSaturation::Normal
         } else {
             ColorSaturation::Neon

@@ -37,7 +37,7 @@ impl DepthTextures {
         let unaligned_bytes_per_row = width * Self::BYTES_PER_PIXEL;
         let align = COPY_BYTES_PER_ROW_ALIGNMENT;
 
-        if unaligned_bytes_per_row % align == 0 {
+        if unaligned_bytes_per_row.is_multiple_of(align) {
             // already aligned
             unaligned_bytes_per_row
         } else {

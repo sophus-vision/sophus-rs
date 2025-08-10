@@ -1,4 +1,4 @@
-use eframe::egui::mutex::Mutex;
+use eframe::egui;
 use sophus_autodiff::linalg::SVec;
 use sophus_image::{
     ArcImage4U8,
@@ -19,9 +19,9 @@ pub struct DepthImage {
     /// clipping planes
     pub clipping_planes: ClippingPlanesF32,
     /// color mapped depth image cache
-    color_mapped_cache: Mutex<Option<ArcImage4U8>>,
+    color_mapped_cache: egui::mutex::Mutex<Option<ArcImage4U8>>,
     /// metric depth image cache
-    metric_depth_cache: Mutex<Option<ArcImageF32>>,
+    metric_depth_cache: egui::mutex::Mutex<Option<ArcImageF32>>,
 }
 
 /// ndc z to color
@@ -44,8 +44,8 @@ impl DepthImage {
         DepthImage {
             ndc_z_image,
             clipping_planes,
-            color_mapped_cache: Mutex::new(None),
-            metric_depth_cache: Mutex::new(None),
+            color_mapped_cache: egui::mutex::Mutex::new(None),
+            metric_depth_cache: egui::mutex::Mutex::new(None),
         }
     }
 

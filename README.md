@@ -69,13 +69,13 @@ expecting a `2x3` Jacobian, each element of the 2d dual vector must represent
 sophus-rs provides a number of Lie groups, including:
 
 * The group of 2D rotations, [lie::Rotation2], also known as the
-   Special Orthogonal group SO(2),
+  Special Orthogonal group SO(2),
 * the group of 3D rotations, [lie::Rotation3], also known as the
-   Special Orthogonal group SO(3),
+  Special Orthogonal group SO(3),
 * the group of 2d isometries, [lie::Isometry2], also known as the
-   Special Euclidean group SE(2), and
+  Special Euclidean group SE(2), and
 * the group of 3d isometries, [lie::Isometry3], also known as the
-   Spevial Euclidean group SE(3).
+  Spevial Euclidean group SE(3).
 
 ```rust
 use sophus::autodiff::linalg::VecF64;
