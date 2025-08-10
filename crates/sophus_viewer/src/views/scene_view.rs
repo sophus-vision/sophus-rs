@@ -117,6 +117,8 @@ impl SceneView {
         backface_culling: bool,
         context: RenderContext,
         placement: &WindowPlacement,
+        floating_windows: bool,
+        show_title_bars: bool,
     ) -> Option<ResponseStruct> {
         let view_port_size = placement.viewport_size();
 
@@ -146,7 +148,13 @@ impl SceneView {
             render_result.rgba_egui_tex_id
         };
 
-        let (ui_response, view_disabled) = show_image(ctx, egui_texture, placement);
+        let (ui_response, view_disabled) = show_image(
+            ctx,
+            egui_texture,
+            placement,
+            floating_windows,
+            show_title_bars,
+        );
 
         Some(ResponseStruct {
             ui_response,
@@ -179,6 +187,8 @@ impl SceneView {
         backface_culling: bool,
         context: RenderContext,
         placement: &WindowPlacement,
+        floating_windows: bool,
+        show_title_bars: bool,
     ) -> Option<ResponseStruct> {
         let view_port_size = placement.viewport_size();
 
@@ -192,10 +202,7 @@ impl SceneView {
         if self.final_render_result_promise.is_none() {
             let render_result = self
                 .renderer
-                .render_params(
-                    &view_port_size,
-                    &self.interaction.scene_from_camera(),
-                )
+                .render_params(&view_port_size, &self.interaction.scene_from_camera())
                 .zoom(self.interaction.zoom2d())
                 .interaction(self.interaction.marker())
                 .backface_culling(backface_culling)
@@ -228,7 +235,13 @@ impl SceneView {
                 final_render_result.rgba_egui_tex_id
             };
 
-            let (ui_response, view_disabled) = show_image(ctx, egui_texture, placement);
+            let (ui_response, view_disabled) = show_image(
+                ctx,
+                egui_texture,
+                placement,
+                floating_windows,
+                show_title_bars,
+            );
 
             return Some(ResponseStruct {
                 ui_response,
