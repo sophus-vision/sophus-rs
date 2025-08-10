@@ -26,6 +26,7 @@ use sophus_renderer::{
 use thingbuf::mpsc::blocking::Receiver;
 
 use crate::{
+    WindowParams,
     interactions::ViewportScale,
     layout::{
         WindowArea,
@@ -168,40 +169,27 @@ impl ViewerBase {
 
             let help_button_response = ui.button("❓");
 
-            let popup_id = ui.make_persistent_id("help");
-            if help_button_response.clicked() {
-                ui.memory_mut(|mem| mem.toggle_popup(popup_id));
-            }
-            let below = egui::AboveOrBelow::Below;
-            let close_on_click_outside = egui::popup::PopupCloseBehavior::CloseOnClickOutside;
-            egui::popup::popup_above_or_below_widget(
-                ui,
-                popup_id,
-                &help_button_response,
-                below,
-                close_on_click_outside,
-                |ui| {
-                    ui.set_width(250.0);
-                    ui.label("PAN UP/DOWN + LEFT/RIGHT");
-                    ui.label("mouse: left-button drag");
-                    ui.label("touchpad: one finger drag");
-                    ui.label("");
-                    ui.label("ROTATE UP/DOWN + LEFT/RIGHT*");
-                    ui.label("mouse: right-button drag");
-                    ui.label("touchpad: two finger drag** / shift + drag");
-                    ui.label("");
-                    ui.label("ZOOM");
-                    ui.label("mouse: scroll-wheel");
-                    ui.label("touchpad: two finger vertical scroll");
-                    ui.label("");
-                    ui.label("ROTATE IN-PLANE");
-                    ui.label("mouse: shift + scroll-wheel");
-                    ui.label("touchpad: two finger horizontal scroll");
-                    ui.label("");
-                    ui.label("* Disabled if locked to birds-eye orientation.");
-                    ui.label("** Does not work on all touchpads.");
-                },
-            );
+            egui::Popup::from_toggle_button_response(&help_button_response).show(|ui| {
+                ui.set_width(250.0);
+                ui.label("PAN UP/DOWN + LEFT/RIGHT");
+                ui.label("mouse: left-button drag");
+                ui.label("touchpad: one finger drag");
+                ui.label("");
+                ui.label("ROTATE UP/DOWN + LEFT/RIGHT*");
+                ui.label("mouse: right-button drag");
+                ui.label("touchpad: two finger drag** / shift + drag");
+                ui.label("");
+                ui.label("ZOOM");
+                ui.label("mouse: scroll-wheel");
+                ui.label("touchpad: two finger vertical scroll");
+                ui.label("");
+                ui.label("ROTATE IN-PLANE");
+                ui.label("mouse: shift + scroll-wheel");
+                ui.label("touchpad: two finger horizontal scroll");
+                ui.label("");
+                ui.label("* Disabled if locked to birds-eye orientation.");
+                ui.label("** Does not work on all touchpads.");
+            });
         });
     }
 
@@ -302,12 +290,14 @@ impl ViewerBase {
                         View::Scene(view) => {
                             let response = view.render(
                                 ctx,
-                                self.show_depth,
-                                self.backface_culling,
                                 self.context.clone(),
                                 placement,
-                                self.floating_windows,
-                                self.show_title_bars,
+                                WindowParams {
+                                    show_depth: self.show_depth,
+                                    backface_culling: self.backface_culling,
+                                    floating_windows: self.floating_windows,
+                                    show_title_bars: self.show_title_bars,
+                                },
                             );
 
                             if let Some(response) = response {

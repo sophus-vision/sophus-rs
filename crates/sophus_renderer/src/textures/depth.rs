@@ -112,7 +112,7 @@ pub async fn download_depth(
 
     let (tx, rx) = futures_intrusive::channel::shared::oneshot_channel();
     buffer_slice.map_async(wgpu::MapMode::Read, move |v| tx.send(v).unwrap());
-    device.poll(wgpu::Maintain::Wait);
+    device.poll(wgpu::PollType::Wait).unwrap();
 
     // Here we await until the image is downloaded.
     rx.receive().await.unwrap().unwrap();

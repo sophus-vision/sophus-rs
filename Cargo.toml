@@ -43,25 +43,25 @@ sophus_viewer = {path = "crates/sophus_viewer", version = "0.16.0"}
 approx = "0.5"
 as-any = "0.3"
 async-trait = "0.1"
-bytemuck = {version = "1.20.0", features = ["derive"]}
+bytemuck = {version = "1.23.2", features = ["derive"]}
 concat-arrays = "0.1"
 dyn-clone = "1.0"
-eframe = {version = "0.31.1", default-features = false, features = [
+eframe = {version = "0.32.0", default-features = false, features = [
   "default_fonts",
   "wgpu",
   "persistence",
   "wayland",
   "x11",
 ]}
-egui-wgpu = "0.31.1"
-egui_extras = "0.31.1"
-egui_plot = "0.32.1"
+egui-wgpu = "0.32.0"
+egui_extras = "0.32.0"
+egui_plot = "0.33.0"
 env_logger = "0.11"
 faer = {version = "0.22.6", default-features = false, features = ["linalg", "rayon"]}
 futures-intrusive = "0.5"
 linked-hash-map = "0.5"
 log = "0.4"
-nalgebra = {version = "0.33.2", features = ["bytemuck"]}
+nalgebra = {version = "0.34", features = ["bytemuck"]}
 ndarray = {version = "0.16", features = ["approx"]}
 num-traits = "0.2"
 poll-promise = {version = "0.3.0", features = ["web"]}

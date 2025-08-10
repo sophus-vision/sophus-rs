@@ -216,7 +216,7 @@ impl RgbdTexture {
             // Wait for buffer to be mapped and retrieve data
             let buffer_slice = buffer.slice(..);
             buffer_slice.map_async(wgpu::MapMode::Read, move |_result| {});
-            context.wgpu_device.poll(wgpu::Maintain::Wait);
+            context.wgpu_device.poll(wgpu::PollType::Wait).unwrap();
 
             let data = buffer_slice.get_mapped_range();
 
