@@ -200,7 +200,7 @@ impl OpticsSimWidget {
         let mut light_path = vec![];
 
         let mut image = MutImageF32::from_image_size(ImageSize {
-            width: 5,
+            width: 15,
             height: 50,
         });
 

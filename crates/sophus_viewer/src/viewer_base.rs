@@ -22,7 +22,6 @@ use sophus_lie::prelude::IsAffineGroup;
 use sophus_renderer::{
     HasAspectRatio,
     RenderContext,
-    renderables::Color,
 };
 use thingbuf::mpsc::blocking::Receiver;
 
@@ -61,6 +60,8 @@ pub struct ViewerBase {
     responses: BTreeMap<String, ResponseStruct>,
     active_view: String,
     active_view_info: Option<ActiveViewInfo>,
+    floating_windows: bool,
+    show_title_bars: bool,
 }
 
 pub(crate) struct ResponseStruct {
@@ -89,6 +90,8 @@ impl ViewerBase {
             responses: BTreeMap::new(),
             active_view_info: None,
             active_view: Default::default(),
+            floating_windows: false,
+            show_title_bars: false,
         }
     }
 
@@ -208,6 +211,9 @@ impl ViewerBase {
             ui.checkbox(view.enabled_mut(), view_label);
         }
         ui.separator();
+        ui.checkbox(&mut self.floating_windows, "floating windows");
+        ui.checkbox(&mut self.show_title_bars, "show title bars");
+        ui.separator();
     }
 
     /// Update bottom status bar
@@ -275,8 +281,6 @@ impl ViewerBase {
             }
 
             ui0.horizontal_wrapped(|ui| {
-                // for loop to draw all the views, but not the plots yet
-
                 let mut boxes = vec![];
                 for (view_label, view) in self.views.iter_mut() {
                     if !view.enabled() {
@@ -289,7 +293,7 @@ impl ViewerBase {
                     });
                 }
 
-                let rects = WindowArea::flow_layout(&boxes, ui);
+                let rects = WindowArea::flow_layout(ui, &boxes, self.show_title_bars);
 
                 for placement in rects.iter() {
                     let view = self.views.get_mut(&placement.view_label).unwrap();
@@ -302,6 +306,8 @@ impl ViewerBase {
                                 self.backface_culling,
                                 self.context.clone(),
                                 placement,
+                                self.floating_windows,
+                                self.show_title_bars,
                             );
 
                             if let Some(response) = response {
@@ -326,8 +332,13 @@ impl ViewerBase {
                                 .backface_culling(self.backface_culling)
                                 .render();
 
-                            let (ui_response, view_disabled) =
-                                show_image(ctx, render_result.rgba_egui_tex_id, placement);
+                            let (ui_response, view_disabled) = show_image(
+                                ctx,
+                                render_result.rgba_egui_tex_id,
+                                placement,
+                                self.floating_windows,
+                                self.show_title_bars,
+                            );
 
                             if view_disabled {
                                 view.enabled = false;
@@ -348,7 +359,13 @@ impl ViewerBase {
                             );
                         }
                         View::Plot(view) => {
-                            Self::show_plot(ctx, view, placement);
+                            Self::show_plot(
+                                ctx,
+                                view,
+                                placement,
+                                self.floating_windows,
+                                self.show_title_bars,
+                            );
                         }
                     }
                 }
@@ -356,175 +373,186 @@ impl ViewerBase {
         });
     }
 
-    fn show_plot(ctx: &egui::Context, view: &mut PlotView, placement: &WindowPlacement) {
+    fn show_plot(
+        ctx: &egui::Context,
+        view: &mut PlotView,
+        placement: &WindowPlacement,
+        floating_windows: bool,
+        show_title_bars: bool,
+    ) {
         let mut enabled = true;
 
-        egui::Window::new(placement.view_label.clone())
-            .movable(false)
-            .title_bar(true)
-            .collapsible(false)
-            .open(&mut enabled)
-            .fixed_pos(placement.rect.min)
-            .fixed_size(egui::Vec2::new(
-                placement.rect.width(),
-                placement.rect.height(),
+        fn color_cnv(color: sophus_renderer::renderables::Color) -> egui::Color32 {
+            egui::Color32::from_rgb(
+                (color.r * 255.0).clamp(0.0, 255.0) as u8,
+                (color.g * 255.0).clamp(0.0, 255.0) as u8,
+                (color.b * 255.0).clamp(0.0, 255.0) as u8,
+            )
+        }
+
+        fn add_vline(plot_ui: &mut PlotUi, name: &str, x: f64) {
+            plot_ui
+                .add(VLine::new(name.to_owned(), x).color(egui::Color32::from_rgb(255, 255, 255)));
+        }
+
+        fn show_vec<const N: usize>(curve_name: &str, g: &CurveVec<N>, plot_ui: &mut PlotUi) {
+            if let Some(v_line) = &g.v_line {
+                add_vline(plot_ui, &v_line.name, v_line.x);
+            }
+
+            let mut points: Vec<Vec<egui_plot::PlotPoint>> = vec![Vec::new(); N];
+            for (x, y) in &g.data {
+                for i in 0..N {
+                    points[i].push(egui_plot::PlotPoint::new(*x, y[i]));
+                }
+            }
+
+            match g.style.line_type {
+                LineType::LineStrip => {
+                    for (i, p) in points.iter().enumerate().take(N) {
+                        let plot_points = egui_plot::PlotPoints::Owned(p.clone());
+                        plot_ui.line(
+                            egui_plot::Line::new(format!("{curve_name}-{i}"), plot_points)
+                                .color(color_cnv(g.style.colors[i])),
+                        );
+                    }
+                }
+                LineType::Points => {
+                    // note: use points() for point style
+                    for (i, p) in points.iter().enumerate().take(N) {
+                        let plot_points = egui_plot::PlotPoints::Owned(p.clone());
+                        plot_ui.points(
+                            egui_plot::Points::new(format!("{curve_name}-{i}"), plot_points)
+                                .color(color_cnv(g.style.colors[i])),
+                        );
+                    }
+                }
+            }
+        }
+
+        fn show_vec_conf<const N: usize>(
+            curve_name: &str,
+            g: &CurveVecWithConf<N>,
+            plot_ui: &mut PlotUi,
+        ) {
+            if let Some(v_line) = &g.v_line {
+                add_vline(plot_ui, &v_line.name, v_line.x);
+            }
+
+            let mut mid: Vec<Vec<egui_plot::PlotPoint>> = vec![Vec::new(); N];
+            let mut up: Vec<Vec<egui_plot::PlotPoint>> = vec![Vec::new(); N];
+            let mut dn: Vec<Vec<egui_plot::PlotPoint>> = vec![Vec::new(); N];
+
+            for (x, (y, e)) in &g.data {
+                for i in 0..N {
+                    mid[i].push(egui_plot::PlotPoint::new(*x, y[i]));
+                    up[i].push(egui_plot::PlotPoint::new(*x, y[i] + e[i]));
+                    dn[i].push(egui_plot::PlotPoint::new(*x, y[i] - e[i]));
+                }
+            }
+
+            let mut draw = |series: Vec<Vec<egui_plot::PlotPoint>>, style: LineStyle| {
+                for (i, p) in series.iter().enumerate().take(N) {
+                    let plot_points = egui_plot::PlotPoints::Owned(p.clone());
+                    plot_ui.line(
+                        egui_plot::Line::new(format!("{curve_name}-{i}"), plot_points)
+                            .color(color_cnv(g.style.colors[i]))
+                            .style(style),
+                    );
+                }
+            };
+
+            draw(mid, LineStyle::Solid);
+            let dash = LineStyle::dashed_dense();
+            draw(up, dash);
+            draw(dn, dash);
+        }
+
+        // one place to render every curve
+        let mut render_curves = |plot_ui: &mut PlotUi| {
+            for (curve_name, graph_data) in &mut view.curves {
+                if !graph_data.show_graph {
+                    continue;
+                }
+                match &graph_data.curve {
+                    GraphType::Scalar(g) => {
+                        if let Some(v_line) = &g.v_line {
+                            add_vline(plot_ui, &v_line.name, v_line.x);
+                        }
+
+                        let points: Vec<_> = g
+                            .data
+                            .iter()
+                            .map(|(x, y)| egui_plot::PlotPoint::new(*x, *y))
+                            .collect();
+                        let plot_points = egui_plot::PlotPoints::Owned(points);
+
+                        match g.style.line_type {
+                            LineType::LineStrip => {
+                                plot_ui.line(
+                                    egui_plot::Line::new(curve_name, plot_points)
+                                        .color(color_cnv(g.style.color)),
+                                );
+                            }
+                            LineType::Points => {
+                                plot_ui.points(
+                                    egui_plot::Points::new(curve_name, plot_points)
+                                        .color(color_cnv(g.style.color)),
+                                );
+                            }
+                        }
+                    }
+                    GraphType::Vec2(g) => show_vec(curve_name, g, plot_ui),
+                    GraphType::Vec3(g) => show_vec(curve_name, g, plot_ui),
+                    GraphType::Vec2Conf(g) => show_vec_conf(curve_name, g, plot_ui),
+                    GraphType::Vec3Conf(g) => show_vec_conf(curve_name, g, plot_ui),
+                }
+            }
+        };
+
+        // shared plot builder with optional size for the non-floating window
+        let bar_size = if show_title_bars {
+            WindowArea::BAR_SIZE
+        } else {
+            0.0
+        };
+        let plot_size = if floating_windows {
+            None
+        } else {
+            Some((
+                placement.rect.width() - WindowArea::BORDER,
+                placement.rect.height() - WindowArea::BORDER - bar_size,
             ))
-            .show(ctx, |ui| {
-                let plot = egui_plot::Plot::new(placement.view_label.clone())
-                    .legend(egui_plot::Legend::default().position(egui_plot::Corner::LeftTop))
-                    .height(placement.rect.width() - WindowArea::BORDER)
-                    .width(placement.rect.height() - WindowArea::BORDER - WindowArea::BAR_SIZE);
+        };
 
-                fn color_cnv(color: sophus_renderer::renderables::Color) -> egui::Color32 {
-                    egui::Color32::from_rgb(
-                        (color.r * 255.0).clamp(0.0, 255.0) as u8,
-                        (color.g * 255.0).clamp(0.0, 255.0) as u8,
-                        (color.b * 255.0).clamp(0.0, 255.0) as u8,
-                    )
-                }
-                fn show_vec<const N: usize>(
-                    curve_name: &str,
-                    g: &CurveVec<N>,
-                    plot_ui: &mut PlotUi,
-                ) {
-                    if let Some(v_line) = &g.v_line {
-                        plot_ui.add(
-                            VLine::new(v_line.name.clone(), v_line.x)
-                                .color(egui::Color32::from_rgb(255, 255, 255)),
-                        );
-                    }
-                    let mut points = vec![];
-                    for _ in 0..N {
-                        points.push(Vec::new());
-                    }
+        // single window path with conditional tweaks
+        let mut win = egui::Window::new(placement.view_label.clone())
+            .collapsible(false)
+            .open(&mut enabled);
 
-                    for (x, y) in &g.data {
-                        for i in 0..N {
-                            points[i].push(egui_plot::PlotPoint::new(*x, y[i]));
-                        }
-                    }
+        win = if floating_windows {
+            win.resizable(true).title_bar(true)
+        } else {
+            win.title_bar(show_title_bars)
+                .fixed_pos(placement.rect.min)
+                .fixed_size(egui::Vec2::new(
+                    placement.rect.width(),
+                    placement.rect.height(),
+                ))
+        };
 
-                    match g.style.line_type {
-                        LineType::LineStrip => {
-                            for (i, p) in points.iter().enumerate().take(N) {
-                                let plot_points = egui_plot::PlotPoints::Owned(p.clone());
-                                plot_ui.line(
-                                    egui_plot::Line::new(format!("{curve_name}-{i}"), plot_points)
-                                        .color(color_cnv(g.style.colors[i])),
-                                );
-                            }
-                        }
-                        LineType::Points => {
-                            for (i, p) in points.iter().enumerate().take(N) {
-                                let plot_points = egui_plot::PlotPoints::Owned(p.clone());
-                                plot_ui.line(
-                                    egui_plot::Line::new(format!("{curve_name}-{i}"), plot_points)
-                                        .color(color_cnv(g.style.colors[i])),
-                                );
-                            }
-                        }
-                    }
-                }
-                fn show_vec_conf<const N: usize>(
-                    curve_name: &str,
-                    g: &CurveVecWithConf<N>,
-                    plot_ui: &mut PlotUi,
-                ) {
-                    if let Some(v_line) = &g.v_line {
-                        plot_ui.add(
-                            VLine::new(v_line.name.clone(), v_line.x)
-                                .color(egui::Color32::from_rgb(255, 255, 255)),
-                        );
-                    }
-                    let mut points = vec![];
-                    let mut up_points = vec![];
-                    let mut down_points = vec![];
-                    for _ in 0..N {
-                        points.push(Vec::new());
-                        up_points.push(Vec::new());
-                        down_points.push(Vec::new());
-                    }
+        win.show(ctx, |ui| {
+            let mut plot = egui_plot::Plot::new(placement.view_label.clone())
+                .legend(egui_plot::Legend::default().position(egui_plot::Corner::LeftTop));
 
-                    for (x, (y, e)) in &g.data {
-                        for i in 0..N {
-                            points[i].push(egui_plot::PlotPoint::new(*x, y[i]));
-                            up_points[i].push(egui_plot::PlotPoint::new(*x, y[i] + e[i]));
-                            down_points[i].push(egui_plot::PlotPoint::new(*x, y[i] - e[i]));
-                        }
-                    }
+            if let Some((w, h)) = plot_size {
+                plot = plot.width(w).height(h);
+            }
 
-                    let mut plot_points =
-                        |points: Vec<Vec<egui_plot::PlotPoint>>,
-                         color: [Color; N],
-                         style: LineStyle| {
-                            for (i, p) in points.iter().enumerate().take(N) {
-                                let plot_points = egui_plot::PlotPoints::Owned(p.clone());
-                                plot_ui.line(
-                                    egui_plot::Line::new(format!("{curve_name}-{i}"), plot_points)
-                                        .color(color_cnv(color[i]))
-                                        .style(style),
-                                );
-                            }
-                        };
-
-                    plot_points(points, g.style.colors, LineStyle::Solid);
-                    plot_points(up_points, g.style.colors, LineStyle::dashed_dense());
-                    plot_points(down_points, g.style.colors, LineStyle::dashed_dense());
-                }
-
-                plot.show(ui, |plot_ui| {
-                    for (curve_name, graph_data) in &mut view.curves {
-                        if !graph_data.show_graph {
-                            continue;
-                        }
-
-                        match &graph_data.curve {
-                            GraphType::Scalar(g) => {
-                                if let Some(v_line) = &g.v_line {
-                                    plot_ui.add(
-                                        VLine::new(v_line.name.clone(), v_line.x)
-                                            .color(egui::Color32::from_rgb(255, 255, 255)),
-                                    );
-                                }
-                                let mut points = vec![];
-
-                                for (x, y) in &g.data {
-                                    points.push(egui_plot::PlotPoint::new(*x, *y));
-                                }
-
-                                let plot_points = egui_plot::PlotPoints::Owned(points);
-
-                                match g.style.line_type {
-                                    LineType::LineStrip => {
-                                        plot_ui.line(
-                                            egui_plot::Line::new(curve_name, plot_points)
-                                                .color(color_cnv(g.style.color)),
-                                        );
-                                    }
-                                    LineType::Points => {
-                                        plot_ui.points(
-                                            egui_plot::Points::new(curve_name, plot_points)
-                                                .color(color_cnv(g.style.color)),
-                                        );
-                                    }
-                                }
-                            }
-                            GraphType::Vec2(g) => {
-                                show_vec(curve_name, g, plot_ui);
-                            }
-                            GraphType::Vec3(g) => {
-                                show_vec(curve_name, g, plot_ui);
-                            }
-                            GraphType::Vec2Conf(g) => {
-                                show_vec_conf(curve_name, g, plot_ui);
-                            }
-                            GraphType::Vec3Conf(g) => {
-                                show_vec_conf(curve_name, g, plot_ui);
-                            }
-                        }
-                    }
-                });
+            plot.show(ui, |plot_ui| {
+                render_curves(plot_ui);
             });
+        });
 
         if !enabled {
             view.enabled = false;
