@@ -1,10 +1,8 @@
-use super::{
-    IsSparseSymmetricLinearSystem,
-    NllsError,
-};
 use crate::{
-    block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
-    nlls::linear_system::solvers::IsDenseLinearSystem,
+    IsDenseLinearSystem,
+    IsSparseSymmetricLinearSystem,
+    LinearSolverError,
+    SymmetricBlockSparseMatrix,
 };
 
 /// Dense LU solver
@@ -15,9 +13,9 @@ pub struct DenseLu;
 impl IsSparseSymmetricLinearSystem for DenseLu {
     fn solve(
         &self,
-        triplets: &SymmetricBlockSparseMatrixBuilder,
+        triplets: &SymmetricBlockSparseMatrix,
         b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, NllsError> {
+    ) -> Result<nalgebra::DVector<f64>, LinearSolverError> {
         self.solve_dense(triplets.to_symmetric_dense(), b)
     }
 }
@@ -27,10 +25,10 @@ impl IsDenseLinearSystem for DenseLu {
         &self,
         mat_a: nalgebra::DMatrix<f64>,
         b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, NllsError> {
+    ) -> Result<nalgebra::DVector<f64>, LinearSolverError> {
         match mat_a.full_piv_lu().solve(b) {
             Some(x) => Ok(x),
-            None => Err(NllsError::DenseLuError),
+            None => Err(LinearSolverError::DenseLuError),
         }
     }
 }

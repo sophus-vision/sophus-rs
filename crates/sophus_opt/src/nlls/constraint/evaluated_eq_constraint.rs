@@ -2,11 +2,9 @@ use sophus_autodiff::linalg::{
     MatF64,
     VecF64,
 };
+use sophus_block::BlockJacobian;
 
-use crate::{
-    block::block_jacobian::BlockJacobian,
-    variables::VarKind,
-};
+use crate::variables::VarKind;
 
 /// Evaluated equality constraint.
 ///

@@ -3,12 +3,12 @@ use faer::{
     sparse::FaerError,
 };
 
-use super::{
+use crate::{
     IsSparseSymmetricLinearSystem,
-    NllsError,
+    LinearSolverError,
     SparseSolverError,
+    SymmetricBlockSparseMatrix,
 };
-use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 
 /// Sparse QR solver
 ///
@@ -18,9 +18,9 @@ pub struct SparseQr;
 impl IsSparseSymmetricLinearSystem for SparseQr {
     fn solve(
         &self,
-        upper_triangular: &SymmetricBlockSparseMatrixBuilder,
+        upper_triangular: &SymmetricBlockSparseMatrix,
         b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, NllsError> {
+    ) -> Result<nalgebra::DVector<f64>, LinearSolverError> {
         let dim = upper_triangular.scalar_dimension();
         let csc = faer::sparse::SparseColMat::try_new_from_triplets(
             dim,
@@ -37,7 +37,7 @@ impl IsSparseSymmetricLinearSystem for SparseQr {
                 qr.solve_in_place(faer::reborrow::ReborrowMut::rb_mut(&mut x_ref));
                 Ok(x)
             }
-            Err(e) => Err(NllsError::SparseQrError {
+            Err(e) => Err(LinearSolverError::SparseQrError {
                 details: match e {
                     FaerError::IndexOverflow => SparseSolverError::IndexOverflow,
                     FaerError::OutOfMemory => SparseSolverError::OutOfMemory,

@@ -2,8 +2,8 @@ use std::fmt::Debug;
 
 use super::{
     PartitionSpec,
-    block_sparse_matrix_builder::{
-        BlockSparseMatrixBuilder,
+    block_sparse_matrix::{
+        BlockSparseMatrix,
         ToDenseImplMode,
         ToScalarTripletsImplMode,
     },
@@ -12,7 +12,7 @@ use crate::debug_assert_le;
 
 /// A builder for a symmetric block sparse matrix.
 ///
-/// Internally, we chose to represent the symmetric matrix as a upper triangular matrix.
+/// Internally, we chose to represent the symmetric matrix as a UPPER TRIANGULAR matrix.
 /// In particular, the target block sparse matrix has the following structure:
 ///
 /// ```ascii
@@ -39,21 +39,21 @@ use crate::debug_assert_le;
 /// ---------------------------------------------------------
 /// ```
 ///
-/// It ia split into a grid of regions and each region is split into a grid of block matrices.
+/// It is split into a grid of regions and each region is split into a grid of block matrices.
 /// Within each region, all block matrices have the same shape. E.g., the first region contains only
 /// AxA-shaped blocks, the second region contains only AxB blocks, etc.
 #[derive(Debug)]
-pub struct SymmetricBlockSparseMatrixBuilder {
-    pub(crate) builder: BlockSparseMatrixBuilder,
+pub struct SymmetricBlockSparseMatrix {
+    pub(crate) builder: BlockSparseMatrix,
 }
 
-impl SymmetricBlockSparseMatrixBuilder {
+impl SymmetricBlockSparseMatrix {
     /// Create a sparse block matrix "filled" with zeros.
     ///
     /// The shape of the block matrix is determined by the partition specs.
     pub fn zero(partitions: &[PartitionSpec]) -> Self {
         Self {
-            builder: BlockSparseMatrixBuilder::zero(partitions, partitions),
+            builder: BlockSparseMatrix::zero(partitions, partitions),
         }
     }
 

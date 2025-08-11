@@ -1,10 +1,11 @@
+use sophus_block::{
+    BlockVector,
+    PartitionSpec,
+    SymmetricBlockSparseMatrix,
+};
+
 use super::EvalMode;
 use crate::{
-    block::{
-        PartitionSpec,
-        block_vector::BlockVector,
-        symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
-    },
     nlls::{
         OptParams,
         constraint::evaluated_eq_set::{
@@ -100,7 +101,7 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> IsEvalua
         variables: &VarFamilies,
         lambda: &BlockVector,
         constraint_idx: usize,
-        block_triplet: &mut SymmetricBlockSparseMatrixBuilder,
+        block_triplet: &mut SymmetricBlockSparseMatrix,
         block_vec: &mut BlockVector,
     ) {
         let num_args = self.family_names.len();

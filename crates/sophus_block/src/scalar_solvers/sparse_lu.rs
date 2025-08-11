@@ -11,12 +11,12 @@ use faer::{
     },
 };
 
-use super::{
+use crate::{
     IsSparseSymmetricLinearSystem,
-    NllsError,
+    LinearSolverError,
     SparseSolverError,
+    SymmetricBlockSparseMatrix,
 };
-use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 
 /// Sparse LU solver
 ///
@@ -26,9 +26,9 @@ pub struct SparseLu;
 impl IsSparseSymmetricLinearSystem for SparseLu {
     fn solve(
         &self,
-        upper_triangular: &SymmetricBlockSparseMatrixBuilder,
+        upper_triangular: &SymmetricBlockSparseMatrix,
         b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, NllsError> {
+    ) -> Result<nalgebra::DVector<f64>, LinearSolverError> {
         let dim = upper_triangular.scalar_dimension();
         let csc: SparseColMat<usize, f64> = SparseColMat::try_new_from_triplets(
             dim,
@@ -44,7 +44,7 @@ impl IsSparseSymmetricLinearSystem for SparseLu {
                 lu.solve_in_place(ReborrowMut::rb_mut(&mut x_ref));
                 Ok(x)
             }
-            Err(e) => Err(NllsError::SparseLuError {
+            Err(e) => Err(LinearSolverError::SparseLuError {
                 details: match e {
                     LuError::Generic(faer_err) => match faer_err {
                         FaerError::IndexOverflow => SparseSolverError::IndexOverflow,
