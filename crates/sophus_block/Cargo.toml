@@ -1,6 +1,6 @@
 [package]
-description = "Sparse non-linear least squares optimization"
-name = "sophus_opt"
+description = "Block-sparse structures and algorithms"
+name = "sophus_block"
 readme = "README.md"
 
 edition.workspace = true
@@ -12,21 +12,15 @@ version.workspace = true
 
 [dependencies]
 sophus_autodiff.workspace = true
-sophus_block.workspace = true
-sophus_image.workspace = true
-sophus_lie.workspace = true
-sophus_sensor.workspace = true
 
 approx.workspace = true
-as-any.workspace = true
-dyn-clone.workspace = true
 faer.workspace = true
 hashbrown.workspace = true
 log.workspace = true
 nalgebra.workspace = true
-ndarray.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
+rayon.workspace = true
 snafu.workspace = true
 
 # native:
@@ -40,13 +34,7 @@ rustc_version.workspace = true
 default = ["std"]
 simd = [
   "sophus_autodiff/simd",
-  "sophus_image/simd",
-  "sophus_lie/simd",
-  "sophus_sensor/simd",
 ]
 std = [
   "sophus_autodiff/std",
-  "sophus_image/std",
-  "sophus_lie/std",
-  "sophus_sensor/std",
 ]

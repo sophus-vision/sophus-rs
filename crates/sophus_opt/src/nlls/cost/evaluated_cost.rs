@@ -1,15 +1,13 @@
 use core::fmt::Debug;
 
 use dyn_clone::DynClone;
+use sophus_block::{
+    BlockVector,
+    SymmetricBlockSparseMatrix,
+};
 
 use super::evaluated_term::EvaluatedCostTerm;
-use crate::{
-    block::{
-        block_vector::BlockVector,
-        symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
-    },
-    variables::VarFamilies,
-};
+use crate::variables::VarFamilies;
 extern crate alloc;
 
 /// Evaluated non-linear least squares cost.
@@ -49,7 +47,7 @@ pub trait IsEvaluatedCost: Debug + DynClone {
         &self,
         variables: &VarFamilies,
         nu: f64,
-        hessian_block_triplet: &mut SymmetricBlockSparseMatrixBuilder,
+        hessian_block_triplet: &mut SymmetricBlockSparseMatrix,
         neg_grad: &mut BlockVector,
     );
 }

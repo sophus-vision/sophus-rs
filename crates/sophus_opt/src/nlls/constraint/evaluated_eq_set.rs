@@ -1,15 +1,13 @@
 use core::fmt::Debug;
 
 use dyn_clone::DynClone;
+use sophus_block::{
+    BlockVector,
+    SymmetricBlockSparseMatrix,
+};
 
 use super::evaluated_eq_constraint::EvaluatedEqConstraint;
-use crate::{
-    block::{
-        block_vector::BlockVector,
-        symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
-    },
-    variables::VarFamilies,
-};
+use crate::variables::VarFamilies;
 
 extern crate alloc;
 
@@ -54,7 +52,7 @@ pub trait IsEvaluatedEqConstraintSet: Debug + DynClone {
         variables: &VarFamilies,
         lambda: &BlockVector,
         constraint_idx: usize,
-        block_triplet: &mut SymmetricBlockSparseMatrixBuilder,
+        block_triplet: &mut SymmetricBlockSparseMatrix,
         b: &mut BlockVector,
     );
 }

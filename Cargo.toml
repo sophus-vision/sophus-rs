@@ -8,6 +8,7 @@ members = [
   "crates/sophus_geo",
   "crates/sophus_spline",
   "crates/sophus_sensor",
+  "crates/sophus_block",
   "crates/sophus_opt",
   "crates/sophus_timeseries",
   "crates/sophus_renderer",
@@ -28,6 +29,7 @@ version = "0.16.0"
 [workspace.dependencies]
 sophus = {path = "crates/sophus", version = "0.16.0"}
 sophus_autodiff = {path = "crates/sophus_autodiff", version = "0.16.0"}
+sophus_block = {path = "crates/sophus_block", version = "0.16.0"}
 sophus_geo = {path = "crates/sophus_geo", version = "0.16.0"}
 sophus_image = {path = "crates/sophus_image", version = "0.16.0"}
 sophus_lie = {path = "crates/sophus_lie", version = "0.16.0"}
@@ -59,6 +61,7 @@ egui_plot = "0.33.0"
 env_logger = "0.11"
 faer = {version = "0.22.6", default-features = false, features = ["linalg", "rayon"]}
 futures-intrusive = "0.5"
+hashbrown = "0.15"
 linked-hash-map = "0.5"
 log = "0.4"
 nalgebra = {version = "0.34", features = ["bytemuck"]}
@@ -70,6 +73,7 @@ rand = {version = "0.9", default-features = false, features = [
   "alloc",
 ]}
 rand_chacha = "0.9"
+rayon = "1.10"
 rustc_version = "0.4"
 serde = {version = "1.0.219", features = ["derive"]}
 snafu = "0.8.6"

@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use super::{
     PartitionSpec,
-    block_sparse_matrix_builder::{
+    block_sparse_matrix::{
         BlockSparseMatrixBuilder,
         ToDenseImplMode,
         ToScalarTripletsImplMode,

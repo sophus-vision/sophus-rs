@@ -8,10 +8,6 @@
 #[cfg(doctest)]
 pub struct ReadmeDoctests;
 
-mod asserts;
-
-/// Block vectors, block matrices and utilities
-pub mod block;
 /// Example problems
 pub mod example_problems;
 /// Non-linear least squares optimization
@@ -20,6 +16,7 @@ pub mod nlls;
 pub mod robust_kernel;
 /// Decision variables
 pub mod variables;
+
 /// sophus_opt prelude.
 ///
 /// It is recommended to import this prelude when working with `sophus_opt types:

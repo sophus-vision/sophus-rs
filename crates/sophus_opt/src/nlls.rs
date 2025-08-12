@@ -19,7 +19,6 @@ pub use cost::{
     evaluated_cost::*,
     evaluated_term::*,
 };
-pub(crate) use linear_system::solvers::*;
 pub use linear_system::{
     cost_system::*,
     eq_system::*,
@@ -30,25 +29,24 @@ use log::{
     info,
 };
 use snafu::Snafu;
+use sophus_block::{
+    BlockVector,
+    LinearSolverError,
+    SymmetricBlockSparseMatrix,
+    scalar_solvers,
+};
 
-use self::sparse_ldlt::SparseLdltParams;
 pub use crate::nlls::functor_library::{
     costs,
     eq_constraints,
 };
-use crate::{
-    block::{
-        block_vector::BlockVector,
-        symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
-    },
-    variables::VarFamilies,
-};
+use crate::variables::VarFamilies;
 
 /// Linear solver type
 #[derive(Copy, Clone, Debug)]
 pub enum LinearSolverType {
     /// Sparse LDLT solver (using faer crate)
-    SparseLdlt(SparseLdltParams),
+    SparseLdlt(scalar_solvers::SparseLdltParams),
     /// Sparse partial pivoting LU solver (using faer crate)
     SparseLu,
     /// Sparse QR solver (using faer crate)
@@ -129,10 +127,10 @@ fn evaluate_cost_and_build_linear_system(
     let eval_mode = EvalMode::CalculateDerivatives;
     cost_system
         .eval(variables, eval_mode, params)
-        .map_err(|e| NllsError::NllsCostSystemError { details: e })?;
+        .map_err(|e| NllsError::NllsCostSystemError { source: e })?;
     eq_system
         .eval(variables, eval_mode, params)
-        .map_err(|e| NllsError::NllsEqConstraintSystemError { details: e })?;
+        .map_err(|e| NllsError::NllsEqConstraintSystemError { source: e })?;
 
     Ok(LinearSystem::from_families_costs_and_constraints(
         variables,
@@ -152,45 +150,30 @@ pub struct OptimizationSolution {
     /// the gradient vector
     pub final_neg_gradient: BlockVector,
     /// the hessian matrix
-    pub final_hessian_plus_damping: SymmetricBlockSparseMatrixBuilder,
+    pub final_hessian_plus_damping: SymmetricBlockSparseMatrix,
 }
 
 /// Linear solver error
 #[derive(Snafu, Debug)]
 pub enum NllsError {
-    /// Sparse LDLt error
-    #[snafu(display("sparse LDLt error {}", details))]
-    SparseLdltError {
-        /// details
-        details: SparseSolverError,
+    /// Linear solver error
+    #[snafu(transparent)]
+    LinearSolver {
+        /// source
+        source: LinearSolverError,
     },
-    /// Sparse LU error
-    #[snafu(display("sparse LU error {}", details))]
-    SparseLuError {
-        /// details
-        details: SparseSolverError,
-    },
-    /// Sparse QR error
-    #[snafu(display("sparse QR error {}", details))]
-    SparseQrError {
-        /// details
-        details: SparseSolverError,
-    },
-    /// Dense LU error
-    #[snafu(display("dense LU solve failed"))]
-    DenseLuError,
 
     /// Quadratic cost system error
-    #[snafu(display("{}", details))]
+    #[snafu(transparent)]
     NllsCostSystemError {
-        /// details
-        details: CostError,
+        /// source
+        source: CostError,
     },
     /// Eq constraint system error
-    #[snafu(display("{}", details))]
+    #[snafu(transparent)]
     NllsEqConstraintSystemError {
-        /// details
-        details: EqConstraintError,
+        /// source
+        source: EqConstraintError,
     },
 }
 
@@ -212,7 +195,7 @@ pub(crate) fn calc_merit(
 ) -> Result<f64, NllsError> {
     cost_system
         .eval(variables, EvalMode::DontCalculateDerivatives, params)
-        .map_err(|e| NllsError::NllsCostSystemError { details: e })?;
+        .map_err(|e| NllsError::NllsCostSystemError { source: e })?;
     let mut c = 0.0;
     for cost in cost_system.evaluated_costs.iter() {
         c += cost.calc_square_error();
@@ -228,9 +211,9 @@ pub fn optimize_nlls_with_eq_constraints(
     params: OptParams,
 ) -> Result<OptimizationSolution, NllsError> {
     let mut cost_system = CostSystem::new(&variables, cost_fns, params)
-        .map_err(|e| NllsError::NllsCostSystemError { details: e })?;
+        .map_err(|e| NllsError::NllsCostSystemError { source: e })?;
     let mut eq_system = EqSystem::new(&variables, eq_constraints_fns, params)
-        .map_err(|e| NllsError::NllsEqConstraintSystemError { details: e })?;
+        .map_err(|e| NllsError::NllsEqConstraintSystemError { source: e })?;
 
     let mut merit = calc_merit(&variables, &mut cost_system, &mut eq_system, params)?;
     let initial_merit = merit;

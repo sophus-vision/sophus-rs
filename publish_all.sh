@@ -10,6 +10,7 @@ cargo publish -p sophus_lie
 cargo publish -p sophus_geo
 cargo publish -p sophus_spline
 cargo publish -p sophus_sensor
+cargo publish -p sophus_block
 cargo publish -p sophus_opt
 cargo publish -p sophus_timeseries
 cargo publish -p sophus_renderer

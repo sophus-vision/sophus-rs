@@ -4,6 +4,11 @@ use super::{
     PartitionSpec,
     grid::Grid,
 };
+use crate::{
+    CompressedBlockMatrix,
+    CompressedBlockRegion,
+    SymbolicBlockPattern,
+};
 
 /// A builder for a block sparse matrix.
 ///
@@ -39,9 +44,14 @@ use super::{
 #[derive(Debug)]
 pub struct BlockSparseMatrixBuilder {
     pub(crate) region_grid: Grid<BlockTripletRegion>,
-    pub(crate) index_offset_per_row_partition: Vec<usize>,
-    pub(crate) index_offset_per_col_partition: Vec<usize>,
+    pub(crate) index_offsets: PartitionIndexOffsets,
     pub(crate) scalar_shape: [usize; 2],
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct PartitionIndexOffsets {
+    pub(crate) per_row_partition: Vec<usize>,
+    pub(crate) per_col_partition: Vec<usize>,
 }
 
 /// A single block "AxB" in a region of the block sparse matrix.
@@ -73,7 +83,7 @@ pub(crate) struct BlockTripletRegion {
     pub(crate) flattened_block_storage: Vec<f64>,
     pub(crate) triplets: Vec<BlockTriplet>,
     // Dimensions (rows, columns) of each block
-    pub(crate) shape: [usize; 2],
+    pub(crate) block_shape: [usize; 2],
 }
 
 pub(crate) enum ToScalarTripletsImplMode {
@@ -126,20 +136,22 @@ impl BlockSparseMatrixBuilder {
             BlockTripletRegion {
                 flattened_block_storage: Vec::new(),
                 triplets: Vec::new(),
-                shape: [0, 0],
+                block_shape: [0, 0],
             },
         );
 
         for r in 0..row_block_dims.len() {
             for c in 0..col_block_dims.len() {
-                region_grid.get_mut(&[r, c]).shape = [row_block_dims[r], col_block_dims[c]];
+                region_grid.get_mut(&[r, c]).block_shape = [row_block_dims[r], col_block_dims[c]];
             }
         }
 
         Self {
             region_grid,
-            index_offset_per_row_partition: row_index_offsets,
-            index_offset_per_col_partition: col_index_offsets,
+            index_offsets: PartitionIndexOffsets {
+                per_row_partition: row_index_offsets,
+                per_col_partition: col_index_offsets,
+            },
             scalar_shape: [row_index_offset, col_index_offset],
         }
     }
@@ -154,8 +166,8 @@ impl BlockSparseMatrixBuilder {
     #[inline]
     pub fn region_grid_shape(&self) -> [usize; 2] {
         [
-            self.index_offset_per_row_partition.len(),
-            self.index_offset_per_col_partition.len(), // <-- FIX
+            self.index_offsets.per_row_partition.len(),
+            self.index_offsets.per_col_partition.len(),
         ]
     }
 
@@ -178,8 +190,8 @@ impl BlockSparseMatrixBuilder {
         block: &nalgebra::DMatrixView<f64>,
     ) {
         let grid_region = self.get_region_mut(region_idx);
-        debug_assert_eq!(block.shape().0, grid_region.shape[0]);
-        debug_assert_eq!(block.shape().1, grid_region.shape[1]);
+        debug_assert_eq!(block.shape().0, grid_region.block_shape[0]);
+        debug_assert_eq!(block.shape().1, grid_region.block_shape[1]);
         grid_region.triplets.push(BlockTriplet {
             block_idx: block_index,
             start_data_idx: grid_region.flattened_block_storage.len(),
@@ -200,12 +212,12 @@ impl BlockSparseMatrixBuilder {
         for region_x_idx in 0..self.region_grid_shape()[0] {
             for region_y_idx in 0..self.region_grid_shape()[1] {
                 let region = self.get_region(&[region_x_idx, region_y_idx]);
-                let [region_rows, region_cols] = region.shape;
+                let [region_rows, region_cols] = region.block_shape;
 
                 for block_triplet in &region.triplets {
-                    let row_offset = self.index_offset_per_row_partition[region_x_idx]
+                    let row_offset = self.index_offsets.per_row_partition[region_x_idx]
                         + block_triplet.block_idx[0] * region_rows;
-                    let col_offset = self.index_offset_per_col_partition[region_y_idx]
+                    let col_offset = self.index_offsets.per_col_partition[region_y_idx]
                         + block_triplet.block_idx[1] * region_cols;
                     let data_idx = block_triplet.start_data_idx;
                     let block = &region.flattened_block_storage
@@ -279,12 +291,12 @@ impl BlockSparseMatrixBuilder {
         for region_x_idx in 0..self.region_grid_shape()[0] {
             for region_y_idx in 0..self.region_grid_shape()[1] {
                 let region = self.get_region(&[region_x_idx, region_y_idx]);
-                let [region_rows, region_cols] = region.shape;
+                let [region_rows, region_cols] = region.block_shape;
 
                 for block_triplet in &region.triplets {
-                    let row_offset = self.index_offset_per_row_partition[region_x_idx]
+                    let row_offset = self.index_offsets.per_row_partition[region_x_idx]
                         + block_triplet.block_idx[0] * region_rows;
-                    let col_offset = self.index_offset_per_col_partition[region_y_idx]
+                    let col_offset = self.index_offsets.per_col_partition[region_y_idx]
                         + block_triplet.block_idx[1] * region_cols;
                     let data_idx = block_triplet.start_data_idx;
                     let block = &region.flattened_block_storage
@@ -320,5 +332,34 @@ impl BlockSparseMatrixBuilder {
     /// Convert the block sparse matrix to dense matrix.
     pub fn to_dense(&self) -> nalgebra::DMatrix<f64> {
         self.to_dense_impl(ToDenseImplMode::General)
+    }
+
+    /// Convert to compressed block form.
+    pub fn to_compressed(&self) -> CompressedBlockMatrix {
+        let rows_of_regions = self.index_offsets.per_row_partition.len();
+        let cols_of_regions = self.index_offsets.per_col_partition.len();
+
+        let mut region_grid = Grid::new(
+            [rows_of_regions, cols_of_regions],
+            CompressedBlockRegion::empty(),
+        );
+
+        // compress each region
+        for region_x_idx in 0..rows_of_regions {
+            for region_y_idx in 0..cols_of_regions {
+                let region_idx = [region_x_idx, region_y_idx];
+                *region_grid.get_mut(&region_idx) =
+                    CompressedBlockRegion::from_block_sparse_matrix(self, region_idx);
+            }
+        }
+
+        CompressedBlockMatrix {
+            sym_block_pattern: SymbolicBlockPattern::from_regions(
+                &self.index_offsets,
+                &region_grid,
+            ),
+            region_grid,
+            index_offsets: self.index_offsets.clone(),
+        }
     }
 }

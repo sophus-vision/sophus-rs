@@ -1,9 +1,10 @@
+use sophus_block::{
+    BlockVector,
+    SymmetricBlockSparseMatrix,
+};
+
 use super::EvalMode;
 use crate::{
-    block::{
-        block_vector::BlockVector,
-        symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
-    },
     nlls::{
         CostError,
         EvaluatedCost,
@@ -72,7 +73,7 @@ impl<const INPUT_DIM: usize, const N: usize> IsEvaluatedCost for EvaluatedCost<I
         &self,
         variables: &VarFamilies,
         nu: f64,
-        hessian_block_triplet: &mut SymmetricBlockSparseMatrixBuilder,
+        hessian_block_triplet: &mut SymmetricBlockSparseMatrix,
         neg_grad: &mut BlockVector,
     ) {
         let num_args = self.family_names.len();

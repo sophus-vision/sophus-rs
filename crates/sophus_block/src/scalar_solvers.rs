@@ -3,46 +3,13 @@ pub(crate) mod sparse_ldlt;
 pub(crate) mod sparse_lu;
 pub(crate) mod sparse_qr;
 
-use snafu::Snafu;
-
-use crate::{
-    block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
-    nlls::NllsError,
-};
-
-/// Sparse solver error - forwarded from faer error enums.
-#[derive(Snafu, Debug)]
-pub enum SparseSolverError {
-    /// An index exceeding the maximum value
-    IndexOverflow,
-    /// Memory allocation failed.
-    OutOfMemory,
-    /// LU decomposition specific error
-    SymbolicSingular,
-    /// LDLt Error
-    LdltError,
-    /// unspecific - to be forward compatible
-    Unspecific,
-}
-
-pub(crate) trait IsSparseSymmetricLinearSystem {
-    fn solve(
-        &self,
-        triplets: &SymmetricBlockSparseMatrixBuilder,
-        b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, NllsError>;
-}
-
-pub(crate) trait IsDenseLinearSystem {
-    fn solve_dense(
-        &self,
-        mat_a: nalgebra::DMatrix<f64>,
-        b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, NllsError>;
-}
+pub use dense_lu::*;
+pub use sparse_ldlt::*;
+pub use sparse_lu::*;
+pub use sparse_qr::*;
 
 #[test]
-fn solver_tests() {
+fn scalar_solver_tests() {
     use faer::sparse::Triplet;
     use log::info;
     use nalgebra::DMatrix;
@@ -51,12 +18,9 @@ fn solver_tests() {
         prelude::*,
     };
 
-    use crate::nlls::linear_system::{
-        DenseLu,
-        PartitionSpec,
-        SparseLdlt,
-        SparseLu,
-        SparseQr,
+    use crate::{
+        IsSparseSymmetricLinearSystem,
+        SymmetricBlockSparseMatrixBuilder,
     };
 
     pub fn from_triplets_nxn(n: usize, triplets: &[Triplet<usize, usize, f64>]) -> DMatrix<f64> {
@@ -73,7 +37,7 @@ fn solver_tests() {
         mat
     }
 
-    let partitions = vec![PartitionSpec {
+    let partitions = vec![crate::PartitionSpec {
         num_blocks: 2,
         block_dim: 3,
     }];
@@ -111,20 +75,30 @@ fn solver_tests() {
         "symmetric_matrix_builder. {:?}",
         symmetric_matrix_builder.to_symmetric_scalar_triplets()
     );
-    let x_dense_lu = DenseLu {}.solve(&symmetric_matrix_builder, &b).unwrap();
-    let x_sparse_qr = SparseQr {}.solve(&symmetric_matrix_builder, &b).unwrap();
-    let x_sparse_lu = SparseLu {}.solve(&symmetric_matrix_builder, &b).unwrap();
-    let x_sparse_ldlt = SparseLdlt::default()
+    let x_dense_lu = dense_lu::DenseLu {}
         .solve(&symmetric_matrix_builder, &b)
         .unwrap();
+    let x_sparse_qr = sparse_qr::SparseQr {}
+        .solve(&symmetric_matrix_builder, &b)
+        .unwrap();
+    let x_sparse_lu = sparse_lu::SparseLu {}
+        .solve(&symmetric_matrix_builder, &b)
+        .unwrap();
+    let x_sparse_ldlt = sparse_ldlt::SparseLdlt::default()
+        .solve(&symmetric_matrix_builder, &b)
+        .unwrap();
+
+    let x_block_sparse = symmetric_matrix_builder.builder.ldlt_solve(&b);
 
     info!("x_dense_lu {x_dense_lu}");
     info!("x_sparse_qr {x_sparse_qr}");
     info!("x_sparse_lu {x_sparse_lu}");
-    info!("x_sparse_ldlt {x_sparse_ldlt}");
+    print!("x_sparse_ldlt {x_sparse_ldlt}");
+    print!("x_block_sparse {x_block_sparse}");
 
     approx::assert_abs_diff_eq!(mat_a.clone() * x_dense_lu, b.clone(), epsilon = 1e-6);
     approx::assert_abs_diff_eq!(mat_a.clone() * x_sparse_qr, b.clone(), epsilon = 1e-6);
     approx::assert_abs_diff_eq!(mat_a.clone() * x_sparse_lu, b.clone(), epsilon = 1e-6);
     approx::assert_abs_diff_eq!(mat_a.clone() * x_sparse_ldlt, b.clone(), epsilon = 1e-6);
+    approx::assert_abs_diff_eq!(mat_a.clone() * x_block_sparse, b.clone(), epsilon = 1e-6);
 }

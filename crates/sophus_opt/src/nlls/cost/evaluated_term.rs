@@ -2,12 +2,12 @@ use sophus_autodiff::linalg::{
     MatF64,
     VecF64,
 };
+use sophus_block::{
+    BlockGradient,
+    BlockHessian,
+};
 
 use crate::{
-    block::{
-        block_gradient::BlockGradient,
-        block_hessian::BlockHessian,
-    },
     prelude::*,
     robust_kernel,
     variables::VarKind,

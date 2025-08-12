@@ -30,16 +30,16 @@ use faer::{
     },
 };
 
-use super::{
+use crate::{
     IsSparseSymmetricLinearSystem,
-    NllsError,
+    LinearSolverError,
     SparseSolverError,
+    SymmetricBlockSparseMatrixBuilder,
 };
-use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
-
 /// Numeric regularization for LDLᵀ (`δ ≃ 10⁻⁶` is usually safe).
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct SparseLdltParams {
+    /// Regularization
     pub regularization_eps: f64,
 }
 
@@ -51,6 +51,7 @@ impl Default for SparseLdltParams {
     }
 }
 
+/// Sparse LDLt solver
 #[derive(Default, Debug)]
 pub struct SparseLdlt {
     params: SparseLdltParams,
@@ -58,6 +59,7 @@ pub struct SparseLdlt {
 }
 
 impl SparseLdlt {
+    /// Create new sparse LDLt solver.
     pub fn new(params: SparseLdltParams, parallelize: bool) -> Self {
         Self {
             params,
@@ -69,19 +71,19 @@ impl SparseLdlt {
 impl IsSparseSymmetricLinearSystem for SparseLdlt {
     fn solve(
         &self,
-        lower: &SymmetricBlockSparseMatrixBuilder,
+        sym_mat: &SymmetricBlockSparseMatrixBuilder,
         b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, NllsError> {
+    ) -> Result<nalgebra::DVector<f64>, LinearSolverError> {
         match SimplicialSparseLdlt::from_triplets(
-            &lower.to_upper_triangular_scalar_triplets(),
-            lower.scalar_dimension(),
+            &sym_mat.to_upper_triangular_scalar_triplets(),
+            sym_mat.scalar_dimension(),
             self.parallelize,
             self.params,
         )
         .solve(b)
         {
             Ok(x) => Ok(x),
-            Err(e) => Err(NllsError::SparseLdltError {
+            Err(e) => Err(LinearSolverError::SparseLdltError {
                 details: match e {
                     SimplicialSparseLdltError::FaerError(fe) => match fe {
                         FaerError::OutOfMemory => SparseSolverError::OutOfMemory,
