@@ -3,7 +3,7 @@ use core::fmt::Debug;
 use dyn_clone::DynClone;
 use sophus_block::{
     BlockVector,
-    SymmetricBlockSparseMatrix,
+    SymmetricBlockSparseMatrixBuilder,
 };
 
 use super::evaluated_eq_constraint::EvaluatedEqConstraint;
@@ -52,7 +52,7 @@ pub trait IsEvaluatedEqConstraintSet: Debug + DynClone {
         variables: &VarFamilies,
         lambda: &BlockVector,
         constraint_idx: usize,
-        block_triplet: &mut SymmetricBlockSparseMatrix,
+        block_triplet: &mut SymmetricBlockSparseMatrixBuilder,
         b: &mut BlockVector,
     );
 }

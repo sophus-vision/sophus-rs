@@ -7,7 +7,6 @@ use nalgebra::{
 use crate::{
     AssembledCol,
     BlockSparseMatrixBuilder,
-    BlockVector,
     CompressedBlockMatrix,
 };
 
@@ -100,17 +99,13 @@ impl BlockLDLt {
     pub fn solve_in_place(&self, x: &mut nalgebra::DVector<f64>) {
         // y = b
         // 1) forward: L y = b
-        println!("{}", x);
         self.forward_solve_in_place(x);
-        println!("{}", x);
 
         // 2) diagonal: D z = y
         self.diag_solve_in_place(x);
-        println!("{}", x);
 
         // 3) back: Lᵀ x = z
         self.back_solve_in_place(x);
-        println!("{}", x);
     }
 
     fn forward_solve_in_place(&self, bv: &mut nalgebra::DVector<f64>) {

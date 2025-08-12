@@ -32,7 +32,7 @@ use snafu::Snafu;
 use sophus_block::{
     BlockVector,
     LinearSolverError,
-    SymmetricBlockSparseMatrix,
+    SymmetricBlockSparseMatrixBuilder,
     scalar_solvers,
 };
 
@@ -150,7 +150,7 @@ pub struct OptimizationSolution {
     /// the gradient vector
     pub final_neg_gradient: BlockVector,
     /// the hessian matrix
-    pub final_hessian_plus_damping: SymmetricBlockSparseMatrix,
+    pub final_hessian_plus_damping: SymmetricBlockSparseMatrixBuilder,
 }
 
 /// Linear solver error

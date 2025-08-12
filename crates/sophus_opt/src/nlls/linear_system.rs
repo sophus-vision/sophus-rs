@@ -5,7 +5,7 @@ use sophus_block::{
     BlockVector,
     IsSparseSymmetricLinearSystem,
     PartitionSpec,
-    SymmetricBlockSparseMatrix,
+    SymmetricBlockSparseMatrixBuilder,
     scalar_solvers,
 };
 
@@ -35,7 +35,7 @@ pub enum EvalMode {
 
 /// Linear system of the non-linear least squares problem with equality constraints
 pub struct LinearSystem {
-    pub(crate) sparse_hessian_plus_damping: SymmetricBlockSparseMatrix,
+    pub(crate) sparse_hessian_plus_damping: SymmetricBlockSparseMatrixBuilder,
     pub(crate) neg_gradient: BlockVector,
     pub(crate) solver: LinearSolverType,
     parallelize: bool,
@@ -98,7 +98,7 @@ impl LinearSystem {
 
         partitions.extend(eq_system.partitions.clone());
 
-        let mut block_triplets = SymmetricBlockSparseMatrix::zero(&partitions);
+        let mut block_triplets = SymmetricBlockSparseMatrixBuilder::zero(&partitions);
         let mut neg_grad = BlockVector::zero(&partitions);
 
         for cost in cost_system.evaluated_costs.iter() {

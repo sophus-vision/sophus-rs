@@ -1,6 +1,6 @@
 use sophus_block::{
     BlockVector,
-    SymmetricBlockSparseMatrix,
+    SymmetricBlockSparseMatrixBuilder,
 };
 
 use super::EvalMode;
@@ -73,7 +73,7 @@ impl<const INPUT_DIM: usize, const N: usize> IsEvaluatedCost for EvaluatedCost<I
         &self,
         variables: &VarFamilies,
         nu: f64,
-        hessian_block_triplet: &mut SymmetricBlockSparseMatrix,
+        hessian_block_triplet: &mut SymmetricBlockSparseMatrixBuilder,
         neg_grad: &mut BlockVector,
     ) {
         let num_args = self.family_names.len();
