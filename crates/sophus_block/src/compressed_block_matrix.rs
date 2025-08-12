@@ -88,21 +88,22 @@ impl SymbolicBlockPattern {
             "must be square at block level"
         );
 
-        // ---- pass 1: count per block column j ----
+        // ---- pass 1: count per global block column j ----
         let mut count_per_col = vec![0usize; num_block_cols];
 
         for ry in 0..n_parts {
-            for block_col_idx in 0..nb_cols_per_ry[ry] {
-                let j = block_col_off[ry] + block_col_idx;
+            let nbc_ry = nb_cols_per_ry[ry];
+            for bc in 0..nbc_ry {
+                let j = block_col_off[ry] + bc;
 
-                // strictly above diagonal regions: rx < ry
+                // strictly above-diagonal regions: rx < ry
                 for rx in 0..ry {
                     let reg = region_grid.get(&[rx, ry]);
                     if reg.num_non_empty_blocks == 0 {
                         continue;
                     }
-                    for (block_row_idx, _entry_idx) in reg.iter_csc_col(block_col_idx) {
-                        let i = block_row_off[rx] + block_row_idx;
+                    for (br, _) in reg.iter_csc_col(bc) {
+                        let i = block_row_off[rx] + br;
                         debug_assert!(i < j, "structure says above diagonal");
                         count_per_col[j] += 1;
                     }
@@ -111,8 +112,8 @@ impl SymbolicBlockPattern {
                 // strictly upper blocks inside diagonal region (ry,ry): br < bc
                 let reg_diag = region_grid.get(&[ry, ry]);
                 if reg_diag.num_non_empty_blocks != 0 {
-                    for (block_row_idx, _entry_idx) in reg_diag.iter_csc_col(block_col_idx) {
-                        if block_row_idx < block_col_idx {
+                    for (br, _) in reg_diag.iter_csc_col(bc) {
+                        if br < bc {
                             count_per_col[j] += 1;
                         }
                     }
@@ -127,13 +128,17 @@ impl SymbolicBlockPattern {
         }
         let nnz = csc_col_ptr[num_block_cols];
         let mut csc_row_idx = vec![0u32; nnz];
-        let mut w = csc_col_ptr.clone(); // write cursors
+
+        // Reuse `count_per_col` as write cursors (no new allocation):
+        // make it equal to the starting offsets of each column.
+        let mut w = count_per_col; // length == num_block_cols
+        w.copy_from_slice(&csc_col_ptr[..num_block_cols]);
 
         // ---- pass 2: fill rows into each column ----
         for ry in 0..n_parts {
-            let num_block_cols = nb_cols_per_ry[ry];
-            for block_col_idx in 0..num_block_cols {
-                let j = block_col_off[ry] + block_col_idx;
+            let nbc_ry = nb_cols_per_ry[ry];
+            for bc in 0..nbc_ry {
+                let j = block_col_off[ry] + bc;
 
                 // from regions strictly above diagonal
                 for rx in 0..ry {
@@ -141,10 +146,10 @@ impl SymbolicBlockPattern {
                     if reg.num_non_empty_blocks == 0 {
                         continue;
                     }
-                    for (block_row_idx, _entry_idx) in reg.iter_csc_col(block_col_idx) {
-                        let i = block_row_off[rx] + block_row_idx;
+                    for (br, _) in reg.iter_csc_col(bc) {
+                        let i = block_row_off[rx] + br;
                         let pos = w[j];
-                        w[j] += 1;
+                        w[j] = pos + 1;
                         csc_row_idx[pos] = i as u32;
                     }
                 }
@@ -152,21 +157,23 @@ impl SymbolicBlockPattern {
                 // from diagonal region: strictly upper only
                 let reg_diag = region_grid.get(&[ry, ry]);
                 if reg_diag.num_non_empty_blocks != 0 {
-                    for (block_row_idx, _entry_idx) in reg_diag.iter_csc_col(block_col_idx) {
-                        if block_row_idx < block_col_idx {
-                            let i = block_row_off[ry] + block_row_idx;
+                    for (br, _) in reg_diag.iter_csc_col(bc) {
+                        if br < bc {
+                            let i = block_row_off[ry] + br;
                             let pos = w[j];
-                            w[j] += 1;
+                            w[j] = pos + 1;
                             csc_row_idx[pos] = i as u32;
                         }
                     }
                 }
 
-                // optional: make order deterministic
+                // Keep deterministic ordering (cost-free in allocations; sort is in-place).
                 let start = csc_col_ptr[j];
                 let end = w[j];
                 csc_row_idx[start..end].sort_unstable();
-                // (no dedup needed: your region compression already produced unique blocks)
+
+                // If you ensure region CSC columns are sorted and you iterate rx in ascending order
+                // (which you do), you can remove the sort above entirely.
             }
         }
 
@@ -217,16 +224,15 @@ impl CompressedBlockRegion {
         mat: &BlockSparseMatrixBuilder,
         region_idx: [usize; 2],
     ) -> CompressedBlockRegion {
-        use hashbrown::HashMap;
-
-        let region_x_idx = region_idx[0];
-        let region_y_idx = region_idx[1];
+        let [region_x_idx, region_y_idx] = region_idx;
 
         let region = mat.get_region(&region_idx);
-        if region.block_shape[0] == 0 || region.block_shape[1] == 0 {
+        let br_dim = region.block_shape[0];
+        let bc_dim = region.block_shape[1];
+        if br_dim == 0 || bc_dim == 0 {
             return CompressedBlockRegion::empty();
         }
-        let num_block_elems = region.block_shape[0] * region.block_shape[1];
+        let num_block_elems = br_dim * bc_dim;
 
         // #block rows in this region’s partition grid
         let num_block_rows = {
@@ -237,7 +243,7 @@ impl CompressedBlockRegion {
                 .get(region_x_idx + 1)
                 .copied()
                 .unwrap_or(mat.scalar_shape[0]);
-            (end - start) / region.block_shape[0]
+            (end - start) / br_dim
         };
         // #block cols in this region’s partition grid
         let num_block_cols = {
@@ -248,105 +254,121 @@ impl CompressedBlockRegion {
                 .get(region_y_idx + 1)
                 .copied()
                 .unwrap_or(mat.scalar_shape[1]);
-            (end - start) / region.block_shape[1]
+            (end - start) / bc_dim
         };
 
-        // outputs
-        let mut entries: Vec<(usize, usize, usize)> = Vec::new(); // (block_row_idx, block_col_idx, entry_idx)
-        let mut flattened_block_storage: Vec<f64> = Vec::new(); // entries.len() * num_block_elems
-        let mut count_cols = vec![0usize; num_block_cols];
-        let mut count_rows = vec![0usize; num_block_rows];
-        let mut diag_entry_indices: Vec<Option<usize>> = vec![None; num_block_cols];
+        // Fast path: no triplets in this region (but keep shapes/ptrs consistent)
+        if region.triplets.is_empty() {
+            return CompressedBlockRegion {
+                block_shape: [br_dim, bc_dim],
+                region_shape: [num_block_rows, num_block_cols],
+                num_non_empty_blocks: 0,
+                flattened_block_storage: Vec::new(),
+                csc_col_ptr: vec![0; num_block_cols + 1],
+                csc_row_idx: Vec::new(),
+                csc_entry_of_pos: Vec::new(),
+                diag_pos_in_csc: vec![None; num_block_cols],
+            };
+        }
 
-        // (block_row_idx,block_col_idx) -> storage_idx
-        let mut map: HashMap<u64, usize> = HashMap::with_capacity(region.triplets.len() * 2);
-
+        // ------------- Pass 0: sort & coalesce keys (no hashing) -------------
+        // Build (br, bc, start_data_idx) and sort by (bc, br) so we can group in O(n).
+        let mut coords: Vec<(usize, usize, usize)> = Vec::with_capacity(region.triplets.len());
         for t in &region.triplets {
-            let block_row_idx = t.block_idx[0];
-            let block_col_idx = t.block_idx[1];
-            debug_assert!(block_row_idx < num_block_rows && block_col_idx < num_block_cols);
+            let br = t.block_idx[0];
+            let bc = t.block_idx[1];
+            debug_assert!(br < num_block_rows && bc < num_block_cols);
+            coords.push((br, bc, t.start_data_idx));
+        }
+        coords.sort_unstable_by(|a, b| (a.1, a.0).cmp(&(b.1, b.0))); // (bc, br)
 
-            // 64-bit key packs the two usize indices into one number. The key is unique as long as
-            // block_row_idx/block_col_idx fit in u32.
-            let key = ((block_row_idx as u64) << 32) | (block_col_idx as u64);
-            debug_assert!(block_row_idx <= u32::MAX as usize && block_col_idx <= u32::MAX as usize);
+        // ------------- Pass 1: count unique blocks per column, diag flags -------------
+        let mut count_cols = vec![0usize; num_block_cols]; // total uniques per col
+        let mut diag_exists = vec![false; num_block_cols];
+        let mut unique_blocks = 0usize;
 
-            let entry_idx = *map.entry(key).or_insert_with(|| {
-                // flattened_block_storage is a single contiguous array holding all unique blocks
-                // for this region. We add blocks in chunks of num_block_elems, the current len() is
-                // always a multiple of num_block_elems.
-                let entry_idx = flattened_block_storage.len() / num_block_elems;
-                // Append space for one block (all zeros), reserving num_block_elems.
-                flattened_block_storage
-                    .resize(flattened_block_storage.len() + num_block_elems, 0.0);
-                // Records this unique block’s coordinates in the region grid (block_row_idx,
-                // block_col_idx) and the entry index idx where its values live
-                entries.push((block_row_idx, block_col_idx, entry_idx));
-                count_cols[block_col_idx] += 1;
-                count_rows[block_row_idx] += 1;
-                if region_x_idx == region_y_idx && block_row_idx == block_col_idx {
-                    diag_entry_indices[block_col_idx] = Some(entry_idx);
-                }
-                entry_idx
-            });
-
-            let dst = &mut flattened_block_storage
-                [entry_idx * num_block_elems..(entry_idx + 1) * num_block_elems];
-            let src = &region.flattened_block_storage
-                [t.start_data_idx..t.start_data_idx + num_block_elems];
-            for i in 0..num_block_elems {
-                dst[i] += src[i];
+        let mut k = 0usize;
+        while k < coords.len() {
+            let (br, bc, _) = coords[k];
+            // advance over equal (br, bc)
+            k += 1;
+            while k < coords.len() && coords[k].0 == br && coords[k].1 == bc {
+                k += 1;
             }
+            count_cols[bc] += 1;
+            if region_x_idx == region_y_idx && br == bc {
+                diag_exists[bc] = true;
+            }
+            unique_blocks += 1;
         }
 
-        let num_non_empty_blocks = entries.len();
-
-        // CSC
-
-        // CSC pointers with a cumulative sum (last entry equal to num_non_empty_blocks).
+        // ------------- CSC structure: col_ptr & diag placement -------------
         let mut csc_col_ptr = vec![0usize; num_block_cols + 1];
-        for block_col_idx in 0..num_block_cols {
-            // csc_col_ptr[j] is the starting slot in csc_row_idx for column j.
-            // csc_col_ptr[j+1] is the end (start of the next column).
-            csc_col_ptr[block_col_idx + 1] = csc_col_ptr[block_col_idx] + count_cols[block_col_idx];
+        for j in 0..num_block_cols {
+            csc_col_ptr[j + 1] = csc_col_ptr[j] + count_cols[j];
         }
-        // stores block row index for the entry placed at pos.
-        let mut csc_row_idx = vec![0u32; num_non_empty_blocks];
-        // stores entry_idx for that entry.
-        let mut csc_entry_of_pos = vec![0usize; num_non_empty_blocks];
-        // remembers where the diagonal block ended up in column j.
-        let mut diag_pos_in_csc = vec![None; num_block_cols];
-        // per-column write cursor.
-        let mut col_cursor = csc_col_ptr.clone();
+        let nnz = csc_col_ptr[num_block_cols];
 
-        // writes only off-diagonal blocks into each column in increasing order of discovery.
-        for &(block_row_idx, block_col_idx, entry_idx) in &entries {
-            if region_x_idx == region_y_idx && block_row_idx == block_col_idx {
-                continue;
+        let mut csc_row_idx = vec![0u32; nnz];
+        let mut csc_entry_of_pos = vec![0usize; nnz];
+        let mut diag_pos_in_csc = vec![None; num_block_cols];
+
+        // Off-diagonal write cursors per column; reuse count_cols as cursors
+        // by initializing it with the starts.
+        count_cols[..num_block_cols].copy_from_slice(&csc_col_ptr[..num_block_cols]);
+
+        // Pre-compute where the diagonal (if present) should go: last slot in the column.
+        for j in 0..num_block_cols {
+            if diag_exists[j] {
+                diag_pos_in_csc[j] = Some(csc_col_ptr[j + 1] - 1);
             }
-            let pos = col_cursor[block_col_idx];
-            // advance cursor at block_col_idx.
-            col_cursor[block_col_idx] += 1;
-            csc_row_idx[pos] = block_row_idx as u32;
-            csc_entry_of_pos[pos] = entry_idx;
         }
-        if region_x_idx == region_y_idx {
-            // On diagonal regions, we put the diagonal block (if it exists) at the last slot of its
-            // column.
-            for block_col_idx in 0..num_block_cols {
-                if let Some(entry_idx) = diag_entry_indices[block_col_idx] {
-                    let p = csc_col_ptr[block_col_idx + 1] - 1;
-                    csc_row_idx[p] = block_col_idx as u32;
-                    csc_entry_of_pos[p] = entry_idx;
-                    diag_pos_in_csc[block_col_idx] = Some(p);
+
+        // ------------- Allocate block storage (exact) -------------
+        let mut flattened_block_storage = vec![0.0f64; unique_blocks * num_block_elems];
+
+        // ------------- Pass 2: fill storage + CSC arrays -------------
+        let mut eidx = 0usize; // entry index in block storage
+        let mut ptr = 0usize;
+        while ptr < coords.len() {
+            let (br, bc, start0) = coords[ptr];
+            // Determine target CSC position for (br, bc)
+            let pos = if region_x_idx == region_y_idx && br == bc {
+                // diagonal goes last
+                diag_pos_in_csc[bc].unwrap()
+            } else {
+                let p = count_cols[bc];
+                count_cols[bc] = p + 1;
+                p
+            };
+            csc_row_idx[pos] = br as u32;
+            csc_entry_of_pos[pos] = eidx;
+
+            // Sum all duplicates of this (br, bc) into the eidx-th block
+            let dst =
+                &mut flattened_block_storage[eidx * num_block_elems..(eidx + 1) * num_block_elems];
+            {
+                let mut q = ptr;
+                while q < coords.len() && coords[q].0 == br && coords[q].1 == bc {
+                    let start = coords[q].2;
+                    let src = &region.flattened_block_storage[start..start + num_block_elems];
+                    // dst += src
+                    for t in 0..num_block_elems {
+                        dst[t] += src[t];
+                    }
+                    q += 1;
                 }
+                ptr = q;
             }
+
+            eidx += 1;
         }
+        debug_assert_eq!(eidx, unique_blocks);
 
         CompressedBlockRegion {
-            block_shape: region.block_shape,
+            block_shape: [br_dim, bc_dim],
             region_shape: [num_block_rows, num_block_cols],
-            num_non_empty_blocks,
+            num_non_empty_blocks: unique_blocks,
             flattened_block_storage,
             csc_col_ptr,
             csc_row_idx,

@@ -210,14 +210,18 @@ impl BlockLDLt {
 
 #[inline]
 fn gemm_sub_c_ab(c: &mut [f64], mc: usize, nc: usize, a: &[f64], ka: usize, b: &[f64]) {
-    // c[m x n] -= a[m x k] * b[k x n]
+    debug_assert_eq!(c.len(), mc * nc);
+    debug_assert_eq!(a.len(), mc * ka);
+    debug_assert_eq!(b.len(), ka * nc);
+
     for n in 0..nc {
+        let col_c = &mut c[n * mc..(n + 1) * mc];
+        let col_b = &b[n * ka..(n + 1) * ka]; // length ka
         for k in 0..ka {
-            let bk = &b[n * ka + k]; // b(k,n)
+            let bk = col_b[k];
             let col_a = &a[k * mc..(k + 1) * mc];
-            let col_c = &mut c[n * mc..(n + 1) * mc];
             for m in 0..mc {
-                col_c[m] -= col_a[m] * (*bk);
+                col_c[m] -= col_a[m] * bk;
             }
         }
     }
@@ -248,61 +252,133 @@ fn gemv_t_sub(y: &mut [f64], a: &[f64], ma: usize, na: usize, x: &[f64]) {
     }
 }
 
+/// Compact accumulator for off-diagonal blocks W_ij in one column j.
+/// Keeps rows sorted, and stores all blocks in one contiguous buffer.
+struct RowAcc {
+    rows: Vec<usize>, // i's in ascending order
+    offs: Vec<usize>, // starting offset in `buf` per row
+    mi: Vec<usize>,   // m_i per row
+    buf: Vec<f64>,    // concatenated blocks, each size = m_i * m_j
+    m_j: usize,       // current column block-size
+}
+
+impl RowAcc {
+    fn new() -> Self {
+        Self {
+            rows: Vec::new(),
+            offs: Vec::new(),
+            mi: Vec::new(),
+            buf: Vec::new(),
+            m_j: 0,
+        }
+    }
+    /// Prepare for a new column j, with optional capacity hints.
+    fn begin(&mut self, m_j: usize, row_cap: usize, buf_cap: usize) {
+        self.rows.clear();
+        self.offs.clear();
+        self.mi.clear();
+        self.buf.clear();
+        self.m_j = m_j;
+        self.rows.reserve(row_cap);
+        self.offs.reserve(row_cap);
+        self.mi.reserve(row_cap);
+        self.buf.reserve(buf_cap);
+    }
+    /// Get a mutable block W_ij (alloc if first seen). Returns a slice of length m_i * m_j.
+    fn get_or_alloc(&mut self, i: usize, m_i: usize) -> &mut [f64] {
+        match self.rows.binary_search(&i) {
+            Ok(pos) => {
+                debug_assert_eq!(self.mi[pos], m_i, "m_i changed for row {}", i);
+                let off = self.offs[pos];
+                let len = self.mi[pos] * self.m_j;
+                &mut self.buf[off..off + len]
+            }
+            Err(pos) => {
+                let off = self.buf.len();
+                let len = m_i * self.m_j;
+                self.buf.resize(off + len, 0.0);
+                self.rows.insert(pos, i);
+                self.offs.insert(pos, off);
+                self.mi.insert(pos, m_i);
+                &mut self.buf[off..off + len]
+            }
+        }
+    }
+    #[inline]
+    fn n_rows(&self) -> usize {
+        self.rows.len()
+    }
+    #[inline]
+    fn row(&self, idx: usize) -> usize {
+        self.rows[idx]
+    }
+    #[inline]
+    fn block_mut_by_index(&mut self, idx: usize) -> &mut [f64] {
+        let off = self.offs[idx];
+        let len = self.mi[idx] * self.m_j;
+        &mut self.buf[off..off + len]
+    }
+}
+
 use std::collections::BTreeMap;
 
 impl BlockLDLt {
-    /// factorize
+    /// f
     pub fn factorize_left_looking(&mut self, cbm: &CompressedBlockMatrix) {
         assert_eq!(self.n, cbm.sym_block_pattern.num_block_cols);
 
-        // Temporary workspace per column
         let mut assembled = AssembledCol {
             m_j: 0,
             diag: None,
             entries: Vec::new(),
         };
-        // Off-diagonal accumulator: i -> W_ij (m_i x m_j)
-        let mut acc: BTreeMap<usize, Vec<f64>> = BTreeMap::new();
-        // re-usable temporaries
+
+        // Off-diagonal accumulator for a single column (reused each j)
+        let mut acc = RowAcc::new();
+
+        // Reusable temporaries
         let mut mat_m = Vec::new(); // m_k x m_j
 
-        // We’ll build L as vectors per column, then compress into CSC at the end.
+        // L columns (same as before)
         let mut col_rows: Vec<Vec<usize>> = vec![Vec::new(); self.n];
-        let mut col_blocks: Vec<Vec<f64>> = vec![Vec::new(); self.n]; // concatenated blocks per col
+        let mut col_blocks: Vec<Vec<f64>> = vec![Vec::new(); self.n];
 
         for j in 0..self.n {
-            acc.clear();
-
             // 1) assemble A(:,j) lower + diag
             cbm.assemble_numeric_col_lower(j, &mut assembled);
             let m_j = assembled.m_j;
-            // diag workspace D_j
+
+            // Heuristic capacity hints for this column:
+            //   - row_cap: at least the structural lower count from assembly
+            //   - buf_cap: sum(rdim) * m_j (first-order guess)
+            let row_cap = assembled.entries.len();
+            let buf_cap = assembled.entries.iter().map(|e| e.rdim).sum::<usize>() * m_j;
+            acc.begin(m_j, row_cap, buf_cap);
+
+            // D_j workspace
             {
                 let dj = self.diag_block_mut(j);
                 if let Some(a_jj) = assembled.diag {
                     dj.copy_from_slice(a_jj);
                 } else {
-                    // treat as identity if absent
                     dj.fill(0.0);
                     for r in 0..m_j {
                         dj[r * m_j + r] = 1.0;
                     }
                 }
             }
-            // initial off-diagonal from A
+
+            // Initial off-diagonal from A
             for e in &assembled.entries {
-                let buf = acc.entry(e.i).or_insert_with(|| vec![0.0; e.rdim * m_j]);
+                let buf = acc.get_or_alloc(e.i, e.rdim);
                 // buf += A(i,j)
                 for t in 0..(e.rdim * m_j) {
                     buf[t] += e.a_ij[t];
                 }
             }
 
-            // 2) left-looking updates from earlier columns k that hit row j,
-            // i.e. columns k where L(j,k) exists. We can find them by scanning k<j
-            // and binary searching for row j in col_rows[k].
+            // 2) left-looking updates from earlier columns k
             for k in 0..j {
-                // find L(j,k)
                 let rows_k = &col_rows[k];
                 if rows_k.is_empty() {
                     continue;
@@ -317,36 +393,28 @@ impl BlockLDLt {
 
                         // M := D_k * L(j,k)^T  (m_k x m_j)
                         mat_m.resize(m_k * m_j, 0.0);
-                        {
-                            let dk = self.diag_block(k);
-                            // M = D_k * (L_jk)^T
-                            // Form L_jk^T implicitly in the multiply
-                            // M[:,n] = D_k * (col n of L_jk^T) = D_k * (row n of L_jk)^T
-                            // Implement as naive triple loop:
-                            for n in 0..m_j {
-                                for kk in 0..m_k {
-                                    let mut accn = 0.0;
-                                    for kk2 in 0..m_k {
-                                        // dk(kk,kk2) * L_jk(n, kk2)
-                                        let dk_kk_kk2 = dk[kk2 * m_k + kk];
-                                        let ljk_n_kk2 = l_jk[kk2 * m_j + n];
-                                        accn += dk_kk_kk2 * ljk_n_kk2;
-                                    }
-                                    mat_m[n * m_k + kk] = accn; // store col-major (kk along rows)
+                        let dk = self.diag_block(k);
+                        for n in 0..m_j {
+                            for kk in 0..m_k {
+                                let mut accn = 0.0;
+                                for kk2 in 0..m_k {
+                                    let dk_kk_kk2 = dk[kk2 * m_k + kk];
+                                    let ljk_n_kk2 = l_jk[kk2 * m_j + n];
+                                    accn += dk_kk_kk2 * ljk_n_kk2;
                                 }
+                                mat_m[n * m_k + kk] = accn;
                             }
                         }
 
-                        // 2a) Diagonal update: D_j -= L(j,k) * M
+                        // 2a) D_j -= L(j,k) * M
                         {
                             let dj = self.diag_block_mut(j);
                             // dj[m_j x m_j] -= L(j,k)[m_j x m_k] * M[m_k x m_j]
                             gemm_sub_c_ab(dj, m_j, m_j, l_jk, m_k, &mat_m);
                         }
 
-                        // 2b) Off-diagonal updates: for each i in column k with i>j
-                        let rows_k = &col_rows[k];
-                        let mut run_off = 0usize; // running offset into col_blocks[k]
+                        // 2b) W(i,j) -= L(i,k) * M  for each i>j in col k
+                        let mut run_off = 0usize; // into col_blocks[k]
                         for &i in rows_k.iter() {
                             let m_i = self.blk_dim[i];
                             let blk_sz = m_i * m_k;
@@ -355,9 +423,8 @@ impl BlockLDLt {
 
                             if i <= j {
                                 continue;
-                            } // only below current pivot row
-                            let w_ij = acc.entry(i).or_insert_with(|| vec![0.0; m_i * m_j]);
-                            // w_ij -= L(i,k) * M
+                            }
+                            let w_ij = acc.get_or_alloc(i, m_i);
                             gemm_sub_c_ab(w_ij, m_i, m_j, lik, m_k, &mat_m);
                         }
                     }
@@ -365,36 +432,31 @@ impl BlockLDLt {
             }
 
             // 3) Finalize: L(:,j) = W * D_j^{-1} ; store column j
-
-            // D_j (m_j x m_j), col-major from your storage
             let dj = DMatrixView::from_slice(self.diag_block(j), m_j, m_j);
-            let chol = dj.cholesky().unwrap();
+            let chol = dj.cholesky().unwrap(); // (Simple; can be made in-place later)
 
-            let mut rows: Vec<usize> = Vec::with_capacity(acc.len());
-            let mut blocks: Vec<f64> = Vec::new();
+            let mut rows: Vec<usize> = Vec::with_capacity(acc.n_rows());
+            let mut blocks: Vec<f64> = Vec::with_capacity(acc.buf.len());
 
-            for (&i, w_ij) in acc.iter_mut() {
-                rows.push(i);
+            for idx in 0..acc.n_rows() {
+                let i = acc.row(idx);
                 let m_i = self.blk_dim[i];
+                rows.push(i);
 
-                // Build W^T (m_j x m_i) from col-major W (m_i x m_j) stored in `w_ij`
-                let mut mat_w_transpose =
-                    DMatrixViewMut::from_slice_with_strides_mut(w_ij, m_j, m_i, m_i, 1);
+                // Build W^T view (m_j x m_i) on top of the contiguous block
+                let w_ij = acc.block_mut_by_index(idx);
+                let mut Wt = DMatrixViewMut::from_slice_with_strides_mut(w_ij, m_j, m_i, m_i, 1);
 
-                // Solve D_j * Y = W^T  (since D_j == D_j^T)
-                chol.solve_mut(&mut mat_w_transpose);
+                // Solve D_j * Y = W^T
+                chol.solve_mut(&mut Wt);
 
-                // L_ij = Y^T (m_i x m_j), still col-major when we push its slice
-                blocks.extend_from_slice(mat_w_transpose.transpose().as_slice());
+                // L_ij = Y^T (m_i x m_j)
+                blocks.extend_from_slice(Wt.transpose().as_slice());
             }
 
             col_rows[j] = rows;
             col_blocks[j] = blocks;
-
-            // copy D_j we already have in place (kept in self.d_storage)
         }
-
-        println!("{:?}", col_blocks);
 
         // 4) compress columns into CSC buffers
         self.compress_columns(col_rows, col_blocks);

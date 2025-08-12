@@ -44,7 +44,8 @@ use crate::debug_assert_ge;
 /// AxA-shaped blocks, the second region contains only AxB blocks, etc.
 #[derive(Debug)]
 pub struct SymmetricBlockSparseMatrixBuilder {
-    pub(crate) builder: BlockSparseMatrixBuilder,
+    /// builder
+    pub builder: BlockSparseMatrixBuilder,
 }
 
 impl SymmetricBlockSparseMatrixBuilder {

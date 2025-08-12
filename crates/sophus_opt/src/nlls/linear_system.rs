@@ -6,7 +6,10 @@ use sophus_block::{
     IsSparseSymmetricLinearSystem,
     PartitionSpec,
     SymmetricBlockSparseMatrixBuilder,
-    scalar_solvers,
+    scalar_solvers::{
+        self,
+        SparseLdlt,
+    },
 };
 
 use super::{
@@ -132,12 +135,17 @@ impl LinearSystem {
     pub(crate) fn solve(&mut self) -> Result<nalgebra::DVector<f64>, NllsError> {
         match self.solver {
             LinearSolverType::SparseLdlt(ldlt_params) => {
-                scalar_solvers::SparseLdlt::new(ldlt_params, self.parallelize)
-                    .solve(
-                        &self.sparse_hessian_plus_damping,
-                        self.neg_gradient.scalar_vector_mut(),
-                    )
-                    .map_err(|e| NllsError::LinearSolver { source: e })
+                // scalar_solvers::SparseLdlt::new(ldlt_params, self.parallelize)
+                //     .solve(
+                //         &self.sparse_hessian_plus_damping,
+                //         self.neg_gradient.scalar_vector_mut(),
+                //     )
+                //     .map_err(|e| NllsError::LinearSolver { source: e })
+
+                Ok(self
+                    .sparse_hessian_plus_damping
+                    .builder
+                    .ldlt_solve(self.neg_gradient.scalar_vector()))
             }
             LinearSolverType::DenseLu => scalar_solvers::DenseLu {}
                 .solve(
