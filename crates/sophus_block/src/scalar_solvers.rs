@@ -1,12 +1,15 @@
+pub(crate) mod dense_ldlt;
 pub(crate) mod dense_lu;
 pub(crate) mod sparse_ldlt;
 pub(crate) mod sparse_lu;
 pub(crate) mod sparse_qr;
-
+pub use dense_ldlt::*;
 pub use dense_lu::*;
 pub use sparse_ldlt::*;
 pub use sparse_lu::*;
 pub use sparse_qr::*;
+
+use crate::IsDenseLinearSystem;
 
 mod tests {
     use super::*;
@@ -84,6 +87,9 @@ mod tests {
         let x_dense_lu = dense_lu::DenseLu {}
             .solve(&symmetric_matrix_builder, &b)
             .unwrap();
+        let x_dense_ldlt = dense_ldlt::DenseLDLt {}
+            .solve_dense(symmetric_matrix_builder.to_symmetric_dense(), &b)
+            .unwrap();
         let x_sparse_qr = sparse_qr::SparseQr {}
             .solve(&symmetric_matrix_builder, &b)
             .unwrap();
@@ -103,6 +109,7 @@ mod tests {
         print!("x_block_sparse {x_block_sparse}");
 
         approx::assert_abs_diff_eq!(mat_a.clone() * x_dense_lu, b.clone(), epsilon = 1e-6);
+        approx::assert_abs_diff_eq!(mat_a.clone() * x_dense_ldlt, b.clone(), epsilon = 1e-6);
         approx::assert_abs_diff_eq!(mat_a.clone() * x_sparse_qr, b.clone(), epsilon = 1e-6);
         approx::assert_abs_diff_eq!(mat_a.clone() * x_sparse_lu, b.clone(), epsilon = 1e-6);
         approx::assert_abs_diff_eq!(mat_a.clone() * x_sparse_ldlt, b.clone(), epsilon = 1e-6);
