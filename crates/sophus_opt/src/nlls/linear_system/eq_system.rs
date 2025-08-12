@@ -95,7 +95,7 @@ pub struct EqSystem {
 impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> IsEvaluatedEqConstraintSet
     for EvaluatedEqSet<RESIDUAL_DIM, INPUT_DIM, N>
 {
-    fn populate_upper_triangular_kkt_mat(
+    fn populate_lower_triangular_kkt_mat(
         &self,
         variables: &VarFamilies,
         lambda: &BlockVector,
@@ -159,18 +159,14 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> IsEvalua
                     &(mat_g_times_lambda.as_view()),
                 );
 
-                // G'
+                // G
                 block_triplet.add_block(
-                    &[family_alpha, region_idx],
-                    [block_start_idx_alpha, 0],
-                    &constraint
-                        .jacobian
-                        .block(arg_id_alpha)
-                        .transpose()
-                        .as_view(),
+                    &[region_idx, family_alpha],
+                    [0, block_start_idx_alpha],
+                    &constraint.jacobian.block(arg_id_alpha).as_view(),
                 );
 
-                // no need to set G since we are only setting the upper triangular system
+                // no need to set G' since we are only setting the lower triangular system
             }
         }
     }

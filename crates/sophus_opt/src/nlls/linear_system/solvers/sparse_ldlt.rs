@@ -69,12 +69,12 @@ impl SparseLdlt {
 impl IsSparseSymmetricLinearSystem for SparseLdlt {
     fn solve(
         &self,
-        upper: &SymmetricBlockSparseMatrixBuilder,
+        lower: &SymmetricBlockSparseMatrixBuilder,
         b: &nalgebra::DVector<f64>,
     ) -> Result<nalgebra::DVector<f64>, NllsError> {
         match SimplicialSparseLdlt::from_triplets(
-            &upper.to_upper_triangular_scalar_triplets(),
-            upper.scalar_dimension(),
+            &lower.to_upper_triangular_scalar_triplets(),
+            lower.scalar_dimension(),
             self.parallelize,
             self.params,
         )

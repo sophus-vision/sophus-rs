@@ -49,7 +49,7 @@ pub trait IsEvaluatedEqConstraintSet: Debug + DynClone {
     fn calc_sum_of_l1_norms(&self) -> f64;
 
     /// Populate upper triangular KKT matrix.
-    fn populate_upper_triangular_kkt_mat(
+    fn populate_lower_triangular_kkt_mat(
         &self,
         variables: &VarFamilies,
         lambda: &BlockVector,

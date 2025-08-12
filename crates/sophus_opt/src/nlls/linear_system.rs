@@ -116,7 +116,7 @@ impl LinearSystem {
         for (constraint_idx, eq_constraint_set) in
             eq_system.evaluated_eq_constraints.iter().enumerate()
         {
-            eq_constraint_set.populate_upper_triangular_kkt_mat(
+            eq_constraint_set.populate_lower_triangular_kkt_mat(
                 variables,
                 &eq_system.lambda,
                 constraint_idx,

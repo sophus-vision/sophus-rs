@@ -77,21 +77,21 @@ pub(crate) struct BlockTripletRegion {
 }
 
 pub(crate) enum ToScalarTripletsImplMode {
-    // input: upper triangular block sparse matrix
+    // input: lower triangular block sparse matrix
     // output: symmetric matrix in scalar triplet representation
-    SymmetricFromUpperTriangularBlockPattern,
-    // input: upper triangular block sparse matrix
+    SymmetricFromLowerTriangularBlockPattern,
+    // input: lower triangular block sparse matrix
     // output: upper triangular matrix in scalar triplet representation
-    UpperTriangularFromUpperTriangularBlockPattern,
+    UpperTriViewFromLowerTriangularBlockPattern,
     // input: general block sparse matrix
     // output: general matrix in scalar triplet representation
     General,
 }
 
 pub(crate) enum ToDenseImplMode {
-    // input: upper triangular block sparse matrix
+    // input: lower triangular block sparse matrix
     // output: symmetric dense matrix
-    SymmetricFromUpperTriangularBlockPattern,
+    SymmetricFromLowerTriangularBlockPattern,
     // input: general block sparse matrix
     // output: general dense matrix
     General,
@@ -145,22 +145,25 @@ impl BlockSparseMatrixBuilder {
     }
 
     /// scalar dimension of the matrix.
+    #[inline]
     pub fn scalar_shape(&self) -> [usize; 2] {
         self.scalar_shape
     }
 
     /// region grid dimension
+    #[inline]
     pub fn region_grid_shape(&self) -> [usize; 2] {
         [
             self.index_offset_per_row_partition.len(),
-            self.index_offset_per_row_partition.len(),
+            self.index_offset_per_col_partition.len(), // <-- FIX
         ]
     }
 
+    #[inline]
     pub(crate) fn get_region(&self, region_idx: &[usize; 2]) -> &BlockTripletRegion {
         self.region_grid.get(region_idx)
     }
-
+    #[inline]
     pub(crate) fn get_region_mut(&mut self, region_idx: &[usize; 2]) -> &mut BlockTripletRegion {
         self.region_grid.get_mut(region_idx)
     }
@@ -197,9 +200,9 @@ impl BlockSparseMatrixBuilder {
         for region_x_idx in 0..self.region_grid_shape()[0] {
             for region_y_idx in 0..self.region_grid_shape()[1] {
                 let region = self.get_region(&[region_x_idx, region_y_idx]);
+                let [region_rows, region_cols] = region.shape;
+
                 for block_triplet in &region.triplets {
-                    let region_rows = region.shape[0];
-                    let region_cols = region.shape[1];
                     let row_offset = self.index_offset_per_row_partition[region_x_idx]
                         + block_triplet.block_idx[0] * region_rows;
                     let col_offset = self.index_offset_per_col_partition[region_y_idx]
@@ -207,43 +210,53 @@ impl BlockSparseMatrixBuilder {
                     let data_idx = block_triplet.start_data_idx;
                     let block = &region.flattened_block_storage
                         [data_idx..data_idx + (region_rows * region_cols)];
-                    let is_block_on_diagonal = region_x_idx == region_y_idx
-                        && block_triplet.block_idx[0] == block_triplet.block_idx[1];
+
+                    let on_diag_region = region_x_idx == region_y_idx;
+                    let on_diag_block =
+                        on_diag_region && block_triplet.block_idx[0] == block_triplet.block_idx[1];
 
                     for c in 0..region_cols {
                         for r in 0..region_rows {
-                            let value = block[c * region.shape[0] + r];
+                            let value = block[c * region_rows + r];
                             let scalar_r = row_offset + r;
                             let scalar_c = col_offset + c;
 
                             match mode {
-                                ToScalarTripletsImplMode::SymmetricFromUpperTriangularBlockPattern => {
-                                    // Assumption: Input has an upper triangular block pattern. See
-                                    // SymmetricBlockSparseMatrixBuilder for details. Hence, we need to
-                                    // duplicate blocks above the diagonal and mirror them below the
-                                    // diagonal to get a symmetric matrix.
+                                ToScalarTripletsImplMode::General => {
+                                    triplets.push(faer::sparse::Triplet::new(scalar_r, scalar_c, value));
+                                }
+                                ToScalarTripletsImplMode::SymmetricFromLowerTriangularBlockPattern => {
+                                    // Storage assumed lower by block pattern.
+                                    // Emit A(i,j); if strictly below at block level, also emit mirror.
                                     triplets.push(faer::sparse::Triplet::new(scalar_r, scalar_c, value));
 
-                                    if !is_block_on_diagonal
-                                    {
+                                    let is_strictly_below_region = region_x_idx > region_y_idx;
+                                    let is_strictly_below_inside_diag =
+                                        on_diag_region && (block_triplet.block_idx[0] > block_triplet.block_idx[1]);
+
+                                    if is_strictly_below_region || is_strictly_below_inside_diag {
+                                        // Mirror
                                         triplets.push(faer::sparse::Triplet::new(scalar_c, scalar_r, value));
                                     }
                                 }
-                                ToScalarTripletsImplMode::UpperTriangularFromUpperTriangularBlockPattern => {
-                                    // Assumption: Input has an upper triangular block pattern. See
-                                    // SymmetricBlockSparseMatrixBuilder for details. Hence, there is no
-                                    // need for logic to skip blocks below the diagonal.
-                                    // However, the blocks on the diagonal are not upper triangular itself,
-                                    // hence we need to skip scalar entries below the diagonal for these blocks.
-                                    if is_block_on_diagonal
-                                        && r > c
-                                    {
-                                        continue;
+                                ToScalarTripletsImplMode::UpperTriViewFromLowerTriangularBlockPattern => {
+                                    // Emit ONLY upper-triangle view:
+                                    // - For strictly-below blocks, emit their mirror (j,i).
+                                    // - For diagonal blocks, emit entries with i <= j.
+                                    // - For strictly-above (shouldn't exist under lower storage), ignore.
+                                    let is_strictly_below_region = region_x_idx > region_y_idx;
+                                    let is_strictly_below_inside_diag =
+                                        on_diag_region && (block_triplet.block_idx[0] > block_triplet.block_idx[1]);
+
+                                    if is_strictly_below_region || is_strictly_below_inside_diag {
+                                        // Mirror to upper
+                                        triplets.push(faer::sparse::Triplet::new(scalar_c, scalar_r, value));
+                                    } else if on_diag_block {
+                                        // Keep only (i <= j) scalars of the block
+                                        if scalar_r <= scalar_c {
+                                            triplets.push(faer::sparse::Triplet::new(scalar_r, scalar_c, value));
+                                        }
                                     }
-                                    triplets.push(faer::sparse::Triplet::new(scalar_r, scalar_c, value));
-                                }
-                                ToScalarTripletsImplMode::General => {
-                                    triplets.push(faer::sparse::Triplet::new(scalar_r, scalar_c, value));
                                 }
                             }
                         }
@@ -266,38 +279,34 @@ impl BlockSparseMatrixBuilder {
         for region_x_idx in 0..self.region_grid_shape()[0] {
             for region_y_idx in 0..self.region_grid_shape()[1] {
                 let region = self.get_region(&[region_x_idx, region_y_idx]);
+                let [region_rows, region_cols] = region.shape;
+
                 for block_triplet in &region.triplets {
-                    let region_rows = region.shape[0];
-                    let region_cols = region.shape[1];
                     let row_offset = self.index_offset_per_row_partition[region_x_idx]
                         + block_triplet.block_idx[0] * region_rows;
-                    let col_offset = self.index_offset_per_row_partition[region_y_idx]
+                    let col_offset = self.index_offset_per_col_partition[region_y_idx]
                         + block_triplet.block_idx[1] * region_cols;
                     let data_idx = block_triplet.start_data_idx;
                     let block = &region.flattened_block_storage
                         [data_idx..data_idx + (region_rows * region_cols)];
-                    let is_block_on_diagonal = region_x_idx == region_y_idx
-                        && block_triplet.block_idx[0] == block_triplet.block_idx[1];
+                    let on_diag_region = region_x_idx == region_y_idx;
+                    let is_strictly_below = region_x_idx > region_y_idx
+                        || (on_diag_region
+                            && block_triplet.block_idx[0] > block_triplet.block_idx[1]);
 
                     for c in 0..region_cols {
                         for r in 0..region_rows {
-                            let value = block[c * region.shape[0] + r];
+                            let value = block[c * region_rows + r];
                             let scalar_r = row_offset + r;
                             let scalar_c = col_offset + c;
 
+                            // always add the stored entry
                             full_matrix[(scalar_r, scalar_c)] += value;
 
-                            match mode {
-                                ToDenseImplMode::SymmetricFromUpperTriangularBlockPattern => {
-                                    // Assumption: Input has an upper triangular block pattern. See
-                                    // SymmetricBlockSparseMatrixBuilder for details. Hence, we need
-                                    // to duplicate blocks above the diagonal and mirror them below
-                                    // the diagonal.
-                                    if !is_block_on_diagonal {
-                                        full_matrix[(scalar_c, scalar_r)] += value;
-                                    }
-                                }
-                                ToDenseImplMode::General => {}
+                            if let ToDenseImplMode::SymmetricFromLowerTriangularBlockPattern = mode
+                                && is_strictly_below
+                            {
+                                full_matrix[(scalar_c, scalar_r)] += value;
                             }
                         }
                     }

@@ -96,7 +96,7 @@ fn solver_tests() {
     ]);
 
     symmetric_matrix_builder.add_block(&[0, 0], [0, 0], &block_a00.as_view());
-    symmetric_matrix_builder.add_block(&[0, 0], [0, 1], &block_a01.as_view());
+    symmetric_matrix_builder.add_block(&[0, 0], [1, 0], &block_a01.as_view());
     symmetric_matrix_builder.add_block(&[0, 0], [1, 1], &block_a11.as_view());
     let mat_a = symmetric_matrix_builder.to_symmetric_dense();
     let mat_a_from_triplets = from_triplets_nxn(

@@ -8,34 +8,34 @@ use super::{
         ToScalarTripletsImplMode,
     },
 };
-use crate::debug_assert_le;
+use crate::debug_assert_ge;
 
 /// A builder for a symmetric block sparse matrix.
 ///
-/// Internally, we chose to represent the symmetric matrix as a upper triangular matrix.
+/// Internally, we chose to represent the symmetric matrix as a lower triangular matrix.
 /// In particular, the target block sparse matrix has the following structure:
 ///
 /// ```ascii
 /// ---------------------------------------------------------
-/// | AxA ... AxA | AxB ... AxB |             | AxZ ... AxZ |
-/// |   .         |  .       .  |             |  .       .  |
-/// |      .      |  .       .  |   *  *  *   |  .       .  |
-/// |         AxA | AxB ... AxB |             | AxZ ... AxZ |
+/// | AxA         |             |             |             |
+/// |  .  .       |             |             |             |
+/// |  .     .    |             |             |             |
+/// | AxA ... AxA |             |             |             |
 /// ---------------------------------------------------------
-/// |             | BxB ... BxB |             |             |
-/// |             |   .      .  |             |      *      |
-/// |             |      .   .  |             |      *      |
-/// |             |         BxB |             |             |
+/// | BxA ... BxA | BxB         |             |             |
+/// |  .       .  |  .  .       |             |             |
+/// |  .       .  |  .     .    |             |             |
+/// | BxA ... BxA | BxB ... BxB |             |             |
 /// ---------------------------------------------------------
 /// |             |             |             |             |
-/// |             |             |    *        |      *      |
-/// |             |             |        *    |      *      |
+/// |      *      |             |    *        |             |
+/// |      *      |             |        *    |             |
 /// |             |             |             |             |
 /// ---------------------------------------------------------
-/// |             |             |             | ZxZ ... ZxZ |
-/// |             |             |             |   .      .  |
-/// |             |             |             |      .   .  |
-/// |             |             |             |         ZxZ |
+/// | ZxA ... ZxA |             |             | ZxZ         |
+/// |  .       .  |             |             |  .  .       |
+/// |  .       .  |   *  *  *   |   *  *  *   |  .     .    |
+/// | ZxA ... ZxA |             |             | ZxZ ... ZxZ |
 /// ---------------------------------------------------------
 /// ```
 ///
@@ -58,11 +58,13 @@ impl SymmetricBlockSparseMatrixBuilder {
     }
 
     /// scalar dimension of the matrix.
+    #[inline]
     pub fn scalar_dimension(&self) -> usize {
         self.builder.scalar_shape()[0]
     }
 
-    /// region grid dimension
+    /// d
+    #[inline]
     pub fn region_grid_dimension(&self) -> usize {
         self.builder.region_grid_shape()[0]
     }
@@ -71,24 +73,22 @@ impl SymmetricBlockSparseMatrixBuilder {
     ///
     /// This is a += operation, i.e., the block is added to the existing block.
     ///
-    /// Only upper triangular blocks are accepted; hence it shall hold that
-    ///  * `grid_idx(0)    <= grid_idx(1)`,
-    ///  * `block_index(0) <= block_index(1)`.
+    /// Only lower triangular blocks are accepted.
     ///
-    /// In release mode, lower triangular blocks are ignored. In debug mode,
-    /// this function will panic if the block is lower triangular.
+    /// In release mode, upper triangular blocks are ignored. In debug mode,
+    /// this function will panic if the block is upper triangular.
     pub fn add_block(
         &mut self,
         region_idx: &[usize; 2],
         block_index: [usize; 2],
         block: &nalgebra::DMatrixView<f64>,
     ) {
-        debug_assert_le!(region_idx[0], region_idx[1]);
+        debug_assert_ge!(region_idx[0], region_idx[1]);
         debug_assert!(
             // not a region on the diagonal
             region_idx[0] != region_idx[1]
             // or block on or above diagonal
-            || block_index[0] <= block_index[1],
+            || block_index[0] >= block_index[1],
             "region [{}:{}], block [{},{}]",
             region_idx[0],
             region_idx[1],
@@ -98,25 +98,25 @@ impl SymmetricBlockSparseMatrixBuilder {
         self.builder.add_block(region_idx, block_index, block);
     }
 
-    /// Convert to upper triangular scalar triplets.
+    /// Export UPPER triangular scalar triplets (view) from lower storage.
     pub fn to_upper_triangular_scalar_triplets(
         &self,
     ) -> Vec<faer::sparse::Triplet<usize, usize, f64>> {
         self.builder.to_scalar_triplets_impl(
-            ToScalarTripletsImplMode::UpperTriangularFromUpperTriangularBlockPattern,
+            ToScalarTripletsImplMode::UpperTriViewFromLowerTriangularBlockPattern,
         )
     }
 
-    /// Convert the block matrix to symmetric matrix in scalar triplets format.
+    /// Export full symmetric scalar triplets.
     pub fn to_symmetric_scalar_triplets(&self) -> Vec<faer::sparse::Triplet<usize, usize, f64>> {
         self.builder.to_scalar_triplets_impl(
-            ToScalarTripletsImplMode::SymmetricFromUpperTriangularBlockPattern,
+            ToScalarTripletsImplMode::SymmetricFromLowerTriangularBlockPattern,
         )
     }
 
-    /// Convert the upper triangular block sparse matrix to a symmetric dense matrix.
+    /// Export full symmetric dense matrix.
     pub fn to_symmetric_dense(&self) -> nalgebra::DMatrix<f64> {
         self.builder
-            .to_dense_impl(ToDenseImplMode::SymmetricFromUpperTriangularBlockPattern)
+            .to_dense_impl(ToDenseImplMode::SymmetricFromLowerTriangularBlockPattern)
     }
 }

@@ -152,8 +152,8 @@ impl<const INPUT_DIM: usize, const N: usize> IsEvaluatedCost for EvaluatedCost<I
                         continue;
                     }
                     let scalar_start_idx_beta = scalar_start_idx_beta as usize;
-                    if scalar_start_idx_beta < scalar_start_idx_alpha {
-                        // upper triangular only, hence skip lower triangular
+                    if scalar_start_idx_beta > scalar_start_idx_alpha {
+                        // lower triangular only, hence skip upper triangular
                         continue;
                     }
                     let block_start_idx_beta =
