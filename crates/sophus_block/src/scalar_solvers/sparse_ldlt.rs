@@ -228,6 +228,52 @@ fn ereach_upper(
     top
 }
 
+#[cfg(any(test, debug_assertions))]
+fn reconstruct_dense_from_ldl(L: &CscMatrix, d: &[f64]) -> DMatrix<f64> {
+    let n = L.n;
+    let mut a = DMatrix::<f64>::zeros(n, n);
+
+    // For each column p, build the list of (row, val) including the implicit 1.0 at (p,p)
+    for p in 0..n {
+        // collect rows in this column: rlist = [p] ∪ {rows > p}
+        let mut rows: Vec<usize> = Vec::with_capacity(L.col_ptr[p + 1] - L.col_ptr[p] + 1);
+        let mut vals: Vec<f64> = Vec::with_capacity(rows.capacity());
+        rows.push(p);
+        vals.push(1.0);
+        for q in L.col_ptr[p]..L.col_ptr[p + 1] {
+            rows.push(L.row_ind[q]);
+            vals.push(L.values[q]);
+        }
+
+        // Accumulate D[p] * col_p * col_p^T
+        let dp = d[p];
+        if dp == 0.0 {
+            continue;
+        }
+        for rix in 0..rows.len() {
+            let i = rows[rix];
+            let vi = vals[rix];
+            for rjx in 0..=rix {
+                let j = rows[rjx];
+                let vj = vals[rjx];
+                let add = dp * vi * vj;
+                a[(i, j)] += add;
+                if i != j {
+                    a[(j, i)] += add;
+                }
+            }
+        }
+    }
+    a
+}
+
+#[cfg(any(test, debug_assertions))]
+fn rel_frob(a: &DMatrix<f64>, b: &DMatrix<f64>) -> f64 {
+    let nrm = b.norm();
+    let diff = (a - b).norm();
+    diff / nrm.max(1.0)
+}
+
 /// Numeric simplicial LDLᵀ (SPD), left-looking.
 /// Uses A_lower for numerics and Aᵗ (upper) for symbolics **and** to gather A(k,j).
 /// Numeric simplicial LDLᵀ (SPD), left-looking.
@@ -272,52 +318,67 @@ fn ldlt_numeric_spd(
             }
         }
 
-        // --- Gather UPPER: A(k < j, j) from at_upper -> y[k]
-        for p in at_upper.col_ptr[j]..at_upper.col_ptr[j + 1] {
-            let k = at_upper.row_ind[p];
-            if k >= j {
-                continue;
-            } // strictly upper only
-            let v = at_upper.values[p]; // equals A(k,j) == A(j,k)
-            if ymark[k] != stamp {
-                y[k] = v;
-                ymark[k] = stamp;
-                touched.push(k);
-            } else {
-                y[k] += v;
-            }
-        }
+        // // --- Gather UPPER: A(k < j, j) from at_upper -> y[k]
+        // for p in at_upper.col_ptr[j]..at_upper.col_ptr[j + 1] {
+        //     let k = at_upper.row_ind[p];
+        //     if k >= j {
+        //         continue;
+        //     } // strictly upper only
+        //     let v = at_upper.values[p]; // equals A(k,j) == A(j,k)
+        //     if ymark[k] != stamp {
+        //         y[k] = v;
+        //         ymark[k] = stamp;
+        //         touched.push(k);
+        //     } else {
+        //         y[k] += v;
+        //     }
+        // }
 
         // --- Symbolic reach to find contributing columns k < j
         let top = ereach_upper(at_upper, j, parent, &mut w, &mut stk);
 
-        // --- Apply updates from each k in topological order
         // --- Apply updates from each k in topological order (root -> leaf)
         for idx in top..n {
             let k = stk[idx];
 
-            // If y[k] was never set this column, skip
-            let yk = if ymark[k] == stamp { y[k] } else { 0.0 };
-            if yk == 0.0 {
-                continue;
+            // Look up lij = L(j,k) directly from the already-finalized column k.
+            // (Lcols[k] stores pairs (row, val) with rows > k.)
+            let mut lij_opt: Option<f64> = None;
+            for &(row, val) in &Lcols[k] {
+                if row == j {
+                    lij_opt = Some(val);
+                    break;
+                }
             }
 
-            // Compute L(j,k) and clear y[k]
-            let lij = yk / d[k];
-            y[k] = 0.0;
-
-            // Ensure y[j] is stamped, then apply the diagonal update:
-            // y[j] -= lij * d[k] * lij   (accounts for i == j since L(:,k) has no row j yet)
-            if ymark[j] != stamp {
-                y[j] = 0.0;
-                ymark[j] = stamp;
-                touched.push(j);
+            {
+                if lij_opt.is_none() {
+                    // We *thought* k contributes to column j (it’s in the ereach),
+                    // yet L(:,k) has no row j. This is usually a symbolics bug.
+                    eprintln!(
+                        "[LDLt] ereach says k={} contributes to j={}, but L(:,{}) has no row {}",
+                        k, j, k, j
+                    );
+                }
             }
-            y[j] -= lij * d[k] * lij;
 
-            // Scatter to the rest of column k: y[i] -= lij * d[k] * L(i,k)
+            // If L(j,k) is structurally zero (no row j in column k), nothing to do.
+            let lij = match lij_opt {
+                Some(v) if v != 0.0 => v,
+                _ => {
+                    // Nothing to scatter from column k into column j.
+                    continue;
+                }
+            };
+
+            // Scatter: y[i] -= lij * D[k] * L(i,k)
             let alpha = lij * d[k];
+            let mut hit_diag = false;
+
             for &(i, lik) in &Lcols[k] {
+                if i == j {
+                    hit_diag = true;
+                }
                 let delta = alpha * lik;
                 if ymark[i] != stamp {
                     y[i] = -delta;
@@ -326,6 +387,17 @@ fn ldlt_numeric_spd(
                 } else {
                     y[i] -= delta;
                 }
+            }
+
+            // If column k oddly doesn't contain row j, still subtract the diagonal term.
+            if !hit_diag {
+                if ymark[j] != stamp {
+                    y[j] = 0.0;
+                    ymark[j] = stamp;
+                    touched.push(j);
+                }
+                // y[j] -= lij * D[k] * lij
+                y[j] -= alpha * lij;
             }
         }
 
@@ -442,6 +514,38 @@ fn sparse_ldlt_solve_dense_spd(
     // Numeric LDLᵀ (SPD)
     let (L, d) = ldlt_numeric_spd(&a_lower, &at, &parent, tol_rel)
         .map_err(|_| LinearSolverError::FactorizationFailed)?;
+
+    #[cfg(any(test, debug_assertions))]
+    {
+        let Ahat = reconstruct_dense_from_ldl(&L, &d);
+        let rel = rel_frob(&Ahat, mat_a);
+        eprintln!("[LDLt] ||Â - A||_F / ||A||_F = {:.3e}", rel);
+        // Optional: if rel is large, dump the first mismatching column
+        if rel > 1e-10 {
+            for j in 0..mat_a.nrows() {
+                for k in 0..j {
+                    // check whether j is present in L(:,k)
+                    // 2) Check the slice of row indices for this column
+                    let present = L.row_ind[L.col_ptr[k]..L.col_ptr[k + 1]]
+                        .iter()
+                        .any(|&r| r == j);
+                    if !present {
+                        // this is frequently the smoking gun
+                        // (only print a few lines)
+                        eprintln!(
+                            "[LDLt] missing row {} in L(:,{}), A({}, {}) = {:.3e}",
+                            j,
+                            k,
+                            j,
+                            k,
+                            mat_a[(j, k)]
+                        );
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
     // Identity permutation solve (P = I)
     let x = ldlt_solve_csc(&L, &d, b);
