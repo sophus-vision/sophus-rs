@@ -96,8 +96,8 @@ mod tests {
         let x_sparse_lu = sparse_lu::SparseLu {}
             .solve(&symmetric_matrix_builder, &b)
             .unwrap();
-        let x_sparse_ldlt = sparse_ldlt::SparseLdlt::default()
-            .solve(&symmetric_matrix_builder, &b)
+        let x_sparse_ldlt = sparse_ldlt::SparseLDLt {}
+            .solve_dense(symmetric_matrix_builder.to_symmetric_dense(), &b)
             .unwrap();
 
         let x_block_sparse = symmetric_matrix_builder.builder.ldlt_solve(&b);
@@ -191,7 +191,9 @@ mod tests {
             .unwrap();
         let x_qr = sparse_qr::SparseQr {}.solve(&sb, &b).unwrap();
         let x_lu = sparse_lu::SparseLu {}.solve(&sb, &b).unwrap();
-        let x_ldlt = sparse_ldlt::SparseLdlt::default().solve(&sb, &b).unwrap();
+        let x_ldlt = sparse_ldlt::SparseLDLt {}
+            .solve_dense(sb.to_symmetric_dense(), &b)
+            .unwrap();
         let x_block = sb.builder.ldlt_solve(&b);
 
         let Ad = sb.to_symmetric_dense();
@@ -324,7 +326,9 @@ mod tests {
             .unwrap();
         let x_qr = sparse_qr::SparseQr {}.solve(&sb, &b).unwrap();
         let x_lu = sparse_lu::SparseLu {}.solve(&sb, &b).unwrap();
-        let x_ldlt = sparse_ldlt::SparseLdlt::default().solve(&sb, &b).unwrap();
+        let x_ldlt = sparse_ldlt::SparseLDLt {}
+            .solve_dense(sb.to_symmetric_dense(), &b)
+            .unwrap();
         let x_block = sb.builder.ldlt_solve(&b);
 
         let Ad = sb.to_symmetric_dense();
@@ -384,7 +388,9 @@ mod tests {
             .unwrap();
         let x_qr = sparse_qr::SparseQr {}.solve(&sb, &b).unwrap();
         let x_lu = sparse_lu::SparseLu {}.solve(&sb, &b).unwrap();
-        let x_ldlt = sparse_ldlt::SparseLdlt::default().solve(&sb, &b).unwrap();
+        let x_ldlt = sparse_ldlt::SparseLDLt {}
+            .solve_dense(sb.to_symmetric_dense(), &b)
+            .unwrap();
         let x_block = sb.builder.ldlt_solve(&b);
 
         let Ad = sb.to_symmetric_dense();

@@ -1,331 +1,508 @@
-extern crate alloc;
-
-use alloc::vec::Vec;
-#[cfg(not(target_arch = "wasm32"))]
-use std::num::NonZeroUsize;
-
-use faer::{
-    Conj,
-    Par,
-    Side,
-    dyn_stack::{
-        MemBuffer,
-        MemStack,
-        StackReq,
-    },
-    linalg::cholesky::ldlt::factor::LdltRegularization,
-    mat::MatMut,
-    perm::PermRef,
-    reborrow::ReborrowMut,
-    sparse::{
-        FaerError,
-        SparseColMat,
-        SymbolicSparseColMat,
-        Triplet,
-        linalg::{
-            amd,
-            cholesky::simplicial,
-        },
-        utils,
-    },
+use nalgebra::{
+    DMatrix,
+    DVector,
 };
 
 use crate::{
-    IsSparseSymmetricLinearSystem,
+    IsDenseLinearSystem,
     LinearSolverError,
-    SparseSolverError,
-    SymmetricBlockSparseMatrixBuilder,
 };
-/// Numeric regularization for LDLᵀ (`δ ≃ 10⁻⁶` is usually safe).
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct SparseLdltParams {
-    /// Regularization
-    pub regularization_eps: f64,
+
+const INVALID: usize = usize::MAX;
+
+/// Simple CSC container (column-compressed sparse).
+#[derive(Clone, Debug)]
+struct CscMatrix {
+    n: usize,            // square n x n
+    col_ptr: Vec<usize>, // len = n+1
+    row_ind: Vec<usize>, // len = nnz
+    values: Vec<f64>,    // len = nnz
 }
 
-impl Default for SparseLdltParams {
-    fn default() -> Self {
+impl CscMatrix {
+    fn new(n: usize, col_ptr: Vec<usize>, row_ind: Vec<usize>, values: Vec<f64>) -> Self {
+        debug_assert_eq!(col_ptr.len(), n + 1);
+        debug_assert_eq!(row_ind.len(), values.len());
         Self {
-            regularization_eps: 1e-6,
-        }
-    }
-}
-
-/// Sparse LDLt solver
-#[derive(Default, Debug)]
-pub struct SparseLdlt {
-    params: SparseLdltParams,
-    parallelize: bool,
-}
-
-impl SparseLdlt {
-    /// Create new sparse LDLt solver.
-    pub fn new(params: SparseLdltParams, parallelize: bool) -> Self {
-        Self {
-            params,
-            parallelize,
-        }
-    }
-}
-
-impl IsSparseSymmetricLinearSystem for SparseLdlt {
-    fn solve(
-        &self,
-        sym_mat: &SymmetricBlockSparseMatrixBuilder,
-        b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, LinearSolverError> {
-        match SimplicialSparseLdlt::from_triplets(
-            &sym_mat.to_upper_triangular_scalar_triplets(),
-            sym_mat.scalar_dimension(),
-            self.parallelize,
-            self.params,
-        )
-        .solve(b)
-        {
-            Ok(x) => Ok(x),
-            Err(e) => Err(LinearSolverError::SparseLdltError {
-                details: match e {
-                    SimplicialSparseLdltError::FaerError(fe) => match fe {
-                        FaerError::OutOfMemory => SparseSolverError::OutOfMemory,
-                        FaerError::IndexOverflow => SparseSolverError::IndexOverflow,
-                        _ => SparseSolverError::Unspecific,
-                    },
-                    SimplicialSparseLdltError::LdltError => SparseSolverError::LdltError,
-                },
-            }),
-        }
-    }
-}
-
-// Owns the matrix, and the factorization parameters.
-// All large temporaries are allocated on demand and dropped immediately
-// afterwards, so the struct stays small.
-struct SimplicialSparseLdlt {
-    upper_ccs: SparseColMat<usize, f64>, // *upper-triangular* CSC
-    params: SparseLdltParams,
-    parallelize: bool,
-}
-
-// Holds the AMD permutation (and its inverse) computed once per system.
-struct SparseLdltPerm {
-    perm: Vec<usize>,
-    perm_inv: Vec<usize>,
-}
-
-impl SparseLdltPerm {
-    /// Apply the permutation **symmetrically** to the self-adjoint matrix
-    /// (upper triangle only) and return a *new* `SparseColMat`.
-    fn perm_upper_ccs(&self, upper: &SparseColMat<usize, f64>) -> SparseColMat<usize, f64> {
-        let dim = upper.ncols();
-        let nnz = upper.compute_nnz();
-
-        // SAFETY: we guarantee both slices are valid permutations of 0..dim.
-        let perm_ref = unsafe { PermRef::new_unchecked(&self.perm, &self.perm_inv, dim) };
-
-        // allocate destination storage
-        let mut col_ptr = vec![0usize; dim + 1];
-        let mut row_idx = vec![0usize; nnz];
-        let mut values = vec![0.0f64; nnz];
-
-        // scratch buffer for the permutation routine
-        let mut mem =
-            MemBuffer::try_new(utils::permute_self_adjoint_scratch::<usize>(dim)).unwrap();
-
-        // Permute → result is *unsorted* upper triangle.
-        utils::permute_self_adjoint_to_unsorted(
-            &mut values,
-            &mut col_ptr,
-            &mut row_idx,
-            upper.as_ref(),
-            perm_ref,
-            Side::Upper, // source triangle
-            Side::Upper, // destination triangle
-            MemStack::new(&mut mem),
-        );
-
-        // SAFETY: we just produced a valid CSC representation.
-        SparseColMat::new(
-            unsafe { SymbolicSparseColMat::new_unchecked(dim, dim, col_ptr, None, row_idx) },
+            n,
+            col_ptr,
+            row_ind,
             values,
-        )
+        }
+    }
+    fn nnz(&self) -> usize {
+        self.values.len()
     }
 }
 
-// Bundles the permutation + the symbolic analysis so we don’t recompute
-// them for each RHS.
-struct SparseLdltPermSymb {
-    permutation: SparseLdltPerm,
-    symbolic: simplicial::SymbolicSimplicialCholesky<usize>,
-}
+/// Extract lower-triangle triplets (i >= j) from a dense matrix.
+fn lower_triplets_from_dense(a: &DMatrix<f64>) -> (usize, Vec<usize>, Vec<usize>, Vec<f64>) {
+    let n = a.nrows();
+    assert_eq!(n, a.ncols());
+    let reserve = n * (n + 1) / 2;
+    let mut ii = Vec::with_capacity(reserve);
+    let mut jj = Vec::with_capacity(reserve);
+    let mut xx = Vec::with_capacity(reserve);
 
-enum SimplicialSparseLdltError {
-    FaerError(FaerError),
-    LdltError,
-}
-
-impl SimplicialSparseLdlt {
-    fn symbolic_and_perm(&self) -> Result<SparseLdltPermSymb, FaerError> {
-        let dim = self.upper_ccs.ncols();
-        let nnz = self.upper_ccs.compute_nnz();
-
-        // --- AMD ordering --------------------------------------------------
-        let (perm, perm_inv) = {
-            let mut perm = vec![0usize; dim];
-            let mut perm_inv = vec![0usize; dim];
-
-            let mut mem = MemBuffer::try_new(amd::order_scratch::<usize>(dim, nnz))?;
-            amd::order(
-                &mut perm,
-                &mut perm_inv,
-                self.upper_ccs.symbolic(),
-                amd::Control::default(),
-                MemStack::new(&mut mem),
-            )?;
-            (perm, perm_inv)
-        };
-
-        let permutation = SparseLdltPerm { perm, perm_inv };
-        let perm_upper = permutation.perm_upper_ccs(&self.upper_ccs);
-
-        // --- symbolic analysis --------------------------------------------
-        let symbolic = {
-            let mut mem = MemBuffer::try_new(StackReq::any_of(&[
-                simplicial::prefactorize_symbolic_cholesky_scratch::<usize>(dim, nnz),
-                simplicial::factorize_simplicial_symbolic_cholesky_scratch::<usize>(dim),
-            ]))?;
-            let mut stack = MemStack::new(&mut mem);
-
-            let mut etree = vec![0isize; dim];
-            let mut col_counts = vec![0usize; dim];
-
-            simplicial::prefactorize_symbolic_cholesky(
-                &mut etree,
-                &mut col_counts,
-                perm_upper.symbolic(),
-                ReborrowMut::rb_mut(&mut stack),
-            );
-
-            // SAFETY: `etree` is filled by the previous call.
-            simplicial::factorize_simplicial_symbolic_cholesky(
-                perm_upper.symbolic(),
-                unsafe { simplicial::EliminationTreeRef::from_inner(&etree) },
-                &col_counts,
-                ReborrowMut::rb_mut(&mut stack),
-            )?
-        };
-
-        Ok(SparseLdltPermSymb {
-            permutation,
-            symbolic,
-        })
+    for j in 0..n {
+        for i in j..n {
+            let v = a[(i, j)];
+            if v != 0.0 {
+                ii.push(i);
+                jj.push(j);
+                xx.push(v);
+            }
+        }
     }
+    (n, ii, jj, xx)
+}
 
-    fn solve_from_symbolic(
-        &self,
-        b: &nalgebra::DVector<f64>,
-        symb_perm: &SparseLdltPermSymb,
-    ) -> Result<nalgebra::DVector<f64>, SimplicialSparseLdltError> {
-        let dim = self.upper_ccs.ncols();
-        // SAFETY: `perm` / `perm_inv` are valid permutations of size `dim`.
-        let perm_ref = unsafe {
-            PermRef::new_unchecked(
-                &symb_perm.permutation.perm,
-                &symb_perm.permutation.perm_inv,
-                dim,
-            )
-        };
-        let symbolic = &symb_perm.symbolic;
+/// Compress triplets to CSC; assumes indices in range [0, n).
+/// Coalesces duplicates by summing; keeps lower-only structure as provided.
+fn triplets_to_csc(
+    n: usize,
+    mut ii: Vec<usize>,
+    mut jj: Vec<usize>,
+    mut xx: Vec<f64>,
+) -> CscMatrix {
+    let nnz = ii.len();
+    let mut idx: Vec<usize> = (0..nnz).collect();
 
-        // Scratch-space sizes
-        let mut mem = MemBuffer::try_new(StackReq::all_of(&[
-            simplicial::factorize_simplicial_numeric_ldlt_scratch::<usize, f64>(dim),
-            faer::perm::permute_rows_in_place_scratch::<usize, f64>(dim, 1),
-            symbolic.solve_in_place_scratch::<f64>(dim),
-        ]))
-        .map_err(|_| SimplicialSparseLdltError::FaerError(FaerError::OutOfMemory))?;
-        let mut stack = MemStack::new(&mut mem);
-
-        // Numeric LDLᵀ factorization
-        let mut lval = vec![0.0f64; symbolic.len_val()];
-        let perm_upper = symb_perm.permutation.perm_upper_ccs(&self.upper_ccs);
-
-        simplicial::factorize_simplicial_numeric_ldlt::<usize, f64>(
-            &mut lval,
-            perm_upper.as_ref(),
-            LdltRegularization {
-                dynamic_regularization_signs: Some(&vec![1; dim]), // +1 on every diagonal
-                dynamic_regularization_delta: self.params.regularization_eps,
-                dynamic_regularization_epsilon: self.params.regularization_eps,
-            },
-            symbolic,
-            ReborrowMut::rb_mut(&mut stack),
-        )
-        .map_err(|_| SimplicialSparseLdltError::LdltError)?;
-
-        let ldlt = simplicial::SimplicialLdltRef::<usize, f64>::new(symbolic, &lval);
-
-        // Solve Pᵀ A P x = Pᵀ b
-        let mut x = b.clone();
-        let mut x_ref = MatMut::<f64>::from_column_major_slice_mut(x.as_mut_slice(), dim, 1);
-
-        // Pᵀ b
-        faer::perm::permute_rows_in_place(
-            ReborrowMut::rb_mut(&mut x_ref),
-            perm_ref,
-            ReborrowMut::rb_mut(&mut stack),
-        );
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let par = if self.parallelize {
-            Par::Rayon(NonZeroUsize::new(rayon::current_num_threads()).unwrap())
+    // Sort by (col, row)
+    idx.sort_unstable_by(|&a, &b| {
+        let ca = jj[a].cmp(&jj[b]);
+        if ca == std::cmp::Ordering::Equal {
+            ii[a].cmp(&ii[b])
         } else {
-            Par::Seq
-        };
+            ca
+        }
+    });
 
-        #[cfg(target_arch = "wasm32")]
-        let _ignore = self.parallelize;
-        #[cfg(target_arch = "wasm32")]
-        let par = Par::Seq;
-
-        // (LDLᵀ)⁻¹
-        ldlt.solve_in_place_with_conj(
-            Conj::No,
-            ReborrowMut::rb_mut(&mut x_ref),
-            par,
-            ReborrowMut::rb_mut(&mut stack),
-        );
-        // P x
-        faer::perm::permute_rows_in_place(
-            ReborrowMut::rb_mut(&mut x_ref),
-            perm_ref.inverse(),
-            ReborrowMut::rb_mut(&mut stack),
-        );
-
-        Ok(x)
+    // Count per column
+    let mut col_counts = vec![0usize; n];
+    for &k in &idx {
+        col_counts[jj[k]] += 1;
     }
 
-    fn from_triplets(
-        triplets: &[Triplet<usize, usize, f64>],
-        n: usize,
-        parallelize: bool,
-        params: SparseLdltParams,
-    ) -> Self {
-        // Triplets are assumed valid (caller generated them).
-        // `try_new_from_triplets` sorts / deduplicates if needed.
-        Self {
-            upper_ccs: SparseColMat::try_new_from_triplets(n, n, triplets).unwrap(),
-            params,
-            parallelize,
+    // Prefix sum -> col_ptr
+    let mut col_ptr = vec![0usize; n + 1];
+    for j in 0..n {
+        col_ptr[j + 1] = col_ptr[j] + col_counts[j];
+    }
+
+    // Fill Ai/Ax, coalescing duplicates
+    let mut Ai = vec![0usize; nnz];
+    let mut Ax = vec![0f64; nnz];
+    let mut next = col_ptr.clone();
+
+    for &k in &idx {
+        let j = jj[k];
+        let i = ii[k];
+        let x = xx[k];
+        let pos = next[j];
+        if pos > col_ptr[j] && Ai[pos - 1] == i {
+            Ax[pos - 1] += x; // coalesce
+        } else {
+            Ai[pos] = i;
+            Ax[pos] = x;
+            next[j] += 1;
         }
     }
 
-    fn solve(
+    // Compact columns (remove holes from coalescing)
+    let mut write_ptr = 0usize;
+    for j in 0..n {
+        let start = col_ptr[j];
+        let stop = next[j];
+        if write_ptr != start {
+            Ai.copy_within(start..stop, write_ptr);
+            Ax.copy_within(start..stop, write_ptr);
+        }
+        col_ptr[j] = write_ptr;
+        write_ptr += stop - start;
+    }
+    col_ptr[n] = write_ptr;
+    Ai.truncate(write_ptr);
+    Ax.truncate(write_ptr);
+
+    CscMatrix::new(n, col_ptr, Ai, Ax)
+}
+
+/// Transpose a CSC (including values).
+fn csc_transpose(a: &CscMatrix) -> CscMatrix {
+    let n = a.n;
+    let nnz = a.nnz();
+
+    // Count by future column (== current row indices)
+    let mut row_counts = vec![0usize; n];
+    for &r in &a.row_ind {
+        row_counts[r] += 1;
+    }
+
+    // Prefix sum -> col_ptr_t
+    let mut col_ptr_t = vec![0usize; n + 1];
+    for i in 0..n {
+        col_ptr_t[i + 1] = col_ptr_t[i] + row_counts[i];
+    }
+    let mut next = col_ptr_t.clone();
+
+    let mut row_ind_t = vec![0usize; nnz];
+    let mut values_t = vec![0f64; nnz];
+
+    for j in 0..n {
+        for p in a.col_ptr[j]..a.col_ptr[j + 1] {
+            let i = a.row_ind[p];
+            let dst = next[i];
+            row_ind_t[dst] = j;
+            values_t[dst] = a.values[p];
+            next[i] += 1;
+        }
+    }
+    CscMatrix::new(n, col_ptr_t, row_ind_t, values_t)
+}
+
+/// Elimination tree using the **upper** structure (from Aᵗ).
+/// parent[v] = parent column of v, or INVALID if root.
+/// Davis, "Direct Methods...", Alg. 4.1 (upper form).
+fn elimination_tree_upper(at_upper: &CscMatrix) -> Vec<usize> {
+    let n = at_upper.n;
+    let Ap = &at_upper.col_ptr;
+    let Ai = &at_upper.row_ind;
+
+    let mut parent = vec![INVALID; n];
+    let mut ancestor = vec![INVALID; n];
+
+    for j in 0..n {
+        for p in Ap[j]..Ap[j + 1] {
+            let i0 = Ai[p];
+            if i0 >= j {
+                continue;
+            } // strictly upper: i < j
+            let mut i = i0;
+            while i != INVALID && i != j {
+                let next = ancestor[i];
+                ancestor[i] = j;
+                if next == INVALID {
+                    parent[i] = j;
+                    break;
+                }
+                i = next;
+            }
+        }
+    }
+    parent
+}
+
+/// Symbolic reach on the **upper** structure (Aᵗ).
+/// Returns top-of-stack index into `stack`, so `stack[top..n]` are the columns
+/// k (< j) in topological order. Pre-marks `j` to avoid returning it.
+fn ereach_upper(
+    at_upper: &CscMatrix,
+    j: usize,
+    parent: &[usize],
+    w: &mut [usize],     // stamp marks
+    stack: &mut [usize], // length n
+) -> usize {
+    let n = at_upper.n;
+    let Ap = &at_upper.col_ptr;
+    let Ai = &at_upper.row_ind;
+
+    let mark = j + 1;
+    let mut top = n;
+
+    // Block j from appearing in the reach
+    w[j] = mark;
+
+    for p in Ap[j]..Ap[j + 1] {
+        let mut i = Ai[p];
+        if i >= j {
+            continue;
+        } // strictly upper start points
+        while i != INVALID && w[i] != mark {
+            stack[top - 1] = i;
+            top -= 1;
+            w[i] = mark;
+            i = parent[i];
+        }
+    }
+    top
+}
+
+/// Numeric simplicial LDLᵀ (SPD), left-looking.
+/// Uses A_lower for numerics and Aᵗ (upper) for symbolics **and** to gather A(k,j).
+/// Numeric simplicial LDLᵀ (SPD), left-looking.
+/// Uses A_lower for numerics and Aᵗ (upper) for symbolics **and** to gather A(k,j).
+fn ldlt_numeric_spd(
+    a_lower: &CscMatrix,  // lower triangle with values
+    at_upper: &CscMatrix, // transpose(a_lower) with values (=> upper)
+    parent: &[usize],
+    tol_rel: f64,
+) -> Result<(CscMatrix, Vec<f64>), &'static str> {
+    let n = a_lower.n;
+    debug_assert_eq!(n, at_upper.n);
+    debug_assert_eq!(parent.len(), n);
+
+    // Workspace
+    let mut d = vec![0.0f64; n];
+    let mut y = vec![0.0f64; n]; // dense accumulator
+    let mut ymark = vec![0usize; n]; // stamping marks for y
+    let mut touched: Vec<usize> = Vec::with_capacity(n);
+
+    let mut w = vec![0usize; n]; // ereach marks (per column stamping)
+    let mut stk = vec![0usize; n]; // stack buffer
+
+    // L as vector-of-columns; append (row, val); rows need not be sorted.
+    let mut Lcols: Vec<Vec<(usize, f64)>> = (0..n).map(|_| Vec::<(usize, f64)>::new()).collect();
+
+    let mut max_abs_pivot = 0.0f64;
+
+    for j in 0..n {
+        let stamp = j + 1;
+
+        // --- Gather LOWER: A(i >= j, j) -> y[i]
+        for p in a_lower.col_ptr[j]..a_lower.col_ptr[j + 1] {
+            let i = a_lower.row_ind[p]; // i >= j
+            let v = a_lower.values[p];
+            if ymark[i] != stamp {
+                y[i] = v;
+                ymark[i] = stamp;
+                touched.push(i);
+            } else {
+                y[i] += v;
+            }
+        }
+
+        // --- Gather UPPER: A(k < j, j) from at_upper -> y[k]
+        for p in at_upper.col_ptr[j]..at_upper.col_ptr[j + 1] {
+            let k = at_upper.row_ind[p];
+            if k >= j {
+                continue;
+            } // strictly upper only
+            let v = at_upper.values[p]; // equals A(k,j) == A(j,k)
+            if ymark[k] != stamp {
+                y[k] = v;
+                ymark[k] = stamp;
+                touched.push(k);
+            } else {
+                y[k] += v;
+            }
+        }
+
+        // --- Symbolic reach to find contributing columns k < j
+        let top = ereach_upper(at_upper, j, parent, &mut w, &mut stk);
+
+        // --- Apply updates from each k in topological order
+        // --- Apply updates from each k in topological order (root -> leaf)
+        for idx in top..n {
+            let k = stk[idx];
+
+            // If y[k] was never set this column, skip
+            let yk = if ymark[k] == stamp { y[k] } else { 0.0 };
+            if yk == 0.0 {
+                continue;
+            }
+
+            // Compute L(j,k) and clear y[k]
+            let lij = yk / d[k];
+            y[k] = 0.0;
+
+            // Ensure y[j] is stamped, then apply the diagonal update:
+            // y[j] -= lij * d[k] * lij   (accounts for i == j since L(:,k) has no row j yet)
+            if ymark[j] != stamp {
+                y[j] = 0.0;
+                ymark[j] = stamp;
+                touched.push(j);
+            }
+            y[j] -= lij * d[k] * lij;
+
+            // Scatter to the rest of column k: y[i] -= lij * d[k] * L(i,k)
+            let alpha = lij * d[k];
+            for &(i, lik) in &Lcols[k] {
+                let delta = alpha * lik;
+                if ymark[i] != stamp {
+                    y[i] = -delta;
+                    ymark[i] = stamp;
+                    touched.push(i);
+                } else {
+                    y[i] -= delta;
+                }
+            }
+        }
+
+        // --- Pivot
+        let djj = if ymark[j] == stamp { y[j] } else { 0.0 };
+        if !djj.is_finite() {
+            #[cfg(debug_assertions)]
+            eprintln!("[LDLt] non-finite pivot at j={}", j);
+            return Err("LDLt (SPD) failed: non-finite pivot");
+        }
+        max_abs_pivot = f64::max(max_abs_pivot, djj.abs());
+        let tau = f64::max(max_abs_pivot, 1.0) * tol_rel;
+        if djj <= tau {
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "[LDLt] non-positive/too-small pivot at j={} (djj={:.3e}, tau={:.3e})",
+                j, djj, tau
+            );
+            return Err("LDLt (SPD) failed: non-positive/too-small pivot");
+        }
+        d[j] = djj;
+
+        // --- Finalize column j of L: L(i,j) = y[i]/d[j] for i>j
+        for &i in &touched {
+            if i > j {
+                let lij = y[i] / djj;
+                if lij != 0.0 {
+                    Lcols[j].push((i, lij));
+                }
+            }
+        }
+
+        // --- Clear y for all touched indices
+        for i in touched.drain(..) {
+            if ymark[i] == stamp {
+                y[i] = 0.0;
+            }
+        }
+    }
+
+    // Compress Lcols -> CSC
+    let mut col_ptr = vec![0usize; n + 1];
+    for j in 0..n {
+        col_ptr[j + 1] = col_ptr[j] + Lcols[j].len();
+    }
+    let nnz = col_ptr[n];
+    let mut row_ind = vec![0usize; nnz];
+    let mut values = vec![0f64; nnz];
+    let mut base = 0usize;
+    for j in 0..n {
+        for (k, &(i, v)) in Lcols[j].iter().enumerate() {
+            row_ind[base + k] = i;
+            values[base + k] = v;
+        }
+        base += Lcols[j].len();
+    }
+    let L = CscMatrix::new(n, col_ptr, row_ind, values);
+    Ok((L, d))
+}
+
+/// Solve with L (unit-lower in CSC), D (diag), Lᵀ. Identity permutation here.
+/// x is returned (does not overwrite b).
+fn ldlt_solve_csc(L: &CscMatrix, d: &[f64], b: &DVector<f64>) -> DVector<f64> {
+    let n = L.n;
+    debug_assert_eq!(b.len(), n);
+    debug_assert_eq!(d.len(), n);
+
+    let mut x = b.clone_owned();
+
+    // Forward: L y = b (unit-lower)
+    for j in 0..n {
+        let t = x[j];
+        for p in L.col_ptr[j]..L.col_ptr[j + 1] {
+            let i = L.row_ind[p]; // i > j
+            x[i] -= L.values[p] * t;
+        }
+    }
+
+    // Diagonal: z = D^{-1} y
+    for i in 0..n {
+        x[i] /= d[i];
+    }
+
+    // Backward: Lᵀ x = z
+    for j in (0..n).rev() {
+        for p in L.col_ptr[j]..L.col_ptr[j + 1] {
+            let i = L.row_ind[p]; // i > j
+            x[j] -= L.values[p] * x[i];
+        }
+    }
+    x
+}
+
+/// Top-level: factor A (dense) as sparse LDLᵀ and solve.
+fn sparse_ldlt_solve_dense_spd(
+    mat_a: &DMatrix<f64>,
+    b: &DVector<f64>,
+    tol_rel: f64,
+) -> Result<DVector<f64>, LinearSolverError> {
+    let (n, ii, jj, xx) = lower_triplets_from_dense(mat_a);
+    if b.len() != n {
+        return Err(LinearSolverError::DimensionMismatch);
+    }
+
+    // Lower CSC of A (numerics)
+    let a_lower = triplets_to_csc(n, ii, jj, xx);
+
+    // Upper via transpose (symbolics + to gather A(k,j))
+    let at = csc_transpose(&a_lower);
+
+    // Elimination tree from the **upper** structure
+    let parent = elimination_tree_upper(&at);
+
+    // Numeric LDLᵀ (SPD)
+    let (L, d) = ldlt_numeric_spd(&a_lower, &at, &parent, tol_rel)
+        .map_err(|_| LinearSolverError::FactorizationFailed)?;
+
+    // Identity permutation solve (P = I)
+    let x = ldlt_solve_csc(&L, &d, b);
+    Ok(x)
+}
+
+/// Public: a sparse LDLᵀ solver that matches your trait and dense API.
+/// For SPD matrices; no pivoting; identity ordering (add AMD later if needed).
+pub struct SparseLDLt;
+
+impl IsDenseLinearSystem for SparseLDLt {
+    fn solve_dense(
         &self,
-        b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, SimplicialSparseLdltError> {
-        let symb_perm = self
-            .symbolic_and_perm()
-            .map_err(SimplicialSparseLdltError::FaerError)?;
-        self.solve_from_symbolic(b, &symb_perm)
+        mat_a: DMatrix<f64>,
+        b: &DVector<f64>,
+    ) -> Result<DVector<f64>, LinearSolverError> {
+        // Tiny relative tolerance akin to your dense solver
+        let tol_rel = 1e-12_f64;
+        sparse_ldlt_solve_dense_spd(&mat_a, b, tol_rel)
+    }
+}
+
+/* ===========================
+Optional helpers & tests
+=========================== */
+
+#[cfg(test)]
+mod tests {
+    use nalgebra::{
+        DMatrix,
+        DVector,
+    };
+
+    use super::*;
+
+    fn make_spd_from_dense(n: usize, lam: f64) -> DMatrix<f64> {
+        // Deterministic dense R
+        let mut r = DMatrix::<f64>::zeros(n, n);
+        for i in 0..n {
+            for j in 0..n {
+                r[(i, j)] = ((i + 1) as f64) * ((j + 2) as f64) / ((i + j + 1) as f64);
+            }
+        }
+        r.transpose() * &r + lam * DMatrix::<f64>::identity(n, n)
+    }
+
+    #[test]
+    fn sparse_ldlt_spd_basic() {
+        let n = 16;
+        let a = make_spd_from_dense(n, 1e-3);
+        let mut b = DVector::<f64>::zeros(n);
+        for i in 0..n {
+            b[i] = (i as f64) - 0.5;
+        }
+
+        let solver = SparseLDLt;
+        let x = solver.solve_dense(a.clone(), &b).unwrap();
+
+        // Residual
+        let r = &a * &x - &b;
+        let rel_res = r.norm() / b.norm().max(1.0);
+        assert!(rel_res < 1e-9, "residual too large: {}", rel_res);
     }
 }
