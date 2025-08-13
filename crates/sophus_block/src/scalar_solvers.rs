@@ -84,8 +84,8 @@ mod tests {
             "symmetric_matrix_builder. {:?}",
             symmetric_matrix_builder.to_symmetric_scalar_triplets()
         );
-        let x_dense_lu = dense_lu::DenseLu {}
-            .solve(&symmetric_matrix_builder, &b)
+        let x_dense_lu = dense_lu::DenseLU {}
+            .solve_dense(symmetric_matrix_builder.to_symmetric_dense(), &b)
             .unwrap();
         let x_dense_ldlt = dense_ldlt::DenseLDLt {}
             .solve_dense(symmetric_matrix_builder.to_symmetric_dense(), &b)
@@ -186,7 +186,9 @@ mod tests {
             (0..n_scalar).map(|i| 1.0 + 0.1 * i as f64),
         );
 
-        let x_dense = dense_lu::DenseLu {}.solve(&sb, &b).unwrap();
+        let x_dense = dense_lu::DenseLU {}
+            .solve_dense(sb.to_symmetric_dense(), &b)
+            .unwrap();
         let x_qr = sparse_qr::SparseQr {}.solve(&sb, &b).unwrap();
         let x_lu = sparse_lu::SparseLu {}.solve(&sb, &b).unwrap();
         let x_ldlt = sparse_ldlt::SparseLdlt::default().solve(&sb, &b).unwrap();
@@ -317,7 +319,9 @@ mod tests {
             (0..n_scalar).map(|k| (k as f64).sin() + 2.0),
         );
 
-        let x_dense = dense_lu::DenseLu {}.solve(&sb, &b).unwrap();
+        let x_dense = dense_lu::DenseLU {}
+            .solve_dense(sb.to_symmetric_dense(), &b)
+            .unwrap();
         let x_qr = sparse_qr::SparseQr {}.solve(&sb, &b).unwrap();
         let x_lu = sparse_lu::SparseLu {}.solve(&sb, &b).unwrap();
         let x_ldlt = sparse_ldlt::SparseLdlt::default().solve(&sb, &b).unwrap();
@@ -375,7 +379,9 @@ mod tests {
 
         let b = na::DVector::<f64>::from_row_slice(&[1.0, -1.0, 2.0, -2.0, 0.5, -0.5, 3.0, -3.0]);
 
-        let x_dense = dense_lu::DenseLu {}.solve(&sb, &b).unwrap();
+        let x_dense = dense_lu::DenseLU {}
+            .solve_dense(sb.to_symmetric_dense(), &b)
+            .unwrap();
         let x_qr = sparse_qr::SparseQr {}.solve(&sb, &b).unwrap();
         let x_lu = sparse_lu::SparseLu {}.solve(&sb, &b).unwrap();
         let x_ldlt = sparse_ldlt::SparseLdlt::default().solve(&sb, &b).unwrap();

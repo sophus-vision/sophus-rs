@@ -3,6 +3,7 @@ pub(crate) mod eq_system;
 
 use sophus_block::{
     BlockVector,
+    IsDenseLinearSystem,
     IsSparseSymmetricLinearSystem,
     PartitionSpec,
     SymmetricBlockSparseMatrixBuilder,
@@ -147,9 +148,9 @@ impl LinearSystem {
                     .builder
                     .ldlt_solve(self.neg_gradient.scalar_vector()))
             }
-            LinearSolverType::DenseLu => scalar_solvers::DenseLu {}
-                .solve(
-                    &self.sparse_hessian_plus_damping,
+            LinearSolverType::DenseLu => scalar_solvers::DenseLU {}
+                .solve_dense(
+                    self.sparse_hessian_plus_damping.to_symmetric_dense(),
                     self.neg_gradient.scalar_vector(),
                 )
                 .map_err(|e| NllsError::LinearSolver { source: e }),

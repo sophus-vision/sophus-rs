@@ -156,7 +156,7 @@ pub fn lu_reconstruct_into(
         }
     }
 
-    // Build final row permutation P such that PA = LU.
+    // Build final row permutation P such that P A = L U.
     // We want A = Pᵀ * (L U). The inverse row-permutation maps:
     // inv_perm[i] = row in temp that becomes row i of A.
     let mut perm: Vec<usize> = (0..n).collect();
