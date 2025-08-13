@@ -1,12 +1,14 @@
-use crate::block_sparse::{
-    BlockSparseMatrixBuilder,
-    Grid,
-    PartitionIndexOffsets,
+use crate::{
+    block_sparse::{
+        BlockSparseMatrixBuilder,
+        PartitionIndexOffsets,
+    },
+    grid::Grid,
 };
 
 /// Block matrix in compressed form.
 #[derive(Debug)]
-pub struct CompressedBlockMatrix {
+pub struct BlockSparseCompressedMatrix {
     pub(crate) region_grid: Grid<CompressedBlockRegion>,
     pub(crate) index_offsets: PartitionIndexOffsets,
     pub(crate) sym_block_pattern: SymbolicBlockPattern,
@@ -417,7 +419,7 @@ pub(crate) struct AssembledCol<'a> {
     pub entries: Vec<AssembledEntry<'a>>,
 }
 
-impl CompressedBlockMatrix {
+impl BlockSparseCompressedMatrix {
     /// Assemble LOWER part of column j (i > j) and the diagonal block A_jj.
     pub(crate) fn assemble_numeric_col_lower<'a>(&'a self, j: usize, out: &mut AssembledCol<'a>) {
         let sp = &self.sym_block_pattern;

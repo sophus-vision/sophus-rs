@@ -1,21 +1,13 @@
-pub(crate) mod block_gradient;
-pub(crate) mod block_hessian;
-pub(crate) mod block_jacobian;
+pub(crate) mod block_sparse_compressed_matrix;
 pub(crate) mod block_sparse_matrix;
 pub(crate) mod block_vector;
-pub(crate) mod compressed_block_matrix;
-pub(crate) mod grid;
 
-pub use block_gradient::*;
-pub use block_hessian::*;
-pub use block_jacobian::*;
+pub use block_sparse_compressed_matrix::*;
 pub use block_sparse_matrix::*;
 pub use block_vector::*;
-pub use compressed_block_matrix::*;
-pub use grid::*;
 
-pub(crate) mod symmetric_block_sparse_matrix;
-pub use symmetric_block_sparse_matrix::*;
+pub(crate) mod block_sparse_symmetric_matrix;
+pub use block_sparse_symmetric_matrix::*;
 
 /// Range of a block
 #[derive(Clone, Debug, Copy, Default)]

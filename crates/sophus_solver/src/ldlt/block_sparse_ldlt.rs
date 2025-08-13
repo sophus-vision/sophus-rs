@@ -6,8 +6,8 @@ use nalgebra::{
 
 use crate::{
     AssembledCol,
+    BlockSparseCompressedMatrix,
     BlockSparseMatrixBuilder,
-    CompressedBlockMatrix,
 };
 
 impl BlockSparseMatrixBuilder {
@@ -267,7 +267,7 @@ pub struct BlockLDLt {
 
 impl BlockLDLt {
     ///s
-    pub fn structure_from_cbm(cbm: &CompressedBlockMatrix) -> Self {
+    pub fn structure_from_cbm(cbm: &BlockSparseCompressedMatrix) -> Self {
         let n = cbm.sym_block_pattern.num_block_cols;
 
         // m_j from diagonal regions
@@ -416,7 +416,7 @@ impl BlockLDLt {
     }
 
     /// f
-    pub fn factorize_left_looking(&mut self, cbm: &CompressedBlockMatrix) {
+    pub fn factorize_left_looking(&mut self, cbm: &BlockSparseCompressedMatrix) {
         assert_eq!(self.n, cbm.sym_block_pattern.num_block_cols);
 
         let mut assembled = AssembledCol {

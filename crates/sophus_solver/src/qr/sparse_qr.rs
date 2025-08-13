@@ -5,6 +5,7 @@ use faer::{
 
 use crate::{
     IsSparseSymmetricLinearSystem,
+    IsSymmetricMatrixBuilder,
     LinearSolverError,
     SparseSolverError,
     SymmetricBlockSparseMatrixBuilder,

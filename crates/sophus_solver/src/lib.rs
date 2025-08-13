@@ -8,8 +8,12 @@
 #[cfg(doctest)]
 pub struct ReadmeDoctests;
 
-/// Block-sparse data strcutures.
+/// Block-sparse data structures.
 pub mod block_sparse;
+/// Dense data structures.
+pub mod dense;
+/// grid.
+pub mod grid;
 /// LDLt to solve semi-positive definite systems.
 pub mod ldlt;
 /// LU to solve invertible systems.
@@ -84,6 +88,39 @@ pub enum SparseSolverError {
     /// unspecific - to be forward compatible
     Unspecific,
 }
+
+/// sym mat
+pub trait IsSymmetricMatrixBuilder {
+    /// mat
+    type Matrix;
+
+    /// Create a symmetric matrix "filled" with zeros.
+    ///
+    /// The shape of the matrix is determined by the partition specs.
+    fn zero(partitions: &[PartitionSpec]) -> Self;
+
+    /// scalar dimension of the matrix.
+    fn scalar_dimension(&self) -> usize;
+
+    /// Add a block to the matrix.
+    ///
+    /// This is a += operation, i.e., the block is added to the existing block.
+    ///
+    /// Only lower triangular blocks are accepted.
+    ///
+    /// In release mode, upper triangular blocks are ignored. In debug mode,
+    /// this function will panic if the block is upper triangular.
+    fn add_lower_block(
+        &mut self,
+        region_idx: &[usize; 2],
+        block_index: [usize; 2],
+        block: &nalgebra::DMatrixView<f64>,
+    );
+
+    /// Export UPPER triangular scalar triplets (view) from lower storage.
+    fn build(&self) -> Self::Matrix;
+}
+
 /// Linear solver of a sparse symmetric matrix.
 pub trait IsSparseSymmetricLinearSystem {
     /// Solve the linear system.

@@ -11,6 +11,7 @@ mod tests {
         DenseLU,
         FearSparseLu,
         IsSparseSymmetricLinearSystem,
+        IsSymmetricMatrixBuilder,
         SparseQr,
         block_sparse::PartitionSpec,
     };
@@ -69,9 +70,9 @@ mod tests {
             [0.0, 0.0, 1.0],
         ]);
 
-        symmetric_matrix_builder.add_block(&[0, 0], [0, 0], &block_a00.as_view());
-        symmetric_matrix_builder.add_block(&[0, 0], [1, 0], &block_a01.as_view());
-        symmetric_matrix_builder.add_block(&[0, 0], [1, 1], &block_a11.as_view());
+        symmetric_matrix_builder.add_lower_block(&[0, 0], [0, 0], &block_a00.as_view());
+        symmetric_matrix_builder.add_lower_block(&[0, 0], [1, 0], &block_a01.as_view());
+        symmetric_matrix_builder.add_lower_block(&[0, 0], [1, 1], &block_a11.as_view());
         let mat_a = symmetric_matrix_builder.to_symmetric_dense();
         let mat_a_from_triplets = from_triplets_nxn(
             symmetric_matrix_builder.scalar_dimension(),
@@ -168,7 +169,7 @@ mod tests {
             for bc in 0..=br {
                 let r0 = so(br);
                 let c0 = so(bc);
-                sb.add_block(&[0, 0], [br, bc], &A.slice((r0, c0), (m, m)).as_view());
+                sb.add_lower_block(&[0, 0], [br, bc], &A.slice((r0, c0), (m, m)).as_view());
             }
         }
 
@@ -301,7 +302,11 @@ mod tests {
                     let bc_max = if rp == cp { br } else { nbc - 1 };
                     for bc in 0..=bc_max {
                         let c0 = cbase + bc * mc;
-                        sb.add_block(&[rp, cp], [br, bc], &A.slice((r0, c0), (mr, mc)).as_view());
+                        sb.add_lower_block(
+                            &[rp, cp],
+                            [br, bc],
+                            &A.slice((r0, c0), (mr, mc)).as_view(),
+                        );
                     }
                 }
             }
@@ -366,7 +371,7 @@ mod tests {
         // fill lower
         for i in 0..parts[0].num_blocks {
             for j in 0..=i {
-                sb.add_block(&[0, 0], [i, j], &A.slice((i, j), (1, 1)).as_view());
+                sb.add_lower_block(&[0, 0], [i, j], &A.slice((i, j), (1, 1)).as_view());
             }
         }
 

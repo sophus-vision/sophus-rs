@@ -8,7 +8,11 @@ use super::{
         ToScalarTripletsImplMode,
     },
 };
-use crate::debug_assert_ge;
+use crate::{
+    BlockSparseCompressedMatrix,
+    IsSymmetricMatrixBuilder,
+    debug_assert_ge,
+};
 
 /// A builder for a symmetric block sparse matrix.
 ///
@@ -49,36 +53,50 @@ pub struct SymmetricBlockSparseMatrixBuilder {
 }
 
 impl SymmetricBlockSparseMatrixBuilder {
-    /// Create a sparse block matrix "filled" with zeros.
-    ///
-    /// The shape of the block matrix is determined by the partition specs.
-    pub fn zero(partitions: &[PartitionSpec]) -> Self {
-        Self {
-            builder: BlockSparseMatrixBuilder::zero(partitions, partitions),
-        }
+    /// Export UPPER triangular scalar triplets (view) from lower storage.
+    pub fn to_upper_triangular_scalar_triplets(
+        &self,
+    ) -> Vec<faer::sparse::Triplet<usize, usize, f64>> {
+        self.builder.to_scalar_triplets_impl(
+            ToScalarTripletsImplMode::UpperTriViewFromLowerTriangularBlockPattern,
+        )
     }
 
-    /// scalar dimension of the matrix.
-    #[inline]
-    pub fn scalar_dimension(&self) -> usize {
-        self.builder.scalar_shape()[0]
+    /// Export full symmetric scalar triplets.
+    pub fn to_symmetric_scalar_triplets(&self) -> Vec<faer::sparse::Triplet<usize, usize, f64>> {
+        self.builder.to_scalar_triplets_impl(
+            ToScalarTripletsImplMode::SymmetricFromLowerTriangularBlockPattern,
+        )
     }
 
-    /// d
+    /// r
     #[inline]
     pub fn region_grid_dimension(&self) -> usize {
         self.builder.region_grid_shape()[0]
     }
 
-    /// Add a block to the matrix.
-    ///
-    /// This is a += operation, i.e., the block is added to the existing block.
-    ///
-    /// Only lower triangular blocks are accepted.
-    ///
-    /// In release mode, upper triangular blocks are ignored. In debug mode,
-    /// this function will panic if the block is upper triangular.
-    pub fn add_block(
+    /// Export full symmetric dense matrix.
+    pub fn to_symmetric_dense(&self) -> nalgebra::DMatrix<f64> {
+        self.builder
+            .to_dense_impl(ToDenseImplMode::SymmetricFromLowerTriangularBlockPattern)
+    }
+}
+
+impl IsSymmetricMatrixBuilder for SymmetricBlockSparseMatrixBuilder {
+    type Matrix = BlockSparseCompressedMatrix;
+
+    fn zero(partitions: &[PartitionSpec]) -> Self {
+        Self {
+            builder: BlockSparseMatrixBuilder::zero(partitions, partitions),
+        }
+    }
+
+    #[inline]
+    fn scalar_dimension(&self) -> usize {
+        self.builder.scalar_shape()[0]
+    }
+
+    fn add_lower_block(
         &mut self,
         region_idx: &[usize; 2],
         block_index: [usize; 2],
@@ -99,25 +117,7 @@ impl SymmetricBlockSparseMatrixBuilder {
         self.builder.add_block(region_idx, block_index, block);
     }
 
-    /// Export UPPER triangular scalar triplets (view) from lower storage.
-    pub fn to_upper_triangular_scalar_triplets(
-        &self,
-    ) -> Vec<faer::sparse::Triplet<usize, usize, f64>> {
-        self.builder.to_scalar_triplets_impl(
-            ToScalarTripletsImplMode::UpperTriViewFromLowerTriangularBlockPattern,
-        )
-    }
-
-    /// Export full symmetric scalar triplets.
-    pub fn to_symmetric_scalar_triplets(&self) -> Vec<faer::sparse::Triplet<usize, usize, f64>> {
-        self.builder.to_scalar_triplets_impl(
-            ToScalarTripletsImplMode::SymmetricFromLowerTriangularBlockPattern,
-        )
-    }
-
-    /// Export full symmetric dense matrix.
-    pub fn to_symmetric_dense(&self) -> nalgebra::DMatrix<f64> {
-        self.builder
-            .to_dense_impl(ToDenseImplMode::SymmetricFromLowerTriangularBlockPattern)
+    fn build(&self) -> Self::Matrix {
+        self.builder.to_compressed()
     }
 }

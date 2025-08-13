@@ -7,7 +7,7 @@ use sophus_solver::{
     IsSparseSymmetricLinearSystem,
     PartitionSpec,
     SymmetricBlockSparseMatrixBuilder,
-    scalar_solvers::{
+    ldlt::{
         self,
         SparseLdlt,
     },
@@ -148,19 +148,19 @@ impl LinearSystem {
                     .builder
                     .ldlt_solve(self.neg_gradient.scalar_vector()))
             }
-            LinearSolverType::DenseLu => scalar_solvers::DenseLU {}
+            LinearSolverType::DenseLu => ldlt::DenseLU {}
                 .solve_dense(
                     self.sparse_hessian_plus_damping.to_symmetric_dense(),
                     self.neg_gradient.scalar_vector(),
                 )
                 .map_err(|e| NllsError::LinearSolver { source: e }),
-            LinearSolverType::FearSparseLu => scalar_solvers::FearSparseLu {}
+            LinearSolverType::FearSparseLu => ldlt::FearSparseLu {}
                 .solve(
                     &self.sparse_hessian_plus_damping,
                     self.neg_gradient.scalar_vector(),
                 )
                 .map_err(|e| NllsError::LinearSolver { source: e }),
-            LinearSolverType::SparseQr => scalar_solvers::SparseQr {}
+            LinearSolverType::SparseQr => ldlt::SparseQr {}
                 .solve(
                     &self.sparse_hessian_plus_damping,
                     self.neg_gradient.scalar_vector(),

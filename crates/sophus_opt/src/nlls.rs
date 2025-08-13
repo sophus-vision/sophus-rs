@@ -33,7 +33,7 @@ use sophus_solver::{
     BlockVector,
     LinearSolverError,
     SymmetricBlockSparseMatrixBuilder,
-    scalar_solvers,
+    ldlt,
 };
 
 pub use crate::nlls::functor_library::{
@@ -46,7 +46,7 @@ use crate::variables::VarFamilies;
 #[derive(Copy, Clone, Debug)]
 pub enum LinearSolverType {
     /// Sparse LDLT solver (using faer crate)
-    SparseLdlt(scalar_solvers::SparseLdltParams),
+    SparseLdlt(ldlt::SparseLdltParams),
     /// Sparse partial pivoting LU solver (using faer crate)
     FearSparseLu,
     /// Sparse QR solver (using faer crate)

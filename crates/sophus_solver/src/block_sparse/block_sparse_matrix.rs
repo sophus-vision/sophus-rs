@@ -1,13 +1,11 @@
 use std::fmt::Debug;
 
-use super::{
-    PartitionSpec,
-    grid::Grid,
-};
-use crate::block_sparse::{
-    CompressedBlockMatrix,
+use super::PartitionSpec;
+use crate::{
+    BlockSparseCompressedMatrix,
     CompressedBlockRegion,
     SymbolicBlockPattern,
+    grid::Grid,
 };
 
 /// A builder for a block sparse matrix.
@@ -335,7 +333,7 @@ impl BlockSparseMatrixBuilder {
     }
 
     /// Convert to compressed block form.
-    pub fn to_compressed(&self) -> CompressedBlockMatrix {
+    pub fn to_compressed(&self) -> BlockSparseCompressedMatrix {
         let rows_of_regions = self.index_offsets.per_row_partition.len();
         let cols_of_regions = self.index_offsets.per_col_partition.len();
 
@@ -353,7 +351,7 @@ impl BlockSparseMatrixBuilder {
             }
         }
 
-        CompressedBlockMatrix {
+        BlockSparseCompressedMatrix {
             sym_block_pattern: SymbolicBlockPattern::from_regions(
                 &self.index_offsets,
                 &region_grid,
