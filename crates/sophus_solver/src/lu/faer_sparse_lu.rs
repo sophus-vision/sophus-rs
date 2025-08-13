@@ -21,9 +21,9 @@ use crate::{
 /// Sparse LU solver
 ///
 /// Sparse LU decomposition - wrapper around faer's sp_lu implementation.
-pub struct SparseLu;
+pub struct FearSparseLu;
 
-impl IsSparseSymmetricLinearSystem for SparseLu {
+impl IsSparseSymmetricLinearSystem for FearSparseLu {
     fn solve(
         &self,
         sym_mat: &SymmetricBlockSparseMatrixBuilder,

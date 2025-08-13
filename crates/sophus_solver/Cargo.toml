@@ -1,6 +1,6 @@
 [package]
 description = "Block-sparse structures and algorithms"
-name = "sophus_block"
+name = "sophus_solver"
 readme = "README.md"
 
 edition.workspace = true

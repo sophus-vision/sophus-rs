@@ -4,7 +4,7 @@ use super::{
     PartitionSpec,
     grid::Grid,
 };
-use crate::{
+use crate::block_sparse::{
     CompressedBlockMatrix,
     CompressedBlockRegion,
     SymbolicBlockPattern,

@@ -29,7 +29,7 @@ use log::{
     info,
 };
 use snafu::Snafu;
-use sophus_block::{
+use sophus_solver::{
     BlockVector,
     LinearSolverError,
     SymmetricBlockSparseMatrixBuilder,
@@ -48,7 +48,7 @@ pub enum LinearSolverType {
     /// Sparse LDLT solver (using faer crate)
     SparseLdlt(scalar_solvers::SparseLdltParams),
     /// Sparse partial pivoting LU solver (using faer crate)
-    SparseLu,
+    FearSparseLu,
     /// Sparse QR solver (using faer crate)
     SparseQr,
     /// Dense full-pivot. LU solver (using nalgebra crate)
@@ -60,7 +60,7 @@ impl LinearSolverType {
     pub fn all_solvers() -> Vec<LinearSolverType> {
         vec![
             LinearSolverType::SparseLdlt(Default::default()),
-            LinearSolverType::SparseLu,
+            LinearSolverType::FearSparseLu,
             LinearSolverType::SparseQr,
             LinearSolverType::DenseLu,
         ]
@@ -70,7 +70,7 @@ impl LinearSolverType {
     pub fn sparse_solvers() -> Vec<LinearSolverType> {
         vec![
             LinearSolverType::SparseLdlt(Default::default()),
-            LinearSolverType::SparseLu,
+            LinearSolverType::FearSparseLu,
             LinearSolverType::SparseQr,
         ]
     }
@@ -78,7 +78,7 @@ impl LinearSolverType {
     /// Get solvers which can be used for indefinite systems
     pub fn indefinite_solvers() -> Vec<LinearSolverType> {
         vec![
-            LinearSolverType::SparseLu,
+            LinearSolverType::FearSparseLu,
             LinearSolverType::SparseQr,
             LinearSolverType::DenseLu,
         ]

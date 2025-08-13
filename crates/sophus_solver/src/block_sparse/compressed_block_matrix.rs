@@ -1,4 +1,4 @@
-use crate::{
+use crate::block_sparse::{
     BlockSparseMatrixBuilder,
     Grid,
     PartitionIndexOffsets,

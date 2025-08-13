@@ -2,7 +2,7 @@ use sophus_autodiff::linalg::{
     MatF64,
     VecF64,
 };
-use sophus_block::{
+use sophus_solver::{
     BlockGradient,
     BlockHessian,
 };

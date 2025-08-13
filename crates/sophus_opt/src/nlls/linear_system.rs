@@ -1,7 +1,7 @@
 pub(crate) mod cost_system;
 pub(crate) mod eq_system;
 
-use sophus_block::{
+use sophus_solver::{
     BlockVector,
     IsDenseLinearSystem,
     IsSparseSymmetricLinearSystem,
@@ -154,7 +154,7 @@ impl LinearSystem {
                     self.neg_gradient.scalar_vector(),
                 )
                 .map_err(|e| NllsError::LinearSolver { source: e }),
-            LinearSolverType::SparseLu => scalar_solvers::SparseLu {}
+            LinearSolverType::FearSparseLu => scalar_solvers::FearSparseLu {}
                 .solve(
                     &self.sparse_hessian_plus_damping,
                     self.neg_gradient.scalar_vector(),

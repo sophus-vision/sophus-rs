@@ -1,18 +1,19 @@
+pub(crate) mod block_sparse_ldlt;
 pub(crate) mod dense_ldlt;
-pub(crate) mod dense_lu;
 pub(crate) mod sparse_ldlt;
-pub(crate) mod sparse_lu;
-pub(crate) mod sparse_qr;
-pub use dense_ldlt::*;
-pub use dense_lu::*;
-pub use sparse_ldlt::*;
-pub use sparse_lu::*;
-pub use sparse_qr::*;
 
 use crate::IsDenseLinearSystem;
 
 mod tests {
     use super::*;
+    use crate::{
+        DenseLDLt,
+        DenseLU,
+        FearSparseLu,
+        IsSparseSymmetricLinearSystem,
+        SparseQr,
+        block_sparse::PartitionSpec,
+    };
 
     #[test]
     fn scalar_solver_tests() {
@@ -46,7 +47,7 @@ mod tests {
             mat
         }
 
-        let partitions = vec![crate::PartitionSpec {
+        let partitions = vec![PartitionSpec {
             num_blocks: 2,
             block_dim: 3,
         }];
@@ -84,16 +85,14 @@ mod tests {
             "symmetric_matrix_builder. {:?}",
             symmetric_matrix_builder.to_symmetric_scalar_triplets()
         );
-        let x_dense_lu = dense_lu::DenseLU {}
+        let x_dense_lu = DenseLU {}
             .solve_dense(symmetric_matrix_builder.to_symmetric_dense(), &b)
             .unwrap();
-        let x_dense_ldlt = dense_ldlt::DenseLDLt {}
+        let x_dense_ldlt = DenseLDLt {}
             .solve_dense(symmetric_matrix_builder.to_symmetric_dense(), &b)
             .unwrap();
-        let x_sparse_qr = sparse_qr::SparseQr {}
-            .solve(&symmetric_matrix_builder, &b)
-            .unwrap();
-        let x_sparse_lu = sparse_lu::SparseLu {}
+        let x_sparse_qr = SparseQr {}.solve(&symmetric_matrix_builder, &b).unwrap();
+        let x_sparse_lu = FearSparseLu {}
             .solve(&symmetric_matrix_builder, &b)
             .unwrap();
         let x_sparse_ldlt = sparse_ldlt::SparseLDLt {}
@@ -120,11 +119,7 @@ mod tests {
     fn block_ldlt_spd_single_partition_band1() {
         use nalgebra as na;
 
-        use crate::{
-            IsSparseSymmetricLinearSystem,
-            PartitionSpec,
-            SymmetricBlockSparseMatrixBuilder,
-        };
+        use crate::SymmetricBlockSparseMatrixBuilder;
 
         // ----- partitions: one family, 4 blocks of dim 2 (total n = 8)
         let parts = vec![PartitionSpec {
@@ -186,11 +181,9 @@ mod tests {
             (0..n_scalar).map(|i| 1.0 + 0.1 * i as f64),
         );
 
-        let x_dense = dense_lu::DenseLU {}
-            .solve_dense(sb.to_symmetric_dense(), &b)
-            .unwrap();
-        let x_qr = sparse_qr::SparseQr {}.solve(&sb, &b).unwrap();
-        let x_lu = sparse_lu::SparseLu {}.solve(&sb, &b).unwrap();
+        let x_dense = DenseLU {}.solve_dense(sb.to_symmetric_dense(), &b).unwrap();
+        let x_qr = SparseQr {}.solve(&sb, &b).unwrap();
+        let x_lu = FearSparseLu {}.solve(&sb, &b).unwrap();
         let x_ldlt = sparse_ldlt::SparseLDLt {}
             .solve_dense(sb.to_symmetric_dense(), &b)
             .unwrap();
@@ -321,11 +314,9 @@ mod tests {
             (0..n_scalar).map(|k| (k as f64).sin() + 2.0),
         );
 
-        let x_dense = dense_lu::DenseLU {}
-            .solve_dense(sb.to_symmetric_dense(), &b)
-            .unwrap();
-        let x_qr = sparse_qr::SparseQr {}.solve(&sb, &b).unwrap();
-        let x_lu = sparse_lu::SparseLu {}.solve(&sb, &b).unwrap();
+        let x_dense = DenseLU {}.solve_dense(sb.to_symmetric_dense(), &b).unwrap();
+        let x_qr = SparseQr {}.solve(&sb, &b).unwrap();
+        let x_lu = FearSparseLu {}.solve(&sb, &b).unwrap();
         let x_ldlt = sparse_ldlt::SparseLDLt {}
             .solve_dense(sb.to_symmetric_dense(), &b)
             .unwrap();
@@ -383,11 +374,9 @@ mod tests {
 
         let b = na::DVector::<f64>::from_row_slice(&[1.0, -1.0, 2.0, -2.0, 0.5, -0.5, 3.0, -3.0]);
 
-        let x_dense = dense_lu::DenseLU {}
-            .solve_dense(sb.to_symmetric_dense(), &b)
-            .unwrap();
-        let x_qr = sparse_qr::SparseQr {}.solve(&sb, &b).unwrap();
-        let x_lu = sparse_lu::SparseLu {}.solve(&sb, &b).unwrap();
+        let x_dense = DenseLU {}.solve_dense(sb.to_symmetric_dense(), &b).unwrap();
+        let x_qr = SparseQr {}.solve(&sb, &b).unwrap();
+        let x_lu = FearSparseLu {}.solve(&sb, &b).unwrap();
         let x_ldlt = sparse_ldlt::SparseLDLt {}
             .solve_dense(sb.to_symmetric_dense(), &b)
             .unwrap();

@@ -2,7 +2,7 @@ use sophus_autodiff::linalg::{
     MatF64,
     VecF64,
 };
-use sophus_block::BlockJacobian;
+use sophus_solver::BlockJacobian;
 
 use crate::variables::VarKind;
 

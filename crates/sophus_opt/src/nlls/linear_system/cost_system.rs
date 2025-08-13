@@ -1,4 +1,4 @@
-use sophus_block::{
+use sophus_solver::{
     BlockVector,
     SymmetricBlockSparseMatrixBuilder,
 };
