@@ -90,7 +90,7 @@ pub enum SparseSolverError {
 }
 
 /// f
-pub trait IsSymmetricMatrix {
+pub trait IsCompressableMatrix {
     /// c
     type Compressed;
 
@@ -101,12 +101,12 @@ pub trait IsSymmetricMatrix {
 /// Linear solver of linear system.
 pub trait IsLinearSolver {
     /// mat
-    type Matrix: IsSymmetricMatrix;
+    type Matrix: IsCompressableMatrix;
 
     /// Solve the linear system.
     fn solve(
         &self,
-        matrix: &<Self::Matrix as IsSymmetricMatrix>::Compressed,
+        matrix: &<Self::Matrix as IsCompressableMatrix>::Compressed,
         b: &nalgebra::DVector<f64>,
     ) -> Result<nalgebra::DVector<f64>, LinearSolverError> {
         let mut x = b.clone();
@@ -117,7 +117,7 @@ pub trait IsLinearSolver {
     /// Solve the linear system in-place.
     fn solve_in_place(
         &self,
-        matrix: &<Self::Matrix as IsSymmetricMatrix>::Compressed,
+        matrix: &<Self::Matrix as IsCompressableMatrix>::Compressed,
         b: &mut nalgebra::DVector<f64>,
     ) -> Result<(), LinearSolverError>;
 }
@@ -125,7 +125,7 @@ pub trait IsLinearSolver {
 /// sym mat
 pub trait IsSymmetricMatrixBuilder {
     /// mat
-    type Matrix: IsSymmetricMatrix;
+    type Matrix: IsCompressableMatrix;
 
     /// Create a symmetric matrix "filled" with zeros.
     ///

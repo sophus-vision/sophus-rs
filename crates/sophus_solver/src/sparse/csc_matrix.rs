@@ -1,4 +1,4 @@
-use crate::IsSymmetricMatrix;
+use crate::IsCompressableMatrix;
 
 /// Compressed sparse column (CSC) matrix.
 #[derive(Clone, Debug)]
@@ -39,7 +39,7 @@ pub struct LowerTripletsMatrix {
     pub scalar_dimension: usize,
 }
 
-impl IsSymmetricMatrix for LowerTripletsMatrix {
+impl IsCompressableMatrix for LowerTripletsMatrix {
     type Compressed = CscMatrix;
 
     fn compress(&self) -> Self::Compressed {

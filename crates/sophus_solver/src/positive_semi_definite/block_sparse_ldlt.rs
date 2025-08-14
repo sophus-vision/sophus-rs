@@ -7,6 +7,7 @@ use nalgebra::{
 use crate::{
     AssembledCol,
     BlockSparseCompressedMatrix,
+    BlockSparseLowerCompressedMatrix,
     BlockSparseLowerMatrixBuilder,
     BlockSparseMatrixBuilder,
     IsLinearSolver,
@@ -21,11 +22,11 @@ impl IsLinearSolver for BlockSparseLdlt {
 
     fn solve_in_place(
         &self,
-        a_lower: &BlockSparseCompressedMatrix,
+        a_lower: &BlockSparseLowerCompressedMatrix,
         b: &mut nalgebra::DVector<f64>,
     ) -> Result<(), LinearSolverError> {
-        let mut ldlt = BlockLDLt::structure_from_cbm(a_lower);
-        ldlt.factorize_left_looking(a_lower);
+        let mut ldlt = BlockLDLt::structure_from_cbm(&a_lower.mat);
+        ldlt.factorize_left_looking(&a_lower.mat);
         ldlt.solve_in_place(b);
         Ok(())
     }

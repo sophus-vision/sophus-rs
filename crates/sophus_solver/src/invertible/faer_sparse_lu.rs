@@ -14,7 +14,7 @@ use faer::{
 use crate::{
     BlockSparseLowerMatrixBuilder,
     IsLinearSolver,
-    IsSymmetricMatrix,
+    IsCompressableMatrix,
     IsSymmetricMatrixBuilder,
     LinearSolverError,
     SparseSolverError,

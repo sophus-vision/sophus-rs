@@ -4,7 +4,7 @@ use faer::sparse::{
 };
 
 use crate::{
-    IsSymmetricMatrix,
+    IsCompressableMatrix,
     sparse::LowerTripletsMatrix,
 };
 
@@ -45,7 +45,7 @@ pub struct FaerCompressedMatrix {
     pub csc: faer::sparse::SparseColMat<usize, f64>,
 }
 
-impl IsSymmetricMatrix for FaerTripletsMatrix {
+impl IsCompressableMatrix for FaerTripletsMatrix {
     type Compressed = FaerCompressedMatrix;
 
     fn compress(&self) -> Self::Compressed {
@@ -114,7 +114,7 @@ pub struct FaerUpperCompressedMatrix {
     pub csc: faer::sparse::SparseColMat<usize, f64>,
 }
 
-impl IsSymmetricMatrix for FaerUpperTripletsMatrix {
+impl IsCompressableMatrix for FaerUpperTripletsMatrix {
     type Compressed = FaerUpperCompressedMatrix;
 
     fn compress(&self) -> Self::Compressed {

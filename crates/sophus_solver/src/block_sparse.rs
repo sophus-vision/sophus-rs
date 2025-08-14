@@ -6,8 +6,8 @@ pub use block_sparse_compressed_matrix::*;
 pub use block_sparse_matrix::*;
 pub use block_vector::*;
 
-pub(crate) mod block_sparse_symmetric_matrix;
-pub use block_sparse_symmetric_matrix::*;
+pub(crate) mod block_sparse_lower_matrix;
+pub use block_sparse_lower_matrix::*;
 
 /// Range of a block
 #[derive(Clone, Debug, Copy, Default)]

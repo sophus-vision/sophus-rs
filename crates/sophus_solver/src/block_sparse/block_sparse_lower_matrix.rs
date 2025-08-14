@@ -10,7 +10,7 @@ use super::{
 };
 use crate::{
     BlockSparseCompressedMatrix,
-    IsSymmetricMatrix,
+    IsCompressableMatrix,
     IsSymmetricMatrixBuilder,
     debug_assert_ge,
 };
@@ -83,11 +83,19 @@ impl BlockSparseLowerMatrixBuilder {
     }
 }
 
-impl IsSymmetricMatrix for BlockSparseLowerMatrixBuilder {
-    type Compressed = BlockSparseCompressedMatrix;
+///b
+pub struct BlockSparseLowerCompressedMatrix {
+    ///m
+    pub mat: BlockSparseCompressedMatrix,
+}
+
+impl IsCompressableMatrix for BlockSparseLowerMatrixBuilder {
+    type Compressed = BlockSparseLowerCompressedMatrix;
 
     fn compress(&self) -> Self::Compressed {
-        self.builder.to_compressed()
+        BlockSparseLowerCompressedMatrix {
+            mat: self.builder.to_compressed(),
+        }
     }
 }
 
