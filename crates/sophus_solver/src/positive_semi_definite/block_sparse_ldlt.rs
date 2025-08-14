@@ -7,8 +7,8 @@ use nalgebra::{
 use crate::{
     AssembledCol,
     BlockSparseCompressedMatrix,
+    BlockSparseLowerMatrixBuilder,
     BlockSparseMatrixBuilder,
-    BlockSparseSymmetricMatrixBuilder,
     IsLinearSolver,
     LinearSolverError,
 };
@@ -17,7 +17,7 @@ use crate::{
 pub struct BlockSparseLdlt {}
 
 impl IsLinearSolver for BlockSparseLdlt {
-    type Matrix = BlockSparseSymmetricMatrixBuilder;
+    type Matrix = BlockSparseLowerMatrixBuilder;
 
     fn solve_in_place(
         &self,

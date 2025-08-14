@@ -12,14 +12,14 @@ use faer::{
 };
 
 use crate::{
-    BlockSparseSymmetricMatrixBuilder,
+    BlockSparseLowerMatrixBuilder,
     IsLinearSolver,
     IsSymmetricMatrix,
     IsSymmetricMatrixBuilder,
     LinearSolverError,
     SparseSolverError,
     sparse::faer_sparse_matrix::{
-        FaerCsCMatrix,
+        FaerCompressedMatrix,
         FaerTripletsMatrix,
     },
 };
@@ -34,13 +34,13 @@ impl IsLinearSolver for FaerSparseLu {
 
     fn solve_in_place(
         &self,
-        csc: &faer::sparse::SparseColMat<usize, f64>,
+        mat: &FaerCompressedMatrix,
         b: &mut nalgebra::DVector<f64>,
     ) -> Result<(), LinearSolverError> {
         let mut x_ref =
-            MatMut::<f64>::from_column_major_slice_mut(b.as_mut_slice(), csc.nrows(), 1);
+            MatMut::<f64>::from_column_major_slice_mut(b.as_mut_slice(), mat.csc.nrows(), 1);
 
-        match csc.sp_lu() {
+        match mat.csc.sp_lu() {
             Ok(lu) => {
                 lu.solve_in_place(ReborrowMut::rb_mut(&mut x_ref));
                 Ok(())

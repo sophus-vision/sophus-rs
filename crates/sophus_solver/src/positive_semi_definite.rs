@@ -1,5 +1,6 @@
 pub(crate) mod block_sparse_ldlt;
 pub(crate) mod dense_ldlt;
+pub(crate) mod faer_sparse_ldlt;
 pub(crate) mod sparse_ldlt;
 
 mod tests {
@@ -20,10 +21,17 @@ mod tests {
         SparseLdlt,
         block_sparse::PartitionSpec,
         dense::DenseSymmetricMatrixBuilder,
-        positive_semi_definite::block_sparse_ldlt::BlockSparseLdlt,
+        positive_semi_definite::{
+            block_sparse_ldlt::BlockSparseLdlt,
+            faer_sparse_ldlt::FaerSparseLdlt,
+        },
         sparse::{
             SparseSymmetricMatrixBuilder,
-            faer_sparse_matrix::FaerTripletsMatrix,
+            faer_sparse_matrix::{
+                FaerTripletsMatrix,
+                FaerUpperCompressedMatrix,
+                FaerUpperTripletsMatrix,
+            },
         },
     };
 
@@ -243,11 +251,11 @@ mod tests {
 
     #[test]
     fn scalar_solver_tests() {
-        use crate::BlockSparseSymmetricMatrixBuilder;
+        use crate::BlockSparseLowerMatrixBuilder;
 
         let dense_ex = all_examples::<DenseSymmetricMatrixBuilder>();
         let sparse_ex = all_examples::<SparseSymmetricMatrixBuilder>();
-        let block_sparse_ex = all_examples::<BlockSparseSymmetricMatrixBuilder>();
+        let block_sparse_ex = all_examples::<BlockSparseLowerMatrixBuilder>();
 
         for i in 0..dense_ex.len() {
             let (dense_mat_a, b) = &dense_ex[i];
@@ -255,6 +263,7 @@ mod tests {
             let (block_sparse_mat_a, _b) = &block_sparse_ex[i];
 
             let faer_mat_a = FaerTripletsMatrix::from_lower(sparse_mat_a);
+            let faer_upper_mat_a = FaerUpperTripletsMatrix::from_lower(sparse_mat_a);
 
             let x_dense_lu = DenseLu {}.solve(dense_mat_a, b).unwrap();
             let x_faer_sparse_lu = FaerSparseLu {}.solve(&faer_mat_a.compress(), b).unwrap();
@@ -267,6 +276,9 @@ mod tests {
             let x_block_sparse_ldlt = BlockSparseLdlt {}
                 .solve(&block_sparse_mat_a.compress(), b)
                 .unwrap();
+            let x_faer_sparse_ldlt = FaerSparseLdlt::default()
+                .solve(&faer_upper_mat_a.compress(), b)
+                .unwrap();
 
             print!("dense LU: x = {x_dense_lu}");
             print!("faer sparse LU: x = {x_faer_sparse_lu}");
@@ -276,6 +288,7 @@ mod tests {
             print!("dense LDLt x = {x_dense_ldlt}");
             print!("sparse LDLt x = {x_sparse_ldlt}");
             print!("block sparse LDLt x = {x_block_sparse_ldlt}");
+            print!("faer sparse LDLt x = {x_faer_sparse_ldlt}");
 
             approx::assert_abs_diff_eq!(
                 dense_mat_a.clone() * x_dense_lu,
@@ -301,6 +314,11 @@ mod tests {
             );
             approx::assert_abs_diff_eq!(
                 dense_mat_a.clone() * x_sparse_ldlt,
+                b.clone(),
+                epsilon = 1e-6
+            );
+            approx::assert_abs_diff_eq!(
+                dense_mat_a.clone() * x_faer_sparse_ldlt,
                 b.clone(),
                 epsilon = 1e-6
             );
