@@ -12,7 +12,8 @@ mod tests {
     use crate::{
         DenseLdlt,
         DenseLu,
-        FearSparseLu,
+        FaerSparseLu,
+        FaerSparseQr,
         IsLinearSolver,
         IsSymmetricMatrix,
         IsSymmetricMatrixBuilder,
@@ -256,7 +257,8 @@ mod tests {
             let faer_mat_a = FaerTripletsMatrix::from_lower(sparse_mat_a);
 
             let x_dense_lu = DenseLu {}.solve(dense_mat_a, b).unwrap();
-            let x_faer_sparse_lu = FearSparseLu {}.solve(&faer_mat_a.compress(), b).unwrap();
+            let x_faer_sparse_lu = FaerSparseLu {}.solve(&faer_mat_a.compress(), b).unwrap();
+            let x_faer_sparse_qr = FaerSparseQr {}.solve(&faer_mat_a.compress(), b).unwrap();
 
             let x_dense_ldlt = DenseLdlt {}.solve(dense_mat_a, b).unwrap();
             let x_sparse_ldlt = SparseLdlt { tol_rel: 1e-12_f64 }
@@ -269,6 +271,8 @@ mod tests {
             print!("dense LU: x = {x_dense_lu}");
             print!("faer sparse LU: x = {x_faer_sparse_lu}");
 
+            print!("faer sparse QR: x = {x_faer_sparse_qr}");
+
             print!("dense LDLt x = {x_dense_ldlt}");
             print!("sparse LDLt x = {x_sparse_ldlt}");
             print!("block sparse LDLt x = {x_block_sparse_ldlt}");
@@ -280,6 +284,12 @@ mod tests {
             );
             approx::assert_abs_diff_eq!(
                 dense_mat_a.clone() * x_faer_sparse_lu,
+                b.clone(),
+                epsilon = 1e-6
+            );
+
+            approx::assert_abs_diff_eq!(
+                dense_mat_a.clone() * x_faer_sparse_qr,
                 b.clone(),
                 epsilon = 1e-6
             );

@@ -27,9 +27,9 @@ use crate::{
 /// Sparse LU solver
 ///
 /// Sparse LU decomposition - wrapper around faer's sp_lu implementation.
-pub struct FearSparseLu;
+pub struct FaerSparseLu;
 
-impl IsLinearSolver for FearSparseLu {
+impl IsLinearSolver for FaerSparseLu {
     type Matrix = FaerTripletsMatrix;
 
     fn solve_in_place(
