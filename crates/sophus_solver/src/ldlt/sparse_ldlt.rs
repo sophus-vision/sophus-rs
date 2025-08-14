@@ -1,3 +1,5 @@
+use std::usize;
+
 use nalgebra::{
     DMatrix,
     DVector,
@@ -6,73 +8,40 @@ use nalgebra::{
 use crate::{
     IsDenseLinearSystem,
     LinearSolverError,
+    sparse::CscMatrix,
 };
 
 const INVALID: usize = usize::MAX;
 
-/// Simple CSC container (column-compressed sparse).
-#[derive(Clone, Debug)]
-struct CscMatrix {
-    n: usize,            // square n x n
-    col_ptr: Vec<usize>, // len = n+1
-    row_ind: Vec<usize>, // len = nnz
-    values: Vec<f64>,    // len = nnz
-}
-
-impl CscMatrix {
-    fn new(n: usize, col_ptr: Vec<usize>, row_ind: Vec<usize>, values: Vec<f64>) -> Self {
-        debug_assert_eq!(col_ptr.len(), n + 1);
-        debug_assert_eq!(row_ind.len(), values.len());
-        Self {
-            n,
-            col_ptr,
-            row_ind,
-            values,
-        }
-    }
-    fn nnz(&self) -> usize {
-        self.values.len()
-    }
-}
-
 /// Extract lower-triangle triplets (i >= j) from a dense matrix.
-fn lower_triplets_from_dense(a: &DMatrix<f64>) -> (usize, Vec<usize>, Vec<usize>, Vec<f64>) {
+fn lower_triplets_from_dense(a: &DMatrix<f64>) -> (usize, Vec<(usize, usize, f64)>) {
     let n = a.nrows();
     assert_eq!(n, a.ncols());
     let reserve = n * (n + 1) / 2;
-    let mut ii = Vec::with_capacity(reserve);
-    let mut jj = Vec::with_capacity(reserve);
-    let mut xx = Vec::with_capacity(reserve);
+    let mut triplets = Vec::with_capacity(reserve);
 
     for j in 0..n {
         for i in j..n {
             let v = a[(i, j)];
             if v != 0.0 {
-                ii.push(i);
-                jj.push(j);
-                xx.push(v);
+                triplets.push((i, j, v));
             }
         }
     }
-    (n, ii, jj, xx)
+    (n, triplets)
 }
 
 /// Compress triplets to CSC; assumes indices in range [0, n).
 /// Coalesces duplicates by summing; keeps lower-only structure as provided.
-fn triplets_to_csc(
-    n: usize,
-    mut ii: Vec<usize>,
-    mut jj: Vec<usize>,
-    mut xx: Vec<f64>,
-) -> CscMatrix {
-    let nnz = ii.len();
+fn triplets_to_csc(n: usize, triplets: &Vec<(usize, usize, f64)>) -> CscMatrix {
+    let nnz = triplets.len();
     let mut idx: Vec<usize> = (0..nnz).collect();
 
     // Sort by (col, row)
     idx.sort_unstable_by(|&a, &b| {
-        let ca = jj[a].cmp(&jj[b]);
+        let ca = triplets[a].1.cmp(&triplets[b].1);
         if ca == std::cmp::Ordering::Equal {
-            ii[a].cmp(&ii[b])
+            triplets[a].0.cmp(&triplets[b].0)
         } else {
             ca
         }
@@ -81,7 +50,7 @@ fn triplets_to_csc(
     // Count per column
     let mut col_counts = vec![0usize; n];
     for &k in &idx {
-        col_counts[jj[k]] += 1;
+        col_counts[triplets[k].1] += 1;
     }
 
     // Prefix sum -> col_ptr
@@ -96,9 +65,7 @@ fn triplets_to_csc(
     let mut next = col_ptr.clone();
 
     for &k in &idx {
-        let j = jj[k];
-        let i = ii[k];
-        let x = xx[k];
+        let (i, j, x) = triplets[k];
         let pos = next[j];
         if pos > col_ptr[j] && Ai[pos - 1] == i {
             Ax[pos - 1] += x; // coalesce
@@ -492,19 +459,11 @@ fn ldlt_solve_csc(L: &CscMatrix, d: &[f64], b: &DVector<f64>) -> DVector<f64> {
 }
 
 /// Top-level: factor A (dense) as sparse LDLᵀ and solve.
-fn sparse_ldlt_solve_dense_spd(
-    mat_a: &DMatrix<f64>,
+pub(crate) fn sparse_ldlt_solve_dense_spd(
+    a_lower: &CscMatrix,
     b: &DVector<f64>,
     tol_rel: f64,
 ) -> Result<DVector<f64>, LinearSolverError> {
-    let (n, ii, jj, xx) = lower_triplets_from_dense(mat_a);
-    if b.len() != n {
-        return Err(LinearSolverError::DimensionMismatch);
-    }
-
-    // Lower CSC of A (numerics)
-    let a_lower = triplets_to_csc(n, ii, jj, xx);
-
     // Upper via transpose (symbolics + to gather A(k,j))
     let at = csc_transpose(&a_lower);
 
@@ -515,37 +474,37 @@ fn sparse_ldlt_solve_dense_spd(
     let (L, d) = ldlt_numeric_spd(&a_lower, &at, &parent, tol_rel)
         .map_err(|_| LinearSolverError::FactorizationFailed)?;
 
-    #[cfg(any(test, debug_assertions))]
-    {
-        let Ahat = reconstruct_dense_from_ldl(&L, &d);
-        let rel = rel_frob(&Ahat, mat_a);
-        eprintln!("[LDLt] ||Â - A||_F / ||A||_F = {:.3e}", rel);
-        // Optional: if rel is large, dump the first mismatching column
-        if rel > 1e-10 {
-            for j in 0..mat_a.nrows() {
-                for k in 0..j {
-                    // check whether j is present in L(:,k)
-                    // 2) Check the slice of row indices for this column
-                    let present = L.row_ind[L.col_ptr[k]..L.col_ptr[k + 1]]
-                        .iter()
-                        .any(|&r| r == j);
-                    if !present {
-                        // this is frequently the smoking gun
-                        // (only print a few lines)
-                        eprintln!(
-                            "[LDLt] missing row {} in L(:,{}), A({}, {}) = {:.3e}",
-                            j,
-                            k,
-                            j,
-                            k,
-                            mat_a[(j, k)]
-                        );
-                        break;
-                    }
-                }
-            }
-        }
-    }
+    // // #[cfg(any(test, debug_assertions))]
+    // // {
+    // //     let Ahat = reconstruct_dense_from_ldl(&L, &d);
+    // //     let rel = rel_frob(&Ahat, mat_a);
+    // //     eprintln!("[LDLt] ||Â - A||_F / ||A||_F = {:.3e}", rel);
+    // //     // Optional: if rel is large, dump the first mismatching column
+    // //     if rel > 1e-10 {
+    // //         for j in 0..mat_a.nrows() {
+    // //             for k in 0..j {
+    // //                 // check whether j is present in L(:,k)
+    // //                 // 2) Check the slice of row indices for this column
+    // //                 let present = L.row_ind[L.col_ptr[k]..L.col_ptr[k + 1]]
+    // //                     .iter()
+    // //                     .any(|&r| r == j);
+    // //                 if !present {
+    // //                     // this is frequently the smoking gun
+    // //                     // (only print a few lines)
+    // //                     eprintln!(
+    // //                         "[LDLt] missing row {} in L(:,{}), A({}, {}) = {:.3e}",
+    // //                         j,
+    // //                         k,
+    // //                         j,
+    // //                         k,
+    // //                         mat_a[(j, k)]
+    // //                     );
+    // //                     break;
+    // //                 }
+    // //             }
+    // //         }
+    // //     }
+    // }
 
     // Identity permutation solve (P = I)
     let x = ldlt_solve_csc(&L, &d, b);
@@ -564,8 +523,26 @@ impl IsDenseLinearSystem for SparseLDLt {
     ) -> Result<DVector<f64>, LinearSolverError> {
         // Tiny relative tolerance akin to your dense solver
         let tol_rel = 1e-12_f64;
-        sparse_ldlt_solve_dense_spd(&mat_a, b, tol_rel)
+        let (n, t) = lower_triplets_from_dense(&mat_a);
+        //let (n, triplets) = lower_triplets_from_dense(mat_a);
+        if b.len() != n {
+            return Err(LinearSolverError::DimensionMismatch);
+        }
+
+        // Lower CSC of A (numerics)
+        let a_lower = triplets_to_csc(n, &t);
+        sparse_ldlt_solve_dense_spd(&a_lower, b, tol_rel)
     }
+
+    // fn solve(
+    //     &self,
+    //     mat_a: DMatrix<f64>,
+    //     b: &DVector<f64>,
+    // ) -> Result<DVector<f64>, LinearSolverError> {
+    //     // Tiny relative tolerance akin to your dense solver
+    //     let tol_rel = 1e-12_f64;
+    //     sparse_ldlt_solve_dense_spd(&mat_a, b, tol_rel)
+    // }
 }
 
 /* ===========================

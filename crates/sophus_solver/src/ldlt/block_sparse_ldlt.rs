@@ -10,14 +10,13 @@ use crate::{
     BlockSparseMatrixBuilder,
 };
 
-impl BlockSparseMatrixBuilder {
+impl BlockSparseCompressedMatrix {
     /// ldlt
     pub fn ldlt_solve(&self, b: &nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
         println!("foo");
         let mut x = b.clone();
-        let c = &self.to_compressed();
-        let mut ldlt = BlockLDLt::structure_from_cbm(c);
-        ldlt.factorize_left_looking(c);
+        let mut ldlt = BlockLDLt::structure_from_cbm(self);
+        ldlt.factorize_left_looking(self);
         ldlt.solve_in_place(&mut x);
         x
     }

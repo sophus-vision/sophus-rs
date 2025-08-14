@@ -20,6 +20,8 @@ pub mod ldlt;
 pub mod lu;
 /// QR to solve invertible systems.
 pub mod qr;
+/// Sparse data structures.
+pub mod sparse;
 
 mod asserts;
 
@@ -118,7 +120,7 @@ pub trait IsSymmetricMatrixBuilder {
     );
 
     /// Export UPPER triangular scalar triplets (view) from lower storage.
-    fn build(&self) -> Self::Matrix;
+    fn build(self) -> Self::Matrix;
 }
 
 /// Linear solver of a sparse symmetric matrix.
@@ -126,7 +128,7 @@ pub trait IsSparseSymmetricLinearSystem {
     /// Solve the linear system.
     fn solve(
         &self,
-        triplets: &SymmetricBlockSparseMatrixBuilder,
+        triplets: &BlockSparseSymmetricMatrixBuilder,
         b: &nalgebra::DVector<f64>,
     ) -> Result<nalgebra::DVector<f64>, LinearSolverError>;
 }

@@ -127,7 +127,7 @@ impl IsSymmetricMatrixBuilder for DenseSymmetricMatrixBuilder {
         // note: diagonal blocks (block_index[0] == block_index[1] and pr==pc) are written once
     }
 
-    fn build(&self) -> Self::Matrix {
-        self.matrix.clone()
+    fn build(self) -> Self::Matrix {
+        self.matrix
     }
 }

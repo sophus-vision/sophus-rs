@@ -199,9 +199,9 @@ pub fn ldlt_inertia_from_d(d: DVectorView<'_, f64>, tol_rel: f64) -> DenseInerti
 }
 
 /// Dense SPD solver using LDLᵀ.
-pub struct DenseLDLt {}
+pub struct DenseLdlt {}
 
-impl IsDenseLinearSystem for DenseLDLt {
+impl IsDenseLinearSystem for DenseLdlt {
     fn solve_dense(
         &self,
         mat_a: DMatrix<f64>,

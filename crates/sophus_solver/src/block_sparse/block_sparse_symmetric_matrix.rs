@@ -47,12 +47,12 @@ use crate::{
 /// Within each region, all block matrices have the same shape. E.g., the first region contains only
 /// AxA-shaped blocks, the second region contains only AxB blocks, etc.
 #[derive(Debug)]
-pub struct SymmetricBlockSparseMatrixBuilder {
+pub struct BlockSparseSymmetricMatrixBuilder {
     /// builder
     pub builder: BlockSparseMatrixBuilder,
 }
 
-impl SymmetricBlockSparseMatrixBuilder {
+impl BlockSparseSymmetricMatrixBuilder {
     /// Export UPPER triangular scalar triplets (view) from lower storage.
     pub fn to_upper_triangular_scalar_triplets(
         &self,
@@ -82,7 +82,7 @@ impl SymmetricBlockSparseMatrixBuilder {
     }
 }
 
-impl IsSymmetricMatrixBuilder for SymmetricBlockSparseMatrixBuilder {
+impl IsSymmetricMatrixBuilder for BlockSparseSymmetricMatrixBuilder {
     type Matrix = BlockSparseCompressedMatrix;
 
     fn zero(partitions: &[PartitionSpec]) -> Self {
@@ -117,7 +117,7 @@ impl IsSymmetricMatrixBuilder for SymmetricBlockSparseMatrixBuilder {
         self.builder.add_block(region_idx, block_index, block);
     }
 
-    fn build(&self) -> Self::Matrix {
+    fn build(self) -> Self::Matrix {
         self.builder.to_compressed()
     }
 }

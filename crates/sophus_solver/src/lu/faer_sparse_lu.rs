@@ -16,7 +16,7 @@ use crate::{
     IsSymmetricMatrixBuilder,
     LinearSolverError,
     SparseSolverError,
-    SymmetricBlockSparseMatrixBuilder,
+    BlockSparseSymmetricMatrixBuilder,
 };
 
 /// Sparse LU solver
@@ -27,7 +27,7 @@ pub struct FearSparseLu;
 impl IsSparseSymmetricLinearSystem for FearSparseLu {
     fn solve(
         &self,
-        sym_mat: &SymmetricBlockSparseMatrixBuilder,
+        sym_mat: &BlockSparseSymmetricMatrixBuilder,
         b: &nalgebra::DVector<f64>,
     ) -> Result<nalgebra::DVector<f64>, LinearSolverError> {
         let dim = sym_mat.scalar_dimension();
