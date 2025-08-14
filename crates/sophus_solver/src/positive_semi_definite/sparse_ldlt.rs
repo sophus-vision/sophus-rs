@@ -6,7 +6,7 @@ use nalgebra::{
 };
 
 use crate::{
-    IsDenseLinearSystem,
+    IsLinearSolver,
     LinearSolverError,
     sparse::CscMatrix,
 };
@@ -427,35 +427,32 @@ fn ldlt_numeric_spd(
 
 /// Solve with L (unit-lower in CSC), D (diag), Lᵀ. Identity permutation here.
 /// x is returned (does not overwrite b).
-fn ldlt_solve_csc(L: &CscMatrix, d: &[f64], b: &DVector<f64>) -> DVector<f64> {
+fn ldlt_solve_csc_in_place(L: &CscMatrix, d: &[f64], b: &mut DVector<f64>) {
     let n = L.n;
     debug_assert_eq!(b.len(), n);
     debug_assert_eq!(d.len(), n);
 
-    let mut x = b.clone_owned();
-
     // Forward: L y = b (unit-lower)
     for j in 0..n {
-        let t = x[j];
+        let t = b[j];
         for p in L.col_ptr[j]..L.col_ptr[j + 1] {
             let i = L.row_ind[p]; // i > j
-            x[i] -= L.values[p] * t;
+            b[i] -= L.values[p] * t;
         }
     }
 
     // Diagonal: z = D^{-1} y
     for i in 0..n {
-        x[i] /= d[i];
+        b[i] /= d[i];
     }
 
     // Backward: Lᵀ x = z
     for j in (0..n).rev() {
         for p in L.col_ptr[j]..L.col_ptr[j + 1] {
             let i = L.row_ind[p]; // i > j
-            x[j] -= L.values[p] * x[i];
+            b[j] -= L.values[p] * b[i];
         }
     }
-    x
 }
 
 /// Top-level: factor A (dense) as sparse LDLᵀ and solve.
@@ -507,83 +504,67 @@ pub(crate) fn sparse_ldlt_solve_dense_spd(
     // }
 
     // Identity permutation solve (P = I)
-    let x = ldlt_solve_csc(&L, &d, b);
+    let mut x = b.clone();
+    ldlt_solve_csc_in_place(&L, &d, &mut x);
     Ok(x)
 }
 
 /// Public: a sparse LDLᵀ solver that matches your trait and dense API.
 /// For SPD matrices; no pivoting; identity ordering (add AMD later if needed).
-pub struct SparseLDLt;
-
-impl IsDenseLinearSystem for SparseLDLt {
-    fn solve_dense(
-        &self,
-        mat_a: DMatrix<f64>,
-        b: &DVector<f64>,
-    ) -> Result<DVector<f64>, LinearSolverError> {
-        // Tiny relative tolerance akin to your dense solver
-        let tol_rel = 1e-12_f64;
-        let (n, t) = lower_triplets_from_dense(&mat_a);
-        //let (n, triplets) = lower_triplets_from_dense(mat_a);
-        if b.len() != n {
-            return Err(LinearSolverError::DimensionMismatch);
-        }
-
-        // Lower CSC of A (numerics)
-        let a_lower = triplets_to_csc(n, &t);
-        sparse_ldlt_solve_dense_spd(&a_lower, b, tol_rel)
-    }
-
-    // fn solve(
-    //     &self,
-    //     mat_a: DMatrix<f64>,
-    //     b: &DVector<f64>,
-    // ) -> Result<DVector<f64>, LinearSolverError> {
-    //     // Tiny relative tolerance akin to your dense solver
-    //     let tol_rel = 1e-12_f64;
-    //     sparse_ldlt_solve_dense_spd(&mat_a, b, tol_rel)
-    // }
+pub struct SparseLdlt {
+    /// relative tolerance
+    pub tol_rel: f64,
 }
 
-/* ===========================
-Optional helpers & tests
-=========================== */
+// impl IsDenseLinearSystem for SparseLdlt {
+//     fn solve_dense(
+//         &self,
+//         mat_a: &DMatrix<f64>,
+//         b: &DVector<f64>,
+//     ) -> Result<DVector<f64>, LinearSolverError> {
+//         // Tiny relative tolerance akin to your dense solver
+//         let tol_rel = 1e-12_f64;
+//         let (n, t) = lower_triplets_from_dense(&mat_a);
+//         //let (n, triplets) = lower_triplets_from_dense(mat_a);
+//         if b.len() != n {
+//             return Err(LinearSolverError::DimensionMismatch);
+//         }
 
-#[cfg(test)]
-mod tests {
-    use nalgebra::{
-        DMatrix,
-        DVector,
-    };
+//         // Lower CSC of A (numerics)
+//         let a_lower = triplets_to_csc(n, &t);
+//         sparse_ldlt_solve_dense_spd(&a_lower, b, self.tol_rel)
+//     }
 
-    use super::*;
+//     // fn solve(
+//     //     &self,
+//     //     mat_a: DMatrix<f64>,
+//     //     b: &DVector<f64>,
+//     // ) -> Result<DVector<f64>, LinearSolverError> {
+//     //     // Tiny relative tolerance akin to your dense solver
+//     //     let tol_rel = 1e-12_f64;
+//     //     sparse_ldlt_solve_dense_spd(&mat_a, b, tol_rel)
+//     // }
+// }
 
-    fn make_spd_from_dense(n: usize, lam: f64) -> DMatrix<f64> {
-        // Deterministic dense R
-        let mut r = DMatrix::<f64>::zeros(n, n);
-        for i in 0..n {
-            for j in 0..n {
-                r[(i, j)] = ((i + 1) as f64) * ((j + 2) as f64) / ((i + j + 1) as f64);
-            }
-        }
-        r.transpose() * &r + lam * DMatrix::<f64>::identity(n, n)
-    }
+impl IsLinearSolver for SparseLdlt {
+    type Matrix = CscMatrix;
 
-    #[test]
-    fn sparse_ldlt_spd_basic() {
-        let n = 16;
-        let a = make_spd_from_dense(n, 1e-3);
-        let mut b = DVector::<f64>::zeros(n);
-        for i in 0..n {
-            b[i] = (i as f64) - 0.5;
-        }
+    fn solve_in_place(
+        &self,
+        a_lower: &CscMatrix,
+        b: &mut nalgebra::DVector<f64>,
+    ) -> Result<(), LinearSolverError> {
+        let at = csc_transpose(a_lower);
 
-        let solver = SparseLDLt;
-        let x = solver.solve_dense(a.clone(), &b).unwrap();
+        // Elimination tree from the **upper** structure
+        let parent = elimination_tree_upper(&at);
 
-        // Residual
-        let r = &a * &x - &b;
-        let rel_res = r.norm() / b.norm().max(1.0);
-        assert!(rel_res < 1e-9, "residual too large: {}", rel_res);
+        // Numeric LDLᵀ (SPD)
+        let (mat_l, d) = ldlt_numeric_spd(a_lower, &at, &parent, self.tol_rel)
+            .map_err(|_| LinearSolverError::FactorizationFailed)?;
+
+        // Identity permutation solve (P = I)
+        ldlt_solve_csc_in_place(&mat_l, &d, b);
+        Ok(())
     }
 }

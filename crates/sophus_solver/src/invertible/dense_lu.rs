@@ -8,7 +8,7 @@ use nalgebra::{
 };
 
 use crate::{
-    IsDenseLinearSystem,
+    IsLinearSolver,
     LinearSolverError,
 };
 
@@ -181,26 +181,49 @@ pub fn lu_reconstruct_into(
 }
 
 /// Dense solver using LU.
-pub struct DenseLU {}
+pub struct DenseLu {}
 
-impl IsDenseLinearSystem for DenseLU {
-    fn solve_dense(
+// impl IsDenseLinearSystem for DenseLu {
+//     fn solve_dense(
+//         &self,
+//         mat_a: &DMatrix<f64>,
+//         b: &DVector<f64>,
+//     ) -> Result<DVector<f64>, LinearSolverError> {
+//         let n = mat_a.nrows();
+//         if n != mat_a.ncols() || b.len() != n {
+//             return Err(LinearSolverError::DimensionMismatch);
+//         }
+
+//         let mut a = mat_a.clone();
+//         let mut piv = vec![0usize; n];
+//         lu_in_place(a.view_mut((0, 0), (n, n)), &mut piv)
+//             .map_err(|_| LinearSolverError::FactorizationFailed)?;
+
+//         let mut x = b.clone();
+//         lu_solve_in_place(a.view((0, 0), (n, n)), &piv, x.rows_mut(0, n));
+//         Ok(x)
+//     }
+// }
+
+impl IsLinearSolver for DenseLu {
+    type Matrix = DMatrix<f64>;
+
+    fn solve_in_place(
         &self,
-        mat_a: DMatrix<f64>,
-        b: &DVector<f64>,
-    ) -> Result<DVector<f64>, LinearSolverError> {
+        mat_a: &Self::Matrix,
+        b: &mut nalgebra::DVector<f64>,
+    ) -> Result<(), LinearSolverError> {
         let n = mat_a.nrows();
         if n != mat_a.ncols() || b.len() != n {
             return Err(LinearSolverError::DimensionMismatch);
         }
 
-        let mut a = mat_a; // take ownership to reuse storage
+        let mut a = mat_a.clone();
         let mut piv = vec![0usize; n];
         lu_in_place(a.view_mut((0, 0), (n, n)), &mut piv)
             .map_err(|_| LinearSolverError::FactorizationFailed)?;
 
-        let mut x = b.clone();
-        lu_solve_in_place(a.view((0, 0), (n, n)), &piv, x.rows_mut(0, n));
-        Ok(x)
+        lu_solve_in_place(a.view((0, 0), (n, n)), &piv, b.rows_mut(0, n));
+        Ok(())
     }
 }

@@ -14,27 +14,25 @@ pub mod block_sparse;
 pub mod dense;
 /// grid.
 pub mod grid;
-/// LDLt to solve semi-positive definite systems.
-pub mod ldlt;
 /// LU to solve invertible systems.
-pub mod lu;
-/// QR to solve invertible systems.
-pub mod qr;
+pub mod invertible;
+/// LDLt to solve semi-positive definite systems.
+pub mod positive_semi_definite;
 /// Sparse data structures.
 pub mod sparse;
 
 mod asserts;
 
 pub use block_sparse::*;
-pub use ldlt::{
+pub use invertible::{
+    dense_lu::*,
+    faer_sparse_lu::*,
+    sparse_qr::*,
+};
+pub use positive_semi_definite::{
     dense_ldlt::*,
     sparse_ldlt::*,
 };
-pub use lu::{
-    dense_lu::*,
-    faer_sparse_lu::*,
-};
-pub use qr::sparse_qr::*;
 use snafu::Snafu;
 
 /// Linear solver error
@@ -123,6 +121,30 @@ pub trait IsSymmetricMatrixBuilder {
     fn build(self) -> Self::Matrix;
 }
 
+/// Linear solver of linear system.
+pub trait IsLinearSolver {
+    /// mat
+    type Matrix: Clone;
+
+    /// Solve the linear system.
+    fn solve(
+        &self,
+        matrix: &Self::Matrix,
+        b: &nalgebra::DVector<f64>,
+    ) -> Result<nalgebra::DVector<f64>, LinearSolverError> {
+        let mut x = b.clone();
+        self.solve_in_place(&matrix, &mut x)?;
+        Ok(x)
+    }
+
+    /// Solve the linear system in-place.
+    fn solve_in_place(
+        &self,
+        matrix: &Self::Matrix,
+        b: &mut nalgebra::DVector<f64>,
+    ) -> Result<(), LinearSolverError>;
+}
+
 /// Linear solver of a sparse symmetric matrix.
 pub trait IsSparseSymmetricLinearSystem {
     /// Solve the linear system.
@@ -133,12 +155,12 @@ pub trait IsSparseSymmetricLinearSystem {
     ) -> Result<nalgebra::DVector<f64>, LinearSolverError>;
 }
 
-/// Linear solver of a dense symmetric matrix.
-pub trait IsDenseLinearSystem {
-    /// Solve the linear system.
-    fn solve_dense(
-        &self,
-        mat_a: nalgebra::DMatrix<f64>,
-        b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, LinearSolverError>;
-}
+// /// Linear solver of a dense symmetric matrix.
+// pub trait IsDenseLinearSystem {
+//     /// Solve the linear system.
+//     fn solve_dense(
+//         &self,
+//         mat_a: &nalgebra::DMatrix<f64>,
+//         b: &nalgebra::DVector<f64>,
+//     ) -> Result<nalgebra::DVector<f64>, LinearSolverError>;
+// }

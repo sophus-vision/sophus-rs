@@ -7,7 +7,6 @@ use crate::{
     IsSymmetricMatrixBuilder,
     PartitionSpec,
     debug_assert_ge,
-    grid::Grid, // kept because trait signature brings it in
 };
 
 /// d
