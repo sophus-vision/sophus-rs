@@ -1,4 +1,5 @@
 pub(crate) mod csc_matrix;
+pub(crate) mod faer_sparse_matrix;
 
 pub use csc_matrix::*;
 use nalgebra::DMatrixView;
@@ -23,7 +24,7 @@ pub struct SparseSymmetricMatrixBuilder {
 }
 
 impl IsSymmetricMatrixBuilder for SparseSymmetricMatrixBuilder {
-    type Matrix = CscMatrix;
+    type Matrix = LowerTripletsMatrix;
 
     fn zero(partitions: &[PartitionSpec]) -> Self {
         let mut per_partition_scalar_offset = Vec::with_capacity(partitions.len());
@@ -123,66 +124,10 @@ impl IsSymmetricMatrixBuilder for SparseSymmetricMatrixBuilder {
 
     /// Build a LOWER-ONLY CSC (optional; kept for parity with other builders).
     fn build(self) -> Self::Matrix {
-        let n = self.scalar_dimension;
-        let nnz = self.triplets.len();
-        let mut idx: Vec<usize> = (0..nnz).collect();
-
-        // sort by (col, row)
-        idx.sort_unstable_by(|&a, &b| {
-            let ca = self.triplets[a].1.cmp(&self.triplets[b].1);
-            if ca == std::cmp::Ordering::Equal {
-                self.triplets[a].0.cmp(&self.triplets[b].0)
-            } else {
-                ca
-            }
-        });
-
-        // count per column
-        let mut col_counts = vec![0usize; n];
-        for &k in &idx {
-            col_counts[self.triplets[k].1] += 1;
+        LowerTripletsMatrix {
+            triplets: self.triplets,
+            scalar_dimension: self.scalar_dimension,
         }
-
-        // prefix sum -> col_ptr
-        let mut col_ptr = vec![0usize; n + 1];
-        for j in 0..n {
-            col_ptr[j + 1] = col_ptr[j] + col_counts[j];
-        }
-
-        // fill Ai/Ax with coalescing
-        let mut Ai = vec![0usize; nnz];
-        let mut Ax = vec![0f64; nnz];
-        let mut next = col_ptr.clone();
-
-        for &k in &idx {
-            let (i, j, x) = self.triplets[k];
-            let pos = next[j];
-            if pos > col_ptr[j] && Ai[pos - 1] == i {
-                Ax[pos - 1] += x; // coalesce duplicates
-            } else {
-                Ai[pos] = i;
-                Ax[pos] = x;
-                next[j] += 1;
-            }
-        }
-
-        // compact columns
-        let mut write_ptr = 0usize;
-        for j in 0..n {
-            let start = col_ptr[j];
-            let stop = next[j];
-            if write_ptr != start {
-                Ai.copy_within(start..stop, write_ptr);
-                Ax.copy_within(start..stop, write_ptr);
-            }
-            col_ptr[j] = write_ptr;
-            write_ptr += stop - start;
-        }
-        col_ptr[n] = write_ptr;
-        Ai.truncate(write_ptr);
-        Ax.truncate(write_ptr);
-
-        CscMatrix::new(n, col_ptr, Ai, Ax)
     }
 }
 

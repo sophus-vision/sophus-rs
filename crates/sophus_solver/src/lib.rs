@@ -89,10 +89,43 @@ pub enum SparseSolverError {
     Unspecific,
 }
 
+/// f
+pub trait IsSymmetricMatrix {
+    /// c
+    type Compressed;
+
+    /// c
+    fn compress(&self) -> Self::Compressed;
+}
+
+/// Linear solver of linear system.
+pub trait IsLinearSolver {
+    /// mat
+    type Matrix: IsSymmetricMatrix;
+
+    /// Solve the linear system.
+    fn solve(
+        &self,
+        matrix: &<Self::Matrix as IsSymmetricMatrix>::Compressed,
+        b: &nalgebra::DVector<f64>,
+    ) -> Result<nalgebra::DVector<f64>, LinearSolverError> {
+        let mut x = b.clone();
+        self.solve_in_place(matrix, &mut x)?;
+        Ok(x)
+    }
+
+    /// Solve the linear system in-place.
+    fn solve_in_place(
+        &self,
+        matrix: &<Self::Matrix as IsSymmetricMatrix>::Compressed,
+        b: &mut nalgebra::DVector<f64>,
+    ) -> Result<(), LinearSolverError>;
+}
+
 /// sym mat
 pub trait IsSymmetricMatrixBuilder {
     /// mat
-    type Matrix;
+    type Matrix: IsSymmetricMatrix;
 
     /// Create a symmetric matrix "filled" with zeros.
     ///
@@ -120,47 +153,3 @@ pub trait IsSymmetricMatrixBuilder {
     /// Export UPPER triangular scalar triplets (view) from lower storage.
     fn build(self) -> Self::Matrix;
 }
-
-/// Linear solver of linear system.
-pub trait IsLinearSolver {
-    /// mat
-    type Matrix: Clone;
-
-    /// Solve the linear system.
-    fn solve(
-        &self,
-        matrix: &Self::Matrix,
-        b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, LinearSolverError> {
-        let mut x = b.clone();
-        self.solve_in_place(&matrix, &mut x)?;
-        Ok(x)
-    }
-
-    /// Solve the linear system in-place.
-    fn solve_in_place(
-        &self,
-        matrix: &Self::Matrix,
-        b: &mut nalgebra::DVector<f64>,
-    ) -> Result<(), LinearSolverError>;
-}
-
-/// Linear solver of a sparse symmetric matrix.
-pub trait IsSparseSymmetricLinearSystem {
-    /// Solve the linear system.
-    fn solve(
-        &self,
-        triplets: &BlockSparseSymmetricMatrixBuilder,
-        b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, LinearSolverError>;
-}
-
-// /// Linear solver of a dense symmetric matrix.
-// pub trait IsDenseLinearSystem {
-//     /// Solve the linear system.
-//     fn solve_dense(
-//         &self,
-//         mat_a: &nalgebra::DMatrix<f64>,
-//         b: &nalgebra::DVector<f64>,
-//     ) -> Result<nalgebra::DVector<f64>, LinearSolverError>;
-// }

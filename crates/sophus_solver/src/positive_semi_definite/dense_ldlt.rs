@@ -9,8 +9,55 @@ use nalgebra::{
 
 use crate::{
     IsLinearSolver,
+    IsSymmetricMatrix,
     LinearSolverError,
 };
+
+/// Dense SPD solver using LDLᵀ.
+pub struct DenseLdlt {}
+
+impl IsSymmetricMatrix for DMatrix<f64> {
+    type Compressed = DMatrix<f64>;
+
+    fn compress(&self) -> Self::Compressed {
+        self.clone()
+    }
+}
+
+impl IsLinearSolver for DenseLdlt {
+    type Matrix = DMatrix<f64>;
+
+    fn solve_in_place(
+        &self,
+        mat_a: &Self::Matrix,
+        b: &mut nalgebra::DVector<f64>,
+    ) -> Result<(), LinearSolverError> {
+        let n = mat_a.nrows();
+        if n != mat_a.ncols() || b.len() != n {
+            return Err(LinearSolverError::DimensionMismatch);
+        }
+
+        // Factor A in place: A = L D Lᵀ (L stored in A's lower, D in `d`)
+        let mut d = DVector::<f64>::zeros(n);
+
+        let mut lu_storage = mat_a.clone();
+
+        ldlt_spd_in_place(
+            lu_storage.view_mut((0, 0), (n, n)), // <— matrix mutable view
+            d.rows_mut(0, n),                    // <— vector mutable view
+        )
+        .map_err(|_| LinearSolverError::FactorizationFailed)?;
+
+        // Solve A x = b using the factor
+        ldlt_solve_in_place(
+            lu_storage.view((0, 0), (n, n)), // <— matrix immutable view
+            d.rows(0, n),                    // <— vector immutable view
+            b.rows_mut(0, n),                // <— vector mutable view
+        );
+
+        Ok(())
+    }
+}
 
 /// LDLᵀ (SPD) factorization in-place on A's lower triangle.
 /// On return:
@@ -196,74 +243,4 @@ pub fn ldlt_inertia_from_d(d: DVectorView<'_, f64>, tol_rel: f64) -> DenseInerti
         }
     }
     DenseInertia { pos, neg, zero }
-}
-
-/// Dense SPD solver using LDLᵀ.
-pub struct DenseLdlt {}
-
-// impl IsDenseLinearSystem for DenseLdlt {
-//     fn solve_dense(
-//         &self,
-//         mat_a: &DMatrix<f64>,
-//         b: &DVector<f64>,
-//     ) -> Result<DVector<f64>, LinearSolverError> {
-//         let n = mat_a.nrows();
-//         if n != mat_a.ncols() || b.len() != n {
-//             return Err(LinearSolverError::DimensionMismatch);
-//         }
-
-//         // Factor A in place: A = L D Lᵀ (L stored in A's lower, D in `d`)
-//         let mut a = mat_a.clone();
-//         let mut d = DVector::<f64>::zeros(n);
-//         ldlt_spd_in_place(
-//             a.view_mut((0, 0), (n, n)), // <— matrix mutable view
-//             d.rows_mut(0, n),           // <— vector mutable view
-//         )
-//         .map_err(|_| LinearSolverError::FactorizationFailed)?;
-
-//         // Solve A x = b using the factor
-//         let mut x = b.clone();
-//         ldlt_solve_in_place(
-//             a.view((0, 0), (n, n)), // <— matrix immutable view
-//             d.rows(0, n),           // <— vector immutable view
-//             x.rows_mut(0, n),       // <— vector mutable view
-//         );
-
-//         Ok(x)
-//     }
-// }
-
-impl IsLinearSolver for DenseLdlt {
-    type Matrix = DMatrix<f64>;
-
-    fn solve_in_place(
-        &self,
-        mat_a: &Self::Matrix,
-        b: &mut nalgebra::DVector<f64>,
-    ) -> Result<(), LinearSolverError> {
-        let n = mat_a.nrows();
-        if n != mat_a.ncols() || b.len() != n {
-            return Err(LinearSolverError::DimensionMismatch);
-        }
-
-        // Factor A in place: A = L D Lᵀ (L stored in A's lower, D in `d`)
-        let mut d = DVector::<f64>::zeros(n);
-
-        let mut lu_storage = mat_a.clone();
-
-        ldlt_spd_in_place(
-            lu_storage.view_mut((0, 0), (n, n)), // <— matrix mutable view
-            d.rows_mut(0, n),                    // <— vector mutable view
-        )
-        .map_err(|_| LinearSolverError::FactorizationFailed)?;
-
-        // Solve A x = b using the factor
-        ldlt_solve_in_place(
-            lu_storage.view((0, 0), (n, n)), // <— matrix immutable view
-            d.rows(0, n),                    // <— vector immutable view
-            b.rows_mut(0, n),                // <— vector mutable view
-        );
-
-        Ok(())
-    }
 }

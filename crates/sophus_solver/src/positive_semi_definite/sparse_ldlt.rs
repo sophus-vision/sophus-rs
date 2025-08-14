@@ -1,5 +1,3 @@
-use std::usize;
-
 use nalgebra::{
     DMatrix,
     DVector,
@@ -8,92 +6,43 @@ use nalgebra::{
 use crate::{
     IsLinearSolver,
     LinearSolverError,
-    sparse::CscMatrix,
+    sparse::{
+        CscMatrix,
+        LowerTripletsMatrix,
+    },
 };
 
+/// Public: a sparse LDLᵀ solver that matches your trait and dense API.
+/// For SPD matrices; no pivoting; identity ordering (add AMD later if needed).
+pub struct SparseLdlt {
+    /// relative tolerance
+    pub tol_rel: f64,
+}
+
+impl IsLinearSolver for SparseLdlt {
+    type Matrix = LowerTripletsMatrix;
+
+    fn solve_in_place(
+        &self,
+        a_lower: &CscMatrix,
+        b: &mut nalgebra::DVector<f64>,
+    ) -> Result<(), LinearSolverError> {
+        let at = csc_transpose(a_lower);
+
+        // Elimination tree from the **upper** structure
+        let parent = elimination_tree_upper(&at);
+
+        // Numeric LDLᵀ (SPD)
+        let (mat_l, d) = ldlt_numeric_spd(a_lower, &at, &parent, self.tol_rel)
+            .map_err(|_| LinearSolverError::FactorizationFailed)?;
+
+        // Identity permutation solve (P = I)
+        ldlt_solve_csc_in_place(&mat_l, &d, b);
+        Ok(())
+    }
+}
+
 const INVALID: usize = usize::MAX;
-
-/// Extract lower-triangle triplets (i >= j) from a dense matrix.
-fn lower_triplets_from_dense(a: &DMatrix<f64>) -> (usize, Vec<(usize, usize, f64)>) {
-    let n = a.nrows();
-    assert_eq!(n, a.ncols());
-    let reserve = n * (n + 1) / 2;
-    let mut triplets = Vec::with_capacity(reserve);
-
-    for j in 0..n {
-        for i in j..n {
-            let v = a[(i, j)];
-            if v != 0.0 {
-                triplets.push((i, j, v));
-            }
-        }
-    }
-    (n, triplets)
-}
-
-/// Compress triplets to CSC; assumes indices in range [0, n).
-/// Coalesces duplicates by summing; keeps lower-only structure as provided.
-fn triplets_to_csc(n: usize, triplets: &Vec<(usize, usize, f64)>) -> CscMatrix {
-    let nnz = triplets.len();
-    let mut idx: Vec<usize> = (0..nnz).collect();
-
-    // Sort by (col, row)
-    idx.sort_unstable_by(|&a, &b| {
-        let ca = triplets[a].1.cmp(&triplets[b].1);
-        if ca == std::cmp::Ordering::Equal {
-            triplets[a].0.cmp(&triplets[b].0)
-        } else {
-            ca
-        }
-    });
-
-    // Count per column
-    let mut col_counts = vec![0usize; n];
-    for &k in &idx {
-        col_counts[triplets[k].1] += 1;
-    }
-
-    // Prefix sum -> col_ptr
-    let mut col_ptr = vec![0usize; n + 1];
-    for j in 0..n {
-        col_ptr[j + 1] = col_ptr[j] + col_counts[j];
-    }
-
-    // Fill Ai/Ax, coalescing duplicates
-    let mut Ai = vec![0usize; nnz];
-    let mut Ax = vec![0f64; nnz];
-    let mut next = col_ptr.clone();
-
-    for &k in &idx {
-        let (i, j, x) = triplets[k];
-        let pos = next[j];
-        if pos > col_ptr[j] && Ai[pos - 1] == i {
-            Ax[pos - 1] += x; // coalesce
-        } else {
-            Ai[pos] = i;
-            Ax[pos] = x;
-            next[j] += 1;
-        }
-    }
-
-    // Compact columns (remove holes from coalescing)
-    let mut write_ptr = 0usize;
-    for j in 0..n {
-        let start = col_ptr[j];
-        let stop = next[j];
-        if write_ptr != start {
-            Ai.copy_within(start..stop, write_ptr);
-            Ax.copy_within(start..stop, write_ptr);
-        }
-        col_ptr[j] = write_ptr;
-        write_ptr += stop - start;
-    }
-    col_ptr[n] = write_ptr;
-    Ai.truncate(write_ptr);
-    Ax.truncate(write_ptr);
-
-    CscMatrix::new(n, col_ptr, Ai, Ax)
-}
 
 /// Transpose a CSC (including values).
 fn csc_transpose(a: &CscMatrix) -> CscMatrix {
@@ -234,13 +183,6 @@ fn reconstruct_dense_from_ldl(L: &CscMatrix, d: &[f64]) -> DMatrix<f64> {
     a
 }
 
-#[cfg(any(test, debug_assertions))]
-fn rel_frob(a: &DMatrix<f64>, b: &DMatrix<f64>) -> f64 {
-    let nrm = b.norm();
-    let diff = (a - b).norm();
-    diff / nrm.max(1.0)
-}
-
 /// Numeric simplicial LDLᵀ (SPD), left-looking.
 /// Uses A_lower for numerics and Aᵗ (upper) for symbolics **and** to gather A(k,j).
 /// Numeric simplicial LDLᵀ (SPD), left-looking.
@@ -285,22 +227,6 @@ fn ldlt_numeric_spd(
             }
         }
 
-        // // --- Gather UPPER: A(k < j, j) from at_upper -> y[k]
-        // for p in at_upper.col_ptr[j]..at_upper.col_ptr[j + 1] {
-        //     let k = at_upper.row_ind[p];
-        //     if k >= j {
-        //         continue;
-        //     } // strictly upper only
-        //     let v = at_upper.values[p]; // equals A(k,j) == A(j,k)
-        //     if ymark[k] != stamp {
-        //         y[k] = v;
-        //         ymark[k] = stamp;
-        //         touched.push(k);
-        //     } else {
-        //         y[k] += v;
-        //     }
-        // }
-
         // --- Symbolic reach to find contributing columns k < j
         let top = ereach_upper(at_upper, j, parent, &mut w, &mut stk);
 
@@ -323,8 +249,7 @@ fn ldlt_numeric_spd(
                     // We *thought* k contributes to column j (it’s in the ereach),
                     // yet L(:,k) has no row j. This is usually a symbolics bug.
                     eprintln!(
-                        "[LDLt] ereach says k={} contributes to j={}, but L(:,{}) has no row {}",
-                        k, j, k, j
+                        "[LDLt] ereach says k={k} contributes to j={j}, but L(:,{k}) has no row {j}"
                     );
                 }
             }
@@ -372,7 +297,7 @@ fn ldlt_numeric_spd(
         let djj = if ymark[j] == stamp { y[j] } else { 0.0 };
         if !djj.is_finite() {
             #[cfg(debug_assertions)]
-            eprintln!("[LDLt] non-finite pivot at j={}", j);
+            eprintln!("[LDLt] non-finite pivot at j={j}");
             return Err("LDLt (SPD) failed: non-finite pivot");
         }
         max_abs_pivot = f64::max(max_abs_pivot, djj.abs());
@@ -380,8 +305,7 @@ fn ldlt_numeric_spd(
         if djj <= tau {
             #[cfg(debug_assertions)]
             eprintln!(
-                "[LDLt] non-positive/too-small pivot at j={} (djj={:.3e}, tau={:.3e})",
-                j, djj, tau
+                "[LDLt] non-positive/too-small pivot at j={j} (djj={djj:.3e}, tau={tau:.3e})"
             );
             return Err("LDLt (SPD) failed: non-positive/too-small pivot");
         }
@@ -452,119 +376,5 @@ fn ldlt_solve_csc_in_place(L: &CscMatrix, d: &[f64], b: &mut DVector<f64>) {
             let i = L.row_ind[p]; // i > j
             b[j] -= L.values[p] * b[i];
         }
-    }
-}
-
-/// Top-level: factor A (dense) as sparse LDLᵀ and solve.
-pub(crate) fn sparse_ldlt_solve_dense_spd(
-    a_lower: &CscMatrix,
-    b: &DVector<f64>,
-    tol_rel: f64,
-) -> Result<DVector<f64>, LinearSolverError> {
-    // Upper via transpose (symbolics + to gather A(k,j))
-    let at = csc_transpose(&a_lower);
-
-    // Elimination tree from the **upper** structure
-    let parent = elimination_tree_upper(&at);
-
-    // Numeric LDLᵀ (SPD)
-    let (L, d) = ldlt_numeric_spd(&a_lower, &at, &parent, tol_rel)
-        .map_err(|_| LinearSolverError::FactorizationFailed)?;
-
-    // // #[cfg(any(test, debug_assertions))]
-    // // {
-    // //     let Ahat = reconstruct_dense_from_ldl(&L, &d);
-    // //     let rel = rel_frob(&Ahat, mat_a);
-    // //     eprintln!("[LDLt] ||Â - A||_F / ||A||_F = {:.3e}", rel);
-    // //     // Optional: if rel is large, dump the first mismatching column
-    // //     if rel > 1e-10 {
-    // //         for j in 0..mat_a.nrows() {
-    // //             for k in 0..j {
-    // //                 // check whether j is present in L(:,k)
-    // //                 // 2) Check the slice of row indices for this column
-    // //                 let present = L.row_ind[L.col_ptr[k]..L.col_ptr[k + 1]]
-    // //                     .iter()
-    // //                     .any(|&r| r == j);
-    // //                 if !present {
-    // //                     // this is frequently the smoking gun
-    // //                     // (only print a few lines)
-    // //                     eprintln!(
-    // //                         "[LDLt] missing row {} in L(:,{}), A({}, {}) = {:.3e}",
-    // //                         j,
-    // //                         k,
-    // //                         j,
-    // //                         k,
-    // //                         mat_a[(j, k)]
-    // //                     );
-    // //                     break;
-    // //                 }
-    // //             }
-    // //         }
-    // //     }
-    // }
-
-    // Identity permutation solve (P = I)
-    let mut x = b.clone();
-    ldlt_solve_csc_in_place(&L, &d, &mut x);
-    Ok(x)
-}
-
-/// Public: a sparse LDLᵀ solver that matches your trait and dense API.
-/// For SPD matrices; no pivoting; identity ordering (add AMD later if needed).
-pub struct SparseLdlt {
-    /// relative tolerance
-    pub tol_rel: f64,
-}
-
-// impl IsDenseLinearSystem for SparseLdlt {
-//     fn solve_dense(
-//         &self,
-//         mat_a: &DMatrix<f64>,
-//         b: &DVector<f64>,
-//     ) -> Result<DVector<f64>, LinearSolverError> {
-//         // Tiny relative tolerance akin to your dense solver
-//         let tol_rel = 1e-12_f64;
-//         let (n, t) = lower_triplets_from_dense(&mat_a);
-//         //let (n, triplets) = lower_triplets_from_dense(mat_a);
-//         if b.len() != n {
-//             return Err(LinearSolverError::DimensionMismatch);
-//         }
-
-//         // Lower CSC of A (numerics)
-//         let a_lower = triplets_to_csc(n, &t);
-//         sparse_ldlt_solve_dense_spd(&a_lower, b, self.tol_rel)
-//     }
-
-//     // fn solve(
-//     //     &self,
-//     //     mat_a: DMatrix<f64>,
-//     //     b: &DVector<f64>,
-//     // ) -> Result<DVector<f64>, LinearSolverError> {
-//     //     // Tiny relative tolerance akin to your dense solver
-//     //     let tol_rel = 1e-12_f64;
-//     //     sparse_ldlt_solve_dense_spd(&mat_a, b, tol_rel)
-//     // }
-// }
-
-impl IsLinearSolver for SparseLdlt {
-    type Matrix = CscMatrix;
-
-    fn solve_in_place(
-        &self,
-        a_lower: &CscMatrix,
-        b: &mut nalgebra::DVector<f64>,
-    ) -> Result<(), LinearSolverError> {
-        let at = csc_transpose(a_lower);
-
-        // Elimination tree from the **upper** structure
-        let parent = elimination_tree_upper(&at);
-
-        // Numeric LDLᵀ (SPD)
-        let (mat_l, d) = ldlt_numeric_spd(a_lower, &at, &parent, self.tol_rel)
-            .map_err(|_| LinearSolverError::FactorizationFailed)?;
-
-        // Identity permutation solve (P = I)
-        ldlt_solve_csc_in_place(&mat_l, &d, b);
-        Ok(())
     }
 }

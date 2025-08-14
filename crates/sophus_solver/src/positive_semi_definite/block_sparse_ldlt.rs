@@ -8,17 +8,26 @@ use crate::{
     AssembledCol,
     BlockSparseCompressedMatrix,
     BlockSparseMatrixBuilder,
+    BlockSparseSymmetricMatrixBuilder,
+    IsLinearSolver,
+    LinearSolverError,
 };
 
-impl BlockSparseCompressedMatrix {
-    /// ldlt
-    pub fn ldlt_solve(&self, b: &nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
-        println!("foo");
-        let mut x = b.clone();
-        let mut ldlt = BlockLDLt::structure_from_cbm(self);
-        ldlt.factorize_left_looking(self);
-        ldlt.solve_in_place(&mut x);
-        x
+// bs
+pub struct BlockSparseLdlt {}
+
+impl IsLinearSolver for BlockSparseLdlt {
+    type Matrix = BlockSparseSymmetricMatrixBuilder;
+
+    fn solve_in_place(
+        &self,
+        a_lower: &BlockSparseCompressedMatrix,
+        b: &mut nalgebra::DVector<f64>,
+    ) -> Result<(), LinearSolverError> {
+        let mut ldlt = BlockLDLt::structure_from_cbm(a_lower);
+        ldlt.factorize_left_looking(a_lower);
+        ldlt.solve_in_place(b);
+        Ok(())
     }
 }
 
@@ -140,7 +149,7 @@ fn gemm_sub_c_ab(c: &mut [f64], mc: usize, nc: usize, a: &[f64], ka: usize, b: &
 // M := (L Lᵀ) * L(j,k)ᵀ  (M has shape m_k×m_j, col-major).
 // Uses a temporary vector tmp (len ≥ m_k); no heap alloc here.
 #[inline]
-fn form_M_from_Dfactor_and_LjkT(
+fn form_m_from_dfactor_and_ljk_t(
     L: &[f64], // L_D(k), lower, size m_k×m_k
     m_k: usize,
     Ljk: &[f64], // L(j,k), size m_j×m_k (col-major)
@@ -500,7 +509,7 @@ impl BlockLDLt {
                     if tmp_vec.len() < m_k {
                         tmp_vec.resize(m_k, 0.0);
                     }
-                    form_M_from_Dfactor_and_LjkT(Ld_k, m_k, Ljk, m_j, M, &mut tmp_vec);
+                    form_m_from_dfactor_and_ljk_t(Ld_k, m_k, Ljk, m_j, M, &mut tmp_vec);
                 }
 
                 // 2a) D_j -= L(j,k) * M   (m_j×m_k) · (m_k×m_j) → (m_j×m_j)

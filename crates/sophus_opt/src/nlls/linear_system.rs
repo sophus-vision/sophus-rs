@@ -2,15 +2,14 @@ pub(crate) mod cost_system;
 pub(crate) mod eq_system;
 
 use sophus_solver::{
-    BlockVector,
-    IsDenseLinearSystem,
-    IsSparseSymmetricLinearSystem,
-    PartitionSpec,
-    SymmetricBlockSparseMatrixBuilder,
     ldlt::{
         self,
         SparseLdlt,
     },
+    BlockVector,
+    IsDenseLinearSystem,
+    PartitionSpec,
+    SymmetricBlockSparseMatrixBuilder,
 };
 
 use super::{

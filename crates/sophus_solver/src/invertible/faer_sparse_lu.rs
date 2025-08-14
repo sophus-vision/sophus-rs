@@ -12,11 +12,16 @@ use faer::{
 };
 
 use crate::{
-    IsSparseSymmetricLinearSystem,
+    BlockSparseSymmetricMatrixBuilder,
+    IsLinearSolver,
+    IsSymmetricMatrix,
     IsSymmetricMatrixBuilder,
     LinearSolverError,
     SparseSolverError,
-    BlockSparseSymmetricMatrixBuilder,
+    sparse::faer_sparse_matrix::{
+        FaerCsCMatrix,
+        FaerTripletsMatrix,
+    },
 };
 
 /// Sparse LU solver
@@ -24,23 +29,21 @@ use crate::{
 /// Sparse LU decomposition - wrapper around faer's sp_lu implementation.
 pub struct FearSparseLu;
 
-impl IsSparseSymmetricLinearSystem for FearSparseLu {
-    fn solve(
+impl IsLinearSolver for FearSparseLu {
+    type Matrix = FaerTripletsMatrix;
+
+    fn solve_in_place(
         &self,
-        sym_mat: &BlockSparseSymmetricMatrixBuilder,
-        b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, LinearSolverError> {
-        let dim = sym_mat.scalar_dimension();
-        let csc: SparseColMat<usize, f64> =
-            SparseColMat::try_new_from_triplets(dim, dim, &sym_mat.to_symmetric_scalar_triplets())
-                .unwrap();
-        let mut x = b.clone();
-        let mut x_ref = MatMut::<f64>::from_column_major_slice_mut(x.as_mut_slice(), dim, 1);
+        csc: &faer::sparse::SparseColMat<usize, f64>,
+        b: &mut nalgebra::DVector<f64>,
+    ) -> Result<(), LinearSolverError> {
+        let mut x_ref =
+            MatMut::<f64>::from_column_major_slice_mut(b.as_mut_slice(), csc.nrows(), 1);
 
         match csc.sp_lu() {
             Ok(lu) => {
                 lu.solve_in_place(ReborrowMut::rb_mut(&mut x_ref));
-                Ok(x)
+                Ok(())
             }
             Err(e) => Err(LinearSolverError::SparseLuError {
                 details: match e {
@@ -55,3 +58,35 @@ impl IsSparseSymmetricLinearSystem for FearSparseLu {
         }
     }
 }
+
+// impl IsSparseSymmetricLinearSystem for FearSparseLu {
+//     fn solve(
+//         &self,
+//         sym_mat: &BlockSparseSymmetricMatrixBuilder,
+//         b: &nalgebra::DVector<f64>,
+//     ) -> Result<nalgebra::DVector<f64>, LinearSolverError> {
+//         let dim = sym_mat.scalar_dimension();
+//         let csc: SparseColMat<usize, f64> =
+//             SparseColMat::try_new_from_triplets(dim, dim,
+// &sym_mat.to_symmetric_scalar_triplets())                 .unwrap();
+//         let mut x = b.clone();
+//         let mut x_ref = MatMut::<f64>::from_column_major_slice_mut(x.as_mut_slice(), dim, 1);
+
+//         match csc.sp_lu() {
+//             Ok(lu) => {
+//                 lu.solve_in_place(ReborrowMut::rb_mut(&mut x_ref));
+//                 Ok(x)
+//             }
+//             Err(e) => Err(LinearSolverError::SparseLuError {
+//                 details: match e {
+//                     LuError::Generic(faer_err) => match faer_err {
+//                         FaerError::IndexOverflow => SparseSolverError::IndexOverflow,
+//                         FaerError::OutOfMemory => SparseSolverError::OutOfMemory,
+//                         _ => SparseSolverError::Unspecific,
+//                     },
+//                     LuError::SymbolicSingular { .. } => SparseSolverError::SymbolicSingular,
+//                 },
+//             }),
+//         }
+//     }
+// }
