@@ -333,7 +333,7 @@ impl CompressedBlockRegion {
         let mut eidx = 0usize; // entry index in block storage
         let mut ptr = 0usize;
         while ptr < coords.len() {
-            let (br, bc, start0) = coords[ptr];
+            let (br, bc, _) = coords[ptr];
             // Determine target CSC position for (br, bc)
             let pos = if region_x_idx == region_y_idx && br == bc {
                 // diagonal goes last

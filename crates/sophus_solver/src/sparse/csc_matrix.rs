@@ -1,4 +1,4 @@
-use crate::IsCompressableMatrix;
+use crate::IsSymmetricMatrix;
 
 /// Compressed sparse column (CSC) matrix.
 #[derive(Clone, Debug)]
@@ -30,6 +30,11 @@ impl CscMatrix {
     }
 }
 
+///s
+pub struct LowerCscMatrix {
+    pub(crate) mat: CscMatrix,
+}
+
 /// t
 pub struct LowerTripletsMatrix {
     /// t
@@ -39,8 +44,8 @@ pub struct LowerTripletsMatrix {
     pub scalar_dimension: usize,
 }
 
-impl IsCompressableMatrix for LowerTripletsMatrix {
-    type Compressed = CscMatrix;
+impl IsSymmetricMatrix for LowerTripletsMatrix {
+    type Compressed = LowerCscMatrix;
 
     fn compress(&self) -> Self::Compressed {
         let n = self.scalar_dimension;
@@ -70,18 +75,18 @@ impl IsCompressableMatrix for LowerTripletsMatrix {
         }
 
         // fill Ai/Ax with coalescing
-        let mut Ai = vec![0usize; nnz];
-        let mut Ax = vec![0f64; nnz];
+        let mut mat_a_i = vec![0usize; nnz];
+        let mut mat_a_x = vec![0f64; nnz];
         let mut next = col_ptr.clone();
 
         for &k in &idx {
             let (i, j, x) = self.triplets[k];
             let pos = next[j];
-            if pos > col_ptr[j] && Ai[pos - 1] == i {
-                Ax[pos - 1] += x; // coalesce duplicates
+            if pos > col_ptr[j] && mat_a_i[pos - 1] == i {
+                mat_a_x[pos - 1] += x; // coalesce duplicates
             } else {
-                Ai[pos] = i;
-                Ax[pos] = x;
+                mat_a_i[pos] = i;
+                mat_a_x[pos] = x;
                 next[j] += 1;
             }
         }
@@ -92,16 +97,18 @@ impl IsCompressableMatrix for LowerTripletsMatrix {
             let start = col_ptr[j];
             let stop = next[j];
             if write_ptr != start {
-                Ai.copy_within(start..stop, write_ptr);
-                Ax.copy_within(start..stop, write_ptr);
+                mat_a_i.copy_within(start..stop, write_ptr);
+                mat_a_x.copy_within(start..stop, write_ptr);
             }
             col_ptr[j] = write_ptr;
             write_ptr += stop - start;
         }
         col_ptr[n] = write_ptr;
-        Ai.truncate(write_ptr);
-        Ax.truncate(write_ptr);
+        mat_a_i.truncate(write_ptr);
+        mat_a_x.truncate(write_ptr);
 
-        CscMatrix::new(n, col_ptr, Ai, Ax)
+        LowerCscMatrix {
+            mat: CscMatrix::new(n, col_ptr, mat_a_i, mat_a_x),
+        }
     }
 }

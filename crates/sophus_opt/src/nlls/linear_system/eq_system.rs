@@ -1,7 +1,7 @@
 use sophus_solver::{
     BlockVector,
     PartitionSpec,
-    SymmetricBlockSparseMatrixBuilder,
+    SymmetricMatrixBuilderEnum,
 };
 
 use super::EvalMode;
@@ -101,7 +101,7 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> IsEvalua
         variables: &VarFamilies,
         lambda: &BlockVector,
         constraint_idx: usize,
-        block_triplet: &mut SymmetricBlockSparseMatrixBuilder,
+        block_triplet: &mut SymmetricMatrixBuilderEnum,
         block_vec: &mut BlockVector,
     ) {
         let num_args = self.family_names.len();
@@ -161,7 +161,7 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> IsEvalua
                 );
 
                 // G
-                block_triplet.add_block(
+                block_triplet.add_lower_block(
                     &[region_idx, family_alpha],
                     [0, block_start_idx_alpha],
                     &constraint.jacobian.block(arg_id_alpha).as_view(),

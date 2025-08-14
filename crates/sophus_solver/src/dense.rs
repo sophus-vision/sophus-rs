@@ -67,9 +67,7 @@ impl IsSymmetricMatrixBuilder for DenseSymmetricMatrixBuilder {
         debug_assert_eq!(
             (block.nrows(), block.ncols()),
             (mr, mc),
-            "DenseSymmetricMatrixBuilder: block shape mismatch in region ({},{})",
-            pr,
-            pc
+            "DenseSymmetricMatrixBuilder: block shape mismatch in region ({pr},{pc})"
         );
 
         // block index checks (bounds)

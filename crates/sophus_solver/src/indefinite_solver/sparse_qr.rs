@@ -4,9 +4,7 @@ use faer::{
 };
 
 use crate::{
-    BlockSparseLowerMatrixBuilder,
     IsLinearSolver,
-    IsSymmetricMatrixBuilder,
     LinearSolverError,
     SparseSolverError,
     sparse::faer_sparse_matrix::{
@@ -18,6 +16,8 @@ use crate::{
 /// Sparse QR solver
 ///
 /// Sparse QR decomposition - wrapper around faer's sp_qr implementation.
+#[derive(Copy, Clone, Debug)]
+
 pub struct FaerSparseQr;
 
 impl IsLinearSolver for FaerSparseQr {

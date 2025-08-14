@@ -1,6 +1,6 @@
 use sophus_autodiff::linalg::MatF64;
 
-use crate::block_sparse::BlockRange;
+use crate::block::BlockRange;
 
 /// Jacobian matrix, split into several blocks
 ///

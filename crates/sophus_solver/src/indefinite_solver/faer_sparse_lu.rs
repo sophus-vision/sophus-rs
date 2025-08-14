@@ -6,16 +6,12 @@ use faer::{
     },
     sparse::{
         FaerError,
-        SparseColMat,
         linalg::LuError,
     },
 };
 
 use crate::{
-    BlockSparseLowerMatrixBuilder,
     IsLinearSolver,
-    IsCompressableMatrix,
-    IsSymmetricMatrixBuilder,
     LinearSolverError,
     SparseSolverError,
     sparse::faer_sparse_matrix::{
@@ -27,6 +23,8 @@ use crate::{
 /// Sparse LU solver
 ///
 /// Sparse LU decomposition - wrapper around faer's sp_lu implementation.
+#[derive(Copy, Clone, Debug)]
+
 pub struct FaerSparseLu;
 
 impl IsLinearSolver for FaerSparseLu {

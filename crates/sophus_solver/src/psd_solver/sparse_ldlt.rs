@@ -1,22 +1,28 @@
-use nalgebra::{
-    DMatrix,
-    DVector,
-};
+use nalgebra::DVector;
 
 use crate::{
     IsLinearSolver,
     LinearSolverError,
     sparse::{
         CscMatrix,
+        LowerCscMatrix,
         LowerTripletsMatrix,
     },
 };
 
 /// Public: a sparse LDLᵀ solver that matches your trait and dense API.
 /// For SPD matrices; no pivoting; identity ordering (add AMD later if needed).
+#[derive(Clone, Copy, Debug)]
+
 pub struct SparseLdlt {
     /// relative tolerance
     pub tol_rel: f64,
+}
+
+impl Default for SparseLdlt {
+    fn default() -> Self {
+        SparseLdlt { tol_rel: 1e-12_f64 }
+    }
 }
 
 impl IsLinearSolver for SparseLdlt {
@@ -24,16 +30,16 @@ impl IsLinearSolver for SparseLdlt {
 
     fn solve_in_place(
         &self,
-        a_lower: &CscMatrix,
+        a_lower: &LowerCscMatrix,
         b: &mut nalgebra::DVector<f64>,
     ) -> Result<(), LinearSolverError> {
-        let at = csc_transpose(a_lower);
+        let at = csc_transpose(&a_lower.mat);
 
         // Elimination tree from the **upper** structure
         let parent = elimination_tree_upper(&at);
 
         // Numeric LDLᵀ (SPD)
-        let (mat_l, d) = ldlt_numeric_spd(a_lower, &at, &parent, self.tol_rel)
+        let (mat_l, d) = ldlt_numeric_spd(&a_lower.mat, &at, &parent, self.tol_rel)
             .map_err(|_| LinearSolverError::FactorizationFailed)?;
 
         // Identity permutation solve (P = I)
@@ -82,15 +88,15 @@ fn csc_transpose(a: &CscMatrix) -> CscMatrix {
 /// Davis, "Direct Methods...", Alg. 4.1 (upper form).
 fn elimination_tree_upper(at_upper: &CscMatrix) -> Vec<usize> {
     let n = at_upper.n;
-    let Ap = &at_upper.col_ptr;
-    let Ai = &at_upper.row_ind;
+    let mat_a_p = &at_upper.col_ptr;
+    let mat_a_i = &at_upper.row_ind;
 
     let mut parent = vec![INVALID; n];
     let mut ancestor = vec![INVALID; n];
 
     for j in 0..n {
-        for p in Ap[j]..Ap[j + 1] {
-            let i0 = Ai[p];
+        for p in mat_a_p[j]..mat_a_p[j + 1] {
+            let i0 = mat_a_i[p];
             if i0 >= j {
                 continue;
             } // strictly upper: i < j
@@ -120,8 +126,8 @@ fn ereach_upper(
     stack: &mut [usize], // length n
 ) -> usize {
     let n = at_upper.n;
-    let Ap = &at_upper.col_ptr;
-    let Ai = &at_upper.row_ind;
+    let mat_a_p = &at_upper.col_ptr;
+    let mat_a_i = &at_upper.row_ind;
 
     let mark = j + 1;
     let mut top = n;
@@ -129,8 +135,8 @@ fn ereach_upper(
     // Block j from appearing in the reach
     w[j] = mark;
 
-    for p in Ap[j]..Ap[j + 1] {
-        let mut i = Ai[p];
+    for p in mat_a_p[j]..mat_a_p[j + 1] {
+        let mut i = mat_a_i[p];
         if i >= j {
             continue;
         } // strictly upper start points
@@ -142,45 +148,6 @@ fn ereach_upper(
         }
     }
     top
-}
-
-#[cfg(any(test, debug_assertions))]
-fn reconstruct_dense_from_ldl(L: &CscMatrix, d: &[f64]) -> DMatrix<f64> {
-    let n = L.n;
-    let mut a = DMatrix::<f64>::zeros(n, n);
-
-    // For each column p, build the list of (row, val) including the implicit 1.0 at (p,p)
-    for p in 0..n {
-        // collect rows in this column: rlist = [p] ∪ {rows > p}
-        let mut rows: Vec<usize> = Vec::with_capacity(L.col_ptr[p + 1] - L.col_ptr[p] + 1);
-        let mut vals: Vec<f64> = Vec::with_capacity(rows.capacity());
-        rows.push(p);
-        vals.push(1.0);
-        for q in L.col_ptr[p]..L.col_ptr[p + 1] {
-            rows.push(L.row_ind[q]);
-            vals.push(L.values[q]);
-        }
-
-        // Accumulate D[p] * col_p * col_p^T
-        let dp = d[p];
-        if dp == 0.0 {
-            continue;
-        }
-        for rix in 0..rows.len() {
-            let i = rows[rix];
-            let vi = vals[rix];
-            for rjx in 0..=rix {
-                let j = rows[rjx];
-                let vj = vals[rjx];
-                let add = dp * vi * vj;
-                a[(i, j)] += add;
-                if i != j {
-                    a[(j, i)] += add;
-                }
-            }
-        }
-    }
-    a
 }
 
 /// Numeric simplicial LDLᵀ (SPD), left-looking.
@@ -207,7 +174,7 @@ fn ldlt_numeric_spd(
     let mut stk = vec![0usize; n]; // stack buffer
 
     // L as vector-of-columns; append (row, val); rows need not be sorted.
-    let mut Lcols: Vec<Vec<(usize, f64)>> = (0..n).map(|_| Vec::<(usize, f64)>::new()).collect();
+    let mut l_cols: Vec<Vec<(usize, f64)>> = (0..n).map(|_| Vec::<(usize, f64)>::new()).collect();
 
     let mut max_abs_pivot = 0.0f64;
 
@@ -237,7 +204,7 @@ fn ldlt_numeric_spd(
             // Look up lij = L(j,k) directly from the already-finalized column k.
             // (Lcols[k] stores pairs (row, val) with rows > k.)
             let mut lij_opt: Option<f64> = None;
-            for &(row, val) in &Lcols[k] {
+            for &(row, val) in &l_cols[k] {
                 if row == j {
                     lij_opt = Some(val);
                     break;
@@ -267,7 +234,7 @@ fn ldlt_numeric_spd(
             let alpha = lij * d[k];
             let mut hit_diag = false;
 
-            for &(i, lik) in &Lcols[k] {
+            for &(i, lik) in &l_cols[k] {
                 if i == j {
                     hit_diag = true;
                 }
@@ -316,7 +283,7 @@ fn ldlt_numeric_spd(
             if i > j {
                 let lij = y[i] / djj;
                 if lij != 0.0 {
-                    Lcols[j].push((i, lij));
+                    l_cols[j].push((i, lij));
                 }
             }
         }
@@ -332,36 +299,36 @@ fn ldlt_numeric_spd(
     // Compress Lcols -> CSC
     let mut col_ptr = vec![0usize; n + 1];
     for j in 0..n {
-        col_ptr[j + 1] = col_ptr[j] + Lcols[j].len();
+        col_ptr[j + 1] = col_ptr[j] + l_cols[j].len();
     }
     let nnz = col_ptr[n];
     let mut row_ind = vec![0usize; nnz];
     let mut values = vec![0f64; nnz];
     let mut base = 0usize;
     for j in 0..n {
-        for (k, &(i, v)) in Lcols[j].iter().enumerate() {
+        for (k, &(i, v)) in l_cols[j].iter().enumerate() {
             row_ind[base + k] = i;
             values[base + k] = v;
         }
-        base += Lcols[j].len();
+        base += l_cols[j].len();
     }
-    let L = CscMatrix::new(n, col_ptr, row_ind, values);
-    Ok((L, d))
+    let mat_l = CscMatrix::new(n, col_ptr, row_ind, values);
+    Ok((mat_l, d))
 }
 
 /// Solve with L (unit-lower in CSC), D (diag), Lᵀ. Identity permutation here.
 /// x is returned (does not overwrite b).
-fn ldlt_solve_csc_in_place(L: &CscMatrix, d: &[f64], b: &mut DVector<f64>) {
-    let n = L.n;
+fn ldlt_solve_csc_in_place(mat_l: &CscMatrix, d: &[f64], b: &mut DVector<f64>) {
+    let n = mat_l.n;
     debug_assert_eq!(b.len(), n);
     debug_assert_eq!(d.len(), n);
 
     // Forward: L y = b (unit-lower)
     for j in 0..n {
         let t = b[j];
-        for p in L.col_ptr[j]..L.col_ptr[j + 1] {
-            let i = L.row_ind[p]; // i > j
-            b[i] -= L.values[p] * t;
+        for p in mat_l.col_ptr[j]..mat_l.col_ptr[j + 1] {
+            let i = mat_l.row_ind[p]; // i > j
+            b[i] -= mat_l.values[p] * t;
         }
     }
 
@@ -372,9 +339,9 @@ fn ldlt_solve_csc_in_place(L: &CscMatrix, d: &[f64], b: &mut DVector<f64>) {
 
     // Backward: Lᵀ x = z
     for j in (0..n).rev() {
-        for p in L.col_ptr[j]..L.col_ptr[j + 1] {
-            let i = L.row_ind[p]; // i > j
-            b[j] -= L.values[p] * b[i];
+        for p in mat_l.col_ptr[j]..mat_l.col_ptr[j + 1] {
+            let i = mat_l.row_ind[p]; // i > j
+            b[j] -= mat_l.values[p] * b[i];
         }
     }
 }

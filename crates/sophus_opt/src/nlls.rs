@@ -31,9 +31,9 @@ use log::{
 use snafu::Snafu;
 use sophus_solver::{
     BlockVector,
+    LinearSolverEnum,
     LinearSolverError,
-    SymmetricBlockSparseMatrixBuilder,
-    ldlt,
+    SymmetricMatrixEnum,
 };
 
 pub use crate::nlls::functor_library::{
@@ -42,54 +42,24 @@ pub use crate::nlls::functor_library::{
 };
 use crate::variables::VarFamilies;
 
-/// Linear solver type
-#[derive(Copy, Clone, Debug)]
-pub enum LinearSolverType {
-    /// Sparse LDLT solver (using faer crate)
-    SparseLdlt(ldlt::SparseLdltParams),
-    /// Sparse partial pivoting LU solver (using faer crate)
-    FearSparseLu,
-    /// Sparse QR solver (using faer crate)
-    SparseQr,
-    /// Dense full-pivot. LU solver (using nalgebra crate)
-    DenseLu,
-}
+// /// Linear solver type
+// #[derive(Copy, Clone, Debug)]
+// pub enum LinearSolverType {
+//     /// Sparse LDLT solver (using faer crate)
+//     SparseLdlt(ldlt::SparseLdltParams),
+//     /// Sparse partial pivoting LU solver (using faer crate)
+//     FearSparseLu,
+//     /// Sparse QR solver (using faer crate)
+//     SparseQr,
+//     /// Dense full-pivot. LU solver (using nalgebra crate)
+//     DenseLu,
+// }
 
-impl LinearSolverType {
-    /// Get all available solvers
-    pub fn all_solvers() -> Vec<LinearSolverType> {
-        vec![
-            LinearSolverType::SparseLdlt(Default::default()),
-            LinearSolverType::FearSparseLu,
-            LinearSolverType::SparseQr,
-            LinearSolverType::DenseLu,
-        ]
-    }
-
-    /// Get all sparse solvers
-    pub fn sparse_solvers() -> Vec<LinearSolverType> {
-        vec![
-            LinearSolverType::SparseLdlt(Default::default()),
-            LinearSolverType::FearSparseLu,
-            LinearSolverType::SparseQr,
-        ]
-    }
-
-    /// Get solvers which can be used for indefinite systems
-    pub fn indefinite_solvers() -> Vec<LinearSolverType> {
-        vec![
-            LinearSolverType::FearSparseLu,
-            LinearSolverType::SparseQr,
-            LinearSolverType::DenseLu,
-        ]
-    }
-}
-
-impl Default for LinearSolverType {
-    fn default() -> Self {
-        LinearSolverType::SparseLdlt(Default::default())
-    }
-}
+// impl Default for LinearSolverType {
+//     fn default() -> Self {
+//         LinearSolverType::SparseLdlt(Default::default())
+//     }
+// }
 
 /// Optimization parameters
 #[derive(Copy, Clone, Debug)]
@@ -104,7 +74,7 @@ pub struct OptParams {
     /// whether to use parallelization
     pub parallelize: bool,
     /// linear solver type
-    pub solver: LinearSolverType,
+    pub solver: LinearSolverEnum,
 }
 
 impl Default for OptParams {
@@ -150,7 +120,7 @@ pub struct OptimizationSolution {
     /// the gradient vector
     pub final_neg_gradient: BlockVector,
     /// the hessian matrix
-    pub final_hessian_plus_damping: SymmetricBlockSparseMatrixBuilder,
+    pub final_hessian_plus_damping: SymmetricMatrixEnum,
 }
 
 /// Linear solver error

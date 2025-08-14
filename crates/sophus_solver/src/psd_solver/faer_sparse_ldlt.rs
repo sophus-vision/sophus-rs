@@ -21,7 +21,6 @@ use faer::{
         FaerError,
         SparseColMat,
         SymbolicSparseColMat,
-        Triplet,
         linalg::{
             amd,
             cholesky::simplicial,
@@ -31,12 +30,10 @@ use faer::{
 };
 
 use crate::{
-    FaerSparseQr,
     IsLinearSolver,
     LinearSolverError,
     SparseSolverError,
     sparse::faer_sparse_matrix::{
-        FaerTripletsMatrix,
         FaerUpperCompressedMatrix,
         FaerUpperTripletsMatrix,
     },
@@ -56,7 +53,8 @@ impl Default for SparseLdltParams {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Copy, Clone, Debug)]
+
 pub struct FaerSparseLdlt {
     params: SparseLdltParams,
     parallelize: bool,
@@ -67,6 +65,15 @@ impl FaerSparseLdlt {
         Self {
             params,
             parallelize,
+        }
+    }
+}
+
+impl Default for FaerSparseLdlt {
+    fn default() -> Self {
+        Self {
+            params: Default::default(),
+            parallelize: true,
         }
     }
 }
@@ -334,21 +341,6 @@ impl SimplicialSparseLdlt {
         );
 
         Ok(x)
-    }
-
-    fn from_triplet(
-        triplets: &[Triplet<usize, usize, f64>],
-        n: usize,
-        parallelize: bool,
-        params: SparseLdltParams,
-    ) -> Self {
-        // Triplets are assumed valid (caller generated them).
-        // `try_new_from_triplets` sorts / deduplicates if needed.
-        Self {
-            upper_ccs: SparseColMat::try_new_from_triplets(n, n, triplets).unwrap(),
-            params,
-            parallelize,
-        }
     }
 
     fn from_csc(

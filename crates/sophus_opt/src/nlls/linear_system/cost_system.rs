@@ -1,6 +1,6 @@
 use sophus_solver::{
     BlockVector,
-    SymmetricBlockSparseMatrixBuilder,
+    SymmetricMatrixBuilderEnum,
 };
 
 use super::EvalMode;
@@ -73,7 +73,7 @@ impl<const INPUT_DIM: usize, const N: usize> IsEvaluatedCost for EvaluatedCost<I
         &self,
         variables: &VarFamilies,
         nu: f64,
-        hessian_block_triplet: &mut SymmetricBlockSparseMatrixBuilder,
+        hessian_block_triplet: &mut SymmetricMatrixBuilderEnum,
         neg_grad: &mut BlockVector,
     ) {
         let num_args = self.family_names.len();
@@ -126,7 +126,7 @@ impl<const INPUT_DIM: usize, const N: usize> IsEvaluatedCost for EvaluatedCost<I
 
                 // block diagonal
                 // J'J + nuI
-                hessian_block_triplet.add_block(
+                hessian_block_triplet.add_lower_block(
                     &[family_alpha, family_alpha],
                     [block_start_idx_alpha, block_start_idx_alpha],
                     &(hessian_block + nu * nalgebra::DMatrix::identity(dof_alpha, dof_alpha))
@@ -164,7 +164,7 @@ impl<const INPUT_DIM: usize, const N: usize> IsEvaluatedCost for EvaluatedCost<I
                         evaluated_term.hessian.block(arg_id_alpha, arg_id_beta);
 
                     // J'J
-                    hessian_block_triplet.add_block(
+                    hessian_block_triplet.add_lower_block(
                         &[family_alpha, family_beta],
                         [block_start_idx_alpha, block_start_idx_beta],
                         &hessian_block_alpha_beta.as_view(),

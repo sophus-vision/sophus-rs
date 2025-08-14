@@ -8,6 +8,8 @@
 #[cfg(doctest)]
 pub struct ReadmeDoctests;
 
+/// b
+pub mod block;
 /// Example problems
 pub mod example_problems;
 /// Non-linear least squares optimization

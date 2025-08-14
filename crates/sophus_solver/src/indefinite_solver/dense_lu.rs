@@ -3,7 +3,6 @@ use nalgebra::{
     DMatrixView,
     DMatrixViewMut,
     DVector,
-    DVectorView,
     DVectorViewMut,
 };
 
@@ -15,6 +14,7 @@ use crate::{
 /// In-place LU factorization with partial pivoting: PA = LU.
 /// - A's strict lower tri stores L (unit diag not stored),
 /// - A's upper tri (incl diag) stores U.
+///
 /// On return, `piv[k]` is the pivot row chosen at step k (the row swapped with k).
 pub fn lu_in_place(mut a: DMatrixViewMut<'_, f64>, piv: &mut [usize]) -> Result<(), &'static str> {
     let n = a.nrows();
@@ -181,6 +181,8 @@ pub fn lu_reconstruct_into(
 }
 
 /// Dense solver using LU.
+#[derive(Copy, Clone, Debug)]
+
 pub struct DenseLu {}
 
 impl IsLinearSolver for DenseLu {

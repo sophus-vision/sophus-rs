@@ -8,15 +8,16 @@ use nalgebra::{
 };
 
 use crate::{
-    IsCompressableMatrix,
+    IsSymmetricMatrix,
     IsLinearSolver,
     LinearSolverError,
 };
 
 /// Dense SPD solver using LDLᵀ.
+#[derive(Copy, Clone, Debug)]
 pub struct DenseLdlt {}
 
-impl IsCompressableMatrix for DMatrix<f64> {
+impl IsSymmetricMatrix for DMatrix<f64> {
     type Compressed = DMatrix<f64>;
 
     fn compress(&self) -> Self::Compressed {

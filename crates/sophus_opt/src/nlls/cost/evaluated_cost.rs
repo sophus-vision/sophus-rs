@@ -3,7 +3,7 @@ use core::fmt::Debug;
 use dyn_clone::DynClone;
 use sophus_solver::{
     BlockVector,
-    SymmetricBlockSparseMatrixBuilder,
+    SymmetricMatrixBuilderEnum,
 };
 
 use super::evaluated_term::EvaluatedCostTerm;
@@ -47,7 +47,7 @@ pub trait IsEvaluatedCost: Debug + DynClone {
         &self,
         variables: &VarFamilies,
         nu: f64,
-        hessian_block_triplet: &mut SymmetricBlockSparseMatrixBuilder,
+        hessian_block_triplet: &mut SymmetricMatrixBuilderEnum,
         neg_grad: &mut BlockVector,
     );
 }
