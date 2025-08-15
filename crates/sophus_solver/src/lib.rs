@@ -37,7 +37,7 @@ pub use error::*;
 pub use indefinite_solver::{
     dense_lu::*,
     faer_sparse_lu::*,
-    sparse_qr::*,
+    faer_sparse_qr::*,
 };
 pub use psd_solver::{
     dense_ldlt::*,
@@ -55,6 +55,9 @@ pub trait IsLinearSolver {
     /// mat
     type Matrix: IsSymmetricMatrix;
 
+    /// n
+    const NAME: &'static str;
+
     /// Solve the linear system.
     fn solve(
         &self,
@@ -64,6 +67,11 @@ pub trait IsLinearSolver {
         let mut x = b.clone();
         self.solve_in_place(matrix, &mut x)?;
         Ok(x)
+    }
+
+    /// n
+    fn name(&self) -> String {
+        Self::NAME.into()
     }
 
     /// Solve the linear system in-place.
@@ -102,11 +110,15 @@ impl Default for LinearSolverEnum {
 impl IsLinearSolver for LinearSolverEnum {
     type Matrix = SymmetricMatrixEnum;
 
+    const NAME: &'static str = "nope";
+
     fn solve_in_place(
         &self,
         matrix: &<Self::Matrix as IsSymmetricMatrix>::Compressed,
         b: &mut nalgebra::DVector<f64>,
     ) -> Result<(), LinearSolverError> {
+        //guard_timer!("{:?}/solve", self.name());
+
         match (self, matrix) {
             (LinearSolverEnum::DenseLdlt(dense_ldlt), CompressedMatrixEnum::Dense(matrix)) => {
                 dense_ldlt.solve_in_place(matrix, b)
@@ -138,6 +150,18 @@ impl IsLinearSolver for LinearSolverEnum {
             _ => panic!("{self:?}"),
         }
     }
+
+    fn name(&self) -> String {
+        match self {
+            LinearSolverEnum::DenseLdlt(dense_ldlt) => dense_ldlt.name(),
+            LinearSolverEnum::DenseLu(dense_lu) => dense_lu.name(),
+            LinearSolverEnum::SparseLdlt(sparse_ldlt) => sparse_ldlt.name(),
+            LinearSolverEnum::BlockSparseLdlt(block_sparse_ldlt) => block_sparse_ldlt.name(),
+            LinearSolverEnum::FaerSparseQr(faer_sparse_qr) => faer_sparse_qr.name(),
+            LinearSolverEnum::FaerSparseLu(faer_sparse_lu) => faer_sparse_lu.name(),
+            LinearSolverEnum::FaerSparseLdlt(faer_sparse_ldlt) => faer_sparse_ldlt.name(),
+        }
+    }
 }
 
 impl LinearSolverEnum {
@@ -158,11 +182,12 @@ impl LinearSolverEnum {
     /// Get all sparse solvers
     pub fn sparse_solvers() -> Vec<LinearSolverEnum> {
         vec![
-            LinearSolverEnum::SparseLdlt(Default::default()),
-            LinearSolverEnum::BlockSparseLdlt(BlockSparseLdlt {}),
             LinearSolverEnum::FaerSparseQr(FaerSparseQr {}),
-            LinearSolverEnum::FaerSparseLu(FaerSparseLu {}),
-            LinearSolverEnum::FaerSparseLdlt(FaerSparseLdlt::default()),
+            LinearSolverEnum::BlockSparseLdlt(BlockSparseLdlt {}),
+            LinearSolverEnum::SparseLdlt(Default::default()),
+            // LinearSolverEnum::FaerSparseQr(FaerSparseQr {}),
+            // LinearSolverEnum::FaerSparseLu(FaerSparseLu {}),
+            // LinearSolverEnum::FaerSparseLdlt(FaerSparseLdlt::default()),
         ]
     }
 

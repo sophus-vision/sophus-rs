@@ -6,6 +6,7 @@ use crate::{
     LinearSolverEnum,
     PartitionSpec,
     dense::DenseSymmetricMatrixBuilder,
+    psd_solver::block_sparse_ldlt::phase,
     sparse::{
         LowerTripletsMatrix,
         SparseSymmetricMatrixBuilder,
@@ -65,7 +66,7 @@ pub enum SymmetricMatrixBuilderEnum {
 impl SymmetricMatrixBuilderEnum {
     /// z
     pub fn zero(solver: LinearSolverEnum, partitions: &[PartitionSpec]) -> Self {
-        match solver {
+        let z = match solver {
             LinearSolverEnum::DenseLdlt(_) | LinearSolverEnum::DenseLu(_) => {
                 SymmetricMatrixBuilderEnum::Dense(DenseSymmetricMatrixBuilder::zero(partitions))
             }
@@ -84,7 +85,9 @@ impl SymmetricMatrixBuilderEnum {
             LinearSolverEnum::FaerSparseLdlt(_) => SymmetricMatrixBuilderEnum::FaerSparseUpper(
                 SparseSymmetricMatrixBuilder::zero(partitions),
             ),
-        }
+        };
+        //("zero");
+        z
     }
 
     /// a
@@ -111,11 +114,12 @@ impl SymmetricMatrixBuilderEnum {
                 sparse_symmetric_matrix_builder.add_lower_block(region_idx, block_index, block);
             }
         }
+        // phase("add_lower_block");
     }
 
     /// b
     pub fn build(self) -> SymmetricMatrixEnum {
-        match self {
+        let m = match self {
             SymmetricMatrixBuilderEnum::Dense(dense_symmetric_matrix_builder) => {
                 SymmetricMatrixEnum::Dense(dense_symmetric_matrix_builder.build())
             }
@@ -135,7 +139,9 @@ impl SymmetricMatrixBuilderEnum {
                     &sparse_symmetric_matrix_builder.build(),
                 ))
             }
-        }
+        };
+        //phase("build");
+        m
     }
 }
 
@@ -166,7 +172,7 @@ impl IsSymmetricMatrix for SymmetricMatrixEnum {
     type Compressed = CompressedMatrixEnum;
 
     fn compress(&self) -> Self::Compressed {
-        match self {
+        let c = match self {
             SymmetricMatrixEnum::Dense(matrix) => CompressedMatrixEnum::Dense(matrix.compress()),
             SymmetricMatrixEnum::BlockSparseLower(block_sparse_compressed_matrix) => {
                 CompressedMatrixEnum::BlockSparseLower(block_sparse_compressed_matrix.compress())
@@ -180,6 +186,8 @@ impl IsSymmetricMatrix for SymmetricMatrixEnum {
             SymmetricMatrixEnum::FaerSparseUpper(faer_upper_triplets_matrix) => {
                 CompressedMatrixEnum::FaerSparseUpper(faer_upper_triplets_matrix.compress())
             }
-        }
+        };
+        phase("compress");
+        c
     }
 }

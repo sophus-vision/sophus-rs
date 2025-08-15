@@ -1,5 +1,8 @@
 use std::cmp::Ordering::Less;
 
+use log::trace;
+use tracing::info_span;
+
 use crate::{
     AssembledCol,
     BlockSparseCompressedMatrix,
@@ -9,6 +12,13 @@ use crate::{
     LinearSolverError,
 };
 
+// helper: emits an event keyed as `block sparse LDLt/<phase>`
+#[inline(always)]
+pub fn phase(phase: &str) {
+    let path = format!("{}/{}", BlockSparseLdlt::NAME, phase);
+    tracing::trace!(path = path.as_str());
+}
+
 // bs
 #[derive(Copy, Clone, Debug)]
 pub struct BlockSparseLdlt {}
@@ -16,14 +26,24 @@ pub struct BlockSparseLdlt {}
 impl IsLinearSolver for BlockSparseLdlt {
     type Matrix = BlockSparseLowerMatrixBuilder;
 
+    const NAME: &'static str = "block sparse LDLt";
+
     fn solve_in_place(
         &self,
         a_lower: &BlockSparseLowerCompressedMatrix,
         b: &mut nalgebra::DVector<f64>,
     ) -> Result<(), LinearSolverError> {
+        phase("solve_in_place/before");
+
         let mut ldlt = BlockLDLt::structure_from_cbm(&a_lower.mat);
+        phase("solve_in_place/ldlt");
+
         ldlt.factorize_left_looking(&a_lower.mat);
+        phase("solve_in_place/factorize_left_looking");
+
         ldlt.solve_in_place(b);
+        phase("solve_in_place/solve_in_place");
+
         Ok(())
     }
 }
@@ -320,6 +340,8 @@ impl BlockLDLt {
 
     /// Solve A x = b using the factor (L, D) where D is stored as L_D (lower).
     pub fn solve_in_place(&self, x: &mut nalgebra::DVector<f64>) {
+        puffin::profile_function!(format!("{}/solve", BlockSparseLdlt::NAME));
+
         // 1) forward: L y = b
         self.forward_solve_in_place(x);
         // 2) diagonal: D z = y  → with L_D: solve L_D w = y, then L_Dᵀ z = w
@@ -422,6 +444,7 @@ impl BlockLDLt {
 
     /// f
     pub fn factorize_left_looking(&mut self, cbm: &BlockSparseCompressedMatrix) {
+        phase("factorize_left_looking/enter");
         assert_eq!(self.n, cbm.sym_block_pattern.num_block_cols);
 
         let mut assembled = AssembledCol {
@@ -447,7 +470,11 @@ impl BlockLDLt {
         self.l_entry_of_pos.clear();
         self.l_storage.clear();
 
+        phase("factorize_left_looking/reserve");
+
         for j in 0..self.n {
+            phase("factorize_left_looking0");
+
             // Assemble A(:,j) lower + diag
             cbm.assemble_numeric_col_lower(j, &mut assembled);
             let m_j = assembled.m_j;
@@ -478,62 +505,90 @@ impl BlockLDLt {
                 }
             }
 
-            // Left-looking updates from k<j
+            phase("factorize_left_looking1");
+
+            // --- Left-looking updates from k < j
             for k in 0..j {
-                // Need L(j,k): find row j in column k
-                let pos_jk = if let Some(p) = self.find_pos_in_col(k, j) {
-                    p
-                } else {
-                    continue;
+                // Find L(j,k) in column k (strictly lower by blocks, so row index j in col k)
+                let pos_jk = match self.find_pos_in_col(k, j) {
+                    Some(p) => p,
+                    None => continue,
                 };
+                phase("factorize_left_looking/inner0");
 
                 let m_k = self.blk_dim[k];
                 let off_jk = self.l_entry_of_pos[pos_jk];
                 let len_jk = m_j * m_k;
 
-                // Copy L(j,k) into scratch (so we can mut-borrow D_j later)
+                // Copy L(j,k) (m_j × m_k, col-major) into scratch to avoid borrow conflicts later.
                 l_jk_scratch.resize(len_jk, 0.0);
                 l_jk_scratch[..len_jk].copy_from_slice(&self.l_storage[off_jk..off_jk + len_jk]);
 
-                // M := D_k * L(j,k)^T, with D_k stored as L_D (lower):
-                // M = L_D · (L_Dᵀ · L(j,k)ᵀ)
+                // 1) Build M := (L_D(k) L_D(k)^T) * L(j,k)^T with D_k stored via its Cholesky
+                //    factor L_D(k) (lower). M has shape (m_k × m_j), col-major.
                 mat_m.resize(m_k * m_j, 0.0);
-                {
-                    let mat_d_k = self.diag_block(k);
-                    let mat_m = &mut mat_m[..m_k * m_j];
-                    let mat_l_jk = &l_jk_scratch[..len_jk];
-                    // tmp_vec length ≥ m_k
-                    if tmp_vec.len() < m_k {
-                        tmp_vec.resize(m_k, 0.0);
-                    }
-                    form_m_from_dfactor_and_ljk_t(mat_d_k, m_k, mat_l_jk, m_j, mat_m, &mut tmp_vec);
+                if tmp_vec.len() < m_k {
+                    tmp_vec.resize(m_k, 0.0);
                 }
+                phase("factorize_left_looking/inner1");
 
-                // 2a) D_j -= L(j,k) * M   (m_j×m_k) · (m_k×m_j) → (m_j×m_j)
                 {
-                    let dj = self.diag_block_mut(j);
-                    let mat_m = &mat_m[..m_k * m_j];
-                    let mat_l_jk = &l_jk_scratch[..len_jk];
-                    gemm_sub_c_ab(dj, m_j, m_j, mat_l_jk, m_k, mat_m);
+                    // immutable borrow ends at the end of this block
+                    let mat_d_k = self.diag_block(k); // L_D(k), size m_k × m_k
+                    form_m_from_dfactor_and_ljk_t(
+                        mat_d_k,
+                        m_k,
+                        &l_jk_scratch[..], // L(j,k), m_j × m_k
+                        m_j,
+                        &mut mat_m[..], // M, m_k × m_j
+                        &mut tmp_vec,
+                    );
                 }
+                phase("factorize_left_looking/inner2");
 
-                // 2b) For each i>j in column k: W(i,j) -= L(i,k) * M
+                // 2a) D_j -= L(j,k) * M   → (m_j×m_k) * (m_k×m_j) = (m_j×m_j)
+                {
+                    let dj = self.diag_block_mut(j); // mutable borrow starts here
+                    gemm_sub_c_ab(
+                        dj,            // C := C - A B
+                        m_j,           // mc
+                        m_j,           // nc
+                        &l_jk_scratch, // A = L(j,k), m_j × m_k
+                        m_k,           // ka
+                        &mat_m,        // B = M, m_k × m_j
+                    );
+                }
+                phase("factorize_left_looking/inner3");
+
+                // 2b) For each i > j in column k: W(i,j) -= L(i,k) * M
                 let start_k = self.l_col_ptr[k];
                 let end_k = self.l_col_ptr[k + 1];
                 for pos in start_k..end_k {
                     let i = self.l_row_idx[pos];
-                    let m_i = self.blk_dim[i];
-                    let off = self.l_entry_of_pos[pos];
-                    let lik = &self.l_storage[off..off + (m_i * m_k)];
-
                     if i <= j {
                         continue;
                     }
+                    let m_i = self.blk_dim[i];
+                    let lik_off = self.l_entry_of_pos[pos];
+                    let lik_len = m_i * m_k;
+
+                    // L(i,k) is m_i × m_k
+                    let lik = &self.l_storage[lik_off..lik_off + lik_len];
+
+                    // Accumulator block W(i,j) is m_i × m_j
                     let w_ij = acc.get_or_alloc(i, m_i);
-                    let mat_m = &mat_m[..m_k * m_j];
-                    gemm_sub_c_ab(w_ij, m_i, m_j, lik, m_k, mat_m);
+                    gemm_sub_c_ab(
+                        w_ij,   // C := C - A B
+                        m_i,    // mc
+                        m_j,    // nc
+                        lik,    // A = L(i,k), m_i × m_k
+                        m_k,    // ka
+                        &mat_m, // B = M, m_k × m_j
+                    );
                 }
+                phase("factorize_left_looking/inner4");
             }
+            phase("factorize_left_looking2");
 
             // --- Finalize column j ---
             // Factorize D_j in-place: D_j := L_D (lower)
@@ -581,6 +636,7 @@ impl BlockLDLt {
                 }
             }
             self.l_col_ptr[j + 1] = self.l_row_idx.len();
+            phase("factorize_left_looking3");
         }
     }
 }

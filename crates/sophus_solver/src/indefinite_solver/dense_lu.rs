@@ -188,6 +188,8 @@ pub struct DenseLu {}
 impl IsLinearSolver for DenseLu {
     type Matrix = DMatrix<f64>;
 
+    const NAME: &'static str = "dense LU";
+
     fn solve_in_place(
         &self,
         mat_a: &Self::Matrix,

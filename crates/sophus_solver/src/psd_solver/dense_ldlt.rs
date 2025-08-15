@@ -8,8 +8,8 @@ use nalgebra::{
 };
 
 use crate::{
-    IsSymmetricMatrix,
     IsLinearSolver,
+    IsSymmetricMatrix,
     LinearSolverError,
 };
 
@@ -27,6 +27,8 @@ impl IsSymmetricMatrix for DMatrix<f64> {
 
 impl IsLinearSolver for DenseLdlt {
     type Matrix = DMatrix<f64>;
+
+    const NAME: &'static str = "dense LDLt";
 
     fn solve_in_place(
         &self,

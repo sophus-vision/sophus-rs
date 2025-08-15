@@ -26,6 +26,8 @@ impl Default for SparseLdlt {
 }
 
 impl IsLinearSolver for SparseLdlt {
+    const NAME: &'static str = "sparse LDLt";
+
     type Matrix = LowerTripletsMatrix;
 
     fn solve_in_place(
@@ -87,6 +89,8 @@ fn csc_transpose(a: &CscMatrix) -> CscMatrix {
 /// parent[v] = parent column of v, or INVALID if root.
 /// Davis, "Direct Methods...", Alg. 4.1 (upper form).
 fn elimination_tree_upper(at_upper: &CscMatrix) -> Vec<usize> {
+    puffin::profile_function!(format!("{}/elimination_tree_upper", SparseLdlt::NAME));
+
     let n = at_upper.n;
     let mat_a_p = &at_upper.col_ptr;
     let mat_a_i = &at_upper.row_ind;
@@ -125,6 +129,8 @@ fn ereach_upper(
     w: &mut [usize],     // stamp marks
     stack: &mut [usize], // length n
 ) -> usize {
+    puffin::profile_function!(format!("{}/ereach_upper", SparseLdlt::NAME));
+
     let n = at_upper.n;
     let mat_a_p = &at_upper.col_ptr;
     let mat_a_i = &at_upper.row_ind;
@@ -160,6 +166,8 @@ fn ldlt_numeric_spd(
     parent: &[usize],
     tol_rel: f64,
 ) -> Result<(CscMatrix, Vec<f64>), &'static str> {
+    puffin::profile_function!(format!("{}/ldlt_numeric_spd", SparseLdlt::NAME));
+
     let n = a_lower.n;
     debug_assert_eq!(n, at_upper.n);
     debug_assert_eq!(parent.len(), n);
@@ -319,6 +327,8 @@ fn ldlt_numeric_spd(
 /// Solve with L (unit-lower in CSC), D (diag), Lᵀ. Identity permutation here.
 /// x is returned (does not overwrite b).
 fn ldlt_solve_csc_in_place(mat_l: &CscMatrix, d: &[f64], b: &mut DVector<f64>) {
+    puffin::profile_function!(format!("{}/ldlt_solve_csc_in_place", SparseLdlt::NAME));
+
     let n = mat_l.n;
     debug_assert_eq!(b.len(), n);
     debug_assert_eq!(d.len(), n);

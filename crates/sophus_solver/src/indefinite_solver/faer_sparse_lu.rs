@@ -30,6 +30,8 @@ pub struct FaerSparseLu;
 impl IsLinearSolver for FaerSparseLu {
     type Matrix = FaerTripletsMatrix;
 
+    const NAME: &'static str = "faer sparse LU";
+
     fn solve_in_place(
         &self,
         mat: &FaerCompressedMatrix,

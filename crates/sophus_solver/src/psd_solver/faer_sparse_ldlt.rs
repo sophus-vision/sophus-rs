@@ -81,6 +81,8 @@ impl Default for FaerSparseLdlt {
 impl IsLinearSolver for FaerSparseLdlt {
     type Matrix = FaerUpperTripletsMatrix;
 
+    const NAME: &'static str = "faer sparse LDLt";
+
     fn solve_in_place(
         &self,
         upper: &FaerUpperCompressedMatrix,
