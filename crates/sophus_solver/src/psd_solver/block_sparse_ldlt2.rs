@@ -14,8 +14,8 @@ use crate::{
     },
     grid::Grid,
     psd_solver::elimination_tree::{
+        EliminationTree,
         elimination_tree_upper,
-        ereach_upper,
     },
     sparse::CscStruct,
 };
@@ -560,7 +560,7 @@ pub fn block_ldlt(
         }
 
         // --- 2) Symbolic reach: contributing earlier columns k ---
-        let top = ereach_upper(&at, j, &parent, &mut w, &mut stk);
+        let top = EliminationTree::reach(&at, j, &parent.parent, &mut w, &mut stk);
 
         // --- 3) Apply updates from each k in topo order ---
         for idx in top..nb {

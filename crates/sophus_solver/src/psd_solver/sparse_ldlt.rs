@@ -4,8 +4,8 @@ use crate::{
     IsLinearSolver,
     LinearSolverError,
     psd_solver::elimination_tree::{
+        EliminationTree,
         elimination_tree_upper,
-        ereach_upper,
     },
     sparse::{
         CscMatrix,
@@ -62,12 +62,12 @@ impl IsLinearSolver for SparseLdlt {
 fn ldlt_numeric_spd(
     a_lower: &CscMatrix,  // lower triangle with values
     at_upper: &CscStruct, // transpose(a_lower) with values (=> upper)
-    parent: &[usize],
+    parent: &EliminationTree,
     tol_rel: f64,
 ) -> Result<(CscMatrix, Vec<f64>), &'static str> {
     let n = a_lower.structure.n;
     debug_assert_eq!(n, at_upper.n);
-    debug_assert_eq!(parent.len(), n);
+    debug_assert_eq!(parent.parent.len(), n);
 
     // Workspace
     let mut d = vec![0.0f64; n];
@@ -100,7 +100,7 @@ fn ldlt_numeric_spd(
         }
 
         // --- Symbolic reach to find contributing columns k < j
-        let top = ereach_upper(&at_upper, j, parent, &mut w, &mut stk);
+        let top = EliminationTree::reach(&at_upper, j, &parent.parent, &mut w, &mut stk);
 
         // --- Apply updates from each k in topological order (root -> leaf)
         for idx in top..n {
