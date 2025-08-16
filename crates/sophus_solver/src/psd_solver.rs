@@ -7,6 +7,8 @@ pub(crate) mod sparse_ldlt;
 mod tests {
     use crate::psd_solver::block_sparse_ldlt2::{
         block_ldlt,
+        debug_check_factor_matches_a,
+        debug_compare_block_identities,
         solve_block_ldlt_in_place,
     };
 
@@ -294,7 +296,17 @@ mod tests {
 
             let mut x_block2 = b.clone();
 
-            let (lf, df) = block_ldlt(&block_sparse_mat_a.builder.to_block_csc(), 1e-12).unwrap();
+            let a = block_sparse_mat_a.builder.to_block_csc();
+
+            let (lf, df) = block_ldlt(&a, 1e-12).unwrap();
+            debug_compare_block_identities(&a, &lf, &df, &[(0, 0), (1, 0), (1, 1)]);
+
+            debug_check_factor_matches_a(
+                &block_sparse_mat_a.builder.to_block_csc(),
+                &lf,
+                &df,
+                Some(dense_mat_a),
+            );
             solve_block_ldlt_in_place(&lf, &df, &mut x_block2);
 
             let x_block_sparse_ldlt = BlockSparseLdlt {}

@@ -1,12 +1,18 @@
 use crate::IsSymmetricMatrix;
 
+/// Structural CSC (no values) for block symbolics (one node per *block* column).
+#[derive(Clone, Debug)]
+pub struct CscStruct {
+    pub(crate) n: usize,
+    pub(crate) col_ptr: Vec<usize>,
+    pub(crate) row_ind: Vec<usize>, // strictly-upper: i < j
+}
+
 /// Compressed sparse column (CSC) matrix.
 #[derive(Clone, Debug)]
 pub struct CscMatrix {
-    pub(crate) n: usize,            // square n x n
-    pub(crate) col_ptr: Vec<usize>, // len = n+1
-    pub(crate) row_ind: Vec<usize>, // len = nnz
-    pub(crate) values: Vec<f64>,    // len = nnz
+    pub(crate) structure: CscStruct,
+    pub(crate) values: Vec<f64>, // len = nnz
 }
 
 impl CscMatrix {
@@ -19,14 +25,13 @@ impl CscMatrix {
         debug_assert_eq!(col_ptr.len(), n + 1);
         debug_assert_eq!(row_ind.len(), values.len());
         Self {
-            n,
-            col_ptr,
-            row_ind,
+            structure: CscStruct {
+                n,
+                col_ptr,
+                row_ind,
+            },
             values,
         }
-    }
-    pub(crate) fn nnz(&self) -> usize {
-        self.values.len()
     }
 }
 

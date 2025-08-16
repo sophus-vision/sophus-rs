@@ -5,6 +5,7 @@ use crate::{
     LinearSolverError,
     sparse::{
         CscMatrix,
+        CscStruct,
         LowerCscMatrix,
         LowerTripletsMatrix,
     },
@@ -53,42 +54,44 @@ impl IsLinearSolver for SparseLdlt {
 const INVALID: usize = usize::MAX;
 
 /// Transpose a CSC (including values).
-fn csc_transpose(a: &CscMatrix) -> CscMatrix {
-    let n = a.n;
-    let nnz = a.nnz();
+fn csc_transpose(a: &CscMatrix) -> CscStruct {
+    let n = a.structure.n;
+    let nnz = a.values.len();
 
     // Count by future column (== current row indices)
     let mut row_counts = vec![0usize; n];
-    for &r in &a.row_ind {
+    for &r in &a.structure.row_ind {
         row_counts[r] += 1;
     }
 
     // Prefix sum -> col_ptr_t
-    let mut col_ptr_t = vec![0usize; n + 1];
+    let mut col_ptr = vec![0usize; n + 1];
     for i in 0..n {
-        col_ptr_t[i + 1] = col_ptr_t[i] + row_counts[i];
+        col_ptr[i + 1] = col_ptr[i] + row_counts[i];
     }
-    let mut next = col_ptr_t.clone();
+    let mut next = col_ptr.clone();
 
-    let mut row_ind_t = vec![0usize; nnz];
-    let mut values_t = vec![0f64; nnz];
+    let mut row_ind = vec![0usize; nnz];
 
     for j in 0..n {
-        for p in a.col_ptr[j]..a.col_ptr[j + 1] {
-            let i = a.row_ind[p];
+        for p in a.structure.col_ptr[j]..a.structure.col_ptr[j + 1] {
+            let i = a.structure.row_ind[p];
             let dst = next[i];
-            row_ind_t[dst] = j;
-            values_t[dst] = a.values[p];
+            row_ind[dst] = j;
             next[i] += 1;
         }
     }
-    CscMatrix::new(n, col_ptr_t, row_ind_t, values_t)
+    CscStruct {
+        n,
+        col_ptr,
+        row_ind,
+    }
 }
 
 /// Elimination tree using the **upper** structure (from Aᵗ).
 /// parent[v] = parent column of v, or INVALID if root.
 /// Davis, "Direct Methods...", Alg. 4.1 (upper form).
-fn elimination_tree_upper(at_upper: &CscMatrix) -> Vec<usize> {
+fn elimination_tree_upper(at_upper: &CscStruct) -> Vec<usize> {
     puffin::profile_function!(format!("{}/elimination_tree_upper", SparseLdlt::NAME));
 
     let n = at_upper.n;
@@ -123,7 +126,7 @@ fn elimination_tree_upper(at_upper: &CscMatrix) -> Vec<usize> {
 /// Returns top-of-stack index into `stack`, so `stack[top..n]` are the columns
 /// k (< j) in topological order. Pre-marks `j` to avoid returning it.
 fn ereach_upper(
-    at_upper: &CscMatrix,
+    at_upper: &CscStruct,
     j: usize,
     parent: &[usize],
     w: &mut [usize],     // stamp marks
@@ -162,13 +165,13 @@ fn ereach_upper(
 /// Uses A_lower for numerics and Aᵗ (upper) for symbolics **and** to gather A(k,j).
 fn ldlt_numeric_spd(
     a_lower: &CscMatrix,  // lower triangle with values
-    at_upper: &CscMatrix, // transpose(a_lower) with values (=> upper)
+    at_upper: &CscStruct, // transpose(a_lower) with values (=> upper)
     parent: &[usize],
     tol_rel: f64,
 ) -> Result<(CscMatrix, Vec<f64>), &'static str> {
     puffin::profile_function!(format!("{}/ldlt_numeric_spd", SparseLdlt::NAME));
 
-    let n = a_lower.n;
+    let n = a_lower.structure.n;
     debug_assert_eq!(n, at_upper.n);
     debug_assert_eq!(parent.len(), n);
 
@@ -190,8 +193,8 @@ fn ldlt_numeric_spd(
         let stamp = j + 1;
 
         // --- Gather LOWER: A(i >= j, j) -> y[i]
-        for p in a_lower.col_ptr[j]..a_lower.col_ptr[j + 1] {
-            let i = a_lower.row_ind[p]; // i >= j
+        for p in a_lower.structure.col_ptr[j]..a_lower.structure.col_ptr[j + 1] {
+            let i = a_lower.structure.row_ind[p]; // i >= j
             let v = a_lower.values[p];
             if ymark[i] != stamp {
                 y[i] = v;
@@ -203,7 +206,7 @@ fn ldlt_numeric_spd(
         }
 
         // --- Symbolic reach to find contributing columns k < j
-        let top = ereach_upper(at_upper, j, parent, &mut w, &mut stk);
+        let top = ereach_upper(&at_upper, j, parent, &mut w, &mut stk);
 
         // --- Apply updates from each k in topological order (root -> leaf)
         for idx in top..n {
@@ -329,15 +332,15 @@ fn ldlt_numeric_spd(
 fn ldlt_solve_csc_in_place(mat_l: &CscMatrix, d: &[f64], b: &mut DVector<f64>) {
     puffin::profile_function!(format!("{}/ldlt_solve_csc_in_place", SparseLdlt::NAME));
 
-    let n = mat_l.n;
+    let n = mat_l.structure.n;
     debug_assert_eq!(b.len(), n);
     debug_assert_eq!(d.len(), n);
 
     // Forward: L y = b (unit-lower)
     for j in 0..n {
         let t = b[j];
-        for p in mat_l.col_ptr[j]..mat_l.col_ptr[j + 1] {
-            let i = mat_l.row_ind[p]; // i > j
+        for p in mat_l.structure.col_ptr[j]..mat_l.structure.col_ptr[j + 1] {
+            let i = mat_l.structure.row_ind[p]; // i > j
             b[i] -= mat_l.values[p] * t;
         }
     }
@@ -349,8 +352,8 @@ fn ldlt_solve_csc_in_place(mat_l: &CscMatrix, d: &[f64], b: &mut DVector<f64>) {
 
     // Backward: Lᵀ x = z
     for j in (0..n).rev() {
-        for p in mat_l.col_ptr[j]..mat_l.col_ptr[j + 1] {
-            let i = mat_l.row_ind[p]; // i > j
+        for p in mat_l.structure.col_ptr[j]..mat_l.structure.col_ptr[j + 1] {
+            let i = mat_l.structure.row_ind[p]; // i > j
             b[j] -= mat_l.values[p] * b[i];
         }
     }
