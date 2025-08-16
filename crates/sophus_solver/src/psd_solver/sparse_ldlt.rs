@@ -3,9 +3,12 @@ use nalgebra::DVector;
 use crate::{
     IsLinearSolver,
     LinearSolverError,
-    psd_solver::elimination_tree::{
-        EliminationTree,
-        elimination_tree_upper,
+    psd_solver::{
+        block_sparse_ldlt2::phase,
+        elimination_tree::{
+            EliminationTree,
+            elimination_tree_upper,
+        },
     },
     sparse::{
         CscMatrix,
@@ -40,14 +43,19 @@ impl IsLinearSolver for SparseLdlt {
         a_lower: &LowerCscMatrix,
         b: &mut nalgebra::DVector<f64>,
     ) -> Result<(), LinearSolverError> {
+        phase("solve_in_place/before");
+
         let at = a_lower.mat.pattern.transpose();
 
         // Numeric LDLᵀ (SPD)
         let (mat_l, d) = ldlt_numeric_spd(&a_lower.mat, &at, self.tol_rel)
             .map_err(|_| LinearSolverError::FactorizationFailed)?;
+        phase("solve_in_place/block_ldlt");
 
         // Identity permutation solve (P = I)
         ldlt_solve_csc_in_place(&mat_l, &d, b);
+        phase("solve_in_place/solve_block_ldlt_in_place");
+
         Ok(())
     }
 }
