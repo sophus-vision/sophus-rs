@@ -42,11 +42,8 @@ impl IsLinearSolver for SparseLdlt {
     ) -> Result<(), LinearSolverError> {
         let at = a_lower.mat.structure.transpose();
 
-        // Elimination tree from the **upper** structure
-        let parent = elimination_tree_upper(&at);
-
         // Numeric LDLᵀ (SPD)
-        let (mat_l, d) = ldlt_numeric_spd(&a_lower.mat, &at, &parent, self.tol_rel)
+        let (mat_l, d) = ldlt_numeric_spd(&a_lower.mat, &at, self.tol_rel)
             .map_err(|_| LinearSolverError::FactorizationFailed)?;
 
         // Identity permutation solve (P = I)
@@ -62,12 +59,10 @@ impl IsLinearSolver for SparseLdlt {
 fn ldlt_numeric_spd(
     a_lower: &CscMatrix,  // lower triangle with values
     at_upper: &CscStruct, // transpose(a_lower) with values (=> upper)
-    parent: &EliminationTree,
     tol_rel: f64,
 ) -> Result<(CscMatrix, Vec<f64>), &'static str> {
     let n = a_lower.structure.n;
     debug_assert_eq!(n, at_upper.n);
-    debug_assert_eq!(parent.parent.len(), n);
 
     // Workspace
     let mut d = vec![0.0f64; n];
@@ -75,9 +70,8 @@ fn ldlt_numeric_spd(
     let mut ymark = vec![0usize; n]; // stamping marks for y
     let mut touched: Vec<usize> = Vec::with_capacity(n);
 
-    let mut w = vec![0usize; n]; // ereach marks (per column stamping)
-    let mut stk = vec![0usize; n]; // stack buffer
-
+    // Elimination tree from the **upper** structure
+    let mut tree = elimination_tree_upper(&at_upper);
     // L as vector-of-columns; append (row, val); rows need not be sorted.
     let mut l_cols: Vec<Vec<(usize, f64)>> = (0..n).map(|_| Vec::<(usize, f64)>::new()).collect();
 
@@ -100,11 +94,11 @@ fn ldlt_numeric_spd(
         }
 
         // --- Symbolic reach to find contributing columns k < j
-        let top = parent.reach(&at_upper, j, &mut w, &mut stk);
+        let top = tree.reach(&at_upper, j);
 
         // --- Apply updates from each k in topological order (root -> leaf)
         for idx in top..n {
-            let k = stk[idx];
+            let k = tree.stack[idx];
 
             // Look up lij = L(j,k) directly from the already-finalized column k.
             // (Lcols[k] stores pairs (row, val) with rows > k.)

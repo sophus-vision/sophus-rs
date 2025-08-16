@@ -4,38 +4,30 @@ const INVALID: usize = usize::MAX;
 
 pub(crate) struct EliminationTree {
     pub(crate) parent: Vec<usize>,
+    pub(crate) w: Vec<usize>,
+    pub(crate) stack: Vec<usize>,
 }
 
 impl EliminationTree {
     /// Symbolic reach on the **upper** structure (Aᵗ).
     /// Returns top-of-stack index into `stack`, so `stack[top..n]` are the columns
     /// k (< j) in topological order. Pre-marks `j` to avoid returning it.
-    pub(crate) fn reach(
-        &self,
-        at_upper: &CscStruct,
-        j: usize,
-        w: &mut [usize],     // stamp marks
-        stack: &mut [usize], // length n
-    ) -> usize {
-        let n = at_upper.n;
-        let mat_a_p = &at_upper.col_ptr;
-        let mat_a_i = &at_upper.row_ind;
-
+    pub(crate) fn reach(&mut self, upper_mat_a: &CscStruct, j: usize) -> usize {
         let mark = j + 1;
-        let mut top = n;
+        let mut top = upper_mat_a.n;
 
         // Block j from appearing in the reach
-        w[j] = mark;
+        self.w[j] = mark;
 
-        for p in mat_a_p[j]..mat_a_p[j + 1] {
-            let mut i = mat_a_i[p];
+        for p in upper_mat_a.col_ptr[j]..upper_mat_a.col_ptr[j + 1] {
+            let mut i = upper_mat_a.row_ind[p];
             if i >= j {
                 continue;
             } // strictly upper start points
-            while i != INVALID && w[i] != mark {
-                stack[top - 1] = i;
+            while i != INVALID && self.w[i] != mark {
+                self.stack[top - 1] = i;
                 top -= 1;
-                w[i] = mark;
+                self.w[i] = mark;
                 i = self.parent[i];
             }
         }
@@ -72,5 +64,9 @@ pub(crate) fn elimination_tree_upper(at_upper: &CscStruct) -> EliminationTree {
             }
         }
     }
-    EliminationTree { parent }
+    EliminationTree {
+        parent,
+        w: vec![0; n],
+        stack: vec![0; n],
+    }
 }

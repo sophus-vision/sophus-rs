@@ -522,9 +522,7 @@ pub fn block_ldlt(
 
     // Symbolics
     let at = build_block_upper(a);
-    let parent = elimination_tree_upper(&at);
-    let mut w = vec![0usize; nb];
-    let mut stk = vec![0usize; nb];
+    let mut tree = elimination_tree_upper(&at);
 
     // Factor under construction
     let mut lb = lbuilder_empty_like(a);
@@ -560,11 +558,11 @@ pub fn block_ldlt(
         }
 
         // --- 2) Symbolic reach: contributing earlier columns k ---
-        let top = parent.reach(&at, j, &mut w, &mut stk);
+        let top = tree.reach(&at, j);
 
         // --- 3) Apply updates from each k in topo order ---
         for idx in top..nb {
-            let k = stk[idx];
+            let k = tree.stack[idx];
 
             // L_{jk} must already be computed (since k<j). Look it up in column k.
             let l_jk = match lb.col_row2loc[k].get(&j) {
