@@ -340,8 +340,6 @@ impl BlockLDLt {
 
     /// Solve A x = b using the factor (L, D) where D is stored as L_D (lower).
     pub fn solve_in_place(&self, x: &mut nalgebra::DVector<f64>) {
-        puffin::profile_function!(format!("{}/solve", BlockSparseLdlt::NAME));
-
         // 1) forward: L y = b
         self.forward_solve_in_place(x);
         // 2) diagonal: D z = y  → with L_D: solve L_D w = y, then L_Dᵀ z = w

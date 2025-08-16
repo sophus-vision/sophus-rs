@@ -18,7 +18,6 @@ faer.workspace = true
 hashbrown.workspace = true
 log.workspace = true
 nalgebra.workspace = true
-puffin.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
 rayon.workspace = true

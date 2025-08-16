@@ -3,6 +3,10 @@ use nalgebra::DVector;
 use crate::{
     IsLinearSolver,
     LinearSolverError,
+    psd_solver::elimination_tree::{
+        elimination_tree_upper,
+        ereach_upper,
+    },
     sparse::{
         CscMatrix,
         CscStruct,
@@ -51,79 +55,6 @@ impl IsLinearSolver for SparseLdlt {
     }
 }
 
-const INVALID: usize = usize::MAX;
-
-/// Elimination tree using the **upper** structure (from Aᵗ).
-/// parent[v] = parent column of v, or INVALID if root.
-/// Davis, "Direct Methods...", Alg. 4.1 (upper form).
-fn elimination_tree_upper(at_upper: &CscStruct) -> Vec<usize> {
-    puffin::profile_function!(format!("{}/elimination_tree_upper", SparseLdlt::NAME));
-
-    let n = at_upper.n;
-    let mat_a_p = &at_upper.col_ptr;
-    let mat_a_i = &at_upper.row_ind;
-
-    let mut parent = vec![INVALID; n];
-    let mut ancestor = vec![INVALID; n];
-
-    for j in 0..n {
-        for p in mat_a_p[j]..mat_a_p[j + 1] {
-            let i0 = mat_a_i[p];
-            if i0 >= j {
-                continue;
-            } // strictly upper: i < j
-            let mut i = i0;
-            while i != INVALID && i != j {
-                let next = ancestor[i];
-                ancestor[i] = j;
-                if next == INVALID {
-                    parent[i] = j;
-                    break;
-                }
-                i = next;
-            }
-        }
-    }
-    parent
-}
-
-/// Symbolic reach on the **upper** structure (Aᵗ).
-/// Returns top-of-stack index into `stack`, so `stack[top..n]` are the columns
-/// k (< j) in topological order. Pre-marks `j` to avoid returning it.
-fn ereach_upper(
-    at_upper: &CscStruct,
-    j: usize,
-    parent: &[usize],
-    w: &mut [usize],     // stamp marks
-    stack: &mut [usize], // length n
-) -> usize {
-    puffin::profile_function!(format!("{}/ereach_upper", SparseLdlt::NAME));
-
-    let n = at_upper.n;
-    let mat_a_p = &at_upper.col_ptr;
-    let mat_a_i = &at_upper.row_ind;
-
-    let mark = j + 1;
-    let mut top = n;
-
-    // Block j from appearing in the reach
-    w[j] = mark;
-
-    for p in mat_a_p[j]..mat_a_p[j + 1] {
-        let mut i = mat_a_i[p];
-        if i >= j {
-            continue;
-        } // strictly upper start points
-        while i != INVALID && w[i] != mark {
-            stack[top - 1] = i;
-            top -= 1;
-            w[i] = mark;
-            i = parent[i];
-        }
-    }
-    top
-}
-
 /// Numeric simplicial LDLᵀ (SPD), left-looking.
 /// Uses A_lower for numerics and Aᵗ (upper) for symbolics **and** to gather A(k,j).
 /// Numeric simplicial LDLᵀ (SPD), left-looking.
@@ -134,8 +65,6 @@ fn ldlt_numeric_spd(
     parent: &[usize],
     tol_rel: f64,
 ) -> Result<(CscMatrix, Vec<f64>), &'static str> {
-    puffin::profile_function!(format!("{}/ldlt_numeric_spd", SparseLdlt::NAME));
-
     let n = a_lower.structure.n;
     debug_assert_eq!(n, at_upper.n);
     debug_assert_eq!(parent.len(), n);
@@ -295,8 +224,6 @@ fn ldlt_numeric_spd(
 /// Solve with L (unit-lower in CSC), D (diag), Lᵀ. Identity permutation here.
 /// x is returned (does not overwrite b).
 fn ldlt_solve_csc_in_place(mat_l: &CscMatrix, d: &[f64], b: &mut DVector<f64>) {
-    puffin::profile_function!(format!("{}/ldlt_solve_csc_in_place", SparseLdlt::NAME));
-
     let n = mat_l.structure.n;
     debug_assert_eq!(b.len(), n);
     debug_assert_eq!(d.len(), n);

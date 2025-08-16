@@ -1,6 +1,7 @@
 pub(crate) mod block_sparse_ldlt;
 pub(crate) mod block_sparse_ldlt2;
 pub(crate) mod dense_ldlt;
+pub(crate) mod elimination_tree;
 pub(crate) mod faer_sparse_ldlt;
 pub(crate) mod sparse_ldlt;
 

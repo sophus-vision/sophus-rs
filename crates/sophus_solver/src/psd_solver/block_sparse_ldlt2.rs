@@ -13,6 +13,10 @@ use crate::{
         BlockRegion,
     },
     grid::Grid,
+    psd_solver::elimination_tree::{
+        elimination_tree_upper,
+        ereach_upper,
+    },
     sparse::CscStruct,
 };
 
@@ -279,58 +283,58 @@ fn build_block_upper(a: &BlockCscMatrix) -> CscStruct {
     }
 }
 
-/// Block elimination tree (upper structure).
-fn elimination_tree_upper_struct(at: &CscStruct) -> Vec<usize> {
-    let n = at.n;
-    let ap = &at.col_ptr;
-    let ai = &at.row_ind;
-    let mut parent = vec![usize::MAX; n];
-    let mut ancestor = vec![usize::MAX; n];
+// /// Block elimination tree (upper structure).
+// fn elimination_tree_upper_struct(at: &CscStruct) -> Vec<usize> {
+//     let n = at.n;
+//     let ap = &at.col_ptr;
+//     let ai = &at.row_ind;
+//     let mut parent = vec![usize::MAX; n];
+//     let mut ancestor = vec![usize::MAX; n];
 
-    for j in 0..n {
-        for p in ap[j]..ap[j + 1] {
-            let mut i = ai[p]; // i<j
-            while i != usize::MAX && i != j {
-                let next = ancestor[i];
-                ancestor[i] = j;
-                if next == usize::MAX {
-                    parent[i] = j;
-                    break;
-                }
-                i = next;
-            }
-        }
-    }
-    parent
-}
+//     for j in 0..n {
+//         for p in ap[j]..ap[j + 1] {
+//             let mut i = ai[p]; // i<j
+//             while i != usize::MAX && i != j {
+//                 let next = ancestor[i];
+//                 ancestor[i] = j;
+//                 if next == usize::MAX {
+//                     parent[i] = j;
+//                     break;
+//                 }
+//                 i = next;
+//             }
+//         }
+//     }
+//     parent
+// }
 
-/// Symbolic reach on upper structure; returns top so stack[top..n] are contributors k<j in topo
-/// order.
-fn ereach_upper_struct(
-    at: &CscStruct,
-    j: usize,
-    parent: &[usize],
-    w: &mut [usize],
-    stack: &mut [usize],
-) -> usize {
-    let n = at.n;
-    let ap = &at.col_ptr;
-    let ai = &at.row_ind;
-    let mark = j + 1;
-    let mut top = n;
+// /// Symbolic reach on upper structure; returns top so stack[top..n] are contributors k<j in topo
+// /// order.
+// fn ereach_upper_struct(
+//     at: &CscStruct,
+//     j: usize,
+//     parent: &[usize],
+//     w: &mut [usize],
+//     stack: &mut [usize],
+// ) -> usize {
+//     let n = at.n;
+//     let ap = &at.col_ptr;
+//     let ai = &at.row_ind;
+//     let mark = j + 1;
+//     let mut top = n;
 
-    w[j] = mark;
-    for p in ap[j]..ap[j + 1] {
-        let mut i = ai[p];
-        while i != usize::MAX && w[i] != mark {
-            stack[top - 1] = i;
-            top -= 1;
-            w[i] = mark;
-            i = parent[i];
-        }
-    }
-    top
-}
+//     w[j] = mark;
+//     for p in ap[j]..ap[j + 1] {
+//         let mut i = ai[p];
+//         while i != usize::MAX && w[i] != mark {
+//             stack[top - 1] = i;
+//             top -= 1;
+//             w[i] = mark;
+//             i = parent[i];
+//         }
+//     }
+//     top
+// }
 
 /// Copy dense block A_{ij} (h_i × h_j) if present.
 /// If i<j, mirrors from lower: A_{ij} = A_{ji}^T.
@@ -518,7 +522,7 @@ pub fn block_ldlt(
 
     // Symbolics
     let at = build_block_upper(a);
-    let parent = elimination_tree_upper_struct(&at);
+    let parent = elimination_tree_upper(&at);
     let mut w = vec![0usize; nb];
     let mut stk = vec![0usize; nb];
 
@@ -556,7 +560,7 @@ pub fn block_ldlt(
         }
 
         // --- 2) Symbolic reach: contributing earlier columns k ---
-        let top = ereach_upper_struct(&at, j, &parent, &mut w, &mut stk);
+        let top = ereach_upper(&at, j, &parent, &mut w, &mut stk);
 
         // --- 3) Apply updates from each k in topo order ---
         for idx in top..nb {
