@@ -17,7 +17,7 @@ use crate::{
         EliminationTree,
         elimination_tree_upper,
     },
-    sparse::CscStruct,
+    sparse::CscPattern,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -238,7 +238,7 @@ pub enum BlockLdltError {
 /// Strictly-upper *block* structure of A (no values); n = #global block columns.
 /// Strictly-upper *block* structure of A built from the **transpose** of lower storage.
 /// For every stored (i>j) in lower column j, we insert j into **column i** of the upper.
-fn build_block_upper(a: &BlockCscMatrix) -> CscStruct {
+fn build_block_upper(a: &BlockCscMatrix) -> CscPattern {
     let n = a.col_splits.len() - 1;
     assert_eq!(
         n,
@@ -276,7 +276,7 @@ fn build_block_upper(a: &BlockCscMatrix) -> CscStruct {
             }
         }
     }
-    CscStruct {
+    CscPattern {
         n,
         col_ptr,
         row_ind,
@@ -562,7 +562,7 @@ pub fn block_ldlt(
 
         // --- 3) Apply updates from each k in topo order ---
         for idx in top..nb {
-            let k = tree.stack[idx];
+            let k = tree.reach_buf[idx];
 
             // L_{jk} must already be computed (since k<j). Look it up in column k.
             let l_jk = match lb.col_row2loc[k].get(&j) {

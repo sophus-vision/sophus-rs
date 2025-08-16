@@ -9,7 +9,7 @@ use crate::{
     },
     sparse::{
         CscMatrix,
-        CscStruct,
+        CscPattern,
         LowerCscMatrix,
         LowerTripletsMatrix,
     },
@@ -40,7 +40,7 @@ impl IsLinearSolver for SparseLdlt {
         a_lower: &LowerCscMatrix,
         b: &mut nalgebra::DVector<f64>,
     ) -> Result<(), LinearSolverError> {
-        let at = a_lower.mat.structure.transpose();
+        let at = a_lower.mat.pattern.transpose();
 
         // Numeric LDLᵀ (SPD)
         let (mat_l, d) = ldlt_numeric_spd(&a_lower.mat, &at, self.tol_rel)
@@ -57,11 +57,11 @@ impl IsLinearSolver for SparseLdlt {
 /// Numeric simplicial LDLᵀ (SPD), left-looking.
 /// Uses A_lower for numerics and Aᵗ (upper) for symbolics **and** to gather A(k,j).
 fn ldlt_numeric_spd(
-    a_lower: &CscMatrix,  // lower triangle with values
-    at_upper: &CscStruct, // transpose(a_lower) with values (=> upper)
+    a_lower: &CscMatrix,   // lower triangle with values
+    at_upper: &CscPattern, // transpose(a_lower) with values (=> upper)
     tol_rel: f64,
 ) -> Result<(CscMatrix, Vec<f64>), &'static str> {
-    let n = a_lower.structure.n;
+    let n = a_lower.pattern.n;
     debug_assert_eq!(n, at_upper.n);
 
     // Workspace
@@ -81,8 +81,8 @@ fn ldlt_numeric_spd(
         let stamp = j + 1;
 
         // --- Gather LOWER: A(i >= j, j) -> y[i]
-        for p in a_lower.structure.col_ptr[j]..a_lower.structure.col_ptr[j + 1] {
-            let i = a_lower.structure.row_ind[p]; // i >= j
+        for p in a_lower.pattern.col_ptr[j]..a_lower.pattern.col_ptr[j + 1] {
+            let i = a_lower.pattern.row_ind[p]; // i >= j
             let v = a_lower.values[p];
             if ymark[i] != stamp {
                 y[i] = v;
@@ -98,7 +98,7 @@ fn ldlt_numeric_spd(
 
         // --- Apply updates from each k in topological order (root -> leaf)
         for idx in top..n {
-            let k = tree.stack[idx];
+            let k = tree.reach_buf[idx];
 
             // Look up lij = L(j,k) directly from the already-finalized column k.
             // (Lcols[k] stores pairs (row, val) with rows > k.)
@@ -218,15 +218,15 @@ fn ldlt_numeric_spd(
 /// Solve with L (unit-lower in CSC), D (diag), Lᵀ. Identity permutation here.
 /// x is returned (does not overwrite b).
 fn ldlt_solve_csc_in_place(mat_l: &CscMatrix, d: &[f64], b: &mut DVector<f64>) {
-    let n = mat_l.structure.n;
+    let n = mat_l.pattern.n;
     debug_assert_eq!(b.len(), n);
     debug_assert_eq!(d.len(), n);
 
     // Forward: L y = b (unit-lower)
     for j in 0..n {
         let t = b[j];
-        for p in mat_l.structure.col_ptr[j]..mat_l.structure.col_ptr[j + 1] {
-            let i = mat_l.structure.row_ind[p]; // i > j
+        for p in mat_l.pattern.col_ptr[j]..mat_l.pattern.col_ptr[j + 1] {
+            let i = mat_l.pattern.row_ind[p]; // i > j
             b[i] -= mat_l.values[p] * t;
         }
     }
@@ -238,8 +238,8 @@ fn ldlt_solve_csc_in_place(mat_l: &CscMatrix, d: &[f64], b: &mut DVector<f64>) {
 
     // Backward: Lᵀ x = z
     for j in (0..n).rev() {
-        for p in mat_l.structure.col_ptr[j]..mat_l.structure.col_ptr[j + 1] {
-            let i = mat_l.structure.row_ind[p]; // i > j
+        for p in mat_l.pattern.col_ptr[j]..mat_l.pattern.col_ptr[j + 1] {
+            let i = mat_l.pattern.row_ind[p]; // i > j
             b[j] -= mat_l.values[p] * b[i];
         }
     }
