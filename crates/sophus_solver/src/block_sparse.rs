@@ -1,3 +1,4 @@
+pub(crate) mod block_csc_matrix;
 pub(crate) mod block_sparse_compressed_matrix;
 pub(crate) mod block_sparse_matrix;
 pub(crate) mod block_vector;

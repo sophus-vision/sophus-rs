@@ -1,9 +1,14 @@
 pub(crate) mod block_sparse_ldlt;
+pub(crate) mod block_sparse_ldlt2;
 pub(crate) mod dense_ldlt;
 pub(crate) mod faer_sparse_ldlt;
 pub(crate) mod sparse_ldlt;
 
 mod tests {
+    use crate::psd_solver::block_sparse_ldlt2::{
+        block_ldlt,
+        solve_block_ldlt_in_place,
+    };
 
     #[test]
     fn scalar_solver_tests() {
@@ -283,6 +288,15 @@ mod tests {
             let x_sparse_ldlt = SparseLdlt { tol_rel: 1e-12_f64 }
                 .solve(&sparse_mat_a.compress(), b)
                 .unwrap();
+            // let x_block_sparse_ldlt = BlockSparseLdlt {}
+            //     .solve(&block_sparse_mat_a.compress(), b)
+            //     .unwrap();
+
+            let mut x_block2 = b.clone();
+
+            let (lf, df) = block_ldlt(&block_sparse_mat_a.builder.to_block_csc(), 1e-12).unwrap();
+            solve_block_ldlt_in_place(&lf, &df, &mut x_block2);
+
             let x_block_sparse_ldlt = BlockSparseLdlt {}
                 .solve(&block_sparse_mat_a.compress(), b)
                 .unwrap();
@@ -298,6 +312,8 @@ mod tests {
             print!("dense LDLt x = {x_dense_ldlt}");
             print!("sparse LDLt x = {x_sparse_ldlt}");
             print!("block sparse LDLt x = {x_block_sparse_ldlt}");
+            print!("block sparse LDLt 2 x = {x_block2}");
+
             print!("faer sparse LDLt x = {x_faer_sparse_ldlt}");
 
             approx::assert_abs_diff_eq!(
@@ -337,6 +353,8 @@ mod tests {
                 b.clone(),
                 epsilon = 1e-6
             );
+
+            approx::assert_abs_diff_eq!(dense_mat_a.clone() * x_block2, b.clone(), epsilon = 1e-6);
         }
     }
 }
