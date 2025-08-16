@@ -5,7 +5,43 @@ use crate::IsSymmetricMatrix;
 pub struct CscStruct {
     pub(crate) n: usize,
     pub(crate) col_ptr: Vec<usize>,
-    pub(crate) row_ind: Vec<usize>, // strictly-upper: i < j
+    pub(crate) row_ind: Vec<usize>,
+}
+impl CscStruct {
+    /// Transpose a CSC.
+    pub(crate) fn transpose(&self) -> CscStruct {
+        let n = self.n;
+        let nnz = self.row_ind.len();
+
+        // Count by future column (== current row indices)
+        let mut row_counts = vec![0usize; n];
+        for &r in &self.row_ind {
+            row_counts[r] += 1;
+        }
+
+        // Prefix sum -> col_ptr_t
+        let mut col_ptr = vec![0usize; n + 1];
+        for i in 0..n {
+            col_ptr[i + 1] = col_ptr[i] + row_counts[i];
+        }
+        let mut next = col_ptr.clone();
+
+        let mut row_ind = vec![0usize; nnz];
+
+        for j in 0..n {
+            for p in self.col_ptr[j]..self.col_ptr[j + 1] {
+                let i = self.row_ind[p];
+                let dst = next[i];
+                row_ind[dst] = j;
+                next[i] += 1;
+            }
+        }
+        CscStruct {
+            n,
+            col_ptr,
+            row_ind,
+        }
+    }
 }
 
 /// Compressed sparse column (CSC) matrix.

@@ -13,6 +13,7 @@ use crate::{
         BlockRegion,
     },
     grid::Grid,
+    sparse::CscStruct,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -211,14 +212,6 @@ pub fn debug_compare_block_identities(
             eprintln!("  Δ=\n{diff}");
         }
     }
-}
-
-/// Structural CSC (no values) for block symbolics (one node per *block* column).
-#[derive(Debug)]
-struct CscStruct {
-    n: usize,
-    col_ptr: Vec<usize>,
-    row_ind: Vec<usize>, // strictly-upper: i < j
 }
 
 /// Off-diagonal part of the block-lower factor L_b (unit diagonal).

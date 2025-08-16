@@ -36,7 +36,7 @@ impl IsLinearSolver for SparseLdlt {
         a_lower: &LowerCscMatrix,
         b: &mut nalgebra::DVector<f64>,
     ) -> Result<(), LinearSolverError> {
-        let at = csc_transpose(&a_lower.mat);
+        let at = a_lower.mat.structure.transpose();
 
         // Elimination tree from the **upper** structure
         let parent = elimination_tree_upper(&at);
@@ -52,41 +52,6 @@ impl IsLinearSolver for SparseLdlt {
 }
 
 const INVALID: usize = usize::MAX;
-
-/// Transpose a CSC (including values).
-fn csc_transpose(a: &CscMatrix) -> CscStruct {
-    let n = a.structure.n;
-    let nnz = a.values.len();
-
-    // Count by future column (== current row indices)
-    let mut row_counts = vec![0usize; n];
-    for &r in &a.structure.row_ind {
-        row_counts[r] += 1;
-    }
-
-    // Prefix sum -> col_ptr_t
-    let mut col_ptr = vec![0usize; n + 1];
-    for i in 0..n {
-        col_ptr[i + 1] = col_ptr[i] + row_counts[i];
-    }
-    let mut next = col_ptr.clone();
-
-    let mut row_ind = vec![0usize; nnz];
-
-    for j in 0..n {
-        for p in a.structure.col_ptr[j]..a.structure.col_ptr[j + 1] {
-            let i = a.structure.row_ind[p];
-            let dst = next[i];
-            row_ind[dst] = j;
-            next[i] += 1;
-        }
-    }
-    CscStruct {
-        n,
-        col_ptr,
-        row_ind,
-    }
-}
 
 /// Elimination tree using the **upper** structure (from Aᵗ).
 /// parent[v] = parent column of v, or INVALID if root.
