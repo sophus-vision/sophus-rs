@@ -560,7 +560,7 @@ pub fn block_ldlt(
         }
 
         // --- 2) Symbolic reach: contributing earlier columns k ---
-        let top = EliminationTree::reach(&at, j, &parent.parent, &mut w, &mut stk);
+        let top = parent.reach(&at, j, &mut w, &mut stk);
 
         // --- 3) Apply updates from each k in topo order ---
         for idx in top..nb {

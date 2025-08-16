@@ -100,7 +100,7 @@ fn ldlt_numeric_spd(
         }
 
         // --- Symbolic reach to find contributing columns k < j
-        let top = EliminationTree::reach(&at_upper, j, &parent.parent, &mut w, &mut stk);
+        let top = parent.reach(&at_upper, j, &mut w, &mut stk);
 
         // --- Apply updates from each k in topological order (root -> leaf)
         for idx in top..n {

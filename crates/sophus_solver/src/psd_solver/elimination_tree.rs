@@ -11,9 +11,9 @@ impl EliminationTree {
     /// Returns top-of-stack index into `stack`, so `stack[top..n]` are the columns
     /// k (< j) in topological order. Pre-marks `j` to avoid returning it.
     pub(crate) fn reach(
+        &self,
         at_upper: &CscStruct,
         j: usize,
-        parent: &[usize],
         w: &mut [usize],     // stamp marks
         stack: &mut [usize], // length n
     ) -> usize {
@@ -36,7 +36,7 @@ impl EliminationTree {
                 stack[top - 1] = i;
                 top -= 1;
                 w[i] = mark;
-                i = parent[i];
+                i = self.parent[i];
             }
         }
         top
