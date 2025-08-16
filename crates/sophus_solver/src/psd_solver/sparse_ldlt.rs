@@ -71,7 +71,7 @@ fn ldlt_numeric_spd(
     let mut touched: Vec<usize> = Vec::with_capacity(n);
 
     // Elimination tree from the **upper** structure
-    let mut tree = elimination_tree_upper(&at_upper);
+    let mut tree = elimination_tree_upper(at_upper);
     // L as vector-of-columns; append (row, val); rows need not be sorted.
     let mut l_cols: Vec<Vec<(usize, f64)>> = (0..n).map(|_| Vec::<(usize, f64)>::new()).collect();
 
@@ -94,7 +94,7 @@ fn ldlt_numeric_spd(
         }
 
         // --- Symbolic reach to find contributing columns k < j
-        let top = tree.reach(&at_upper, j);
+        let top = tree.reach(at_upper, j);
 
         // --- Apply updates from each k in topological order (root -> leaf)
         for idx in top..n {

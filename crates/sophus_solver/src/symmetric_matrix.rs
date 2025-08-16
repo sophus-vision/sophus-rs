@@ -6,7 +6,7 @@ use crate::{
     LinearSolverEnum,
     PartitionSpec,
     dense::DenseSymmetricMatrixBuilder,
-    psd_solver::block_sparse_ldlt::phase,
+    psd_solver::block_sparse_ldlt2::phase,
     sparse::{
         LowerTripletsMatrix,
         SparseSymmetricMatrixBuilder,

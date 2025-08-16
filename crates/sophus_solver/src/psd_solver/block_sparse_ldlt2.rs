@@ -8,45 +8,52 @@ use nalgebra::{
 use crate::{
     BlockSparseLowerMatrixBuilder,
     IsLinearSolver,
+    LinearSolverError,
     block_csc_matrix::{
         BlockCscMatrix,
         BlockRegion,
     },
     grid::Grid,
-    psd_solver::elimination_tree::{
-        EliminationTree,
-        elimination_tree_upper,
-    },
+    psd_solver::elimination_tree::elimination_tree_upper,
     sparse::CscPattern,
 };
 
 #[derive(Copy, Clone, Debug)]
-pub struct BlockSparseLdlt2 {}
+pub struct BlockSparseLdlt {}
 
-// impl IsLinearSolver for BlockSparseLdlt2 {
-//     type Matrix = BlockSparseLowerMatrixBuilder;
+// helper: emits an event keyed as `block sparse LDLt/<phase>`
+#[inline(always)]
+pub fn phase(phase: &str) {
+    let path = format!("{}/{}", BlockSparseLdlt::NAME, phase);
+    tracing::trace!(path = path.as_str());
+}
 
-//     const NAME: &'static str = "block sparse LDLt";
+impl IsLinearSolver for BlockSparseLdlt {
+    type Matrix = BlockSparseLowerMatrixBuilder;
 
-//     fn solve_in_place(
-//         &self,
-//         a_lower: &BlockSparseLowerCompressedMatrix,
-//         b: &mut nalgebra::DVector<f64>,
-//     ) -> Result<(), LinearSolverError> {
-//         phase("solve_in_place/before");
+    const NAME: &'static str = "block sparse LDLt";
 
-//         let mut ldlt = BlockLDLt::structure_from_cbm(&a_lower.mat);
-//         phase("solve_in_place/ldlt");
+    fn solve_in_place(
+        &self,
+        a_lower: &BlockCscMatrix,
+        b: &mut nalgebra::DVector<f64>,
+    ) -> Result<(), LinearSolverError> {
+        phase("solve_in_place/before");
 
-//         ldlt.factorize_left_looking(&a_lower.mat);
-//         phase("solve_in_place/factorize_left_looking");
+        let (lf, df) = block_ldlt(&a_lower, 1e-12).unwrap();
+        // debug_compare_block_identities(&a_lower, &lf, &df, &[(0, 0), (1, 0), (1, 1)]);
+        phase("solve_in_place/block_ldlt");
 
-//         ldlt.solve_in_place(b);
-//         phase("solve_in_place/solve_in_place");
+        solve_block_ldlt_in_place(&lf, &df, b);
+        phase("solve_in_place/solve_block_ldlt_in_place");
 
-//         Ok(())
-//     }
-// }
+        Ok(())
+    }
+
+    fn name(&self) -> String {
+        Self::NAME.into()
+    }
+}
 
 #[inline]
 fn check_stride_ok(region: &BlockRegion, base: usize, need: usize, where_: &str) {

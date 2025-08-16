@@ -46,7 +46,7 @@ pub use psd_solver::{
 pub use symmetric_matrix::*;
 
 use crate::psd_solver::{
-    block_sparse_ldlt::BlockSparseLdlt,
+    block_sparse_ldlt2::BlockSparseLdlt,
     faer_sparse_ldlt::FaerSparseLdlt,
 };
 

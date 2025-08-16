@@ -1,8 +1,5 @@
 use std::cmp::Ordering::Less;
 
-use log::trace;
-use tracing::info_span;
-
 use crate::{
     AssembledCol,
     BlockSparseCompressedMatrix,
@@ -11,13 +8,6 @@ use crate::{
     IsLinearSolver,
     LinearSolverError,
 };
-
-// helper: emits an event keyed as `block sparse LDLt/<phase>`
-#[inline(always)]
-pub fn phase(phase: &str) {
-    let path = format!("{}/{}", BlockSparseLdlt::NAME, phase);
-    tracing::trace!(path = path.as_str());
-}
 
 // bs
 #[derive(Copy, Clone, Debug)]

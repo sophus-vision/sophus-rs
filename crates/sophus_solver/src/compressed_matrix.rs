@@ -1,7 +1,7 @@
 use nalgebra::DMatrix;
 
 use crate::{
-    BlockSparseLowerCompressedMatrix,
+    block_csc_matrix::BlockCscMatrix,
     sparse::{
         CscMatrix,
         LowerCscMatrix,
@@ -21,7 +21,7 @@ pub enum CompressedMatrixEnum {
     /// s
     Sparse(CscMatrix),
     /// s
-    BlockSparseLower(BlockSparseLowerCompressedMatrix),
+    BlockSparseLower(BlockCscMatrix),
     /// h
     FaerSparse(FaerCompressedMatrix),
     /// f
