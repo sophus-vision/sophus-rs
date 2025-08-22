@@ -1,15 +1,13 @@
 use core::fmt::Debug;
 
 use dyn_clone::DynClone;
+use sophus_solver::{
+    BlockVector,
+    SymmetricMatrixBuilderEnum,
+};
 
 use super::evaluated_eq_constraint::EvaluatedEqConstraint;
-use crate::{
-    block::{
-        block_vector::BlockVector,
-        symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
-    },
-    variables::VarFamilies,
-};
+use crate::variables::VarFamilies;
 
 extern crate alloc;
 
@@ -49,12 +47,12 @@ pub trait IsEvaluatedEqConstraintSet: Debug + DynClone {
     fn calc_sum_of_l1_norms(&self) -> f64;
 
     /// Populate upper triangular KKT matrix.
-    fn populate_upper_triangular_kkt_mat(
+    fn populate_lower_triangular_kkt_mat(
         &self,
         variables: &VarFamilies,
         lambda: &BlockVector,
         constraint_idx: usize,
-        block_triplet: &mut SymmetricBlockSparseMatrixBuilder,
+        block_triplet: &mut SymmetricMatrixBuilderEnum,
         b: &mut BlockVector,
     );
 }
