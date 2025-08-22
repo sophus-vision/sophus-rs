@@ -1,10 +1,11 @@
+use sophus_solver::{
+    BlockVector,
+    PartitionSpec,
+    SymmetricMatrixBuilderEnum,
+};
+
 use super::EvalMode;
 use crate::{
-    block::{
-        PartitionSpec,
-        block_vector::BlockVector,
-        symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
-    },
     nlls::{
         OptParams,
         constraint::evaluated_eq_set::{
@@ -31,8 +32,8 @@ impl EqSystem {
         let mut partitions = vec![];
         for eq_constraint in eq_constraints_fns.iter_mut() {
             partitions.push(PartitionSpec {
-                num_blocks: 1,
-                block_dim: eq_constraint.residual_dim(),
+                block_count: 1,
+                block_dimension: eq_constraint.residual_dim(),
             });
         }
         let lambda = BlockVector::zero(&partitions);
@@ -95,12 +96,12 @@ pub struct EqSystem {
 impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> IsEvaluatedEqConstraintSet
     for EvaluatedEqSet<RESIDUAL_DIM, INPUT_DIM, N>
 {
-    fn populate_upper_triangular_kkt_mat(
+    fn populate_lower_triangular_kkt_mat(
         &self,
         variables: &VarFamilies,
         lambda: &BlockVector,
         constraint_idx: usize,
-        block_triplet: &mut SymmetricBlockSparseMatrixBuilder,
+        block_triplet: &mut SymmetricMatrixBuilderEnum,
         block_vec: &mut BlockVector,
     ) {
         let num_args = self.family_names.len();
@@ -159,18 +160,14 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> IsEvalua
                     &(mat_g_times_lambda.as_view()),
                 );
 
-                // G'
-                block_triplet.add_block(
-                    &[family_alpha, region_idx],
-                    [block_start_idx_alpha, 0],
-                    &constraint
-                        .jacobian
-                        .block(arg_id_alpha)
-                        .transpose()
-                        .as_view(),
+                // G
+                block_triplet.add_lower_block(
+                    &[region_idx, family_alpha],
+                    [0, block_start_idx_alpha],
+                    &constraint.jacobian.block(arg_id_alpha).as_view(),
                 );
 
-                // no need to set G since we are only setting the upper triangular system
+                // no need to set G' since we are only setting the lower triangular system
             }
         }
     }

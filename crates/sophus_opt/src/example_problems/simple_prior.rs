@@ -6,12 +6,12 @@ use sophus_lie::{
     Isometry2F64,
     Isometry3F64,
 };
+use sophus_solver::LinearSolverEnum;
 
 use crate::{
     nlls::{
         CostFn,
         CostTerms,
-        LinearSolverType,
         OptParams,
         costs::{
             Isometry2PriorCostTerm,
@@ -54,7 +54,7 @@ impl SimpleIso2PriorProblem {
     }
 
     /// Test the simple 3D isometry prior problem
-    pub fn test(&self, solver: LinearSolverType) {
+    pub fn test(&self, solver: LinearSolverEnum) {
         use sophus_autodiff::linalg::EPS_F64;
 
         const POSE: &str = "poses";
@@ -119,7 +119,7 @@ impl SimpleIso3PriorProblem {
     }
 
     /// Test the simple 3D isometry prior problem
-    pub fn test(&self, solver: LinearSolverType) {
+    pub fn test(&self, solver: LinearSolverEnum) {
         use sophus_autodiff::linalg::EPS_F64;
 
         const POSE: &str = "poses";
@@ -161,7 +161,7 @@ impl SimpleIso3PriorProblem {
 
 #[test]
 fn simple_prior_opt_tests() {
-    for solver in LinearSolverType::all_solvers() {
+    for solver in LinearSolverEnum::all_solvers() {
         //SimpleIso2PriorProblem::new().test(solver);
         SimpleIso3PriorProblem::new().test(solver);
     }

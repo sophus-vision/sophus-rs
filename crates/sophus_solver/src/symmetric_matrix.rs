@@ -1,0 +1,131 @@
+use crate::{
+    LinearSolverEnum,
+    PartitionSpec,
+    compressible_matrix::{
+        CompressibleMatrixEnum,
+        IsCompressibleMatrix,
+    },
+    dense::DenseSymmetricMatrixBuilder,
+    sparse::{
+        SparseSymmetricMatrixBuilder,
+        faer_sparse_matrix::{
+            FaerTripletsMatrix,
+            FaerUpperTripletsMatrix,
+        },
+    },
+};
+
+/// Symmetric matrix builder trait.
+pub trait IsSymmetricMatrixBuilder {
+    /// mat
+    type Matrix: IsCompressibleMatrix;
+
+    /// Create a symmetric matrix "filled" with zeros.
+    ///
+    /// The shape of the matrix is determined by the partition specs.
+    fn zero(partitions: &[PartitionSpec]) -> Self;
+
+    /// Scalar dimension of the matrix.
+    fn scalar_dimension(&self) -> usize;
+
+    /// Add a block to the matrix.
+    ///
+    /// This is a += operation, i.e., the block is added to the existing block.
+    ///
+    /// Only lower triangular blocks are accepted.
+    ///
+    /// In release mode, upper triangular blocks are ignored. In debug mode,
+    /// this function will panic if the block is added to the upper triangular part.
+    fn add_lower_block(
+        &mut self,
+        region_idx: &[usize; 2],
+        block_index: [usize; 2],
+        block: &nalgebra::DMatrixView<f64>,
+    );
+
+    /// Return built matrix.
+    fn build(self) -> Self::Matrix;
+}
+
+/// Symmetric matrix builder enum.
+pub enum SymmetricMatrixBuilderEnum {
+    /// Builder for dense symmetric matrix.
+    Dense(DenseSymmetricMatrixBuilder),
+    /// Builder for sparse symmetric matrix to interact with the faer crate.
+    FaerSparse(SparseSymmetricMatrixBuilder),
+    /// Builder for sparse upper triangular matrix to interact with the faer crate.
+    FaerSparseUpper(SparseSymmetricMatrixBuilder),
+}
+
+impl SymmetricMatrixBuilderEnum {
+    /// Create a symmetric matrix "filled" with zeros - to be used with given solver.
+    ///
+    /// The shape of the matrix is determined by the partition specs.
+    pub fn zero(solver: LinearSolverEnum, partitions: &[PartitionSpec]) -> Self {
+        let z = match solver {
+            LinearSolverEnum::DenseLdlt(_) | LinearSolverEnum::DenseLu(_) => {
+                SymmetricMatrixBuilderEnum::Dense(DenseSymmetricMatrixBuilder::zero(partitions))
+            }
+            LinearSolverEnum::FaerSparseQr(_) => SymmetricMatrixBuilderEnum::FaerSparse(
+                SparseSymmetricMatrixBuilder::zero(partitions),
+            ),
+            LinearSolverEnum::FaerSparseLu(_) => SymmetricMatrixBuilderEnum::FaerSparse(
+                SparseSymmetricMatrixBuilder::zero(partitions),
+            ),
+            LinearSolverEnum::FaerSparseLdlt(_) => SymmetricMatrixBuilderEnum::FaerSparseUpper(
+                SparseSymmetricMatrixBuilder::zero(partitions),
+            ),
+        };
+        tracing::trace!("zero");
+        z
+    }
+
+    /// Add a block to the matrix.
+    ///
+    /// This is a += operation, i.e., the block is added to the existing block.
+    ///
+    /// Only lower triangular blocks are accepted.
+    ///
+    /// In release mode, upper triangular blocks are ignored. In debug mode,
+    /// this function will panic if the block is added to the upper triangular part.
+    pub fn add_lower_block(
+        &mut self,
+        region_idx: &[usize; 2],
+        block_index: [usize; 2],
+        block: &nalgebra::DMatrixView<f64>,
+    ) {
+        match self {
+            SymmetricMatrixBuilderEnum::Dense(dense_symmetric_matrix_builder) => {
+                dense_symmetric_matrix_builder.add_lower_block(region_idx, block_index, block)
+            }
+            SymmetricMatrixBuilderEnum::FaerSparse(sparse_symmetric_matrix_builder) => {
+                sparse_symmetric_matrix_builder.add_lower_block(region_idx, block_index, block);
+            }
+            SymmetricMatrixBuilderEnum::FaerSparseUpper(sparse_symmetric_matrix_builder) => {
+                sparse_symmetric_matrix_builder.add_lower_block(region_idx, block_index, block);
+            }
+        }
+        tracing::trace!("add_lower_block");
+    }
+
+    /// Return built matrix.
+    pub fn build(self) -> CompressibleMatrixEnum {
+        let m = match self {
+            SymmetricMatrixBuilderEnum::Dense(dense_symmetric_matrix_builder) => {
+                CompressibleMatrixEnum::Dense(dense_symmetric_matrix_builder.build())
+            }
+            SymmetricMatrixBuilderEnum::FaerSparse(sparse_symmetric_matrix_builder) => {
+                CompressibleMatrixEnum::FaerSparse(FaerTripletsMatrix::from_lower(
+                    &sparse_symmetric_matrix_builder.build(),
+                ))
+            }
+            SymmetricMatrixBuilderEnum::FaerSparseUpper(sparse_symmetric_matrix_builder) => {
+                CompressibleMatrixEnum::FaerSparseUpper(FaerUpperTripletsMatrix::from_lower(
+                    &sparse_symmetric_matrix_builder.build(),
+                ))
+            }
+        };
+        tracing::trace!("build");
+        m
+    }
+}

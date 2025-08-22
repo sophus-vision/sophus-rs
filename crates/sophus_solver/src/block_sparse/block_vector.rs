@@ -55,9 +55,9 @@ impl BlockVector {
             scalar_offsets.push(offset);
             partitions.push(BlockVectorRegion {
                 scalar_offset: offset,
-                block_dim: partition_specs.block_dim,
+                block_dim: partition_specs.block_dimension,
             });
-            offset += partition_specs.block_dim * partition_specs.num_blocks;
+            offset += partition_specs.block_dimension * partition_specs.block_count;
         }
 
         Self {

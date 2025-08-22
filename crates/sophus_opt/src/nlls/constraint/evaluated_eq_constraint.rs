@@ -4,7 +4,7 @@ use sophus_autodiff::linalg::{
 };
 
 use crate::{
-    block::block_jacobian::BlockJacobian,
+    block::BlockJacobian,
     variables::VarKind,
 };
 

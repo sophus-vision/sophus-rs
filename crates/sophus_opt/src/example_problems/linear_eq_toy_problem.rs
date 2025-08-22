@@ -1,5 +1,6 @@
 use sophus_autodiff::linalg::VecF64;
 use sophus_lie::prelude::IsMatrix;
+use sophus_solver::LinearSolverEnum;
 
 use crate::{
     nlls::{
@@ -7,7 +8,6 @@ use crate::{
         CostTerms,
         EqConstraintFn,
         EqConstraints,
-        LinearSolverType,
         OptParams,
         costs::Quadratic1CostTerm,
         eq_constraints::ExampleLinearEqConstraint,
@@ -37,7 +37,7 @@ impl LinearEqToyProblem {
     }
 
     /// Test the linear equality constraint problem
-    pub fn test(&self, solver: LinearSolverType) {
+    pub fn test(&self, solver: LinearSolverEnum) {
         use sophus_autodiff::linalg::EPS_F64;
 
         const VAR_X: &str = "x";
@@ -110,7 +110,7 @@ impl LinearEqToyProblem {
 
 #[test]
 fn normalize_opt_tests() {
-    for solver in LinearSolverType::indefinite_solvers() {
+    for solver in LinearSolverEnum::indefinite_solvers() {
         LinearEqToyProblem::new().test(solver);
     }
 }
