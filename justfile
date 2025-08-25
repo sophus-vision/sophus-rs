@@ -32,3 +32,6 @@ demo:
 
 wasm_demo:
     trunk serve crates/sophus/index.html --release
+
+bench:
+    cargo run --bin solver_bench --release
