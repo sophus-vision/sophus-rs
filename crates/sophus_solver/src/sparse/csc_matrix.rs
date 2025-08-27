@@ -126,6 +126,42 @@ impl CscPattern {
     pub fn row_idx(&self) -> &[usize] {
         &self.row_idx
     }
+
+    /// Transpose the CSC pattern. Result is an NxM CSC (original^T).
+    pub fn transpose(&self) -> CscPattern {
+        let original_row_count = self.row_count(); // original M
+        let original_col_count = self.col_count(); // original N
+        let nnz = self.nonzero_count();
+
+        // 1) Count entries per transposed column (== per original row).
+        let mut counts = vec![0usize; original_row_count];
+        for &i in self.row_idx() {
+            counts[i] += 1;
+        }
+
+        // 2) Prefix-sum to get col_ptr_t (len = m + 1).
+        let mut col_ptr = vec![0usize; original_row_count + 1];
+        for i in 0..original_row_count {
+            col_ptr[i + 1] = col_ptr[i] + counts[i];
+        }
+
+        // 3) Fill row_idx_t by scanning original columns.
+        let mut row_idx = vec![0usize; nnz];
+        let mut next = col_ptr.clone();
+        for j in 0..original_col_count {
+            let start = self.col_ptr()[j];
+            let end = self.col_ptr()[j + 1];
+            for p in start..end {
+                let i = self.row_idx()[p]; // original row
+                let dst = next[i];
+                row_idx[dst] = j; // transposed row index = original column
+                next[i] += 1;
+            }
+        }
+
+        // Use the constructor to assert invariants in debug builds.
+        CscPattern::new(original_col_count, original_row_count, col_ptr, row_idx)
+    }
 }
 
 /// Compressed sparse column (CSC) matrix.
@@ -382,5 +418,29 @@ mod tests {
         assert_eq!(c.row_count(), 2);
         assert_eq!(c.col_count(), 4);
         assert_eq!(c.col_ptr().len(), 5);
+    }
+
+    #[test]
+    fn transpose_round_trip() {
+        // Randomish small case with duplicates to be coalesced.
+        let tm = TripletMatrix::new(
+            vec![
+                (0, 0, 1.0),
+                (1, 0, 2.0),
+                (1, 0, 3.0), // dup at (1,0) → sums to 5.0
+                (3, 2, 1.0),
+                (2, 1, 4.0),
+            ],
+            4,
+            3,
+        );
+        let mat_a = CscMatrix::from_triplets(&tm);
+        let mat_a_transpose = mat_a.pattern().transpose();
+        let mat_a_roundtrip = mat_a_transpose.transpose();
+
+        assert_eq!(mat_a_roundtrip.row_count(), mat_a.pattern().row_count());
+        assert_eq!(mat_a_roundtrip.col_count(), mat_a.pattern().col_count());
+        assert_eq!(mat_a_roundtrip.col_ptr(), mat_a.pattern().col_ptr());
+        assert_eq!(mat_a_roundtrip.row_idx(), mat_a.pattern().row_idx());
     }
 }
