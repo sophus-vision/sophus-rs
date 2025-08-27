@@ -10,12 +10,12 @@ use sophus_lie::{
     Rotation3,
 };
 use sophus_sensor::PinholeCameraF64;
+use sophus_solver::LinearSolverEnum;
 
 use crate::{
     nlls::{
         CostFn,
         CostTerms,
-        LinearSolverType,
         OptParams,
         costs::{
             Isometry3PriorCostTerm,
@@ -154,7 +154,7 @@ impl CamCalibProblem {
     pub fn optimize_with_two_poses_fixed(
         &self,
         intrinsics_var_kind: VarKind,
-        solver: LinearSolverType,
+        solver: LinearSolverEnum,
     ) {
         let reproj_obs = CostTerms::new(
             [Self::CAMS, Self::POSES, Self::POINTS],
@@ -213,7 +213,7 @@ impl CamCalibProblem {
     }
 
     /// optimize with priors
-    pub fn optimize_with_priors(&self, solver: LinearSolverType) {
+    pub fn optimize_with_priors(&self, solver: LinearSolverEnum) {
         let priors = CostTerms::new(
             [Self::POSES],
             alloc::vec![
@@ -279,13 +279,14 @@ mod tests {
 
     #[test]
     fn simple_cam_tests() {
+        use sophus_solver::LinearSolverEnum;
+
         use crate::{
             example_problems::cam_calib::CamCalibProblem,
-            nlls::LinearSolverType,
             variables::VarKind,
         };
 
-        for solver in LinearSolverType::sparse_solvers() {
+        for solver in LinearSolverEnum::sparse_solvers() {
             CamCalibProblem::new(true).optimize_with_two_poses_fixed(VarKind::Free, solver);
             CamCalibProblem::new(false).optimize_with_two_poses_fixed(VarKind::Conditioned, solver);
             CamCalibProblem::new(false).optimize_with_priors(solver);

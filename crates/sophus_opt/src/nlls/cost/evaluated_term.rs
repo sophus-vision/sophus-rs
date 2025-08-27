@@ -5,8 +5,8 @@ use sophus_autodiff::linalg::{
 
 use crate::{
     block::{
-        block_gradient::BlockGradient,
-        block_hessian::BlockHessian,
+        BlockGradient,
+        BlockHessian,
     },
     prelude::*,
     robust_kernel,

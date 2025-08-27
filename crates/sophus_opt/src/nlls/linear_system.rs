@@ -1,28 +1,24 @@
 pub(crate) mod cost_system;
 pub(crate) mod eq_system;
-pub(crate) mod solvers;
+
+use sophus_solver::{
+    BlockVector,
+    CompressibleMatrixEnum,
+    IsLinearSolver as _,
+    LinearSolverEnum,
+    PartitionSpec,
+    SymmetricMatrixBuilderEnum,
+    prelude::*,
+};
 
 use super::{
     CostSystem,
     EqSystem,
-    IsSparseSymmetricLinearSystem,
     NllsError,
-    dense_lu::DenseLu,
-    sparse_ldlt::SparseLdlt,
-    sparse_lu::SparseLu,
-    sparse_qr::SparseQr,
 };
-use crate::{
-    block::{
-        PartitionSpec,
-        block_vector::BlockVector,
-        symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder,
-    },
-    nlls::LinearSolverType,
-    variables::{
-        VarFamilies,
-        VarKind,
-    },
+use crate::variables::{
+    VarFamilies,
+    VarKind,
 };
 
 extern crate alloc;
@@ -38,9 +34,9 @@ pub enum EvalMode {
 
 /// Linear system of the non-linear least squares problem with equality constraints
 pub struct LinearSystem {
-    pub(crate) sparse_hessian_plus_damping: SymmetricBlockSparseMatrixBuilder,
+    pub(crate) sparse_hessian_plus_damping: CompressibleMatrixEnum,
     pub(crate) neg_gradient: BlockVector,
-    pub(crate) solver: LinearSolverType,
+    pub(crate) solver: LinearSolverEnum,
     parallelize: bool,
 }
 
@@ -79,7 +75,7 @@ impl LinearSystem {
         variables: &VarFamilies,
         cost_system: &CostSystem,
         eq_system: &EqSystem,
-        solver: LinearSolverType,
+        solver: LinearSolverEnum,
         parallelize: bool,
     ) -> LinearSystem {
         assert!(variables.num_of_kind(VarKind::Marginalized) == 0);
@@ -94,14 +90,14 @@ impl LinearSystem {
         let mut partitions = vec![];
         for i in 0..variables.collection.len() {
             partitions.push(PartitionSpec {
-                num_blocks: variables.free_vars()[i],
-                block_dim: variables.dims()[i],
+                block_count: variables.free_vars()[i],
+                block_dimension: variables.dims()[i],
             });
         }
 
         partitions.extend(eq_system.partitions.clone());
 
-        let mut block_triplets = SymmetricBlockSparseMatrixBuilder::zero(&partitions);
+        let mut block_triplets = SymmetricMatrixBuilderEnum::zero(solver, &partitions);
         let mut neg_grad = BlockVector::zero(&partitions);
 
         for cost in cost_system.evaluated_costs.iter() {
@@ -116,7 +112,7 @@ impl LinearSystem {
         for (constraint_idx, eq_constraint_set) in
             eq_system.evaluated_eq_constraints.iter().enumerate()
         {
-            eq_constraint_set.populate_upper_triangular_kkt_mat(
+            eq_constraint_set.populate_lower_triangular_kkt_mat(
                 variables,
                 &eq_system.lambda,
                 constraint_idx,
@@ -124,8 +120,9 @@ impl LinearSystem {
                 &mut neg_grad,
             );
         }
+
         Self {
-            sparse_hessian_plus_damping: block_triplets,
+            sparse_hessian_plus_damping: block_triplets.build(),
             neg_gradient: neg_grad,
             solver,
             parallelize,
@@ -133,25 +130,12 @@ impl LinearSystem {
     }
 
     pub(crate) fn solve(&mut self) -> Result<nalgebra::DVector<f64>, NllsError> {
-        match self.solver {
-            LinearSolverType::SparseLdlt(ldlt_params) => {
-                SparseLdlt::new(ldlt_params, self.parallelize).solve(
-                    &self.sparse_hessian_plus_damping,
-                    self.neg_gradient.scalar_vector_mut(),
-                )
-            }
-            LinearSolverType::DenseLu => DenseLu {}.solve(
-                &self.sparse_hessian_plus_damping,
+        self.solver
+            .solve(
+                self.parallelize,
+                &self.sparse_hessian_plus_damping.compress(),
                 self.neg_gradient.scalar_vector(),
-            ),
-            LinearSolverType::SparseLu => SparseLu {}.solve(
-                &self.sparse_hessian_plus_damping,
-                self.neg_gradient.scalar_vector(),
-            ),
-            LinearSolverType::SparseQr => SparseQr {}.solve(
-                &self.sparse_hessian_plus_damping,
-                self.neg_gradient.scalar_vector(),
-            ),
-        }
+            )
+            .map_err(|e| NllsError::LinearSolver { source: e })
     }
 }

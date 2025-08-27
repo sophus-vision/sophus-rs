@@ -3,12 +3,12 @@ use sophus_lie::{
     Isometry2,
     Isometry2F64,
 };
+use sophus_solver::LinearSolverEnum;
 
 use crate::{
     nlls::{
         CostFn,
         CostTerms,
-        LinearSolverType,
         OptParams,
         costs::PoseGraph2CostTerm,
         optimize_nlls,
@@ -122,7 +122,7 @@ impl PoseCircleProblem {
     }
 
     /// Optimize the problem
-    pub fn optimize(&self, solver: LinearSolverType) -> Vec<Isometry2F64> {
+    pub fn optimize(&self, solver: LinearSolverEnum) -> Vec<Isometry2F64> {
         let mut constants = alloc::collections::BTreeMap::new();
         constants.insert(0, ());
 
@@ -157,7 +157,7 @@ impl PoseCircleProblem {
 
 #[test]
 fn pose_circle_opt_tests() {
-    for solver in LinearSolverType::sparse_solvers() {
+    for solver in LinearSolverEnum::sparse_solvers() {
         let pose_graph = PoseCircleProblem::new(2500);
 
         let res_err = pose_graph.calc_error(&pose_graph.est_world_from_robot);

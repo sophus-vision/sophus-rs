@@ -8,9 +8,7 @@
 #[cfg(doctest)]
 pub struct ReadmeDoctests;
 
-mod asserts;
-
-/// Block vectors, block matrices and utilities
+/// Block derivatives
 pub mod block;
 /// Example problems
 pub mod example_problems;
@@ -20,6 +18,7 @@ pub mod nlls;
 pub mod robust_kernel;
 /// Decision variables
 pub mod variables;
+
 /// sophus_opt prelude.
 ///
 /// It is recommended to import this prelude when working with `sophus_opt types:
@@ -40,6 +39,7 @@ pub mod prelude {
     pub use sophus_image::prelude::*;
     pub use sophus_lie::prelude::*;
     pub use sophus_sensor::prelude::*;
+    pub use sophus_solver::prelude::*;
 
     pub use crate::{
         nlls::{

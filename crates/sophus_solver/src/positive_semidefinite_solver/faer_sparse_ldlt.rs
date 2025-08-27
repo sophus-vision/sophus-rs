@@ -21,7 +21,6 @@ use faer::{
         FaerError,
         SparseColMat,
         SymbolicSparseColMat,
-        Triplet,
         linalg::{
             amd,
             cholesky::simplicial,
@@ -30,20 +29,29 @@ use faer::{
     },
 };
 
-use super::{
-    IsSparseSymmetricLinearSystem,
-    NllsError,
+use crate::{
+    IsLinearSolver,
+    IsSymmetricMatrixBuilder,
+    LinearSolverError,
     SparseSolverError,
+    SymmetricMatrixBuilderEnum,
+    sparse::{
+        SparseSymmetricMatrixBuilder,
+        faer_sparse_matrix::{
+            FaerUpperCompressedMatrix,
+            FaerUpperTripletsMatrix,
+        },
+    },
 };
-use crate::block::symmetric_block_sparse_matrix_builder::SymmetricBlockSparseMatrixBuilder;
 
-/// Numeric regularization for LDLᵀ (`δ ≃ 10⁻⁶` is usually safe).
+/// Parameters for faer's sparse LDLᵀ solver.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct SparseLdltParams {
+pub struct FaerSparseLdltParams {
+    /// Numeric regularization for LDLᵀ.
     pub regularization_eps: f64,
 }
 
-impl Default for SparseLdltParams {
+impl Default for FaerSparseLdltParams {
     fn default() -> Self {
         Self {
             regularization_eps: 1e-6,
@@ -51,37 +59,40 @@ impl Default for SparseLdltParams {
     }
 }
 
-#[derive(Default, Debug)]
-pub struct SparseLdlt {
-    params: SparseLdltParams,
-    parallelize: bool,
+/// Sparse LDLᵀ solver using faer crate.
+#[derive(Copy, Clone, Debug, Default)]
+pub struct FaerSparseLdlt {
+    params: FaerSparseLdltParams,
 }
 
-impl SparseLdlt {
-    pub fn new(params: SparseLdltParams, parallelize: bool) -> Self {
-        Self {
-            params,
-            parallelize,
-        }
+impl FaerSparseLdlt {
+    /// Create new sparse LDLᵀ solver from params.
+    pub fn new(params: FaerSparseLdltParams) -> Self {
+        Self { params }
     }
 }
 
-impl IsSparseSymmetricLinearSystem for SparseLdlt {
-    fn solve(
+impl IsLinearSolver for FaerSparseLdlt {
+    type Matrix = FaerUpperTripletsMatrix;
+
+    const NAME: &'static str = "faer sparse LDLᵀ";
+
+    fn matrix_builder(&self, partitions: &[crate::PartitionSpec]) -> SymmetricMatrixBuilderEnum {
+        SymmetricMatrixBuilderEnum::FaerSparseUpper(SparseSymmetricMatrixBuilder::zero(partitions))
+    }
+
+    fn solve_in_place(
         &self,
-        upper: &SymmetricBlockSparseMatrixBuilder,
-        b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, NllsError> {
-        match SimplicialSparseLdlt::from_triplets(
-            &upper.to_upper_triangular_scalar_triplets(),
-            upper.scalar_dimension(),
-            self.parallelize,
-            self.params,
-        )
-        .solve(b)
-        {
-            Ok(x) => Ok(x),
-            Err(e) => Err(NllsError::SparseLdltError {
+        parallelize: bool,
+        upper: &FaerUpperCompressedMatrix,
+        b: &mut nalgebra::DVector<f64>,
+    ) -> Result<(), LinearSolverError> {
+        match SimplicialSparseLdlt::from_csc(upper.csc.clone(), parallelize, self.params).solve(b) {
+            Ok(x) => {
+                *b = x;
+                Ok(())
+            }
+            Err(e) => Err(LinearSolverError::SparseLdltError {
                 details: match e {
                     SimplicialSparseLdltError::FaerError(fe) => match fe {
                         FaerError::OutOfMemory => SparseSolverError::OutOfMemory,
@@ -93,27 +104,38 @@ impl IsSparseSymmetricLinearSystem for SparseLdlt {
             }),
         }
     }
+
+    fn solve(
+        &self,
+        parallelize: bool,
+        matrix: &<Self::Matrix as crate::IsCompressibleMatrix>::Compressed,
+        b: &nalgebra::DVector<f64>,
+    ) -> Result<nalgebra::DVector<f64>, LinearSolverError> {
+        let mut x = b.clone();
+        self.solve_in_place(parallelize, matrix, &mut x)?;
+        Ok(x)
+    }
+
+    fn name(&self) -> String {
+        Self::NAME.into()
+    }
 }
 
-// Owns the matrix, and the factorization parameters.
-// All large temporaries are allocated on demand and dropped immediately
-// afterwards, so the struct stays small.
 struct SimplicialSparseLdlt {
-    upper_ccs: SparseColMat<usize, f64>, // *upper-triangular* CSC
-    params: SparseLdltParams,
+    upper_ccs: SparseColMat<usize, f64>,
+    params: FaerSparseLdltParams,
     parallelize: bool,
 }
 
-// Holds the AMD permutation (and its inverse) computed once per system.
 struct SparseLdltPerm {
     perm: Vec<usize>,
     perm_inv: Vec<usize>,
 }
 
 impl SparseLdltPerm {
-    /// Apply the permutation **symmetrically** to the self-adjoint matrix
-    /// (upper triangle only) and return a *new* `SparseColMat`.
     fn perm_upper_ccs(&self, upper: &SparseColMat<usize, f64>) -> SparseColMat<usize, f64> {
+        // Based on example code from the faer crate:
+
         let dim = upper.ncols();
         let nnz = upper.compute_nnz();
 
@@ -149,8 +171,6 @@ impl SparseLdltPerm {
     }
 }
 
-// Bundles the permutation + the symbolic analysis so we don’t recompute
-// them for each RHS.
 struct SparseLdltPermSymb {
     permutation: SparseLdltPerm,
     symbolic: simplicial::SymbolicSimplicialCholesky<usize>,
@@ -163,6 +183,8 @@ enum SimplicialSparseLdltError {
 
 impl SimplicialSparseLdlt {
     fn symbolic_and_perm(&self) -> Result<SparseLdltPermSymb, FaerError> {
+        // Based on example code from the faer crate:
+
         let dim = self.upper_ccs.ncols();
         let nnz = self.upper_ccs.compute_nnz();
 
@@ -223,6 +245,8 @@ impl SimplicialSparseLdlt {
         b: &nalgebra::DVector<f64>,
         symb_perm: &SparseLdltPermSymb,
     ) -> Result<nalgebra::DVector<f64>, SimplicialSparseLdltError> {
+        // Based on example code from the faer crate:
+
         let dim = self.upper_ccs.ncols();
         // SAFETY: `perm` / `perm_inv` are valid permutations of size `dim`.
         let perm_ref = unsafe {
@@ -302,16 +326,15 @@ impl SimplicialSparseLdlt {
         Ok(x)
     }
 
-    fn from_triplets(
-        triplets: &[Triplet<usize, usize, f64>],
-        n: usize,
+    fn from_csc(
+        upper_ccs: faer::sparse::SparseColMat<usize, f64>,
         parallelize: bool,
-        params: SparseLdltParams,
+        params: FaerSparseLdltParams,
     ) -> Self {
         // Triplets are assumed valid (caller generated them).
         // `try_new_from_triplets` sorts / deduplicates if needed.
         Self {
-            upper_ccs: SparseColMat::try_new_from_triplets(n, n, triplets).unwrap(),
+            upper_ccs,
             params,
             parallelize,
         }
