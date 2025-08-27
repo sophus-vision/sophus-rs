@@ -6,15 +6,15 @@ use crate::{
 };
 
 /// Sparse matrix in triplet form to be used with faer crate.
-pub struct FaerTripletsMatrix {
+pub struct FaerTripletMatrix {
     /// triplets
     pub triplets: Vec<faer::sparse::Triplet<usize, usize, f64>>,
     /// scalar dimension
     pub dimension: usize,
 }
 
-impl FaerTripletsMatrix {
-    pub(crate) fn from_lower(t: &TripletMatrix) -> FaerTripletsMatrix {
+impl FaerTripletMatrix {
+    pub(crate) fn from_lower(t: &TripletMatrix) -> FaerTripletMatrix {
         let mut triplets = Vec::with_capacity(t.triplets.len() * 2);
 
         for &(row, col, val) in &t.triplets {
@@ -30,7 +30,7 @@ impl FaerTripletsMatrix {
             }
         }
 
-        FaerTripletsMatrix {
+        FaerTripletMatrix {
             triplets,
             dimension: t.row_count,
         }
@@ -44,7 +44,7 @@ pub struct FaerCompressedMatrix {
     pub csc: faer::sparse::SparseColMat<usize, f64>,
 }
 
-impl IsCompressibleMatrix for FaerTripletsMatrix {
+impl IsCompressibleMatrix for FaerTripletMatrix {
     type Compressed = FaerCompressedMatrix;
 
     fn compress(&self) -> Self::Compressed {
@@ -60,17 +60,17 @@ impl IsCompressibleMatrix for FaerTripletsMatrix {
 }
 
 /// Sparse upper triangular matrix in triplet form to be used with faer crate.
-pub struct FaerUpperTripletsMatrix {
+pub struct FaerUpperTripletMatrix {
     /// triplets
     pub triplets: Vec<faer::sparse::Triplet<usize, usize, f64>>,
     /// scalar dimension
     pub dimension: usize,
 }
 
-impl FaerUpperTripletsMatrix {
+impl FaerUpperTripletMatrix {
     /// Build an upper-triangular triplets from a lower-triangular ones.
     /// Each (i, j, v) with i >= j becomes (j, i, v).
-    pub fn from_lower(t: &TripletMatrix) -> FaerUpperTripletsMatrix {
+    pub fn from_lower(t: &TripletMatrix) -> FaerUpperTripletMatrix {
         let mut triplets = Vec::with_capacity(t.triplets.len());
 
         for &(i, j, v) in &t.triplets {
@@ -83,7 +83,7 @@ impl FaerUpperTripletsMatrix {
             });
         }
 
-        FaerUpperTripletsMatrix {
+        FaerUpperTripletMatrix {
             triplets,
             dimension: t.row_count,
         }
@@ -97,7 +97,7 @@ pub struct FaerUpperCompressedMatrix {
     pub csc: faer::sparse::SparseColMat<usize, f64>,
 }
 
-impl IsCompressibleMatrix for FaerUpperTripletsMatrix {
+impl IsCompressibleMatrix for FaerUpperTripletMatrix {
     type Compressed = FaerUpperCompressedMatrix;
 
     fn compress(&self) -> Self::Compressed {

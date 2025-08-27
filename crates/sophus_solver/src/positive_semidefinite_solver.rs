@@ -1,5 +1,7 @@
 pub(crate) mod dense_ldlt;
+pub(crate) mod elimination_tree;
 pub(crate) mod faer_sparse_ldlt;
+pub(crate) mod sparse_ldlt;
 
 mod tests {
 
@@ -25,8 +27,8 @@ mod tests {
             sparse::{
                 SparseSymmetricMatrixBuilder,
                 faer_sparse_matrix::{
-                    FaerTripletsMatrix,
-                    FaerUpperTripletsMatrix,
+                    FaerTripletMatrix,
+                    FaerUpperTripletMatrix,
                 },
             },
         };
@@ -264,8 +266,8 @@ mod tests {
             let (dense_mat_a, b) = &dense_ex[i];
             let (sparse_mat_a, _b) = &sparse_ex[i];
 
-            let faer_mat_a = FaerTripletsMatrix::from_lower(sparse_mat_a);
-            let faer_upper_mat_a = FaerUpperTripletsMatrix::from_lower(sparse_mat_a);
+            let faer_mat_a = FaerTripletMatrix::from_lower(sparse_mat_a);
+            let faer_upper_mat_a = FaerUpperTripletMatrix::from_lower(sparse_mat_a);
 
             let x_dense_lu = DenseLu {}.solve(parallelize, dense_mat_a, b).unwrap();
             let x_faer_sparse_lu = FaerSparseLu {}
