@@ -9,8 +9,8 @@ use crate::{
     sparse::{
         SparseSymmetricMatrixBuilder,
         faer_sparse_matrix::{
-            FaerTripletsMatrix,
-            FaerUpperTripletsMatrix,
+            FaerTripletMatrix,
+            FaerUpperTripletMatrix,
         },
     },
 };
@@ -51,6 +51,8 @@ pub trait IsSymmetricMatrixBuilder {
 pub enum SymmetricMatrixBuilderEnum {
     /// Builder for dense symmetric matrix.
     Dense(DenseSymmetricMatrixBuilder),
+    /// Builder for sparse lower matrix.
+    SparseLower(SparseSymmetricMatrixBuilder),
     /// Builder for sparse symmetric matrix to interact with the faer crate.
     FaerSparse(SparseSymmetricMatrixBuilder),
     /// Builder for sparse upper triangular matrix to interact with the faer crate.
@@ -73,6 +75,9 @@ impl SymmetricMatrixBuilderEnum {
                 SparseSymmetricMatrixBuilder::zero(partitions),
             ),
             LinearSolverEnum::FaerSparseLdlt(_) => SymmetricMatrixBuilderEnum::FaerSparseUpper(
+                SparseSymmetricMatrixBuilder::zero(partitions),
+            ),
+            LinearSolverEnum::SparseLdlt(_) => SymmetricMatrixBuilderEnum::SparseLower(
                 SparseSymmetricMatrixBuilder::zero(partitions),
             ),
         };
@@ -104,6 +109,9 @@ impl SymmetricMatrixBuilderEnum {
             SymmetricMatrixBuilderEnum::FaerSparseUpper(sparse_symmetric_matrix_builder) => {
                 sparse_symmetric_matrix_builder.add_lower_block(region_idx, block_index, block);
             }
+            SymmetricMatrixBuilderEnum::SparseLower(sparse_symmetric_matrix_builder) => {
+                sparse_symmetric_matrix_builder.add_lower_block(region_idx, block_index, block)
+            }
         }
         tracing::trace!("add_lower_block");
     }
@@ -114,13 +122,16 @@ impl SymmetricMatrixBuilderEnum {
             SymmetricMatrixBuilderEnum::Dense(dense_symmetric_matrix_builder) => {
                 CompressibleMatrixEnum::Dense(dense_symmetric_matrix_builder.build())
             }
+            SymmetricMatrixBuilderEnum::SparseLower(sparse_symmetric_matrix_builder) => {
+                CompressibleMatrixEnum::SparseLower(sparse_symmetric_matrix_builder.build())
+            }
             SymmetricMatrixBuilderEnum::FaerSparse(sparse_symmetric_matrix_builder) => {
-                CompressibleMatrixEnum::FaerSparse(FaerTripletsMatrix::from_lower(
+                CompressibleMatrixEnum::FaerSparse(FaerTripletMatrix::from_lower(
                     &sparse_symmetric_matrix_builder.build(),
                 ))
             }
             SymmetricMatrixBuilderEnum::FaerSparseUpper(sparse_symmetric_matrix_builder) => {
-                CompressibleMatrixEnum::FaerSparseUpper(FaerUpperTripletsMatrix::from_lower(
+                CompressibleMatrixEnum::FaerSparseUpper(FaerUpperTripletMatrix::from_lower(
                     &sparse_symmetric_matrix_builder.build(),
                 ))
             }

@@ -39,7 +39,7 @@ use crate::{
         SparseSymmetricMatrixBuilder,
         faer_sparse_matrix::{
             FaerUpperCompressedMatrix,
-            FaerUpperTripletsMatrix,
+            FaerUpperTripletMatrix,
         },
     },
 };
@@ -73,7 +73,7 @@ impl FaerSparseLdlt {
 }
 
 impl IsLinearSolver for FaerSparseLdlt {
-    type Matrix = FaerUpperTripletsMatrix;
+    type Matrix = FaerUpperTripletMatrix;
 
     const NAME: &'static str = "faer sparse LDLᵀ";
 

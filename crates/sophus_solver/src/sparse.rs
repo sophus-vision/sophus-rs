@@ -1,9 +1,11 @@
 pub(crate) mod csc_matrix;
 pub(crate) mod faer_sparse_matrix;
+pub(crate) mod triplet_matrix;
 
 pub use csc_matrix::*;
 pub use faer_sparse_matrix::*;
 use nalgebra::DMatrixView;
+pub use triplet_matrix::*;
 
 use crate::{
     PartitionSpec,
@@ -132,10 +134,6 @@ impl IsSymmetricMatrixBuilder for SparseSymmetricMatrixBuilder {
     }
 
     fn build(self) -> Self::Matrix {
-        TripletMatrix {
-            triplets: self.triplets,
-            row_count: self.scalar_dimension,
-            col_count: self.scalar_dimension,
-        }
+        TripletMatrix::new(self.triplets, self.scalar_dimension, self.scalar_dimension)
     }
 }
