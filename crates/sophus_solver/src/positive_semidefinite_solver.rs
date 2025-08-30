@@ -1,5 +1,7 @@
 pub(crate) mod dense_ldlt;
+pub(crate) mod elimination_tree;
 pub(crate) mod faer_sparse_ldlt;
+pub(crate) mod sparse_ldlt;
 
 mod tests {
 
@@ -18,6 +20,7 @@ mod tests {
             FaerSparseQr,
             IsLinearSolver,
             IsSymmetricMatrixBuilder,
+            SparseLdlt,
             block_sparse::PartitionSpec,
             dense::DenseSymmetricMatrixBuilder,
             positive_semidefinite_solver::faer_sparse_ldlt::FaerSparseLdlt,
@@ -25,8 +28,8 @@ mod tests {
             sparse::{
                 SparseSymmetricMatrixBuilder,
                 faer_sparse_matrix::{
-                    FaerTripletsMatrix,
-                    FaerUpperTripletsMatrix,
+                    FaerTripletMatrix,
+                    FaerUpperTripletMatrix,
                 },
             },
         };
@@ -43,9 +46,9 @@ mod tests {
                 }];
                 let mut builder = Builder::zero(&partitions);
                 let block_a00 = MatF64::<3, 3>::from_array2([
-                    [2.0, 1.0, 0.0],
-                    [1.0, 2.0, 1.0],
-                    [0.0, 1.0, 2.0],
+                    [3.3, 1.0, 0.0],
+                    [1.0, 3.2, 1.0],
+                    [0.0, 1.0, 3.1],
                 ]);
                 let block_a01 = MatF64::<3, 3>::from_array2([
                     [0.0, 0.0, 0.0],
@@ -53,9 +56,9 @@ mod tests {
                     [1.0, 0.0, 0.0],
                 ]);
                 let block_a11 = MatF64::<3, 3>::from_array2([
-                    [1.0, 0.0, 0.0],
-                    [0.0, 1.0, 0.0],
-                    [0.0, 0.0, 1.0],
+                    [2.3, 0.0, 0.0],
+                    [0.0, 2.2, 0.0],
+                    [0.0, 0.0, 2.1],
                 ]);
 
                 builder.add_lower_block(&[0, 0], [0, 0], &block_a00.as_view());
@@ -261,11 +264,12 @@ mod tests {
         let parallelize = false;
 
         for i in 0..dense_ex.len() {
+            println!("example {i}\n");
             let (dense_mat_a, b) = &dense_ex[i];
             let (sparse_mat_a, _b) = &sparse_ex[i];
 
-            let faer_mat_a = FaerTripletsMatrix::from_lower(sparse_mat_a);
-            let faer_upper_mat_a = FaerUpperTripletsMatrix::from_lower(sparse_mat_a);
+            let faer_mat_a = FaerTripletMatrix::from_lower(sparse_mat_a);
+            let faer_upper_mat_a = FaerUpperTripletMatrix::from_lower(sparse_mat_a);
 
             let x_dense_lu = DenseLu {}.solve(parallelize, dense_mat_a, b).unwrap();
             let x_faer_sparse_lu = FaerSparseLu {}
@@ -277,6 +281,10 @@ mod tests {
 
             let x_dense_ldlt = DenseLdlt {}.solve(parallelize, dense_mat_a, b).unwrap();
 
+            let x_sparse_ldlt = SparseLdlt::default()
+                .solve(parallelize, &sparse_mat_a.compress(), b)
+                .unwrap();
+
             let x_faer_sparse_ldlt = FaerSparseLdlt::default()
                 .solve(parallelize, &faer_upper_mat_a.compress(), b)
                 .unwrap();
@@ -287,7 +295,7 @@ mod tests {
             print!("faer sparse QR: x = {x_faer_sparse_qr}");
 
             print!("dense LDLᵀ x = {x_dense_ldlt}");
-
+            print!("sparse LDLᵀ x = {x_sparse_ldlt}");
             print!("faer sparse LDLᵀ x = {x_faer_sparse_ldlt}");
 
             approx::assert_abs_diff_eq!(
@@ -309,6 +317,11 @@ mod tests {
 
             approx::assert_abs_diff_eq!(
                 dense_mat_a.clone() * x_dense_ldlt,
+                b.clone(),
+                epsilon = 1e-6
+            );
+            approx::assert_abs_diff_eq!(
+                dense_mat_a.clone() * x_sparse_ldlt,
                 b.clone(),
                 epsilon = 1e-6
             );

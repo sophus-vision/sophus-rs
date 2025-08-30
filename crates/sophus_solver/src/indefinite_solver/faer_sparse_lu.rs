@@ -19,7 +19,7 @@ use crate::{
         SparseSymmetricMatrixBuilder,
         faer_sparse_matrix::{
             FaerCompressedMatrix,
-            FaerTripletsMatrix,
+            FaerTripletMatrix,
         },
     },
 };
@@ -32,7 +32,7 @@ use crate::{
 pub struct FaerSparseLu;
 
 impl IsLinearSolver for FaerSparseLu {
-    type Matrix = FaerTripletsMatrix;
+    type Matrix = FaerTripletMatrix;
 
     const NAME: &'static str = "faer sparse LU";
 

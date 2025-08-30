@@ -12,7 +12,7 @@ use crate::{
         SparseSymmetricMatrixBuilder,
         faer_sparse_matrix::{
             FaerCompressedMatrix,
-            FaerTripletsMatrix,
+            FaerTripletMatrix,
         },
     },
 };
@@ -25,7 +25,7 @@ use crate::{
 pub struct FaerSparseQr;
 
 impl IsLinearSolver for FaerSparseQr {
-    type Matrix = FaerTripletsMatrix;
+    type Matrix = FaerTripletMatrix;
 
     const NAME: &'static str = "faer sparse QR";
 

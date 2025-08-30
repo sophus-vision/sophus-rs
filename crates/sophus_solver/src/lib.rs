@@ -48,7 +48,9 @@ pub use crate::{
     },
     positive_semidefinite_solver::{
         dense_ldlt::*,
-        faer_sparse_ldlt::FaerSparseLdlt,
+        elimination_tree::*,
+        faer_sparse_ldlt::*,
+        sparse_ldlt::*,
     },
     symmetric_matrix::*,
 };
@@ -97,6 +99,8 @@ pub enum LinearSolverEnum {
     DenseLdlt(DenseLdlt),
     /// Dense solver using LU factorization.
     DenseLu(DenseLu),
+    /// Sparse solver using LDLᵀ factorization.
+    SparseLdlt(SparseLdlt),
     /// Sparse solver using faer's QR factorization.
     FaerSparseQr(FaerSparseQr),
     /// Sparse solver using faer's LU factorization.
@@ -129,6 +133,7 @@ impl IsLinearSolver for LinearSolverEnum {
             LinearSolverEnum::FaerSparseLdlt(faer_sparse_ldlt) => {
                 faer_sparse_ldlt.matrix_builder(partitions)
             }
+            LinearSolverEnum::SparseLdlt(sparse_ldlt) => sparse_ldlt.matrix_builder(partitions),
         }
     }
 
@@ -156,6 +161,9 @@ impl IsLinearSolver for LinearSolverEnum {
             LinearSolverEnum::FaerSparseLu(faer_sparse_lu) => {
                 faer_sparse_lu.solve_in_place(parallelize, matrix.as_faer_sparse().unwrap(), b)
             }
+            LinearSolverEnum::SparseLdlt(sparse_ldlt) => {
+                sparse_ldlt.solve_in_place(parallelize, matrix.as_sparse_lower().unwrap(), b)
+            }
         }
     }
 
@@ -166,6 +174,7 @@ impl IsLinearSolver for LinearSolverEnum {
             LinearSolverEnum::FaerSparseQr(faer_sparse_qr) => faer_sparse_qr.name(),
             LinearSolverEnum::FaerSparseLu(faer_sparse_lu) => faer_sparse_lu.name(),
             LinearSolverEnum::FaerSparseLdlt(faer_sparse_ldlt) => faer_sparse_ldlt.name(),
+            LinearSolverEnum::SparseLdlt(sparse_ldlt) => sparse_ldlt.name(),
         }
     }
 }
@@ -188,6 +197,7 @@ impl LinearSolverEnum {
     /// Get list of all sparse solvers
     pub fn sparse_solvers() -> Vec<LinearSolverEnum> {
         vec![
+            LinearSolverEnum::SparseLdlt(SparseLdlt::default()),
             LinearSolverEnum::FaerSparseQr(FaerSparseQr {}),
             LinearSolverEnum::FaerSparseLu(FaerSparseLu {}),
             LinearSolverEnum::FaerSparseLdlt(FaerSparseLdlt::default()),

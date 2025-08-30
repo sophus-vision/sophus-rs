@@ -25,6 +25,8 @@ pub use sophus_sensor as sensor;
 #[doc(inline)]
 pub use sophus_sim as sim;
 #[doc(inline)]
+pub use sophus_solver as solver;
+#[doc(inline)]
 pub use sophus_spline as spline;
 #[doc(inline)]
 pub use sophus_tensor as tensor;

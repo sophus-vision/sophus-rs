@@ -19,6 +19,7 @@ sophus_opt.workspace = true
 sophus_renderer.workspace = true
 sophus_sensor.workspace = true
 sophus_sim.workspace = true
+sophus_solver.workspace = true
 sophus_spline.workspace = true
 sophus_tensor.workspace = true
 sophus_timeseries.workspace = true

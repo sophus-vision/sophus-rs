@@ -2,9 +2,12 @@ use nalgebra::DMatrix;
 
 use crate::{
     CompressedMatrixEnum,
-    sparse::faer_sparse_matrix::{
-        FaerTripletsMatrix,
-        FaerUpperTripletsMatrix,
+    sparse::{
+        TripletMatrix,
+        faer_sparse_matrix::{
+            FaerTripletMatrix,
+            FaerUpperTripletMatrix,
+        },
     },
 };
 
@@ -21,10 +24,12 @@ pub trait IsCompressibleMatrix {
 pub enum CompressibleMatrixEnum {
     /// Dense matrix - trivial compressible matrix, since it is dense.
     Dense(DMatrix<f64>),
+    /// Matrix triplets of lower-triangular matrix,
+    SparseLower(TripletMatrix),
     /// Matrix triplets to be used with faer crate,
-    FaerSparse(FaerTripletsMatrix),
+    FaerSparse(FaerTripletMatrix),
     /// Triplets of upper triangular matrix to be used with faer crate,
-    FaerSparseUpper(FaerUpperTripletsMatrix),
+    FaerSparseUpper(FaerUpperTripletMatrix),
 }
 
 impl IsCompressibleMatrix for CompressibleMatrixEnum {
@@ -33,6 +38,9 @@ impl IsCompressibleMatrix for CompressibleMatrixEnum {
     fn compress(&self) -> Self::Compressed {
         let c = match self {
             CompressibleMatrixEnum::Dense(matrix) => CompressedMatrixEnum::Dense(matrix.compress()),
+            CompressibleMatrixEnum::SparseLower(lower_triplets_matrix) => {
+                CompressedMatrixEnum::SparseLower(lower_triplets_matrix.compress())
+            }
             CompressibleMatrixEnum::FaerSparse(faer_triplets_matrix) => {
                 CompressedMatrixEnum::FaerSparse(faer_triplets_matrix.compress())
             }
