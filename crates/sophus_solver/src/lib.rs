@@ -10,50 +10,43 @@ pub struct ReadmeDoctests;
 
 use std::fmt::Debug;
 
-/// Block-sparse data structures.
-pub mod block_sparse;
-/// Compressed sparse matrix.
-pub mod compressed_matrix;
-/// Compressible matrix.s
-pub mod compressible_matrix;
-/// Dense data structures.
-pub mod dense;
-/// Solver errors.
-pub mod error;
-/// Grid structure.
-pub mod grid;
-/// Solve possibly indefinite linear systems.
-pub mod indefinite_solver;
-/// Solver semi-positive definite (and hence symmetric) systems.
-pub mod positive_semidefinite_solver;
-/// Sparse data structures.
-pub mod sparse;
-/// Symmetric matrix.
-pub mod symmetric_matrix;
+pub use error::*;
 
-mod asserts;
-
-pub use crate::{
-    block_sparse::*,
-    compressed_matrix::*,
-    compressible_matrix::{
+use crate::{
+    indefinite::{
+        DenseLu,
+        FaerSparseLu,
+        FaerSparseQr,
+    },
+    matrix::{
         CompressibleMatrixEnum,
         IsCompressibleMatrix,
+        PartitionSpec,
+        SymmetricMatrixBuilderEnum,
     },
-    error::*,
-    indefinite_solver::{
-        dense_lu::*,
-        faer_sparse_lu::*,
-        faer_sparse_qr::*,
+    positive_semidefinite::{
+        BlockSparseLdlt,
+        DenseLdlt,
+        FaerSparseLdlt,
+        SparseLdlt,
     },
-    positive_semidefinite_solver::{
-        dense_ldlt::*,
-        elimination_tree::*,
-        faer_sparse_ldlt::*,
-        sparse_ldlt::*,
-    },
-    symmetric_matrix::*,
 };
+
+/// Solver errors.
+pub mod error;
+/// Matrix operation kernels..
+pub mod kernel;
+/// Matrix structures.
+pub mod matrix;
+
+/// Benchmark utilities
+pub mod bench_utils;
+/// Solve possibly indefinite linear systems.
+pub mod indefinite;
+/// Solver semi-positive definite (and hence symmetric) systems.
+pub mod positive_semidefinite;
+
+mod asserts;
 
 /// Linear solver of linear system.
 pub trait IsLinearSolver {
@@ -92,8 +85,8 @@ pub trait IsLinearSolver {
     ) -> Result<(), LinearSolverError>;
 }
 
-/// Linear solver enum.
 #[derive(Copy, Clone, Debug)]
+/// Linear solver enum.
 pub enum LinearSolverEnum {
     /// Dense solver using LDLᵀ factorization.
     DenseLdlt(DenseLdlt),
@@ -101,6 +94,8 @@ pub enum LinearSolverEnum {
     DenseLu(DenseLu),
     /// Sparse solver using LDLᵀ factorization.
     SparseLdlt(SparseLdlt),
+    /// Block-sparse solver using LDLᵀ factorization.
+    BlockSparseLdlt(BlockSparseLdlt),
     /// Sparse solver using faer's QR factorization.
     FaerSparseQr(FaerSparseQr),
     /// Sparse solver using faer's LU factorization.
@@ -133,6 +128,9 @@ impl IsLinearSolver for LinearSolverEnum {
             LinearSolverEnum::FaerSparseLdlt(faer_sparse_ldlt) => {
                 faer_sparse_ldlt.matrix_builder(partitions)
             }
+            LinearSolverEnum::BlockSparseLdlt(block_sparse_ldlt) => {
+                block_sparse_ldlt.matrix_builder(partitions)
+            }
             LinearSolverEnum::SparseLdlt(sparse_ldlt) => sparse_ldlt.matrix_builder(partitions),
         }
     }
@@ -164,6 +162,8 @@ impl IsLinearSolver for LinearSolverEnum {
             LinearSolverEnum::SparseLdlt(sparse_ldlt) => {
                 sparse_ldlt.solve_in_place(parallelize, matrix.as_sparse_lower().unwrap(), b)
             }
+            LinearSolverEnum::BlockSparseLdlt(block_sparse_ldlt) => block_sparse_ldlt
+                .solve_in_place(parallelize, matrix.as_block_sparse_lower().unwrap(), b),
         }
     }
 
@@ -175,6 +175,7 @@ impl IsLinearSolver for LinearSolverEnum {
             LinearSolverEnum::FaerSparseLu(faer_sparse_lu) => faer_sparse_lu.name(),
             LinearSolverEnum::FaerSparseLdlt(faer_sparse_ldlt) => faer_sparse_ldlt.name(),
             LinearSolverEnum::SparseLdlt(sparse_ldlt) => sparse_ldlt.name(),
+            LinearSolverEnum::BlockSparseLdlt(block_sparse_ldlt) => block_sparse_ldlt.name(),
         }
     }
 }
@@ -183,13 +184,13 @@ impl LinearSolverEnum {
     /// Get all available solvers
     pub fn all_solvers() -> Vec<LinearSolverEnum> {
         let mut solvers = LinearSolverEnum::dense_solvers();
-        solvers.extend(&LinearSolverEnum::sparse_solvers());
+        solvers.extend(LinearSolverEnum::sparse_solvers());
         solvers
     }
     /// Get list off all dense solvers.
     pub fn dense_solvers() -> Vec<LinearSolverEnum> {
         vec![
-            LinearSolverEnum::DenseLdlt(DenseLdlt {}),
+            LinearSolverEnum::DenseLdlt(DenseLdlt::default()),
             LinearSolverEnum::DenseLu(DenseLu {}),
         ]
     }
@@ -198,6 +199,7 @@ impl LinearSolverEnum {
     pub fn sparse_solvers() -> Vec<LinearSolverEnum> {
         vec![
             LinearSolverEnum::SparseLdlt(SparseLdlt::default()),
+            LinearSolverEnum::BlockSparseLdlt(BlockSparseLdlt::default()),
             LinearSolverEnum::FaerSparseQr(FaerSparseQr {}),
             LinearSolverEnum::FaerSparseLu(FaerSparseLu {}),
             LinearSolverEnum::FaerSparseLdlt(FaerSparseLdlt::default()),
@@ -233,8 +235,10 @@ pub mod prelude {
     pub use sophus_autodiff::prelude::*;
 
     pub use crate::{
-        IsCompressibleMatrix,
         IsLinearSolver,
-        IsSymmetricMatrixBuilder,
+        matrix::{
+            IsCompressibleMatrix,
+            IsSymmetricMatrixBuilder,
+        },
     };
 }

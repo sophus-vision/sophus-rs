@@ -1,0 +1,21 @@
+name: docs
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  docs:
+      runs-on: ubuntu-22.04
+      steps:
+        - name: Checkout workspace
+          uses: actions/checkout@v4
+        - uses: extractions/setup-just@v1
+        - name: cargo doc
+          run: |
+            rustup default nightly
+            rustup component add rustfmt
+            just doc

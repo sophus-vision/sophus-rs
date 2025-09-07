@@ -30,10 +30,12 @@ use log::{
 };
 use snafu::Snafu;
 use sophus_solver::{
-    BlockVector,
-    CompressibleMatrixEnum,
     LinearSolverEnum,
     LinearSolverError,
+    matrix::{
+        CompressibleMatrixEnum,
+        block::BlockVector,
+    },
 };
 
 pub use crate::nlls::functor_library::{

@@ -23,13 +23,11 @@ jobs:
         - uses: actions-rs/toolchain@v1
           with:
             toolchain: nightly
+        - name: pre-commit
+          run: |
+            pre-commit run -a
         - name: cargo fmt
           run: |
             rustup default nightly
             rustup component add rustfmt
-            just format
-        - name: cargo doc
-          run: |
-            rustup default nightly
-            rustup component add rustfmt
-            just doc
+            rustup run nightly cargo fmt --all -- --check

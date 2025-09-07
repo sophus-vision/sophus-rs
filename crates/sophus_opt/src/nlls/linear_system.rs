@@ -2,12 +2,14 @@ pub(crate) mod cost_system;
 pub(crate) mod eq_system;
 
 use sophus_solver::{
-    BlockVector,
-    CompressibleMatrixEnum,
     IsLinearSolver as _,
     LinearSolverEnum,
-    PartitionSpec,
-    SymmetricMatrixBuilderEnum,
+    matrix::{
+        CompressibleMatrixEnum,
+        PartitionSpec,
+        SymmetricMatrixBuilderEnum,
+        block::BlockVector,
+    },
     prelude::*,
 };
 
