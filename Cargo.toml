@@ -62,7 +62,6 @@ enum-as-inner = "0.6.1"
 env_logger = "0.11"
 faer = {version = "0.22.6", default-features = false, features = ["linalg", "rayon"]}
 futures-intrusive = "0.5"
-hashbrown = "0.15"
 linked-hash-map = "0.5"
 log = "0.4"
 nalgebra = {version = "0.34", features = ["bytemuck"]}
@@ -80,9 +79,7 @@ rustc_version = "0.4"
 serde = {version = "1.0.219", features = ["derive"]}
 snafu = "0.8.6"
 thingbuf = "0.1.6"
-tracing = "0.1"
-tracing-subscriber = "0.3"
-tracing-timing = "0.7"
+puffin = "0.19"
 typenum = {version = "1.17", features = ["const-generics"]}
 wasm-bindgen-futures = "0.4.50"
 web-sys = "0.3.70"

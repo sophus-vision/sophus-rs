@@ -1,4 +1,4 @@
-use sophus_solver::{
+use sophus_solver::matrix::{
     BlockVector,
     SymmetricMatrixBuilderEnum,
 };

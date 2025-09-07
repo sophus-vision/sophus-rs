@@ -1,37 +1,35 @@
 use nalgebra::DVector;
 use sophus_autodiff::linalg::MatF64;
 use sophus_solver::{
-    CompressedMatrixEnum,
-    DenseLdlt,
     LinearSolverEnum,
-    PartitionSpec,
-    SymmetricMatrixBuilderEnum,
+    bench_utils::PuffinPrinter,
+    matrix::{
+        CompressedMatrixEnum,
+        PartitionSpec,
+        SymmetricMatrixBuilderEnum,
+    },
+    positive_semidefinite::DenseLdlt,
     prelude::*,
-};
-use tracing::{
-    Dispatch,
-    dispatcher,
-    info_span,
-    trace,
-};
-use tracing_timing::{
-    Builder,
-    Histogram,
-    TimingSubscriber,
-    group,
 };
 
 struct ExampleProblem {
     partitions: Vec<PartitionSpec>,
 }
-
 impl ExampleProblem {
     fn new() -> Self {
+        // Partition 0: 250 blocks of size 4 (unchanged)
+        // Partition 1: 60 blocks of size 3 (new)
         ExampleProblem {
-            partitions: vec![PartitionSpec {
-                block_count: 250,
-                block_dimension: 4,
-            }],
+            partitions: vec![
+                PartitionSpec {
+                    block_count: 250,
+                    block_dimension: 4,
+                },
+                PartitionSpec {
+                    block_count: 60,
+                    block_dimension: 3,
+                },
+            ],
         }
     }
 
@@ -40,55 +38,109 @@ impl ExampleProblem {
     }
 
     fn build(mut builder: SymmetricMatrixBuilderEnum) -> (CompressedMatrixEnum, DVector<f64>) {
-        const R: usize = 25;
-        const C: usize = 10;
-        const NB: usize = R * C; // 250
-        type M = MatF64<4, 4>;
-        let i4 = M::from_array2([
-            [1.0, 0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0, 1.0],
-        ]);
-        let four_i = M::from_array2([
-            [4.0, 0.0, 0.0, 0.0],
-            [0.0, 4.0, 0.0, 0.0],
-            [0.0, 0.0, 4.0, 0.0],
-            [0.0, 0.0, 0.0, 4.0],
-        ]);
+        let b = {
+            puffin::profile_scope!("build");
 
-        let idx = |r: usize, c: usize| -> usize { r * C + c };
+            // ---------------- Partition 0 (size 4 blocks) ----------------
+            const R0: usize = 25;
+            const C0: usize = 10;
+            const NB0: usize = R0 * C0; // 250
+            type M4 = MatF64<4, 4>;
 
-        let add_edge =
-            |builder: &mut SymmetricMatrixBuilderEnum, a: usize, b: usize, c: &M, minus_c: &M| {
+            let i4 = M4::from_array2([
+                [1.0, 0.01, 0.02, 0.01],
+                [0.01, 1.1, 0.02, 0.0],
+                [0.02, 0.02, 1.2, 0.0],
+                [0.01, 0.0, 0.0, 1.3],
+            ]);
+            let four_i4 = M4::from_array2([
+                [4.0, 0.001, 0.1, 0.002],
+                [0.001, 4.2, 0.0009, 0.0],
+                [0.1, 0.0009, 4.3, 0.0],
+                [0.002, 0.0, 0.0, 4.0],
+            ]);
+
+            let idx0 = |r: usize, c: usize| -> usize { r * C0 + c };
+
+            let add_edge4 = |builder: &mut SymmetricMatrixBuilderEnum,
+                             a: usize,
+                             b: usize,
+                             c: &M4,
+                             minus_c: &M4| {
                 let (i, j) = if a > b { (a, b) } else { (b, a) };
+                // Region [0,0] = (row partition 0, col partition 0)
                 builder.add_lower_block(&[0, 0], [i, j], &minus_c.as_view());
                 builder.add_lower_block(&[0, 0], [i, i], &c.as_view());
-
                 builder.add_lower_block(&[0, 0], [j, j], &c.as_view());
             };
 
-        // Base diagonal
-        for i in 0..NB {
-            builder.add_lower_block(&[0, 0], [i, i], &four_i.as_view());
-        }
+            // Base diagonal (partition 0)
+            for i in 0..NB0 {
+                builder.add_lower_block(&[0, 0], [i, i], &four_i4.as_view());
+            }
 
-        // 4-neighborhood with uniform coupling
-        let minus_c: M = -i4;
-
-        for r in 0..R {
-            for c in 0..C {
-                let i = idx(r, c);
-                if r + 1 < R {
-                    add_edge(&mut builder, i, idx(r + 1, c), &i4, &minus_c);
-                }
-                if c + 1 < C {
-                    add_edge(&mut builder, i, idx(r, c + 1), &i4, &minus_c);
+            // 4-neighborhood (partition 0)
+            let minus_i4: M4 = -i4;
+            for r in 0..R0 {
+                for c in 0..C0 {
+                    let i = idx0(r, c);
+                    if r + 1 < R0 {
+                        add_edge4(&mut builder, i, idx0(r + 1, c), &i4, &minus_i4);
+                    }
+                    if c + 1 < C0 {
+                        add_edge4(&mut builder, i, idx0(r, c + 1), &i4, &minus_i4);
+                    }
                 }
             }
-        }
 
-        let b = nalgebra::DVector::from_element(NB * 4, 1.0);
+            // ---------------- Partition 1 (size 3 blocks) ----------------
+            const NB1: usize = 60; // choose any length you like
+            type M3 = MatF64<3, 3>;
+
+            let i3 = M3::from_array2([[1.0, 0.02, 0.0], [0.02, 1.1, 0.01], [0.0, 0.01, 1.2]]);
+            let three_i3 =
+                M3::from_array2([[3.0, 0.001, 0.0], [0.001, 3.1, 0.0007], [0.0, 0.0007, 3.2]]);
+            let minus_i3: M3 = -i3;
+
+            let add_edge3 = |builder: &mut SymmetricMatrixBuilderEnum,
+                             a: usize,
+                             b: usize,
+                             c: &M3,
+                             minus_c: &M3| {
+                let (i, j) = if a > b { (a, b) } else { (b, a) };
+                // Region [1,1] = (row partition 1, col partition 1)
+                builder.add_lower_block(&[1, 1], [i, j], &minus_c.as_view());
+                builder.add_lower_block(&[1, 1], [i, i], &c.as_view());
+                builder.add_lower_block(&[1, 1], [j, j], &c.as_view());
+            };
+
+            // Base diagonal (partition 1)
+            for i in 0..NB1 {
+                builder.add_lower_block(&[1, 1], [i, i], &three_i3.as_view());
+            }
+
+            // Simple chain coupling within partition 1
+            for i in 0..(NB1 - 1) {
+                add_edge3(&mut builder, i, i + 1, &i3, &minus_i3);
+            }
+
+            // Region [1,0]: row-partition 1 (size 3), col-partition 0 (size 4)
+            let c10 = MatF64::<3, 4>::from_array2([
+                [0.1, 0.0, 0.0, 0.0],
+                [0.0, 0.08, 0.01, 0.0],
+                [0.0, 0.01, 0.07, 0.0],
+            ]);
+            let minus_c10 = -c10;
+            builder.add_lower_block(&[1, 0], [0, 0], &minus_c10.as_view());
+            builder.add_lower_block(&[1, 1], [0, 0], &(/* 3x3 */i3).as_view()); // add to the two diagonals
+            builder.add_lower_block(&[0, 0], [0, 0], &(/* 4x4 */i4).as_view());
+
+            // ---------------- RHS vector ----------------
+            // total scalar size = 250*4 + 60*3
+            nalgebra::DVector::from_element(NB0 * 4 + NB1 * 3, 1.0)
+        };
+
+        puffin::profile_scope!("compress");
         (builder.build().compress(), b)
     }
 }
@@ -97,66 +149,27 @@ fn main() {
     let problem = ExampleProblem::new();
 
     let dense_builder =
-        LinearSolverEnum::DenseLdlt(DenseLdlt {}).matrix_builder(problem.partitions());
-    let dense_mat_a = ExampleProblem::build(dense_builder).0.into_dense().unwrap();
+        LinearSolverEnum::DenseLdlt(DenseLdlt::default()).matrix_builder(problem.partitions());
+    let (mat_a, b) = ExampleProblem::build(dense_builder);
+    let dense_mat_a = mat_a.into_dense().unwrap();
+
+    puffin::set_scopes_on(true);
+    let printer = PuffinPrinter::new();
 
     for solver in LinearSolverEnum::all_solvers() {
         let builder = solver.matrix_builder(problem.partitions());
-        let (mat_a, b) = ExampleProblem::build(builder);
-        let mut x = b.clone();
 
-        type TS = TimingSubscriber<group::ByField, group::ByField>;
+        puffin::GlobalProfiler::lock().new_frame();
 
-        let subscriber: TS = Builder::default()
-            .spans(group::ByField::from("algo"))
-            .events(group::ByField::from("path"))
-            .build(|| Histogram::new_with_max(60_000_000_000, 3).unwrap());
-
-        let dispatch = Dispatch::new(subscriber);
-        println!("{}", solver.name());
-
-        dispatcher::with_default(&dispatch, || {
-            let span = info_span!("solver_bench", algo = ?solver.name());
-            span.in_scope(|| {
-                trace!(path = "solve/before");
-                solver.solve_in_place(false, &mat_a, &mut x).unwrap();
-                trace!(path = "solve");
-            })
-        });
+        let x = {
+            puffin::profile_scope!("total");
+            let (mat_a, b) = ExampleProblem::build(builder);
+            solver.solve(false, &mat_a, &b).unwrap()
+        };
+        puffin::GlobalProfiler::lock().new_frame();
 
         approx::assert_abs_diff_eq!(dense_mat_a.clone() * x, b.clone(), epsilon = 1e-6);
 
-        let timing = dispatch.downcast_ref::<TS>().unwrap();
-        timing.force_synchronize();
-
-        timing.with_histograms(|hs| {
-            let algo_key = format!("{:?}", solver.name());
-
-            let mut algo_ms = 0.0;
-
-            if let Some(events) = hs.get(&algo_key) {
-                for (path, h) in events {
-                    let p50_ms = h.value_at_quantile(0.50) as f64 / 1e6;
-
-                    // Total time across all calls in this run.
-                    let mut total_ns: u128 = 0;
-                    for rec in h.iter_recorded() {
-                        total_ns += (rec.count_since_last_iteration() as u128)
-                            * (rec.value_iterated_to() as u128);
-                    }
-                    let call_count = h.len();
-                    let total_ms = total_ns as f64 / 1e6;
-                    algo_ms += total_ms;
-
-                    println!(
-                        "{path:<50} #call={call_count:>5}  p50={p50_ms:>7.2} ms  \
-                        total={total_ms:>8.2} ms"
-                    );
-                }
-            }
-
-            println!("algo_ms: {algo_ms} ms");
-        });
-        println!();
+        printer.print_latest(&solver.name()).unwrap();
     }
 }

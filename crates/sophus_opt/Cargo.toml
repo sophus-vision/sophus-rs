@@ -21,7 +21,6 @@ approx.workspace = true
 as-any.workspace = true
 dyn-clone.workspace = true
 faer.workspace = true
-hashbrown.workspace = true
 log.workspace = true
 nalgebra.workspace = true
 ndarray.workspace = true

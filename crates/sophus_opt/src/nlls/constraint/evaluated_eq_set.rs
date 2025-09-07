@@ -1,7 +1,7 @@
 use core::fmt::Debug;
 
 use dyn_clone::DynClone;
-use sophus_solver::{
+use sophus_solver::matrix::{
     BlockVector,
     SymmetricMatrixBuilderEnum,
 };

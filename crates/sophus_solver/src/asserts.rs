@@ -131,3 +131,25 @@ macro_rules! debug_assert_ge {
         }
     };
 }
+
+/// assert that left is less than right
+#[macro_export]
+macro_rules! debug_assert_lt {
+    ($($args:tt)*) => {
+        if cfg!(debug_assertions) {
+            use $crate::assert_lt;
+            assert_lt!($($args)*);
+        }
+    };
+}
+
+/// assert that left is greater than right
+#[macro_export]
+macro_rules! debug_assert_gt {
+    ($($args:tt)*) => {
+        if cfg!(debug_assertions) {
+            use $crate::assert_gt;
+            assert_gt!($($args)*);
+        }
+    };
+}

@@ -1,53 +1,118 @@
 use snafu::Snafu;
 
-/// Linear solver error
+/// Linear solver error.
 #[derive(Snafu, Debug)]
+#[snafu(visibility(pub(crate)))]
 pub enum LinearSolverError {
-    /// Sparse LDLᵀ error
-    #[snafu(display("sparse LDLᵀ error {}", details))]
-    SparseLdltError {
-        /// details
-        details: SparseSolverError,
+    /// Error in faer sparse LDLᵀ.
+    #[snafu(display("faer sparse LDLᵀ: {}", faer_error))]
+    FaerSparseLdltError {
+        /// source
+        faer_error: FearSparseSolverError,
     },
 
-    /// Sparse LU error
-    #[snafu(display("sparse LU error {}", details))]
-    SparseLuError {
-        /// details
-        details: SparseSolverError,
+    /// Error in faer sparse LU.
+    #[snafu(display("faer sparse LU: {}", faer_error))]
+    FaerSparseLuError {
+        /// source
+        faer_error: FearSparseSolverError,
     },
 
-    /// Sparse QR error
-    #[snafu(display("sparse QR error {}", details))]
-    SparseQrError {
-        /// details
-        details: SparseSolverError,
+    /// Error in faer sparse QR.
+    #[snafu(display("sparse QR: {}", faer_error))]
+    FaerSparseQrError {
+        /// source
+        faer_error: FearSparseSolverError,
     },
 
     /// Dense LU error
-    #[snafu(display("dense LU solve failed"))]
-    DenseLuError,
+    #[snafu(display("dense LU: {}", source))]
+    DenseLuError {
+        /// source
+        source: LuDecompositionError,
+    },
 
-    /// Matrix/vector sizes don’t match (e.g., A not square or b has wrong length)
-    #[snafu(display("dimension mismatch"))]
-    DimensionMismatch,
+    /// Dense LDLᵀ error
+    #[snafu(display("dense LDLᵀ: {}", source))]
+    DenseLdltError {
+        /// source
+        source: LdltDecompositionError,
+    },
 
-    /// Factorization failure
-    #[snafu(display("factorization failed"))]
-    FactorizationFailed,
+    /// Sparse LDLᵀ error
+    #[snafu(display("sparse LDLᵀ: {}", source))]
+    SparseLdltError {
+        /// source
+        source: LdltDecompositionError,
+    },
+
+    /// Sparse LDLᵀ error
+    #[snafu(display("block-sparse LDLᵀ: {}", source))]
+    BlockSparseLdltError {
+        /// source
+        source: BlockSparseLdltError,
+    },
 }
 
-/// Sparse solver error - forwarded from faer error enums.
+/// Error of LU decomposition.
 #[derive(Snafu, Debug)]
-pub enum SparseSolverError {
-    /// An index exceeding the maximum value
+#[snafu(visibility(pub(crate)))]
+pub enum LuDecompositionError {
+    /// Pivot is near-singular.
+    #[snafu(display("near-singular pivot"))]
+    NearSingularPivot,
+}
+
+/// Error of LDLᵀ decomposition.
+#[derive(Snafu, Debug)]
+#[snafu(visibility(pub(crate)))]
+pub enum LdltDecompositionError {
+    /// Pivot `d[j]` is not finite.
+    #[snafu(display("Non-finite pivot d[{}] = {}", j, d_jj))]
+    NonFinitePivot {
+        /// index
+        j: usize,
+        /// pivot value `d[j]`
+        d_jj: f64,
+    },
+
+    /// Pivot `d[j]` is negative.
+    #[snafu(display("negative pivot d[{}] = {}", j, d_jj))]
+    NegativeFinitePivot {
+        /// index
+        j: usize,
+        /// pivot value `d[j]`
+        d_jj: f64,
+    },
+}
+
+/// Error of LDLᵀ decomposition.
+#[derive(Snafu, Debug)]
+#[snafu(visibility(pub(crate)))]
+pub enum BlockSparseLdltError {
+    /// Factorization failure
+    #[snafu(display("block diagonal ({}, {}): {}", partition_idx, local_block_idx, source))]
+    BlockDiagLdltError {
+        /// source
+        source: LdltDecompositionError,
+        /// partition index
+        partition_idx: usize,
+        /// local block index
+        local_block_idx: usize,
+    },
+}
+
+/// Wrapper error type - for faer sparse solver errors.
+#[derive(Snafu, Debug)]
+pub enum FearSparseSolverError {
+    /// An index exceeding the maximum value.
     IndexOverflow,
     /// Memory allocation failed.
     OutOfMemory,
-    /// LU decomposition specific error
+    /// LU decomposition specific error.
     SymbolicSingular,
-    /// LDLᵀ Error
+    /// LDLᵀ Error.
     LdltError,
-    /// unspecific - to be forward compatible
+    /// unspecific error - to be forward compatible.
     Unspecific,
 }

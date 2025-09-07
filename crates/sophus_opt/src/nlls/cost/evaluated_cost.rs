@@ -1,9 +1,9 @@
 use core::fmt::Debug;
 
 use dyn_clone::DynClone;
-use sophus_solver::{
-    BlockVector,
+use sophus_solver::matrix::{
     SymmetricMatrixBuilderEnum,
+    block::BlockVector,
 };
 
 use super::evaluated_term::EvaluatedCostTerm;
