@@ -1,0 +1,18 @@
+[package]
+description = "Benchmark utilities"
+name = "sophus_bench"
+readme = "README.md"
+
+edition.workspace = true
+include.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+puffin.workspace = true
+
+
+[build-dependencies]
+rustc_version.workspace = true

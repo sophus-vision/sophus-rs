@@ -4,39 +4,42 @@ use nalgebra::{
     DVector,
 };
 use snafu::ResultExt;
+use sophus_assert::assert_gt;
 
 use crate::{
     BlockSparseLdltError,
     BlockSparseLdltSnafu,
-    IsLinearSolver,
+    IsFactor,
     LinearSolverError,
-    assert_gt,
     kernel::{
-        sub_mat_diag_mat_t_in_place,
-        sub_mat_plus_vec_in_place,
+        sub_mat_diag_mat_t_inplace,
+        sub_mat_plus_vec_inplace,
         sub_mat_transpose_plus_vec_in_place,
     },
-    matrix::{
-        BlockColCompressedMatrix,
-        BlockColCompressedPattern,
-        BlockColumn,
-        BlockMatrixSubdivision,
-        BlockRegion,
-        BlockSparseTripletMatrix,
-        IsCompressibleMatrix,
-        LowerBlockSparseMatrixBuilder,
-        NonZeroBlock,
-        PartitionSpec,
-        SymmetricMatrixBuilderEnum,
-        grid::Grid,
-    },
-    positive_semidefinite::{
+    ldlt::{
         EliminationTree,
+        IntoMinNormPsd,
         IsLMatBuilder,
         IsLdltTracer,
         IsLdltWorkspace,
         NoopLdltTracer,
-        block_diag_ldlt::BlockDiagonalLdltFactors,
+        block_diag_ldlt::BlockDiagonalLdltSystem,
+        min_norm_ldlt::block_sparse_min_norm_ldlt::BlockSparseMinNormPsd,
+    },
+    matrix::{
+        PartitionSet,
+        SymmetricMatrixBuilderEnum,
+        block::BlockColumn,
+        block_sparse::{
+            BlockMatrixSubdivision,
+            BlockRegion,
+            BlockSparseMatrix,
+            BlockSparsePattern,
+            BlockSparseSymmetricMatrixBuilder,
+            NonZeroBlock,
+            block_sparse_symmetric_matrix::BlockSparseSymmetricMatrix,
+        },
+        grid::Grid,
     },
     prelude::*,
 };
@@ -54,122 +57,61 @@ impl Default for BlockSparseLdlt {
 }
 
 impl IsLinearSolver for BlockSparseLdlt {
-    type Matrix = BlockSparseTripletMatrix;
+    type SymmetricMatrixBuilder = BlockSparseSymmetricMatrixBuilder;
 
     const NAME: &'static str = "block sparse LDLᵀ";
-
-    fn solve_in_place(
-        &self,
-        _parallelize: bool,
-        a_lower: &BlockColCompressedMatrix,
-        b_in_x_out: &mut nalgebra::DVector<f64>,
-    ) -> Result<(), LinearSolverError> {
-        let mut tracer = NoopLdltTracer::new();
-
-        let ldlt = self
-            .factorize(a_lower, &mut tracer)
-            .context(BlockSparseLdltSnafu)?;
-
-        // Solve (L D Lᵀ) x = b.
-        ldlt.solve_in_place(b_in_x_out);
-        Ok(())
-    }
 
     fn name(&self) -> String {
         Self::NAME.into()
     }
 
-    fn matrix_builder(&self, partitions: &[PartitionSpec]) -> SymmetricMatrixBuilderEnum {
-        SymmetricMatrixBuilderEnum::BlockSparseLower(LowerBlockSparseMatrixBuilder::zero(
+    fn zero(&self, partitions: PartitionSet) -> SymmetricMatrixBuilderEnum {
+        SymmetricMatrixBuilderEnum::BlockSparseLower(BlockSparseSymmetricMatrixBuilder::zero(
             partitions,
         ))
     }
 
-    fn solve(
+    type Factor = BlockSparseLdltFactor;
+
+    fn factorize(
         &self,
-        parallelize: bool,
-        matrix: &<Self::Matrix as IsCompressibleMatrix>::Compressed,
-        b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, crate::LinearSolverError> {
-        let mut x = b.clone();
-        self.solve_in_place(parallelize, matrix, &mut x)?;
-        Ok(x)
+        mat_a: &BlockSparseSymmetricMatrix,
+    ) -> Result<Self::Factor, LinearSolverError> {
+        let mut tracer = NoopLdltTracer::new();
+        self.factorize_impl(mat_a, &mut tracer)
+            .context(BlockSparseLdltSnafu)
+    }
+
+    /// Does not support parallel execution.
+    fn set_parallelize(&mut self, _parallelize: bool) {
+        // no-op
     }
 }
 
-impl BlockSparseLdlt {
-    /// Factorize `a_lower` (lower triangle of `A`) into `L` and `D`.
-    pub fn factorize(
+impl IsFactor for BlockSparseLdltFactor {
+    type Matrix = BlockSparseSymmetricMatrix;
+
+    fn solve_inplace(
         &self,
-        a_lower: &BlockColCompressedMatrix,
-        tracer: &mut impl IsLdltTracer<BlockLdltWorkspace>,
-    ) -> Result<BlockLdltFactor, BlockSparseLdltError> {
-        puffin::profile_scope!("ldlt fact");
-
-        let mut etree = BlockLdltWorkspace::calc_etree(a_lower);
-        let nb = a_lower.subdivision.block_col_count();
-
-        let mut ws = BlockLdltWorkspace::new(nb, &a_lower.subdivision);
-
-        let mut mat_l = BlockSparseLFactorBuilder::new(&a_lower.subdivision);
-        let mut diag_d =
-            BlockDiagonalLdltFactors::zero(a_lower.subdivision.row_partitons(), self.tol_rel);
-
-        for col_j in 0..nb {
-            ws.activate_col(col_j);
-
-            ws.load_column(a_lower);
-
-            let reach = etree.reach(col_j);
-            for &col_k in reach {
-                ws.apply_to_col_k_in_reach(col_k, &mat_l, &diag_d, tracer);
-            }
-
-            ws.append_to_ldlt(&mut mat_l, &mut diag_d)?;
-
-            ws.clear();
-        }
-
-        Ok(BlockLdltFactor {
-            mat_l: mat_l.compress(),
-            block_diag: diag_d,
-        })
-    }
-}
-
-/// Factorization product `A = L D Lᵀ`.
-#[derive(Debug)]
-pub struct BlockLdltFactor {
-    /// Off-diagonal lower block of L.
-    pub mat_l: BlockColCompressedMatrix,
-    /// Diagonal blocks: L[j,j] d[j].
-    pub(crate) block_diag: BlockDiagonalLdltFactors,
-}
-
-impl BlockLdltFactor {
-    /// Solve `(L D Lᵀ) x = b` in-place.
-    #[inline]
-    pub fn solve_in_place(&self, b_in_x_out: &mut DVector<f64>) {
+        b_in_x_out: &mut nalgebra::DVector<f64>,
+    ) -> Result<(), LinearSolverError> {
         puffin::profile_scope!("ldlt solve");
 
         let mat_l = &self.mat_l;
-        let col_block_count = mat_l.subdivision.block_col_count();
-        assert_eq!(
-            mat_l.subdivision.scalar_shape()[0],
-            mat_l.subdivision.scalar_shape()[1]
-        );
-        assert_eq!(b_in_x_out.len(), mat_l.subdivision.scalar_shape()[0]);
+        let col_block_count = mat_l.subdivision.block_count();
+
+        assert_eq!(b_in_x_out.len(), mat_l.subdivision.scalar_dim());
 
         // Solve: L y = b.
         for col_j in 0..col_block_count {
-            let offset_col_j = mat_l.subdivision.scalar_col_offset(col_j);
+            let offset_col_j = mat_l.subdivision.scalar_offset(col_j);
 
             for e in mat_l.col(col_j).iter() {
-                let row_i = e.block_row_idx;
+                let row_i = e.global_block_row_idx;
                 assert_gt!(row_i, col_j);
 
                 let mat_l_ij = e.view;
-                let scalar_offset_i = mat_l.subdivision.scalar_row_offset(row_i);
+                let scalar_offset_i = mat_l.subdivision.scalar_offset(row_i);
 
                 // Split b into read-only b[j] and mutable y[i], avoiding aliasing:
                 let (head, tail) = b_in_x_out.as_mut_slice().split_at_mut(scalar_offset_i);
@@ -177,15 +119,16 @@ impl BlockLdltFactor {
                 let y_i: &mut [f64] = &mut tail[..mat_l_ij.nrows()];
 
                 // y[i] -= L[i,j] * b[j]
-                sub_mat_plus_vec_in_place(y_i, mat_l_ij, b_j);
+                sub_mat_plus_vec_inplace(y_i, mat_l_ij, b_j);
             }
         }
 
         // Solve: D z = y.
         for col_j in 0..col_block_count {
-            let offset_col_j = mat_l.subdivision.scalar_col_offset(col_j);
+            let offset_col_j = mat_l.subdivision.scalar_offset(col_j);
 
-            let col_j_info = mat_l.subdivision.col_info(col_j);
+            let col_j_idx = mat_l.subdivision.idx(col_j);
+            let block_width_j = mat_l.subdivision.block_dim(col_j_idx.partition);
 
             // z[j] := D⁻¹ * z[j]
             let z_j: nalgebra::Matrix<
@@ -200,25 +143,21 @@ impl BlockLdltFactor {
                     nalgebra::Const<1>,
                     nalgebra::Dyn,
                 >,
-            > = b_in_x_out.rows_mut(offset_col_j, col_j_info.block_width);
-            self.block_diag.solve_inplace_vec(
-                z_j,
-                col_j_info.col_partition_idx,
-                col_j_info.local_col_block_idx,
-            );
+            > = b_in_x_out.rows_mut(offset_col_j, block_width_j);
+            self.block_diag.solve_inplace_vec(z_j, col_j_idx);
         }
 
         // Solve: Lᵀ x = z.
         for col_j in (0..col_block_count).rev() {
-            let offset_col_j = mat_l.subdivision.scalar_col_offset(col_j);
+            let offset_col_j = mat_l.subdivision.scalar_offset(col_j);
 
             for e in mat_l.col(col_j).iter() {
-                let row_i = e.block_row_idx;
+                let row_i = e.global_block_row_idx;
                 assert_gt!(row_i, col_j);
 
                 let mat_l_ij = e.view;
 
-                let scalar_offset_i = mat_l.subdivision.scalar_row_offset(row_i);
+                let scalar_offset_i = mat_l.subdivision.scalar_offset(row_i);
 
                 // Split b into mutable x[j] and read-only z[i], avoiding aliasing:
                 let (head, tail) = b_in_x_out.as_mut_slice().split_at_mut(scalar_offset_i);
@@ -229,7 +168,66 @@ impl BlockLdltFactor {
                 sub_mat_transpose_plus_vec_in_place(x_j, mat_l_ij, z_i);
             }
         }
+
+        Ok(())
     }
+}
+
+impl BlockSparseLdlt {
+    /// Factorize `a_lower` (lower triangle of `A`) into `L` and `D`.
+    pub fn factorize_impl(
+        &self,
+        a_lower: &BlockSparseSymmetricMatrix,
+        tracer: &mut impl IsLdltTracer<BlockLdltWorkspace>,
+    ) -> Result<BlockSparseLdltFactor, BlockSparseLdltError> {
+        puffin::profile_scope!("ldlt fact");
+
+        let mut etree = BlockLdltWorkspace::calc_etree(&a_lower.lower);
+        let nb = a_lower.subdivision().block_count();
+
+        let mut ws = BlockLdltWorkspace::new(nb, a_lower.subdivision());
+
+        let mut mat_l = BlockSparseLFactorBuilder::new(a_lower.subdivision());
+        let mut diag_d =
+            BlockDiagonalLdltSystem::zero(a_lower.subdivision().partitions().specs(), self.tol_rel);
+
+        for col_j in 0..nb {
+            ws.activate_col(col_j);
+
+            ws.load_column(&a_lower.lower);
+
+            let reach = etree.reach(col_j);
+            for &col_k in reach {
+                ws.apply_to_col_k_in_reach(col_k, &mat_l, &diag_d, tracer);
+            }
+
+            ws.append_to_ldlt(&mut mat_l, &mut diag_d)?;
+
+            ws.clear();
+        }
+
+        Ok(BlockSparseLdltFactor {
+            mat_l: mat_l.compress(),
+            block_diag: diag_d,
+        })
+    }
+}
+
+impl IntoMinNormPsd for BlockSparseLdltFactor {
+    type MinNormPsd = BlockSparseMinNormPsd;
+
+    fn into_min_norm_ldlt(self) -> Self::MinNormPsd {
+        BlockSparseMinNormPsd::new(self)
+    }
+}
+
+/// Factorization product `A = L D Lᵀ`.
+#[derive(Clone, Debug)]
+pub struct BlockSparseLdltFactor {
+    /// Off-diagonal lower block of L.
+    pub mat_l: BlockSparseMatrix,
+    /// Diagonal blocks: L[j,j] d[j].
+    pub(crate) block_diag: BlockDiagonalLdltSystem,
 }
 
 /// LDLᵀ workspace
@@ -256,8 +254,8 @@ pub struct BlockLdltWorkspace {
 impl IsLdltWorkspace for BlockLdltWorkspace {
     type Error = BlockSparseLdltError;
 
-    type Matrix = BlockColCompressedMatrix;
-    type Diag = BlockDiagonalLdltFactors;
+    type Matrix = BlockSparseMatrix;
+    type Diag = BlockDiagonalLdltSystem;
 
     type MatrixEntry = DMatrix<f64>;
     type DiagnalEntry = (DMatrix<f64>, DVector<f64>);
@@ -269,25 +267,23 @@ impl IsLdltWorkspace for BlockLdltWorkspace {
     }
 
     fn activate_col(&mut self, col_j: usize) {
-        let block_shape = self.mat_subdivision.block_shape([col_j, col_j]);
+        let block_dim = self
+            .mat_subdivision
+            .block_dim(self.mat_subdivision.idx(col_j).partition);
 
-        self.mat_c.set_active_width(block_shape[1]);
+        self.mat_c.set_active_width(block_dim);
         self.col_j = col_j;
-        self.block_height_col_j = block_shape[0];
+        self.block_height_col_j = block_dim;
     }
 
     #[inline(always)]
-    fn load_column(&mut self, a_lower: &BlockColCompressedMatrix) {
+    fn load_column(&mut self, a_lower: &BlockSparseMatrix) {
         for entry in a_lower.col(self.col_j).iter() {
-            let row_i = entry.block_row_idx;
+            let row_i = entry.global_block_row_idx;
             let mat_a_ij = entry.view;
 
-            let row_info_i = a_lower.subdivision.row_info(row_i);
-            self.mat_c.add_block(
-                row_info_i.row_partition_idx,
-                row_info_i.local_block_row_idx,
-                mat_a_ij,
-            );
+            let row_idx_i = a_lower.subdivision.idx(row_i);
+            self.mat_c.add_block(row_idx_i, mat_a_ij);
 
             if !self.was_row_touched[row_i] {
                 self.was_row_touched[row_i] = true;
@@ -308,35 +304,28 @@ impl IsLdltWorkspace for BlockLdltWorkspace {
             return;
         };
 
-        let info_col_k = self.mat_subdivision.col_info(col_k);
+        let col_k_idx = self.mat_subdivision.idx(col_k);
+        let block_width_col_k = self.mat_subdivision.block_dim(col_k_idx.partition);
 
         // Block diagonal LDLᵀ factors: L[k,k] and diag(d[k]).
-        let mat_l_kk = diag
-            .mat_l
-            .get_block(info_col_k.col_partition_idx, info_col_k.local_col_block_idx);
-        let diag_d_k = diag
-            .d
-            .get_block(info_col_k.col_partition_idx, info_col_k.local_col_block_idx);
+        let mat_l_kk = diag.mat_l.get_block(col_k_idx);
+        let diag_d_k = diag.d.get_block(col_k_idx);
 
         // Q[j,k] = L[j,k] * L[k,k].
         let mut mat_q_jk = self
             .mat_q_jk
-            .view_range_mut(0..self.block_height_col_j, 0..info_col_k.block_width);
+            .view_range_mut(0..self.block_height_col_j, 0..block_width_col_k);
         mat_q_jk.gemm(1.0, &mat_l_jk, &mat_l_kk, 0.0);
 
         // C[j,j] -= Q[j,k] * Diag(d[k]) * Q[j,k]ᵀ
-        let block_jj = self.mat_subdivision.col_info(self.col_j);
-        let mut mat_c_jj = self
-            .mat_c
-            .get_block_mut(block_jj.col_partition_idx, block_jj.local_col_block_idx);
-        sub_mat_diag_mat_t_in_place(
+        let col_j_idx = self.mat_subdivision.idx(self.col_j);
+        let mut mat_c_jj = self.mat_c.get_block_mut(col_j_idx);
+        sub_mat_diag_mat_t_inplace(
             &mut mat_c_jj,
             mat_q_jk.as_view(),
             diag_d_k.as_view(),
             mat_q_jk.as_view(),
         );
-
-        let col_info_col_k = self.mat_subdivision.col_info(col_k);
 
         let column = &l_mat_builder.columns[col_k];
         for block in column.non_zero_blocks.iter() {
@@ -346,13 +335,13 @@ impl IsLdltWorkspace for BlockLdltWorkspace {
             if row_i <= self.col_j {
                 continue;
             }
-            let info_row_i = self.mat_subdivision.row_info(row_i);
+            let row_idx_i = self.mat_subdivision.idx(row_i);
 
-            let size_of_block_ik = info_row_i.block_height * col_info_col_k.block_width;
-            let region_of_block_ik = l_mat_builder.regions.get(&[
-                info_row_i.row_partition_idx,
-                col_info_col_k.col_partition_idx,
-            ]);
+            let block_height_row_i = self.mat_subdivision.block_dim(row_idx_i.partition);
+            let size_of_block_ik = block_height_row_i * block_width_col_k;
+            let region_of_block_ik = l_mat_builder
+                .regions
+                .get(&[row_idx_i.partition, col_k_idx.partition]);
             debug_assert!(
                 storage_offset_of_block_ik + size_of_block_ik <= region_of_block_ik.storage.len()
             );
@@ -367,7 +356,7 @@ impl IsLdltWorkspace for BlockLdltWorkspace {
             // Q[i,k] = L[i,k] * L[k,k].
             let mut mat_q_ik = self
                 .mat_q_ik
-                .view_range_mut(0..info_row_i.block_height, 0..col_info_col_k.block_width);
+                .view_range_mut(0..block_height_row_i, 0..block_width_col_k);
             let mat_l_ik: nalgebra::Matrix<
                 f64,
                 nalgebra::Dyn,
@@ -380,18 +369,12 @@ impl IsLdltWorkspace for BlockLdltWorkspace {
                     nalgebra::Const<1>,
                     nalgebra::Dyn,
                 >,
-            > = DMatrixView::from_slice(
-                data_of_block_ik,
-                info_row_i.block_height,
-                col_info_col_k.block_width,
-            );
+            > = DMatrixView::from_slice(data_of_block_ik, block_height_row_i, block_width_col_k);
             mat_q_ik.gemm(1.0, &mat_l_ik, &mat_l_kk, 0.0);
 
             // C(i,j) -= Q[i,k] * diag(d[k]) * Q[j,k]ᵀ
-            let mut mat_c_ij = self
-                .mat_c
-                .get_block_mut(info_row_i.row_partition_idx, info_row_i.local_block_row_idx);
-            sub_mat_diag_mat_t_in_place(
+            let mut mat_c_ij = self.mat_c.get_block_mut(row_idx_i);
+            sub_mat_diag_mat_t_inplace(
                 &mut mat_c_ij,
                 mat_q_ik.as_view(),
                 diag_d_k.as_view(),
@@ -400,7 +383,7 @@ impl IsLdltWorkspace for BlockLdltWorkspace {
 
             #[cfg(debug_assertions)]
             {
-                use crate::positive_semidefinite::LdltIndices;
+                use crate::ldlt::LdltIndices;
 
                 _tracer.after_update(
                     LdltIndices {
@@ -422,18 +405,11 @@ impl IsLdltWorkspace for BlockLdltWorkspace {
         l_mat_builder: &mut Self::MatLBuilder,
         diag: &mut Self::Diag,
     ) -> Result<(), BlockSparseLdltError> {
-        let col_info_col_j = self.mat_subdivision.col_info(self.col_j); // diagonal block info
+        let col_j_idx = self.mat_subdivision.idx(self.col_j); // diagonal block info
 
         // Factor the diagonal: A[j,j] = L[j,j]ᵀ diag(d[j]) L[j,j]ᵀ.
-        let mat_a_jj = self.mat_c.get_block(
-            col_info_col_j.col_partition_idx,
-            col_info_col_j.local_col_block_idx,
-        );
-        diag.decompose(
-            col_info_col_j.col_partition_idx,
-            col_info_col_j.local_col_block_idx,
-            mat_a_jj.as_view(),
-        )?;
+        let mat_a_jj = self.mat_c.get_block(col_j_idx);
+        diag.decompose(col_j_idx, mat_a_jj.as_view())?;
 
         // Calculate off-diagonal: L[i,j].
         self.touched_rows.sort_unstable();
@@ -442,19 +418,13 @@ impl IsLdltWorkspace for BlockLdltWorkspace {
                 continue;
             }
 
-            let row_info_i = self.mat_subdivision.row_info(row_i);
-            let mut mat_c_ij = self
-                .mat_c
-                .get_block_mut(row_info_i.row_partition_idx, row_info_i.local_block_row_idx);
+            let row_idx_i = self.mat_subdivision.idx(row_i);
+            let mut mat_c_ij = self.mat_c.get_block_mut(row_idx_i);
 
             // Right-solve in-place: C[i,j] := C[i,j] * L[j,j]⁻ᵀ diag(d[j])⁻¹ L[j,j]⁻¹.
-            diag.right_solve_inplace(
-                mat_c_ij.as_view_mut(),
-                col_info_col_j.col_partition_idx,
-                col_info_col_j.local_col_block_idx,
-            );
+            diag.right_solve_inplace(mat_c_ij.as_view_mut(), col_j_idx);
 
-            debug_assert_eq!(mat_c_ij.ncols(), col_info_col_j.block_width);
+            //debug_assert_eq!(mat_c_ij.ncols(), col_j_idx.block_width);
             l_mat_builder.append_to(row_i, self.col_j, mat_c_ij.as_view());
         }
 
@@ -465,9 +435,8 @@ impl IsLdltWorkspace for BlockLdltWorkspace {
     fn clear(&mut self) {
         for row_i in self.touched_rows.drain(..) {
             if self.was_row_touched[row_i] {
-                let info_row_i = self.mat_subdivision.row_info(row_i);
-                self.mat_c
-                    .zero_block(info_row_i.row_partition_idx, info_row_i.local_block_row_idx);
+                let row_idx_i = self.mat_subdivision.idx(row_i);
+                self.mat_c.zero_block(row_idx_i);
                 self.was_row_touched[row_i] = false;
             }
         }
@@ -477,12 +446,11 @@ impl IsLdltWorkspace for BlockLdltWorkspace {
 impl BlockLdltWorkspace {
     /// Create workspace for N x N matrix.
     pub fn new(n: usize, mat_subdivision: &BlockMatrixSubdivision) -> Self {
-        let max_block_height = mat_subdivision.max_block_height();
-        let max_block_width = mat_subdivision.max_block_width();
-        let mat_q_jk = nalgebra::DMatrix::<f64>::zeros(max_block_height, max_block_width);
-        let mat_q_ik = nalgebra::DMatrix::<f64>::zeros(max_block_height, max_block_width);
+        let max_block_dim = mat_subdivision.max_block_dim();
+        let mat_q_jk = nalgebra::DMatrix::<f64>::zeros(max_block_dim, max_block_dim);
+        let mat_q_ik = nalgebra::DMatrix::<f64>::zeros(max_block_dim, max_block_dim);
         Self {
-            mat_c: BlockColumn::zero(mat_subdivision.row_partitons(), max_block_width),
+            mat_c: BlockColumn::zero(mat_subdivision.partitions().specs(), max_block_dim),
             was_row_touched: vec![false; n],
             touched_rows: Vec::with_capacity(n),
             mat_q_ik,
@@ -508,10 +476,10 @@ pub struct BlockSparseLFactorBuilder {
 }
 
 impl IsLMatBuilder for BlockSparseLFactorBuilder {
-    type Matrix = BlockColCompressedMatrix;
+    type Matrix = BlockSparseMatrix;
 
-    fn compress(self) -> BlockColCompressedMatrix {
-        let block_col_count = self.mat_subdivision.block_col_count();
+    fn compress(self) -> BlockSparseMatrix {
+        let block_col_count = self.mat_subdivision.block_count();
 
         let mut nonzero_idx_by_block_col = Vec::with_capacity(block_col_count + 1);
         nonzero_idx_by_block_col.push(0);
@@ -536,8 +504,8 @@ impl IsLMatBuilder for BlockSparseLFactorBuilder {
             }
         }
 
-        BlockColCompressedMatrix {
-            block_col_pattern: BlockColCompressedPattern {
+        BlockSparseMatrix {
+            block_col_pattern: BlockSparsePattern {
                 nonzero_idx_by_block_col,
                 nonzero_blocks,
             },
@@ -551,9 +519,12 @@ impl BlockSparseLFactorBuilder {
     /// Crate a empty block-sparse factor L from matrix subdivision structure.
     pub fn new(mat_subdivision: &BlockMatrixSubdivision) -> Self {
         Self {
-            columns: vec![BlockSparseLFactorColumn::default(); mat_subdivision.block_col_count()],
+            columns: vec![BlockSparseLFactorColumn::default(); mat_subdivision.block_count()],
             regions: Grid::new(
-                mat_subdivision.region_grid_shape(),
+                [
+                    mat_subdivision.partition_count(),
+                    mat_subdivision.partition_count(),
+                ],
                 BlockRegion {
                     storage: Vec::new(),
                 },
@@ -569,24 +540,22 @@ impl BlockSparseLFactorBuilder {
     pub fn append_to(&mut self, row_i: usize, col_j: usize, mat_l_ij: DMatrixView<f64>) {
         debug_assert!(row_i > col_j, "strictly lower only");
 
-        let row_info: crate::matrix::block_col_compressed_matrix::BlockRowInfo =
-            self.mat_subdivision.row_info(row_i);
-        let col_info = self.mat_subdivision.col_info(col_j);
+        let row_idx = self.mat_subdivision.idx(row_i);
+        let col_idx = self.mat_subdivision.idx(col_j);
 
-        debug_assert_eq!(mat_l_ij.nrows(), row_info.block_height);
-        debug_assert_eq!(mat_l_ij.ncols(), col_info.block_width);
+        // debug_assert_eq!(mat_l_ij.nrows(), row_idx.block_height);
+        // debug_assert_eq!(mat_l_ij.ncols(), col_info.block_width);
+        //  debug_assert_eq!(
+        //     (region_ij.storage.len() - start) % (row_idx.block_height * col_info.block_width),
+        //     0,
+        // );
 
         let region_ij = self
             .regions
-            .get_mut(&[row_info.row_partition_idx, col_info.col_partition_idx]);
+            .get_mut(&[row_idx.partition, col_idx.partition]);
         let start = region_ij.storage.len();
 
-        debug_assert_eq!(
-            (region_ij.storage.len() - start) % (row_info.block_height * col_info.block_width),
-            0,
-        );
-
-        for c in 0..col_info.block_width {
+        for c in 0..mat_l_ij.ncols() {
             region_ij
                 .storage
                 .extend_from_slice(mat_l_ij.column(c).as_slice());
@@ -607,13 +576,14 @@ impl BlockSparseLFactorBuilder {
             .ok()?;
         let base = column.non_zero_blocks[storage_idx].storage_base as usize;
 
-        let row_info = self.mat_subdivision.row_info(row_j);
-        let col_info = self.mat_subdivision.col_info(col_k);
+        let row_idx = self.mat_subdivision.idx(row_j);
+        let col_idx = self.mat_subdivision.idx(col_k);
 
-        let row_partition_idx = row_info.row_partition_idx;
-        let col_partition_idx = col_info.col_partition_idx;
-        let block_height = row_info.block_height;
-        let block_width = col_info.block_width;
+        let row_partition_idx = row_idx.partition;
+        let col_partition_idx = col_idx.partition;
+        let block_height = self.mat_subdivision.block_dim(row_partition_idx);
+        let block_width = self.mat_subdivision.block_dim(col_partition_idx);
+
         let block_area = block_height * block_width;
         let region = self.regions.get(&[row_partition_idx, col_partition_idx]);
         debug_assert!(base + block_area <= region.storage.len());

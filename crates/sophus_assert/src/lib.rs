@@ -1,3 +1,7 @@
+#![deny(missing_docs)]
+#![allow(clippy::needless_range_loop)]
+#![doc = include_str!(concat!("../", std::env!("CARGO_PKG_README")))]
+
 /// assert that left is less than right
 #[macro_export]
 macro_rules! assert_lt {
@@ -45,7 +49,7 @@ macro_rules! assert_gt {
 macro_rules! assert_le {
     ($left:expr, $right:expr $(,)?) => {{
         let (left, right) = (&$left, &$right);
-        match $crate::asserts::_assert_le_partial_cmp(left, right) {
+        match $crate::_assert_le_partial_cmp(left, right) {
             Ok(()) => {}
             Err(reason) => panic!(
                 "assertion failed: `(left <= right)`\n left: `{:?}`, right: `{:?}`\n{}",
@@ -55,7 +59,7 @@ macro_rules! assert_le {
     }};
     ($left:expr, $right:expr, $($arg:tt)+) => {{
         let (left, right) = (&$left, &$right);
-        match $crate::asserts::_assert_le_partial_cmp(left, right) {
+        match $crate::_assert_le_partial_cmp(left, right) {
             Ok(()) => {}
             Err(reason) => panic!(
                 "assertion failed: `(left <= right)`\n left: `{:?}`, right: `{:?}`\n{}\n{}",
@@ -70,7 +74,7 @@ macro_rules! assert_le {
 macro_rules! assert_ge {
     ($left:expr, $right:expr $(,)?) => {{
         let (left, right) = (&$left, &$right);
-        match $crate::asserts::_assert_ge_partial_cmp(left, right) {
+        match $crate::_assert_ge_partial_cmp(left, right) {
             Ok(()) => {}
             Err(reason) => panic!(
                 "assertion failed: `(left >= right)`\n left: `{:?}`, right: `{:?}`\n{}",
@@ -110,7 +114,7 @@ pub fn _assert_ge_partial_cmp<T: PartialOrd>(l: &T, r: &T) -> Result<(), &'stati
     }
 }
 
-/// assert that left is less than or equal to right
+/// debug assert that left is less than or equal to right
 #[macro_export]
 macro_rules! debug_assert_le {
     ($($args:tt)*) => {
@@ -121,7 +125,7 @@ macro_rules! debug_assert_le {
     };
 }
 
-/// assert that left is greater than or equal to right
+/// debug assert that left is greater than or equal to right
 #[macro_export]
 macro_rules! debug_assert_ge {
     ($($args:tt)*) => {
@@ -132,7 +136,7 @@ macro_rules! debug_assert_ge {
     };
 }
 
-/// assert that left is less than right
+/// debug assert that left is less than right
 #[macro_export]
 macro_rules! debug_assert_lt {
     ($($args:tt)*) => {
@@ -143,7 +147,7 @@ macro_rules! debug_assert_lt {
     };
 }
 
-/// assert that left is greater than right
+/// debug assert that left is greater than right
 #[macro_export]
 macro_rules! debug_assert_gt {
     ($($args:tt)*) => {

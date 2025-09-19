@@ -1,25 +1,29 @@
-use nalgebra::DVector;
 use snafu::ResultExt;
 
 use crate::{
+    IsFactor,
     LdltDecompositionError,
     LinearSolverError,
     SparseLdltSnafu,
-    matrix::{
-        ColumnCompressedMatrix,
-        ColumnCompressedPattern,
-        PartitionSpec,
-        SparseSymmetricMatrixBuilder,
-        SymmetricMatrixBuilderEnum,
-        TripletMatrix,
-    },
-    positive_semidefinite::{
+    ldlt::{
         EliminationTree,
+        IntoMinNormPsd,
         IsLMatBuilder,
         IsLdltTracer,
         IsLdltWorkspace,
         LdltIndices,
         NoopLdltTracer,
+        min_norm_ldlt::sparse_min_norm_ldlt::SparseMinNormPsd,
+    },
+    matrix::{
+        PartitionSet,
+        SymmetricMatrixBuilderEnum,
+        sparse::{
+            ColumnCompressedPattern,
+            SparseMatrix,
+            SparseSymmetricMatrixBuilder,
+            sparse_symmetric_matrix::SparseSymmetricMatrix,
+        },
     },
     prelude::*,
 };
@@ -39,26 +43,73 @@ impl Default for SparseLdlt {
 
 impl IsLinearSolver for SparseLdlt {
     const NAME: &'static str = "sparse LDLt";
-    type Matrix = TripletMatrix;
 
-    fn solve_in_place(
-        &self,
-        _parallelize: bool,
-        a_lower: &ColumnCompressedMatrix,
-        b: &mut DVector<f64>,
-    ) -> Result<(), LinearSolverError> {
-        let mut tracer = NoopLdltTracer::new();
-        let fact = self
-            .factorize(a_lower, &mut tracer)
-            .context(SparseLdltSnafu)?;
-
-        // Solve (L D Lᵀ) x = b.
-        fact.solve_in_place(b);
-        Ok(())
+    fn zero(&self, partitions: PartitionSet) -> SymmetricMatrixBuilderEnum {
+        SymmetricMatrixBuilderEnum::SparseLower(SparseSymmetricMatrixBuilder::zero(partitions))
     }
 
-    fn matrix_builder(&self, partitions: &[PartitionSpec]) -> SymmetricMatrixBuilderEnum {
-        SymmetricMatrixBuilderEnum::SparseLower(SparseSymmetricMatrixBuilder::zero(partitions))
+    type SymmetricMatrixBuilder = SparseSymmetricMatrixBuilder;
+
+    type Factor = SparseLdltFactor;
+
+    fn factorize(&self, mat_a: &SparseSymmetricMatrix) -> Result<Self::Factor, LinearSolverError> {
+        let mut tracer = NoopLdltTracer::new();
+        let fact = self
+            .factorize_impl(mat_a, &mut tracer)
+            .context(SparseLdltSnafu)?;
+        Ok(fact)
+    }
+
+    /// Does not support parallel execution. This function is no-op.
+    fn set_parallelize(&mut self, _parallelize: bool) {}
+}
+
+impl IsFactor for SparseLdltFactor {
+    type Matrix = SparseSymmetricMatrix;
+
+    fn solve_inplace(&self, b: &mut nalgebra::DVector<f64>) -> Result<(), LinearSolverError> {
+        puffin::profile_scope!("ldlt solve");
+
+        let mat_l = &self.mat_l;
+        let d: &Vec<f64> = &self.d;
+        let n: usize = mat_l.scalar_dim();
+        debug_assert_eq!(b.len(), n);
+        debug_assert_eq!(d.len(), n);
+
+        // Solve: L y = b.
+        for col_j in 0..n {
+            let b_j = b[col_j];
+            for storage_idx in
+                mat_l.storage_idx_by_col()[col_j]..mat_l.storage_idx_by_col()[col_j + 1]
+            {
+                let row_i = mat_l.row_idx_storage()[storage_idx];
+                b[row_i] -= mat_l.value_storage()[storage_idx] * b_j;
+            }
+        }
+
+        // Solve: z = D⁻¹ y
+        for row_i in 0..n {
+            b[row_i] /= d[row_i];
+        }
+
+        // Solve: Lᵀ x = z
+        for col_j in (0..n).rev() {
+            for storage_idx in
+                mat_l.storage_idx_by_col()[col_j]..mat_l.storage_idx_by_col()[col_j + 1]
+            {
+                let row_i = mat_l.row_idx_storage()[storage_idx];
+                b[col_j] -= mat_l.value_storage()[storage_idx] * b[row_i];
+            }
+        }
+        Ok(())
+    }
+}
+
+impl IntoMinNormPsd for SparseLdltFactor {
+    type MinNormPsd = SparseMinNormPsd;
+
+    fn into_min_norm_ldlt(self) -> Self::MinNormPsd {
+        SparseMinNormPsd::new(self)
     }
 }
 
@@ -80,7 +131,7 @@ impl IsLdltWorkspace for LdltWorkspace {
 
     type Error = LdltDecompositionError;
 
-    type Matrix = ColumnCompressedMatrix;
+    type Matrix = SparseMatrix;
     type Diag = Vec<f64>;
 
     type MatrixEntry = f64;
@@ -95,7 +146,7 @@ impl IsLdltWorkspace for LdltWorkspace {
     }
 
     #[inline(always)]
-    fn load_column(&mut self, a_lower: &ColumnCompressedMatrix) {
+    fn load_column(&mut self, a_lower: &SparseMatrix) {
         for storage_idx in
             a_lower.storage_idx_by_col()[self.col_j]..a_lower.storage_idx_by_col()[self.col_j + 1]
         {
@@ -233,9 +284,9 @@ pub struct SparseLFactorBuilder {
 }
 
 impl IsLMatBuilder for SparseLFactorBuilder {
-    type Matrix = ColumnCompressedMatrix;
+    type Matrix = SparseMatrix;
 
-    fn compress(self) -> ColumnCompressedMatrix {
+    fn compress(self) -> SparseMatrix {
         let n = self.cols.len();
         let mut storage_idx_by_col = vec![0usize; n + 1];
         for col_j in 0..n {
@@ -254,8 +305,8 @@ impl IsLMatBuilder for SparseLFactorBuilder {
             }
             base += col.data.len();
         }
-        ColumnCompressedMatrix::new(
-            ColumnCompressedPattern::new(n, n, storage_idx_by_col, row_idx_storage),
+        SparseMatrix::new(
+            ColumnCompressedPattern::new(n, storage_idx_by_col, row_idx_storage),
             value_storage,
         )
     }
@@ -304,15 +355,15 @@ impl LCol {
 
 impl SparseLdlt {
     /// Factorize `a_lower` (lower triangle of `A`) into `L` and `D`.
-    pub fn factorize(
+    pub fn factorize_impl(
         &self,
-        a_lower: &ColumnCompressedMatrix,
+        mat_a: &SparseSymmetricMatrix,
         tracer: &mut impl IsLdltTracer<LdltWorkspace>,
-    ) -> Result<LdltFactor, LdltDecompositionError> {
+    ) -> Result<SparseLdltFactor, LdltDecompositionError> {
         puffin::profile_scope!("ldlt fact");
 
-        let n = a_lower.col_count();
-        debug_assert_eq!(n, a_lower.row_count());
+        let a_lower = &mat_a.lower();
+        let n = a_lower.scalar_dim();
 
         let mut etree = LdltWorkspace::calc_etree(a_lower);
 
@@ -348,58 +399,21 @@ impl SparseLdlt {
             ws.clear();
         }
 
-        Ok(LdltFactor {
+        Ok(SparseLdltFactor {
             mat_l: l_storage.compress(),
             d,
+            partitions: mat_a.partitions().clone(),
         })
     }
 }
 
 /// Factorization product `A = L D Lᵀ`.
-#[derive(Debug)]
-pub struct LdltFactor {
+#[derive(Clone, Debug)]
+pub struct SparseLdltFactor {
     /// unit-lower in CSC, diagonal implied `1.0`, only strict lower stored
-    pub mat_l: ColumnCompressedMatrix,
+    pub mat_l: SparseMatrix,
     /// diagonal pivots
     pub d: Vec<f64>,
-}
-
-impl LdltFactor {
-    /// Solve `(L D Lᵀ) x = b` in-place (overwrites `b` with `x`).
-    #[inline]
-    pub fn solve_in_place(&self, b: &mut DVector<f64>) {
-        puffin::profile_scope!("ldlt solve");
-
-        let mat_l = &self.mat_l;
-        let d: &Vec<f64> = &self.d;
-        let n: usize = mat_l.col_count();
-        debug_assert_eq!(b.len(), n);
-        debug_assert_eq!(d.len(), n);
-
-        // Solve: L y = b.
-        for col_j in 0..n {
-            let b_j = b[col_j];
-            for storage_idx in
-                mat_l.storage_idx_by_col()[col_j]..mat_l.storage_idx_by_col()[col_j + 1]
-            {
-                let row_i = mat_l.row_idx_storage()[storage_idx];
-                b[row_i] -= mat_l.value_storage()[storage_idx] * b_j;
-            }
-        }
-
-        // Solve: z = D⁻¹ y
-        for row_i in 0..n {
-            b[row_i] /= d[row_i];
-        }
-
-        // Solve: Lᵀ x = z
-        for col_j in (0..n).rev() {
-            for storage_idx in
-                mat_l.storage_idx_by_col()[col_j]..mat_l.storage_idx_by_col()[col_j + 1]
-            {
-                let row_i = mat_l.row_idx_storage()[storage_idx];
-                b[col_j] -= mat_l.value_storage()[storage_idx] * b[row_i];
-            }
-        }
-    }
+    /// p
+    pub partitions: PartitionSet,
 }

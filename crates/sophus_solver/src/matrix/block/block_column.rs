@@ -2,11 +2,14 @@ use nalgebra::{
     DMatrixView,
     DMatrixViewMut,
 };
-
-use crate::{
+use sophus_assert::{
     assert_gt,
     assert_le,
-    matrix::PartitionSpec,
+};
+
+use crate::matrix::{
+    PartitionBlockIndex,
+    PartitionSpec,
 };
 
 #[derive(Debug, Clone)]
@@ -33,9 +36,9 @@ impl BlockColumn {
         for ps in partition_specs {
             partitions.push(BlockColumnRegion {
                 scalar_offset: total_elems,
-                block_dim: ps.block_dimension,
+                block_dim: ps.block_dim,
             });
-            total_elems += ps.block_dimension * ps.block_count * max_width;
+            total_elems += ps.block_dim * ps.block_count * max_width;
         }
 
         Self {
@@ -53,44 +56,34 @@ impl BlockColumn {
     }
 
     #[inline]
-    pub(crate) fn add_block(
-        &mut self,
-        partition_idx: usize,
-        block_index: usize,
-        block: DMatrixView<'_, f64>,
-    ) {
+    pub(crate) fn add_block(&mut self, idx: PartitionBlockIndex, block: DMatrixView<'_, f64>) {
         debug_assert_eq!(block.ncols(), self.active_width, "row dim mismatch");
         use std::ops::AddAssign;
-        self.get_block_mut(partition_idx, block_index)
-            .add_assign(&block)
+        self.get_block_mut(idx).add_assign(&block)
     }
 
     #[inline]
-    pub fn get_block(&self, partition_idx: usize, block_index: usize) -> DMatrixView<'_, f64> {
-        let partition = &self.partitions[partition_idx];
+    pub fn get_block(&self, idx: PartitionBlockIndex) -> DMatrixView<'_, f64> {
+        let partition = &self.partitions[idx.partition];
         let max_block_area = partition.block_dim * self.max_width;
-        let base = partition.scalar_offset + block_index * max_block_area;
+        let base = partition.scalar_offset + idx.block * max_block_area;
         let active_block_area = partition.block_dim * self.active_width;
         let storage = &self.storage[base..base + active_block_area];
         DMatrixView::from_slice(storage, partition.block_dim, self.active_width)
     }
 
     #[inline]
-    pub fn get_block_mut(
-        &mut self,
-        partition_idx: usize,
-        block_index: usize,
-    ) -> DMatrixViewMut<'_, f64> {
-        let partition = &self.partitions[partition_idx];
+    pub fn get_block_mut(&mut self, idx: PartitionBlockIndex) -> DMatrixViewMut<'_, f64> {
+        let partition = &self.partitions[idx.partition];
         let max_block_area = partition.block_dim * self.max_width;
-        let base = partition.scalar_offset + block_index * max_block_area;
+        let base = partition.scalar_offset + idx.block * max_block_area;
         let active_block_area = partition.block_dim * self.active_width;
         let storage = &mut self.storage[base..base + active_block_area];
         DMatrixViewMut::from_slice(storage, partition.block_dim, self.active_width)
     }
 
     #[inline]
-    pub fn zero_block(&mut self, partition_idx: usize, block_index: usize) {
-        self.get_block_mut(partition_idx, block_index).fill(0.0);
+    pub fn zero_block(&mut self, idx: PartitionBlockIndex) {
+        self.get_block_mut(idx).fill(0.0);
     }
 }

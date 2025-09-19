@@ -18,7 +18,7 @@ pub struct EliminationTree {
 impl EliminationTree {
     /// Creates new from upper structure of the symmetric matrix A.
     pub fn new(upper_pattern: ColumnCompressedPattern) -> Self {
-        let n = upper_pattern.row_count();
+        let n = upper_pattern.scalar_dim();
 
         let mut parent: Vec<Option<NonMaxUsize>> = vec![None; n];
         let mut ancestor: Vec<Option<NonMaxUsize>> = vec![None; n];
@@ -73,7 +73,7 @@ impl EliminationTree {
 
         let mark = self.workspace.tick;
 
-        let n = self.upper_pattern.row_count();
+        let n = self.upper_pattern.scalar_dim();
         let mut top = n;
 
         // Block j from appearing in the reach
@@ -114,31 +114,29 @@ impl EliminationTree {
 #[cfg(test)]
 mod test {
 
+    use sophus_assert::assert_le;
     use sophus_autodiff::linalg::{
         IsMatrix,
         MatF64,
     };
 
     use super::*;
-    use crate::{
-        assert_le,
-        matrix::sparse::{
-            ColumnCompressedMatrix,
-            TripletMatrix,
-        },
+    use crate::matrix::sparse::{
+        SparseMatrix,
+        TripletMatrix,
     };
 
     // Helper: build an N×N CSC pattern for upper(A) from a list of strictly‑upper edges (i, j)
     // with i < j. We go via TripletMatrix → CscMatrix to get canonical CSC (sorted rows per
     // column).
-    fn upper_from_edges(n: usize, edges: &[(usize, usize)]) -> ColumnCompressedMatrix {
+    fn upper_from_edges(n: usize, edges: &[(usize, usize)]) -> SparseMatrix {
         for &(i, j) in edges {
             assert_le!(i, j,);
             assert_le!(i, n);
             assert_le!(j, n);
         }
         let triplets: Vec<(usize, usize, f64)> = edges.iter().map(|&(i, j)| (i, j, 1.0)).collect();
-        ColumnCompressedMatrix::from_triplets(&TripletMatrix::new(triplets, n, n))
+        SparseMatrix::from_triplets(&TripletMatrix::new(triplets, n))
     }
 
     fn parent_of_col_desc(etree: &EliminationTree, j: usize) -> String {
@@ -440,9 +438,8 @@ mod test {
                 (3, 2, 1.0), // lower
             ],
             n,
-            n,
         );
-        let noisy = ColumnCompressedMatrix::from_triplets(&noisy_triplets);
+        let noisy = SparseMatrix::from_triplets(&noisy_triplets);
         assert_eq!(
             noisy.to_dense(),
             MatF64::<4, 4>::from_array2([

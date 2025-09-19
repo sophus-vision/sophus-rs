@@ -1,6 +1,5 @@
 use sophus_autodiff::linalg::MatF64;
-
-use super::BlockRange;
+use sophus_solver::matrix::BlockRange;
 
 /// Hessian matrix, partitioned into several blocks
 ///
@@ -42,12 +41,12 @@ impl<const INPUT_DIM: usize, const N: usize> BlockHessian<INPUT_DIM, N> {
         let mut num_rows: usize = 0;
 
         for i in 0..num_blocks {
-            let dim = dims[i];
+            let block_dim = dims[i];
             ranges[i] = BlockRange {
-                index: num_rows as i64,
-                dim,
+                start_idx: num_rows,
+                block_dim,
             };
-            num_rows += dim;
+            num_rows += block_dim;
         }
         Self {
             mat: nalgebra::SMatrix::zeros(),
@@ -69,8 +68,8 @@ impl<const INPUT_DIM: usize, const N: usize> BlockHessian<INPUT_DIM, N> {
     ) {
         debug_assert!(ith < self.num_blocks());
         debug_assert!(jth < self.num_blocks());
-        debug_assert_eq!(R, self.ranges[ith].dim);
-        debug_assert_eq!(C, self.ranges[jth].dim);
+        debug_assert_eq!(R, self.ranges[ith].block_dim);
+        debug_assert_eq!(C, self.ranges[jth].block_dim);
 
         if ith == jth {
             debug_assert_eq!(R, C);
@@ -106,10 +105,12 @@ impl<const INPUT_DIM: usize, const N: usize> BlockHessian<INPUT_DIM, N> {
             nalgebra::Const<INPUT_DIM>,
         >,
     > {
-        let idx_i = self.ranges[ith].index as usize;
-        let idx_j = self.ranges[jth].index as usize;
-        self.mat
-            .view((idx_i, idx_j), (self.ranges[ith].dim, self.ranges[jth].dim))
+        let idx_i = self.ranges[ith].start_idx;
+        let idx_j = self.ranges[jth].start_idx;
+        self.mat.view(
+            (idx_i, idx_j),
+            (self.ranges[ith].block_dim, self.ranges[jth].block_dim),
+        )
     }
 
     /// mutable reference to block (i, j)
@@ -130,8 +131,8 @@ impl<const INPUT_DIM: usize, const N: usize> BlockHessian<INPUT_DIM, N> {
             nalgebra::Const<INPUT_DIM>,
         >,
     > {
-        let idx_i = self.ranges[ith].index as usize;
-        let idx_j = self.ranges[jth].index as usize;
+        let idx_i = self.ranges[ith].start_idx;
+        let idx_j = self.ranges[jth].start_idx;
         self.mat.fixed_view_mut::<R, C>(idx_i, idx_j)
     }
 }

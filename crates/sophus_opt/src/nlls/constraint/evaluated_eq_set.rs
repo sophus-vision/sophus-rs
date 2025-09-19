@@ -2,8 +2,8 @@ use core::fmt::Debug;
 
 use dyn_clone::DynClone;
 use sophus_solver::matrix::{
-    BlockVector,
     SymmetricMatrixBuilderEnum,
+    block::BlockVector,
 };
 
 use super::evaluated_eq_constraint::EvaluatedEqConstraint;

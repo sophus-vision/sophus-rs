@@ -11,7 +11,9 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
+sophus_assert.workspace = true
 sophus_autodiff.workspace = true
+sophus_bench.workspace = true
 
 approx.workspace = true
 enum-as-inner.workspace = true

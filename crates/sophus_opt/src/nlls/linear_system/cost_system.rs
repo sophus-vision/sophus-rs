@@ -1,6 +1,7 @@
 use sophus_solver::matrix::{
-    BlockVector,
+    PartitionBlockIndex,
     SymmetricMatrixBuilderEnum,
+    block::BlockVector,
 };
 
 use super::EvalMode;
@@ -113,13 +114,13 @@ impl<const INPUT_DIM: usize, const N: usize> IsEvaluatedCost for EvaluatedCost<I
                 let grad_block = evaluated_term.gradient.block(arg_id_alpha);
                 let block_start_idx_alpha = block_start_idx_alpha as usize;
                 assert_eq!(dof_alpha, grad_block.nrows());
+                let idx_alpha = PartitionBlockIndex {
+                    partition: family_alpha,
+                    block: block_start_idx_alpha,
+                };
 
                 // -J'r
-                neg_grad.add_block(
-                    family_alpha,
-                    block_start_idx_alpha,
-                    &(-grad_block).as_view(),
-                );
+                neg_grad.add_block(idx_alpha, &(-grad_block).as_view());
                 let hessian_block = evaluated_term.hessian.block(arg_id_alpha, arg_id_alpha);
                 assert_eq!(dof_alpha, hessian_block.nrows());
                 assert_eq!(dof_alpha, hessian_block.ncols());
@@ -127,8 +128,8 @@ impl<const INPUT_DIM: usize, const N: usize> IsEvaluatedCost for EvaluatedCost<I
                 // block diagonal
                 // J'J + nuI
                 hessian_block_triplet.add_lower_block(
-                    &[family_alpha, family_alpha],
-                    [block_start_idx_alpha, block_start_idx_alpha],
+                    idx_alpha,
+                    idx_alpha,
                     &(hessian_block + nu * nalgebra::DMatrix::identity(dof_alpha, dof_alpha))
                         .as_view(),
                 );
@@ -163,10 +164,15 @@ impl<const INPUT_DIM: usize, const N: usize> IsEvaluatedCost for EvaluatedCost<I
                     let hessian_block_alpha_beta =
                         evaluated_term.hessian.block(arg_id_alpha, arg_id_beta);
 
+                    let idx_beta = PartitionBlockIndex {
+                        partition: family_beta,
+                        block: block_start_idx_beta,
+                    };
+
                     // J'J
                     hessian_block_triplet.add_lower_block(
-                        &[family_alpha, family_beta],
-                        [block_start_idx_alpha, block_start_idx_beta],
+                        idx_alpha,
+                        idx_beta,
                         &hessian_block_alpha_beta.as_view(),
                     );
                 }

@@ -2,15 +2,14 @@ pub(crate) mod cost_system;
 pub(crate) mod eq_system;
 
 use sophus_solver::{
-    IsLinearSolver as _,
     LinearSolverEnum,
     matrix::{
-        CompressibleMatrixEnum,
+        PartitionSet,
         PartitionSpec,
         SymmetricMatrixBuilderEnum,
+        SymmetricMatrixEnum,
         block::BlockVector,
     },
-    prelude::*,
 };
 
 use super::{
@@ -36,10 +35,9 @@ pub enum EvalMode {
 
 /// Linear system of the non-linear least squares problem with equality constraints
 pub struct LinearSystem {
-    pub(crate) sparse_hessian_plus_damping: CompressibleMatrixEnum,
+    pub(crate) sparse_hessian_plus_damping: SymmetricMatrixEnum,
     pub(crate) neg_gradient: BlockVector,
     pub(crate) solver: LinearSolverEnum,
-    parallelize: bool,
 }
 
 impl LinearSystem {
@@ -77,7 +75,7 @@ impl LinearSystem {
         variables: &VarFamilies,
         cost_system: &CostSystem,
         eq_system: &EqSystem,
-        solver: LinearSolverEnum,
+        mut solver: LinearSolverEnum,
         parallelize: bool,
     ) -> LinearSystem {
         assert!(variables.num_of_kind(VarKind::Marginalized) == 0);
@@ -89,18 +87,21 @@ impl LinearSystem {
         //  - Example, the the arrow-head sparsity uses a recursive application of the
         //    Schur-Complement.
 
-        let mut partitions = vec![];
+        solver.set_parallelize(parallelize);
+
+        let mut partition_specs = vec![];
         for i in 0..variables.collection.len() {
-            partitions.push(PartitionSpec {
+            partition_specs.push(PartitionSpec {
                 block_count: variables.free_vars()[i],
-                block_dimension: variables.dims()[i],
+                block_dim: variables.dims()[i],
             });
         }
 
-        partitions.extend(eq_system.partitions.clone());
+        partition_specs.extend(eq_system.partitions.clone());
 
-        let mut block_triplets = SymmetricMatrixBuilderEnum::zero(solver, &partitions);
-        let mut neg_grad = BlockVector::zero(&partitions);
+        let partitions = PartitionSet::new(partition_specs);
+        let mut neg_grad = BlockVector::zero(partitions.specs());
+        let mut block_triplets = SymmetricMatrixBuilderEnum::zero(solver, partitions);
 
         for cost in cost_system.evaluated_costs.iter() {
             cost.populate_upper_triangulatr_normal_equation(
@@ -127,15 +128,13 @@ impl LinearSystem {
             sparse_hessian_plus_damping: block_triplets.build(),
             neg_gradient: neg_grad,
             solver,
-            parallelize,
         }
     }
 
     pub(crate) fn solve(&mut self) -> Result<nalgebra::DVector<f64>, NllsError> {
         self.solver
             .solve(
-                self.parallelize,
-                &self.sparse_hessian_plus_damping.compress(),
+                &self.sparse_hessian_plus_damping,
                 self.neg_gradient.scalar_vector(),
             )
             .map_err(|e| NllsError::LinearSolver { source: e })

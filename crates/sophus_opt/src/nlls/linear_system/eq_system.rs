@@ -1,7 +1,8 @@
 use sophus_solver::matrix::{
-    BlockVector,
+    PartitionBlockIndex,
     PartitionSpec,
     SymmetricMatrixBuilderEnum,
+    block::BlockVector,
 };
 
 use super::EvalMode;
@@ -33,7 +34,7 @@ impl EqSystem {
         for eq_constraint in eq_constraints_fns.iter_mut() {
             partitions.push(PartitionSpec {
                 block_count: 1,
-                block_dimension: eq_constraint.residual_dim(),
+                block_dim: eq_constraint.residual_dim(),
             });
         }
         let lambda = BlockVector::zero(&partitions);
@@ -125,10 +126,18 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> IsEvalua
         for constraint in self.evaluated_constraints.iter() {
             let idx = constraint.idx;
 
-            let lambda = lambda.get_block(constraint_idx, 0);
+            let lambda = lambda.get_block(PartitionBlockIndex {
+                partition: constraint_idx,
+                block: 0,
+            });
+
+            let idx_0 = PartitionBlockIndex {
+                partition: region_idx,
+                block: 0,
+            };
 
             // -c
-            block_vec.add_block(region_idx, 0, &((-constraint.residual).as_view()));
+            block_vec.add_block(idx_0, &((-constraint.residual).as_view()));
 
             for arg_id_alpha in 0..num_args {
                 let dof_alpha = dof_per_arg[arg_id_alpha];
@@ -153,17 +162,18 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> IsEvalua
                 let mat_g_times_lambda =
                     constraint.jacobian.block(arg_id_alpha).transpose() * lambda;
 
+                let idx_alpha = PartitionBlockIndex {
+                    partition: family_alpha,
+                    block: block_start_idx_alpha,
+                };
+
                 // + G'lambda
-                block_vec.add_block(
-                    family_alpha,
-                    block_start_idx_alpha,
-                    &(mat_g_times_lambda.as_view()),
-                );
+                block_vec.add_block(idx_alpha, &(mat_g_times_lambda.as_view()));
 
                 // G
                 block_triplet.add_lower_block(
-                    &[region_idx, family_alpha],
-                    [0, block_start_idx_alpha],
+                    idx_0,
+                    idx_alpha,
                     &constraint.jacobian.block(arg_id_alpha).as_view(),
                 );
 

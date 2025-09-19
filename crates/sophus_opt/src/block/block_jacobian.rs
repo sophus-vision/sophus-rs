@@ -1,6 +1,5 @@
 use sophus_autodiff::linalg::MatF64;
-
-use crate::block::BlockRange;
+use sophus_solver::matrix::BlockRange;
 
 /// Jacobian matrix, split into several blocks
 ///
@@ -36,12 +35,12 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize>
         let mut num_cols: usize = 0;
 
         for i in 0..num_blocks {
-            let dim = dims[i];
+            let block_dim = dims[i];
             col_ranges[i] = BlockRange {
-                index: num_cols as i64,
-                dim,
+                start_idx: num_cols,
+                block_dim,
             };
-            num_cols += dim;
+            num_cols += block_dim;
         }
         Self {
             mat: nalgebra::SMatrix::zeros(),
@@ -61,9 +60,9 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize>
         submat: MatF64<RESIDUAL_DIM, C>,
     ) {
         debug_assert!(col_block_idx < self.num_blocks());
-        debug_assert_eq!(C, self.ranges[col_block_idx].dim);
+        debug_assert_eq!(C, self.ranges[col_block_idx].block_dim);
 
-        let col_offset = self.ranges[col_block_idx].index as usize;
+        let col_offset = self.ranges[col_block_idx].start_idx;
         let mut block_view = self.mat.fixed_view_mut::<RESIDUAL_DIM, C>(0, col_offset);
         block_view.copy_from(&submat);
     }
@@ -86,8 +85,8 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize>
         >,
     > {
         debug_assert!(col_block_idx < self.num_blocks());
-        let col_offset = self.ranges[col_block_idx].index as usize;
-        let cdim = self.ranges[col_block_idx].dim;
+        let col_offset = self.ranges[col_block_idx].start_idx;
+        let cdim = self.ranges[col_block_idx].block_dim;
         self.mat.view((0, col_offset), (RESIDUAL_DIM, cdim))
     }
 
@@ -110,8 +109,8 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize>
         >,
     > {
         debug_assert!(col_block_idx < self.num_blocks());
-        debug_assert_eq!(C, self.ranges[col_block_idx].dim);
-        let col_offset = self.ranges[col_block_idx].index as usize;
+        debug_assert_eq!(C, self.ranges[col_block_idx].block_dim);
+        let col_offset = self.ranges[col_block_idx].start_idx;
         self.mat.fixed_view_mut::<RESIDUAL_DIM, C>(0, col_offset)
     }
 }

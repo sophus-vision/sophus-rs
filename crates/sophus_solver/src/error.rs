@@ -1,5 +1,7 @@
 use snafu::Snafu;
 
+use crate::matrix::PartitionBlockIndex;
+
 /// Linear solver error.
 #[derive(Snafu, Debug)]
 #[snafu(visibility(pub(crate)))]
@@ -91,14 +93,12 @@ pub enum LdltDecompositionError {
 #[snafu(visibility(pub(crate)))]
 pub enum BlockSparseLdltError {
     /// Factorization failure
-    #[snafu(display("block diagonal ({}, {}): {}", partition_idx, local_block_idx, source))]
+    #[snafu(display("block diagonal ({:?}): {}", idx, source))]
     BlockDiagLdltError {
         /// source
         source: LdltDecompositionError,
         /// partition index
-        partition_idx: usize,
-        /// local block index
-        local_block_idx: usize,
+        idx: PartitionBlockIndex,
     },
 }
 

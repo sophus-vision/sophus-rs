@@ -1,0 +1,14 @@
+[package]
+description = "Assertion macros"
+name = "sophus_assert"
+readme = "README.md"
+
+edition.workspace = true
+include.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[build-dependencies]
+rustc_version.workspace = true

@@ -9,7 +9,11 @@
 pub struct ReadmeDoctests;
 
 #[doc(inline)]
+pub use sophus_assert as assert;
+#[doc(inline)]
 pub use sophus_autodiff as autodiff;
+#[doc(inline)]
+pub use sophus_bench as bench;
 #[doc(inline)]
 pub use sophus_geo as geo;
 #[doc(inline)]

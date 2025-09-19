@@ -31,61 +31,147 @@ use faer::{
 
 use crate::{
     FearSparseSolverError,
+    IsFactor,
     LinearSolverError,
     matrix::{
-        FaerUpperCompressedMatrix,
-        FaerUpperTripletMatrix,
-        PartitionSpec,
-        SparseSymmetricMatrixBuilder,
+        PartitionSet,
         SymmetricMatrixBuilderEnum,
+        sparse::{
+            FaerSparseSymmetricMatrix,
+            FaerSparseSymmetricMatrixBuilder,
+        },
     },
     prelude::*,
 };
 
 /// Parameters for faer's sparse LDLᵀ solver.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct FaerSparseLdltParams {
+pub struct FaerSparseLdlt {
     /// Numeric regularization for LDLᵀ.
     pub regularization_eps: f64,
+    /// Perform parallel execution?
+    pub parallelize: bool,
 }
 
-impl Default for FaerSparseLdltParams {
+impl Default for FaerSparseLdlt {
     fn default() -> Self {
         Self {
             regularization_eps: 1e-6,
+            parallelize: false,
         }
     }
 }
 
-/// Sparse LDLᵀ solver using faer crate.
-#[derive(Copy, Clone, Debug, Default)]
-pub struct FaerSparseLdlt {
-    params: FaerSparseLdltParams,
-}
-
-impl FaerSparseLdlt {
-    /// Create new sparse LDLᵀ solver from params.
-    pub fn new(params: FaerSparseLdltParams) -> Self {
-        Self { params }
-    }
+/// f
+#[derive(Clone, Debug)]
+pub struct FaerSparseLdltSystem {
+    mat_a: FaerSparseSymmetricMatrix,
+    params: FaerSparseLdlt,
+    symb: SparseLdltPermSymb,
+    parallelize: bool,
 }
 
 impl IsLinearSolver for FaerSparseLdlt {
-    type Matrix = FaerUpperTripletMatrix;
+    type SymmetricMatrixBuilder = FaerSparseSymmetricMatrixBuilder;
 
     const NAME: &'static str = "faer sparse LDLᵀ";
 
-    fn matrix_builder(&self, partitions: &[PartitionSpec]) -> SymmetricMatrixBuilderEnum {
-        SymmetricMatrixBuilderEnum::FaerSparseUpper(SparseSymmetricMatrixBuilder::zero(partitions))
+    fn zero(&self, partitions: PartitionSet) -> SymmetricMatrixBuilderEnum {
+        SymmetricMatrixBuilderEnum::FaerSparseUpper(FaerSparseSymmetricMatrixBuilder::zero(
+            partitions,
+        ))
     }
 
-    fn solve_in_place(
+    fn name(&self) -> String {
+        Self::NAME.into()
+    }
+
+    type Factor = FaerSparseLdltSystem;
+
+    fn factorize(
         &self,
-        parallelize: bool,
-        upper: &FaerUpperCompressedMatrix,
-        b: &mut nalgebra::DVector<f64>,
-    ) -> Result<(), LinearSolverError> {
-        match SimplicialSparseLdlt::from_csc(upper.csc.clone(), parallelize, self.params).solve(b) {
+        mat_a: &FaerSparseSymmetricMatrix,
+    ) -> Result<Self::Factor, LinearSolverError> {
+        puffin::profile_scope!("symbolic_and_perm");
+
+        // Based on example code from the faer crate:
+
+        let dim = mat_a.upper.ncols();
+        let nnz = mat_a.upper.compute_nnz();
+
+        // TODO: fix error handling!!!!!!
+
+        // --- AMD ordering --------------------------------------------------
+        let (perm, perm_inv) = {
+            let mut perm = vec![0usize; dim];
+            let mut perm_inv = vec![0usize; dim];
+
+            let mut mem = MemBuffer::try_new(amd::order_scratch::<usize>(dim, nnz)).unwrap();
+            amd::order(
+                &mut perm,
+                &mut perm_inv,
+                mat_a.upper.symbolic(),
+                amd::Control::default(),
+                MemStack::new(&mut mem),
+            )
+            .unwrap();
+            (perm, perm_inv)
+        };
+
+        let permutation = SparseLdltPerm { perm, perm_inv };
+        let perm_upper = permutation.perm_upper_ccs(&mat_a.upper);
+
+        // --- symbolic analysis --------------------------------------------
+        let symbolic = {
+            let mut mem = MemBuffer::try_new(StackReq::any_of(&[
+                simplicial::prefactorize_symbolic_cholesky_scratch::<usize>(dim, nnz),
+                simplicial::factorize_simplicial_symbolic_cholesky_scratch::<usize>(dim),
+            ]))
+            .unwrap();
+            let mut stack = MemStack::new(&mut mem);
+
+            let mut etree = vec![0isize; dim];
+            let mut col_counts = vec![0usize; dim];
+
+            simplicial::prefactorize_symbolic_cholesky(
+                &mut etree,
+                &mut col_counts,
+                perm_upper.symbolic(),
+                ReborrowMut::rb_mut(&mut stack),
+            );
+
+            // SAFETY: `etree` is filled by the previous call.
+            simplicial::factorize_simplicial_symbolic_cholesky(
+                perm_upper.symbolic(),
+                unsafe { simplicial::EliminationTreeRef::from_inner(&etree) },
+                &col_counts,
+                ReborrowMut::rb_mut(&mut stack),
+            )
+            .unwrap()
+        };
+
+        Ok(FaerSparseLdltSystem {
+            params: *self,
+            parallelize: self.parallelize,
+            symb: SparseLdltPermSymb {
+                permutation,
+                symbolic,
+            },
+            mat_a: mat_a.clone(),
+        })
+    }
+
+    /// Set the `parallelize`` option.
+    fn set_parallelize(&mut self, parallelize: bool) {
+        self.parallelize = parallelize;
+    }
+}
+
+impl IsFactor for FaerSparseLdltSystem {
+    type Matrix = FaerSparseSymmetricMatrix;
+
+    fn solve_inplace(&self, b: &mut nalgebra::DVector<f64>) -> Result<(), LinearSolverError> {
+        match self.solve(b) {
             Ok(x) => {
                 *b = x;
                 Ok(())
@@ -102,29 +188,9 @@ impl IsLinearSolver for FaerSparseLdlt {
             }),
         }
     }
-
-    fn solve(
-        &self,
-        parallelize: bool,
-        matrix: &<Self::Matrix as IsCompressibleMatrix>::Compressed,
-        b: &nalgebra::DVector<f64>,
-    ) -> Result<nalgebra::DVector<f64>, LinearSolverError> {
-        let mut x = b.clone();
-        self.solve_in_place(parallelize, matrix, &mut x)?;
-        Ok(x)
-    }
-
-    fn name(&self) -> String {
-        Self::NAME.into()
-    }
 }
 
-struct SimplicialSparseLdlt {
-    upper_ccs: SparseColMat<usize, f64>,
-    params: FaerSparseLdltParams,
-    parallelize: bool,
-}
-
+#[derive(Clone, Debug)]
 struct SparseLdltPerm {
     perm: Vec<usize>,
     perm_inv: Vec<usize>,
@@ -169,6 +235,7 @@ impl SparseLdltPerm {
     }
 }
 
+#[derive(Clone, Debug)]
 struct SparseLdltPermSymb {
     permutation: SparseLdltPerm,
     symbolic: simplicial::SymbolicSimplicialCholesky<usize>,
@@ -179,67 +246,7 @@ enum SimplicialSparseLdltError {
     LdltError,
 }
 
-impl SimplicialSparseLdlt {
-    fn symbolic_and_perm(&self) -> Result<SparseLdltPermSymb, FaerError> {
-        puffin::profile_scope!("symbolic_and_perm");
-
-        // Based on example code from the faer crate:
-
-        let dim = self.upper_ccs.ncols();
-        let nnz = self.upper_ccs.compute_nnz();
-
-        // --- AMD ordering --------------------------------------------------
-        let (perm, perm_inv) = {
-            let mut perm = vec![0usize; dim];
-            let mut perm_inv = vec![0usize; dim];
-
-            let mut mem = MemBuffer::try_new(amd::order_scratch::<usize>(dim, nnz))?;
-            amd::order(
-                &mut perm,
-                &mut perm_inv,
-                self.upper_ccs.symbolic(),
-                amd::Control::default(),
-                MemStack::new(&mut mem),
-            )?;
-            (perm, perm_inv)
-        };
-
-        let permutation = SparseLdltPerm { perm, perm_inv };
-        let perm_upper = permutation.perm_upper_ccs(&self.upper_ccs);
-
-        // --- symbolic analysis --------------------------------------------
-        let symbolic = {
-            let mut mem = MemBuffer::try_new(StackReq::any_of(&[
-                simplicial::prefactorize_symbolic_cholesky_scratch::<usize>(dim, nnz),
-                simplicial::factorize_simplicial_symbolic_cholesky_scratch::<usize>(dim),
-            ]))?;
-            let mut stack = MemStack::new(&mut mem);
-
-            let mut etree = vec![0isize; dim];
-            let mut col_counts = vec![0usize; dim];
-
-            simplicial::prefactorize_symbolic_cholesky(
-                &mut etree,
-                &mut col_counts,
-                perm_upper.symbolic(),
-                ReborrowMut::rb_mut(&mut stack),
-            );
-
-            // SAFETY: `etree` is filled by the previous call.
-            simplicial::factorize_simplicial_symbolic_cholesky(
-                perm_upper.symbolic(),
-                unsafe { simplicial::EliminationTreeRef::from_inner(&etree) },
-                &col_counts,
-                ReborrowMut::rb_mut(&mut stack),
-            )?
-        };
-
-        Ok(SparseLdltPermSymb {
-            permutation,
-            symbolic,
-        })
-    }
-
+impl FaerSparseLdltSystem {
     fn solve_from_symbolic(
         &self,
         b: &nalgebra::DVector<f64>,
@@ -249,7 +256,7 @@ impl SimplicialSparseLdlt {
 
         // Based on example code from the faer crate:
 
-        let dim = self.upper_ccs.ncols();
+        let dim = self.mat_a.upper.ncols();
         // SAFETY: `perm` / `perm_inv` are valid permutations of size `dim`.
         let perm_ref = unsafe {
             PermRef::new_unchecked(
@@ -271,7 +278,7 @@ impl SimplicialSparseLdlt {
 
         // Numeric LDLᵀ factorization
         let mut lval = vec![0.0f64; symbolic.len_val()];
-        let perm_upper = symb_perm.permutation.perm_upper_ccs(&self.upper_ccs);
+        let perm_upper = symb_perm.permutation.perm_upper_ccs(&self.mat_a.upper);
 
         simplicial::factorize_simplicial_numeric_ldlt::<usize, f64>(
             &mut lval,
@@ -328,27 +335,10 @@ impl SimplicialSparseLdlt {
         Ok(x)
     }
 
-    fn from_csc(
-        upper_ccs: faer::sparse::SparseColMat<usize, f64>,
-        parallelize: bool,
-        params: FaerSparseLdltParams,
-    ) -> Self {
-        // Triplets are assumed valid (caller generated them).
-        // `try_new_from_triplets` sorts / deduplicates if needed.
-        Self {
-            upper_ccs,
-            params,
-            parallelize,
-        }
-    }
-
     fn solve(
         &self,
         b: &nalgebra::DVector<f64>,
     ) -> Result<nalgebra::DVector<f64>, SimplicialSparseLdltError> {
-        let symb_perm = self
-            .symbolic_and_perm()
-            .map_err(SimplicialSparseLdltError::FaerError)?;
-        self.solve_from_symbolic(b, &symb_perm)
+        self.solve_from_symbolic(b, &self.symb)
     }
 }

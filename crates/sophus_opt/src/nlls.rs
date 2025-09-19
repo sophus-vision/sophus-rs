@@ -33,7 +33,7 @@ use sophus_solver::{
     LinearSolverEnum,
     LinearSolverError,
     matrix::{
-        CompressibleMatrixEnum,
+        SymmetricMatrixEnum,
         block::BlockVector,
     },
 };
@@ -103,7 +103,7 @@ pub struct OptimizationSolution {
     /// the gradient vector
     pub final_neg_gradient: BlockVector,
     /// the hessian matrix
-    pub final_hessian_plus_damping: CompressibleMatrixEnum,
+    pub final_hessian_plus_damping: SymmetricMatrixEnum,
 }
 
 /// Linear solver error
@@ -206,6 +206,7 @@ pub fn optimize_nlls_with_eq_constraints(
     // for debugging, and not too expensive.
     // TODO: Consider making this optional, i.e. only return the final gradient and hessian if
     // requested.
+    cost_system.lm_damping = 0.0;
     let final_linear_system = evaluate_cost_and_build_linear_system(
         &variables,
         &mut cost_system,
