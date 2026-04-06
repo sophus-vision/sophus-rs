@@ -137,8 +137,8 @@ impl<
         precision_mat: Option<MatF64<R, R>>,
     ) {
         if idx == i {
-            if self.0.is_some() {
-                let dx: MatF64<R, DX> = self.0.unwrap();
+            if let Some(dx) = self.0 {
+                let dx: MatF64<R, DX> = dx;
                 let dx_t: MatF64<DX, R> = dx.transpose();
                 let lambda_dx = match precision_mat {
                     Some(precision_mat) => precision_mat * dx,

@@ -402,9 +402,8 @@ impl BlockSparseTripletMatrix {
             };
             let block_height = self.row_partitions[row_partition_idx].block_dimension;
             debug_assert_eq!((end - start) % block_height, 0,);
-            if block_height > 0 {
-                blocks_per_row_partition[row_partition_idx] = (end - start) / block_height;
-            }
+            blocks_per_row_partition[row_partition_idx] =
+                (end - start).checked_div(block_height).unwrap_or(0);
         }
         let mut blocks_per_col_partition = vec![0usize; col_partition_count];
         for col_partition_idx in 0..col_partition_count {
@@ -416,9 +415,8 @@ impl BlockSparseTripletMatrix {
             };
             let block_width = self.col_partitions[col_partition_idx].block_dimension;
             debug_assert_eq!((end - start) % block_width, 0,);
-            if block_width > 0 {
-                blocks_per_col_partition[col_partition_idx] = (end - start) / block_width;
-            }
+            blocks_per_col_partition[col_partition_idx] =
+                (end - start).checked_div(block_width).unwrap_or(0);
         }
 
         // (Global) block row offset by row partition.

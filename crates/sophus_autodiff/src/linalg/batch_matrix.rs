@@ -1,10 +1,4 @@
-use core::{
-    borrow::Borrow,
-    simd::{
-        LaneCount,
-        SupportedLaneCount,
-    },
-};
+use core::borrow::Borrow;
 
 use super::batch_mask::BatchMask;
 use crate::{
@@ -19,8 +13,6 @@ use crate::{
 
 impl<const ROWS: usize, const COLS: usize, const BATCH: usize>
     IsMatrix<BatchScalarF64<BATCH>, ROWS, COLS, BATCH, 0, 0> for BatchMatF64<ROWS, COLS, BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn from_scalar<S>(val: S) -> Self
     where
@@ -180,7 +172,5 @@ where
 
 impl<const ROWS: usize, const COLS: usize, const BATCH: usize>
     IsRealMatrix<BatchScalarF64<BATCH>, ROWS, COLS, BATCH> for BatchMatF64<ROWS, COLS, BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
 {
 }

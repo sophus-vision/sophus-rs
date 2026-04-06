@@ -12,10 +12,6 @@ use core::{
         Sub,
         SubAssign,
     },
-    simd::{
-        LaneCount,
-        SupportedLaneCount,
-    },
 };
 
 use approx::{
@@ -70,7 +66,6 @@ extern crate alloc;
 pub struct DualBatchScalar<const BATCH: usize, const DM: usize, const DN: usize>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     /// The real (non-infinitesimal) part for each lane.
     pub real_part: BatchScalarF64<BATCH>,
@@ -85,7 +80,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> AbsDiffEq
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Epsilon = f64;
 
@@ -103,7 +97,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> RelativeEq
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn default_max_relative() -> Self::Epsilon {
         EPS_F64
@@ -125,7 +118,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> IsCoreScalar
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn number_category() -> NumberCategory {
         NumberCategory::Real
@@ -136,7 +128,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> SubAssign<DualBatchSc
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn sub_assign(&mut self, rhs: Self) {
         // For performance, in-place operations might be better,
@@ -149,7 +140,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> AsRef<DualBatchScalar
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn as_ref(&self) -> &DualBatchScalar<BATCH, DM, DN> {
         self
@@ -159,7 +149,6 @@ where
 impl<const BATCH: usize, const DM: usize, const DN: usize> One for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn one() -> Self {
         // Real part set to 1.0, no derivative.
@@ -170,7 +159,6 @@ where
 impl<const BATCH: usize, const DM: usize, const DN: usize> Zero for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn zero() -> Self {
         Self::from_f64(0.0)
@@ -186,7 +174,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> IsDualScalar<BATCH, D
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn var(val: BatchScalarF64<BATCH>) -> Self {
         // A "variable" means an identity derivative w.r.t. that variable.
@@ -218,7 +205,6 @@ impl<const BATCH: usize> IsDualScalarFromCurve<DualBatchScalar<BATCH, 1, 1>, BAT
     for DualBatchScalar<BATCH, 1, 1>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn curve_derivative(&self) -> BatchScalarF64<BATCH> {
         // derivative() is DM×DN = 1×1 => single element per lane
@@ -229,7 +215,6 @@ where
 impl<const BATCH: usize, const DM: usize, const DN: usize> DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     // Internal helper to combine the derivative blocks from two batch dual scalars
     // in binary operations.
@@ -255,7 +240,6 @@ where
 impl<const BATCH: usize, const DM: usize, const DN: usize> Neg for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Output = Self;
 
@@ -272,7 +256,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> PartialEq
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn eq(&self, other: &Self) -> bool {
         self.real_part == other.real_part
@@ -283,7 +266,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> IsScalar<BATCH, DM, D
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     // Specialized type definitions for batch dual scalars:
     type Scalar = Self;
@@ -575,7 +557,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> AddAssign<DualBatchSc
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn add_assign(&mut self, rhs: Self) {
         *self = (*self).add(&rhs);
@@ -586,7 +567,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> MulAssign<DualBatchSc
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn mul_assign(&mut self, rhs: Self) {
         *self = (*self).mul(&rhs);
@@ -597,7 +577,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> DivAssign<DualBatchSc
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn div_assign(&mut self, rhs: Self) {
         *self = (*self).div(&rhs);
@@ -608,7 +587,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> Add<DualBatchScalar<B
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
@@ -620,7 +598,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> Add<&DualBatchScalar<
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Output = Self;
 
@@ -643,7 +620,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> Sub<DualBatchScalar<B
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
@@ -655,7 +631,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> Sub<&DualBatchScalar<
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Output = Self;
 
@@ -678,7 +653,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> Mul<DualBatchScalar<B
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
@@ -690,7 +664,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> Mul<&DualBatchScalar<
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Output = Self;
 
@@ -714,7 +687,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> Div<DualBatchScalar<B
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Output = Self;
 
@@ -727,7 +699,6 @@ impl<const BATCH: usize, const DM: usize, const DN: usize> Div<&DualBatchScalar<
     for DualBatchScalar<BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Output = Self;
 

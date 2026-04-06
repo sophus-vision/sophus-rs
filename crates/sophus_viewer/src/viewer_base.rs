@@ -6,6 +6,7 @@ use alloc::{
     vec::Vec,
 };
 
+use crossbeam_channel::Receiver;
 use eframe::egui;
 use egui_plot::{
     LineStyle,
@@ -23,7 +24,6 @@ use sophus_renderer::{
     HasAspectRatio,
     RenderContext,
 };
-use thingbuf::mpsc::blocking::Receiver;
 
 use crate::{
     WindowParams,
@@ -108,7 +108,7 @@ impl ViewerBase {
             match view {
                 View::Scene(view) => {
                     if let Some(response) = self.responses.get(view_label) {
-                        if response.z_image.is_some() {
+                        if let Some(z_image) = &response.z_image {
                             view.interaction.process_event(
                                 &mut self.active_view,
                                 &view.intrinsics(),
@@ -116,7 +116,7 @@ impl ViewerBase {
                                 &response.ui_response,
                                 &response.scales,
                                 response.view_port_size,
-                                Some(response.z_image.as_ref().unwrap().clone()),
+                                Some(z_image.clone()),
                             );
                         }
                         view_port_size = response.view_port_size

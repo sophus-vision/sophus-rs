@@ -15,5 +15,8 @@
 		"rust-analyzer.cargo.unsetTest": [],
 		"rust-analyzer.cargo.features": [
 		],
+		"cSpell.words": [
+			"Faer"
+		],
 	}
 }

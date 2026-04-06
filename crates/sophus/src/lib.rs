@@ -1,7 +1,8 @@
 #![cfg_attr(feature = "simd", feature(portable_simd))]
 #![allow(clippy::needless_range_loop)]
 #![doc = include_str!(concat!("../", std::env!("CARGO_PKG_README")))]
-#![cfg_attr(nightly, feature(doc_auto_cfg))]
+#![cfg_attr(nightly, allow(unused_features))]
+#![cfg_attr(nightly, feature(doc_cfg))]
 #![deny(missing_docs)]
 
 #[doc = include_str!(concat!("../", std::env!("CARGO_PKG_README")))]
@@ -42,10 +43,10 @@ pub use sophus_viewer as viewer;
 /// usage examples are found in the individual sub-crates. In particular, the
 /// unit tests in each sub-crate are a good source of examples.
 pub mod examples;
+pub use crossbeam_channel;
 pub use eframe;
 pub use nalgebra;
 pub use ndarray;
-pub use thingbuf;
 
 /// sophus prelude.
 ///

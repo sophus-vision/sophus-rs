@@ -67,9 +67,12 @@ impl RenderContext {
         let renderer = egui_wgpu::Renderer::new(
             &device,
             wgpu::TextureFormat::Rgba8Unorm,
-            None,
-            SOPHUS_RENDER_MULTISAMPLE_COUNT,
-            DITHERING,
+            egui_wgpu::RendererOptions {
+                msaa_samples: SOPHUS_RENDER_MULTISAMPLE_COUNT,
+                depth_stencil_format: None,
+                dithering: DITHERING,
+                predictable_texture_filtering: true,
+            },
         );
 
         RenderContext {

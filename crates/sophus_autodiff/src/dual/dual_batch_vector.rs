@@ -6,10 +6,6 @@ use core::{
         Neg,
         Sub,
     },
-    simd::{
-        LaneCount,
-        SupportedLaneCount,
-    },
 };
 
 use approx::{
@@ -59,7 +55,6 @@ use crate::{
 pub struct DualBatchVector<const ROWS: usize, const BATCH: usize, const DM: usize, const DN: usize>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     pub(crate) inner: SVec<DualBatchScalar<BATCH, DM, DN>, ROWS>,
 }
@@ -69,7 +64,6 @@ impl<const ROWS: usize, const BATCH: usize, const DM: usize, const DN: usize>
     for DualBatchVector<ROWS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn var(val: BatchVecF64<ROWS, BATCH>) -> Self {
         let mut dij_val: SVec<DualBatchScalar<BATCH, DM, DN>, ROWS> = SVec::zeros();
@@ -97,7 +91,6 @@ impl<const ROWS: usize, const BATCH: usize>
     for DualBatchVector<ROWS, BATCH, 1, 1>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn curve_derivative(&self) -> BatchVecF64<ROWS, BATCH> {
         self.jacobian()
@@ -109,7 +102,6 @@ impl<const ROWS: usize, const BATCH: usize, const DM: usize>
     for DualBatchVector<ROWS, BATCH, DM, 1>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn jacobian(&self) -> BatchMatF64<ROWS, DM, BATCH> {
         let mut v = BatchMatF64::<ROWS, DM, BATCH>::zeros();
@@ -127,7 +119,6 @@ impl<const ROWS: usize, const BATCH: usize, const DM: usize, const DN: usize> nu
     for DualBatchVector<ROWS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn zero() -> Self {
         DualBatchVector {
@@ -144,7 +135,6 @@ impl<const ROWS: usize, const BATCH: usize, const DM: usize, const DN: usize> Ne
     for DualBatchVector<ROWS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Output = DualBatchVector<ROWS, BATCH, DM, DN>;
 
@@ -157,7 +147,6 @@ impl<const ROWS: usize, const BATCH: usize, const DM: usize, const DN: usize> Su
     for DualBatchVector<ROWS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Output = DualBatchVector<ROWS, BATCH, DM, DN>;
 
@@ -172,7 +161,6 @@ impl<const ROWS: usize, const BATCH: usize, const DM: usize, const DN: usize> Ad
     for DualBatchVector<ROWS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Output = DualBatchVector<ROWS, BATCH, DM, DN>;
 
@@ -187,7 +175,6 @@ impl<const ROWS: usize, const BATCH: usize, const DM: usize, const DN: usize> Pa
     for DualBatchVector<ROWS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn eq(&self, other: &Self) -> bool {
         self.inner == other.inner
@@ -198,7 +185,6 @@ impl<const ROWS: usize, const BATCH: usize, const DM: usize, const DN: usize> Ab
     for DualBatchVector<ROWS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Epsilon = f64;
 
@@ -215,7 +201,6 @@ impl<const ROWS: usize, const BATCH: usize, const DM: usize, const DN: usize> Re
     for DualBatchVector<ROWS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn default_max_relative() -> Self::Epsilon {
         f64::default_max_relative()
@@ -236,7 +221,6 @@ impl<const ROWS: usize, const BATCH: usize, const DM: usize, const DN: usize>
     for DualBatchVector<ROWS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn from_f64(val: f64) -> Self {
         DualBatchVector {

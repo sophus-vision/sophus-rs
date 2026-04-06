@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crossbeam_channel::Sender;
 use log::warn;
 use sophus_autodiff::linalg::VecF64;
 use sophus_geo::Circle;
@@ -44,7 +45,6 @@ use sophus_viewer::packets::{
     delete_image_packet,
     delete_scene_packet,
 };
-use thingbuf::mpsc::blocking::Sender;
 
 use crate::examples::optics_sim::{
     aperture_stop::ApertureStop,

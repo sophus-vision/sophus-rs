@@ -1,7 +1,10 @@
 use std::{
     format,
     fs::File,
-    io::BufWriter,
+    io::{
+        BufReader,
+        BufWriter,
+    },
     string::ToString,
     vec,
 };
@@ -51,10 +54,13 @@ pub fn save_as_png<'a, ImageView: IsIntensityViewImageU<'a>>(
 /// or an error if the file could not be read or the image format is not supported.
 pub fn load_png(path: impl ToString) -> std::io::Result<DynIntensityMutImage> {
     let file = File::open(path.to_string())?;
-    let decoder = png::Decoder::new(file);
+    let decoder = png::Decoder::new(BufReader::new(file));
     let mut reader = decoder.read_info()?;
 
-    let mut buf = vec![0; reader.output_buffer_size()];
+    let buf_size = reader.output_buffer_size().ok_or_else(|| {
+        std::io::Error::other("PNG output buffer size unknown before first frame")
+    })?;
+    let mut buf = vec![0; buf_size];
     // Read the next frame. An APNG might contain multiple frames.
     let info = reader.next_frame(&mut buf)?;
     let bytes = &buf[..info.buffer_size()];

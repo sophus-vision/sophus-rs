@@ -3,6 +3,8 @@
 set -x # echo on
 set -e # exit on error
 
+cargo publish -p sophus_assert
+cargo publish -p sophus_bench
 cargo publish -p sophus_autodiff
 cargo publish -p sophus_tensor
 cargo publish -p sophus_image

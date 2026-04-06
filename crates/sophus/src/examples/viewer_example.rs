@@ -1,5 +1,6 @@
 use std::f64::consts::TAU;
 
+use crossbeam_channel::Sender;
 use log::warn;
 use sophus_autodiff::{
     linalg::{
@@ -48,7 +49,6 @@ use sophus_viewer::packets::{
     delete_image_packet,
     delete_scene_packet,
 };
-use thingbuf::mpsc::blocking::Sender;
 
 /// Makes example image of image-size
 pub fn make_example_image(image_size: ImageSize) -> ArcImage4U8 {

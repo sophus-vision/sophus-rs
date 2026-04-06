@@ -7,10 +7,6 @@ use core::{
         Neg,
         Sub,
     },
-    simd::{
-        LaneCount,
-        SupportedLaneCount,
-    },
 };
 
 use approx::{
@@ -61,7 +57,6 @@ pub struct DualBatchMatrix<
     const DN: usize,
 > where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     pub(crate) inner: SMat<DualBatchScalar<BATCH, DM, DN>, ROWS, COLS>,
 }
@@ -71,7 +66,6 @@ impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, 
     for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     /// Create a new dual number
     fn var(val: BatchMatF64<ROWS, COLS, BATCH>) -> Self {
@@ -106,7 +100,6 @@ impl<const ROWS: usize, const COLS: usize, const BATCH: usize>
     for DualBatchMatrix<ROWS, COLS, BATCH, 1, 1>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn curve_derivative(&self) -> BatchMatF64<ROWS, COLS, BATCH> {
         let mut out = BatchMatF64::<ROWS, COLS, BATCH>::zeros();
@@ -124,7 +117,6 @@ impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, 
     PartialEq for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn eq(&self, other: &Self) -> bool {
         self.inner == other.inner
@@ -135,7 +127,6 @@ impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, 
     AbsDiffEq for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Epsilon = f64;
 
@@ -152,7 +143,6 @@ impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, 
     RelativeEq for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn default_max_relative() -> Self::Epsilon {
         f64::default_max_relative()
@@ -173,7 +163,6 @@ impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, 
     for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn mat_mul<const C2: usize, M>(&self, other: M) -> DualBatchMatrix<ROWS, C2, BATCH, DM, DN>
     where
@@ -421,7 +410,6 @@ impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, 
     for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Output = DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>;
 
@@ -436,7 +424,6 @@ impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, 
     for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Output = DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>;
 
@@ -451,7 +438,6 @@ impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, 
     for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Output = DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>;
 
@@ -464,7 +450,6 @@ impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, 
     Zero for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn zero() -> Self {
         Self::from_real_matrix(BatchMatF64::zeros())
@@ -479,7 +464,6 @@ impl<const ROWS: usize, const COLS: usize, const BATCH: usize, const DM: usize, 
     Mul<DualBatchVector<COLS, BATCH, DM, DN>> for DualBatchMatrix<ROWS, COLS, BATCH, DM, DN>
 where
     BatchScalarF64<BATCH>: IsCoreScalar,
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     type Output = DualBatchVector<ROWS, BATCH, DM, DN>;
 
