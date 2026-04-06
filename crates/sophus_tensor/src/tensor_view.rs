@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use concat_arrays::concat_arrays;
+
 use sophus_autodiff::linalg::{
     SMat,
     SVec,
@@ -182,8 +182,9 @@ macro_rules! tensor_view_is_view {
                 elem_view: ndarray::ArrayView<'a, STensor, ndarray::Dim<[ndarray::Ix; $drank]>>,
             ) -> Self {
                 let dims: [usize; $drank] = elem_view.shape().try_into().unwrap();
+                let sdims = STensor::sdims();
                 #[allow(clippy::drop_non_drop)]
-                let shape: [usize; $scalar_rank] = concat_arrays!(dims, STensor::sdims());
+                let shape: [usize; $scalar_rank] = core::array::from_fn(|i| if i < $drank { dims[i] } else { sdims[i - $drank] });
 
                 let dstrides: [isize; $drank] = elem_view.strides().try_into().unwrap();
                 let mut dstrides: [usize; $drank] = dstrides.map(|x| x as usize);
@@ -191,8 +192,9 @@ macro_rules! tensor_view_is_view {
                 for d in dstrides.iter_mut() {
                     *d *= num_scalars;
                 }
+                let sstrides = STensor::get_strides();
                 #[allow(clippy::drop_non_drop)]
-                let strides = concat_arrays!(dstrides, STensor::get_strides());
+                let strides: [usize; $scalar_rank] = core::array::from_fn(|i| if i < $drank { dstrides[i] } else { sstrides[i - $drank] });
 
                 let ptr = elem_view.as_ptr() as *const Scalar;
                 use ndarray::ShapeBuilder;
