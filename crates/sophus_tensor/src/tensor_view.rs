@@ -1,6 +1,5 @@
 use core::marker::PhantomData;
 
-
 use sophus_autodiff::linalg::{
     SMat,
     SVec,
@@ -184,7 +183,13 @@ macro_rules! tensor_view_is_view {
                 let dims: [usize; $drank] = elem_view.shape().try_into().unwrap();
                 let sdims = STensor::sdims();
                 #[allow(clippy::drop_non_drop)]
-                let shape: [usize; $scalar_rank] = core::array::from_fn(|i| if i < $drank { dims[i] } else { sdims[i - $drank] });
+                let shape: [usize; $scalar_rank] = core::array::from_fn(|i| {
+                    if i < $drank {
+                        dims[i]
+                    } else {
+                        sdims[i - $drank]
+                    }
+                });
 
                 let dstrides: [isize; $drank] = elem_view.strides().try_into().unwrap();
                 let mut dstrides: [usize; $drank] = dstrides.map(|x| x as usize);
@@ -194,7 +199,13 @@ macro_rules! tensor_view_is_view {
                 }
                 let sstrides = STensor::get_strides();
                 #[allow(clippy::drop_non_drop)]
-                let strides: [usize; $scalar_rank] = core::array::from_fn(|i| if i < $drank { dstrides[i] } else { sstrides[i - $drank] });
+                let strides: [usize; $scalar_rank] = core::array::from_fn(|i| {
+                    if i < $drank {
+                        dstrides[i]
+                    } else {
+                        sstrides[i - $drank]
+                    }
+                });
 
                 let ptr = elem_view.as_ptr() as *const Scalar;
                 use ndarray::ShapeBuilder;

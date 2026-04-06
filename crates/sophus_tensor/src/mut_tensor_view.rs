@@ -1,7 +1,5 @@
 use core::marker::PhantomData;
 
-
-
 use crate::{
     MutTensor,
     TensorView,
