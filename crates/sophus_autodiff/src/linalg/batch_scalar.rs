@@ -16,10 +16,9 @@ use core::{
         SubAssign,
     },
     simd::{
-        LaneCount,
+        Select,
         Simd,
         SimdElement,
-        SupportedLaneCount,
         cmp::SimdPartialOrd,
         num::SimdFloat,
     },
@@ -59,7 +58,6 @@ extern crate alloc;
 
 impl<S: SimdElement + IsCoreScalar, const BATCH: usize> IsCoreScalar for BatchScalar<S, BATCH>
 where
-    LaneCount<BATCH>: SupportedLaneCount,
     Simd<S, BATCH>: SimdFloat,
     BatchScalar<S, BATCH>:
         Clone + Debug + nalgebra::Scalar + num_traits::Zero + core::ops::AddAssign,
@@ -69,10 +67,7 @@ where
     }
 }
 
-impl<const BATCH: usize> AbsDiffEq for BatchScalarF64<BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
-{
+impl<const BATCH: usize> AbsDiffEq for BatchScalarF64<BATCH> {
     type Epsilon = f64;
 
     fn default_epsilon() -> f64 {
@@ -89,10 +84,7 @@ where
     }
 }
 
-impl<const BATCH: usize> RelativeEq for BatchScalarF64<BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
-{
+impl<const BATCH: usize> RelativeEq for BatchScalarF64<BATCH> {
     fn default_max_relative() -> Self::Epsilon {
         f64::default_max_relative()
     }
@@ -112,46 +104,31 @@ where
     }
 }
 
-impl<const BATCH: usize> AddAssign for BatchScalarF64<BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
-{
+impl<const BATCH: usize> AddAssign for BatchScalarF64<BATCH> {
     fn add_assign(&mut self, rhs: Self) {
         self.0 += rhs.0;
     }
 }
 
-impl<const BATCH: usize> SubAssign for BatchScalarF64<BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
-{
+impl<const BATCH: usize> SubAssign for BatchScalarF64<BATCH> {
     fn sub_assign(&mut self, rhs: Self) {
         self.0 -= rhs.0;
     }
 }
 
-impl<const BATCH: usize> MulAssign for BatchScalarF64<BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
-{
+impl<const BATCH: usize> MulAssign for BatchScalarF64<BATCH> {
     fn mul_assign(&mut self, rhs: Self) {
         self.0 *= rhs.0;
     }
 }
 
-impl<const BATCH: usize> DivAssign for BatchScalarF64<BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
-{
+impl<const BATCH: usize> DivAssign for BatchScalarF64<BATCH> {
     fn div_assign(&mut self, rhs: Self) {
         self.0 /= rhs.0;
     }
 }
 
-impl<const BATCH: usize> Neg for BatchScalarF64<BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
-{
+impl<const BATCH: usize> Neg for BatchScalarF64<BATCH> {
     type Output = Self;
 
     fn neg(self) -> Self {
@@ -159,10 +136,7 @@ where
     }
 }
 
-impl<const BATCH: usize> Sub for BatchScalarF64<BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
-{
+impl<const BATCH: usize> Sub for BatchScalarF64<BATCH> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
@@ -170,10 +144,7 @@ where
     }
 }
 
-impl<const BATCH: usize> Mul for BatchScalarF64<BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
-{
+impl<const BATCH: usize> Mul for BatchScalarF64<BATCH> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self {
@@ -181,10 +152,7 @@ where
     }
 }
 
-impl<const BATCH: usize> Div for BatchScalarF64<BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
-{
+impl<const BATCH: usize> Div for BatchScalarF64<BATCH> {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self {
@@ -192,28 +160,16 @@ where
     }
 }
 
-impl<const BATCH: usize> num_traits::One for BatchScalarF64<BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
-{
+impl<const BATCH: usize> num_traits::One for BatchScalarF64<BATCH> {
     fn one() -> Self {
         Self(Simd::<f64, BATCH>::splat(1.0))
     }
 }
-impl<const BATCH: usize> IsRealScalar<BATCH> for BatchScalarF64<BATCH> where
-    LaneCount<BATCH>: SupportedLaneCount
-{
-}
+impl<const BATCH: usize> IsRealScalar<BATCH> for BatchScalarF64<BATCH> {}
 
-impl<const BATCH: usize> IsBatchScalar<BATCH, 0, 0> for BatchScalarF64<BATCH> where
-    LaneCount<BATCH>: SupportedLaneCount
-{
-}
+impl<const BATCH: usize> IsBatchScalar<BATCH, 0, 0> for BatchScalarF64<BATCH> {}
 
-impl<const BATCH: usize> IsScalar<BATCH, 0, 0> for BatchScalarF64<BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
-{
+impl<const BATCH: usize> IsScalar<BATCH, 0, 0> for BatchScalarF64<BATCH> {
     type Scalar = BatchScalarF64<BATCH>;
     type Vector<const ROWS: usize> = BatchVecF64<ROWS, BATCH>;
     type Matrix<const ROWS: usize, const COLS: usize> = BatchMatF64<ROWS, COLS, BATCH>;

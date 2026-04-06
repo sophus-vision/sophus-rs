@@ -10,7 +10,7 @@ use approx::assert_relative_eq;
 use log::info;
 use nalgebra::SVector;
 use rand::{
-    Rng,
+    RngExt,
     SeedableRng,
 };
 use rand_chacha::ChaCha12Rng;
@@ -248,7 +248,7 @@ macro_rules! def_real_group_test_template {
                             let lambda = |x: <$scalar as IsScalar<$batch,0,0>>::Vector<DOF>| {
                                 let lhs = <$group>::hat(a).mat_mul(<$group>::hat(x));
                                 let rhs = <$group>::hat(x).mat_mul(<$group>::hat(a));
-                                <$group>::vee((lhs - rhs))
+                                <$group>::vee(lhs - rhs)
                             };
 
                             let num_diff_ad_a =

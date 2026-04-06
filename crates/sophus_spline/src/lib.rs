@@ -3,7 +3,8 @@
 #![no_std]
 #![allow(clippy::needless_range_loop)]
 #![doc = include_str!(concat!("../", std::env!("CARGO_PKG_README")))]
-#![cfg_attr(nightly, feature(doc_auto_cfg))]
+#![cfg_attr(nightly, allow(unused_features))]
+#![cfg_attr(nightly, feature(doc_cfg))]
 
 #[doc = include_str!(concat!("../",  core::env!("CARGO_PKG_README")))]
 #[cfg(doctest)]

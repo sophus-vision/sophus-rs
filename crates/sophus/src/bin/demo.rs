@@ -1,3 +1,7 @@
+use crossbeam_channel::{
+    Sender,
+    bounded,
+};
 use eframe::egui;
 use sophus::examples::{
     optics_sim::OpticsSimWidget,
@@ -8,10 +12,6 @@ use sophus_viewer::{
     ViewerBase,
     ViewerBaseConfig,
     packets::Packet,
-};
-use thingbuf::mpsc::blocking::{
-    Sender,
-    channel,
 };
 
 use crate::egui::Slider;
@@ -151,7 +151,7 @@ impl eframe::App for DemoApp {
 impl DemoApp {
     /// Create a new app of sophus examples.
     pub fn new(render_state: RenderContext) -> Box<DemoApp> {
-        let (message_send, message_recv) = channel(50);
+        let (message_send, message_recv) = bounded(50);
 
         Box::new(DemoApp {
             base: ViewerBase::new(render_state, ViewerBaseConfig { message_recv }),

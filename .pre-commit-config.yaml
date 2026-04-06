@@ -14,4 +14,4 @@ repos:
       - id: codespell
         args:
           - --ignore-words-list
-          - "te,tring,crate"
+          - "te,tring,crate,ba"

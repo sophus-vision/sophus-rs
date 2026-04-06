@@ -1,10 +1,4 @@
-use core::{
-    borrow::Borrow,
-    simd::{
-        LaneCount,
-        SupportedLaneCount,
-    },
-};
+use core::borrow::Borrow;
 
 use super::batch_mask::BatchMask;
 use crate::{
@@ -19,8 +13,6 @@ use crate::{
 
 impl<const ROWS: usize, const BATCH: usize> IsVector<BatchScalarF64<BATCH>, ROWS, BATCH, 0, 0>
     for BatchVecF64<ROWS, BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
 {
     fn block_vec2<const R0: usize, const R1: usize>(
         top_row: BatchVecF64<R0, BATCH>,
@@ -167,7 +159,5 @@ where
 
 impl<const ROWS: usize, const BATCH: usize> IsRealVector<BatchScalarF64<BATCH>, ROWS, BATCH>
     for BatchVecF64<ROWS, BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
 {
 }

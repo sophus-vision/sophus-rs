@@ -23,11 +23,9 @@ mod vector;
 use core::ops::Add;
 #[cfg(feature = "simd")]
 use core::simd::{
-    LaneCount,
     Mask,
     Simd,
     SimdElement,
-    SupportedLaneCount,
     cmp::SimdPartialEq,
     num::SimdFloat,
 };
@@ -84,9 +82,7 @@ pub const EPS_F64: f64 = 1e-6;
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub struct BatchScalar<ScalarLike: SimdElement, const BATCH: usize>(
     pub(crate) Simd<ScalarLike, BATCH>,
-)
-where
-    LaneCount<BATCH>: SupportedLaneCount;
+);
 
 #[cfg(feature = "simd")]
 /// A batch vector of dimension `ROWS`, where each element is a [`BatchScalar`].
@@ -125,7 +121,6 @@ pub type BatchMatF64<const ROWS: usize, const COLS: usize, const BATCH: usize> =
 impl<S, const BATCH: usize> Add for BatchScalar<S, BATCH>
 where
     S: SimdElement + num_traits::Zero,
-    LaneCount<BATCH>: SupportedLaneCount,
     Simd<S, BATCH>: Add<Output = Simd<S, BATCH>>,
 {
     type Output = Self;
@@ -139,7 +134,6 @@ where
 impl<S, const BATCH: usize> num_traits::Zero for BatchScalar<S, BATCH>
 where
     S: SimdElement + num_traits::Zero,
-    LaneCount<BATCH>: SupportedLaneCount,
     Simd<S, BATCH>:
         SimdFloat + SimdPartialEq<Mask = Mask<S::Mask, BATCH>> + Add<Output = Simd<S, BATCH>>,
 {

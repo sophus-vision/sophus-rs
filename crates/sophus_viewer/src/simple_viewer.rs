@@ -1,6 +1,6 @@
+use crossbeam_channel::Receiver;
 use eframe::egui;
 use sophus_renderer::RenderContext;
-use thingbuf::mpsc::blocking::Receiver;
 
 use crate::{
     packets::Packet,

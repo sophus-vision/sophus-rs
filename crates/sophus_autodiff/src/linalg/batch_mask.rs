@@ -1,11 +1,7 @@
 use core::{
     fmt,
     fmt::Debug,
-    simd::{
-        LaneCount,
-        Mask,
-        SupportedLaneCount,
-    },
+    simd::Mask,
 };
 
 use crate::prelude::IsBoolMask;
@@ -20,33 +16,24 @@ use crate::prelude::IsBoolMask;
 /// - Creating a fully `true` or fully `false` mask.
 ///
 /// # Generic Parameters
-/// - `N`: The number of lanes in the SIMD mask. Must implement [`SupportedLaneCount`].
+/// - `N`: The number of lanes in the SIMD mask.
 ///
 /// # Feature
 /// This type is only available when the `"simd"` feature is enabled.
 #[cfg(feature = "simd")]
-pub struct BatchMask<const N: usize>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub struct BatchMask<const N: usize> {
     // The underlying lane-wise mask storing `true` or `false` for each lane.
     pub(crate) inner: Mask<i64, N>,
 }
 
-impl<const N: usize> Debug for BatchMask<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> Debug for BatchMask<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Displays the mask in a user-friendly way.
         write!(f, "BatchMask({:?})", self.inner)
     }
 }
 
-impl<const BATCH: usize> IsBoolMask for BatchMask<BATCH>
-where
-    LaneCount<BATCH>: SupportedLaneCount,
-{
+impl<const BATCH: usize> IsBoolMask for BatchMask<BATCH> {
     fn all_true() -> Self {
         BatchMask {
             inner: Mask::from_array([true; BATCH]),

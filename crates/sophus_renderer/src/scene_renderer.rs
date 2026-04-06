@@ -90,6 +90,7 @@ impl SceneRenderer {
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &rgba.multisample_texture_view,
                 resolve_target: Some(&rgba.resolved_texture_view),
+                depth_slice: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
                         r: 0.0,
