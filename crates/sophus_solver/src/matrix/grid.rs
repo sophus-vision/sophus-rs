@@ -23,4 +23,9 @@ impl<Cell: Clone> Grid<Cell> {
     pub fn get_mut(&mut self, idx: &[usize; 2]) -> &mut Cell {
         &mut self.cells[idx[0] * self.size[1] + idx[1]]
     }
+
+    /// Grid dimensions `[rows, cols]`.
+    pub fn size(&self) -> [usize; 2] {
+        self.size
+    }
 }

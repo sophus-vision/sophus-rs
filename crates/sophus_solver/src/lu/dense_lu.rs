@@ -1,5 +1,4 @@
 use nalgebra::{
-    DMatrix,
     DMatrixView,
     DMatrixViewMut,
     DVectorViewMut,
@@ -8,12 +7,17 @@ use snafu::prelude::*;
 
 use crate::{
     DenseLuSnafu,
+    IsFactor,
+    LinearSolverEnum,
     LuDecompositionError,
     error::LinearSolverError,
     matrix::{
-        DenseSymmetricMatrixBuilder,
-        PartitionSpec,
+        PartitionSet,
         SymmetricMatrixBuilderEnum,
+        dense::{
+            DenseSymmetricMatrix,
+            DenseSymmetricMatrixBuilder,
+        },
     },
     prelude::*,
 };
@@ -23,32 +27,46 @@ use crate::{
 
 pub struct DenseLu {}
 
+/// Numeric factorization result for the dense LU solver.
+#[derive(Clone, Debug)]
+pub struct DenseLuSystem {
+    piv: Vec<usize>,
+    mat_lu: DenseSymmetricMatrix,
+}
+
 impl IsLinearSolver for DenseLu {
-    type Matrix = DMatrix<f64>;
+    type SymmetricMatrixBuilder = DenseSymmetricMatrixBuilder;
+    // type Matrix = DenseSquareMat;
 
     const NAME: &'static str = "dense LU";
 
-    fn matrix_builder(&self, partitions: &[PartitionSpec]) -> SymmetricMatrixBuilderEnum {
-        SymmetricMatrixBuilderEnum::Dense(DenseSymmetricMatrixBuilder::zero(partitions))
+    fn zero(&self, partitions: PartitionSet) -> SymmetricMatrixBuilderEnum {
+        SymmetricMatrixBuilderEnum::Dense(
+            DenseSymmetricMatrixBuilder::zero(partitions),
+            LinearSolverEnum::DenseLu(*self),
+        )
     }
 
-    fn solve_in_place(
-        &self,
-        _parallelize: bool,
-        mat_a: &Self::Matrix,
-        b: &mut nalgebra::DVector<f64>,
-    ) -> Result<(), LinearSolverError> {
-        let n = mat_a.nrows();
-        assert_eq!(n, mat_a.ncols());
-        assert_eq!(b.len(), n);
+    type Factor = DenseLuSystem;
 
-        let mut a = mat_a.clone();
+    fn factorize(&self, mat_a: &DenseSymmetricMatrix) -> Result<DenseLuSystem, LinearSolverError> {
+        let n = mat_a.scalar_dimension();
+        let mut mat_lu = mat_a.clone();
         let mut piv = vec![0usize; n];
         const EPS: f64 = 1e-12;
+        lu_in_place(mat_lu.view_mut(), &mut piv, EPS).context(DenseLuSnafu)?;
+        Ok(DenseLuSystem { piv, mat_lu })
+    }
 
-        lu_in_place(a.as_view_mut(), &mut piv, EPS).context(DenseLuSnafu)?;
+    /// Does not support parallel execution. This function is no-op.
+    fn set_parallelize(&mut self, _parallelize: bool) {}
+}
 
-        lu_solve_in_place(a.as_view(), &piv, b.as_view_mut());
+impl IsFactor for DenseLuSystem {
+    type Matrix = DenseSymmetricMatrix;
+
+    fn solve_inplace(&self, b: &mut nalgebra::DVector<f64>) -> Result<(), LinearSolverError> {
+        lu_solve_in_place(self.mat_lu.view(), &self.piv, b.as_view_mut());
         Ok(())
     }
 }
@@ -63,7 +81,7 @@ pub fn lu_in_place(
     piv: &mut [usize],
     rel_tol: f64,
 ) -> Result<(), LuDecompositionError> {
-    puffin::profile_scope!("LU fact");
+    profile_scope!("LU fact");
 
     let n = mat_a.nrows();
     assert_eq!(n, mat_a.ncols());
@@ -119,7 +137,7 @@ pub fn lu_solve_in_place(
     piv: &[usize],
     mut x: DVectorViewMut<'_, f64>,
 ) {
-    puffin::profile_scope!("LU solve");
+    profile_scope!("LU solve");
 
     let n = mat_lu.nrows();
     assert_eq!(n, mat_lu.ncols());
@@ -161,12 +179,12 @@ mod tests {
         DMatrix,
         DVector,
     };
+    use sophus_assert::assert_le;
 
     use super::{
         lu_in_place,
         lu_solve_in_place,
     };
-    use crate::assert_le;
 
     const EPS: f64 = 1e-12;
 

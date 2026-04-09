@@ -31,12 +31,13 @@ cargo test --release --features std <test_name> -- --nocapture
 
 ## Workspace Architecture
 
-15 crates under `crates/`, organized in layers:
+17 crates under `crates/`, organized in layers:
 
 **Foundation:**
 - `sophus_autodiff` — Forward-mode AD via dual numbers (`DualScalar<S, M, N>`); `no_std`-compatible
 - `sophus_tensor` — Dynamic-outer / static-inner tensor types bridging `ndarray` and fixed-size math
 - `sophus_assert` — Custom assertion macros (`assert_lt!`, etc.)
+- `sophus_bench` — Benchmarking utilities
 
 **Geometry:**
 - `sophus_lie` — Lie groups: SO(2), SO(3), SE(2), SE(3), quaternions; exp/log/adjoint/hat/vee
@@ -47,7 +48,7 @@ cargo test --release --features std <test_name> -- --nocapture
 - `sophus_sensor` — Camera models and projection/distortion abstractions
 - `sophus_spline` — Cubic B-splines
 - `sophus_timeseries` — Temporal data structures
-- `sophus_solver` — Dense/sparse LDLᵀ, LU, QR, block-sparse solvers, pseudo-inverse
+- `sophus_solver` — Block-sparse matrices, LDLᵀ factorization, LU, QR, SVD solvers, DirectSolve dispatch
 - `sophus_opt` — Non-linear least squares (NLLS), robust kernels, sparse optimization
 
 **Graphics:**

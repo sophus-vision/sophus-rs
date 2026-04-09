@@ -1,7 +1,9 @@
 [workspace]
 members = [
   "crates/sophus",
+  "crates/sophus_assert",
   "crates/sophus_autodiff",
+  "crates/sophus_bench",
   "crates/sophus_tensor",
   "crates/sophus_image",
   "crates/sophus_lie",
@@ -28,7 +30,9 @@ version = "0.16.0"
 
 [workspace.dependencies]
 sophus = {path = "crates/sophus", version = "0.16.0"}
+sophus_assert = {path = "crates/sophus_assert", version = "0.16.0"}
 sophus_autodiff = {path = "crates/sophus_autodiff", version = "0.16.0"}
+sophus_bench = {path = "crates/sophus_bench", version = "0.16.0"}
 sophus_geo = {path = "crates/sophus_geo", version = "0.16.0"}
 sophus_image = {path = "crates/sophus_image", version = "0.16.0"}
 sophus_lie = {path = "crates/sophus_lie", version = "0.16.0"}
@@ -79,6 +83,7 @@ serde = {version = "1.0.228", features = ["derive"]}
 snafu = "0.9"
 crossbeam-channel = "0.5"
 puffin = "0.20"
+web-time = "1.1"
 typenum = {version = "1.19", features = ["const-generics"]}
 wasm-bindgen-futures = "0.4.64"
 web-sys = "0.3.91"
