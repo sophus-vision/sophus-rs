@@ -87,7 +87,7 @@ pub trait IsDualVectorFromCurve<
     /// as a real vector of dimension `ROWS`.
     ///
     /// For example, if `f: ℝ -> ℝ^3`, then `curve_derivative()` is a 3D real vector.
-    fn curve_derivative(&self) -> S::RealVector<ROWS>;
+    fn curve_derivative(&self) -> nalgebra::SVector<S::RealScalar, ROWS>;
 }
 
 /// A convenience trait for dual vectors that store partial derivatives with respect to a
@@ -108,7 +108,7 @@ pub trait HasJacobian<
 >: IsVector<S, ROWS, BATCH, DM, 1>
 {
     /// Returns the [ROWS × DM] matrix collecting each component's derivative row.
-    fn jacobian(&self) -> S::RealMatrix<ROWS, DM>;
+    fn jacobian(&self) -> nalgebra::SMatrix<S::RealScalar, ROWS, DM>;
 }
 
 #[test]
@@ -217,7 +217,7 @@ fn dual_vector_tests() {
     }
 
     // Generate tests for single-lane f64 and batch-lane batch scalars
-    def_test_template!(f64, DualScalar<4,1>, 1);
+    def_test_template!(f64, DualScalar<f64,4,1>, 1);
     #[cfg(feature = "simd")]
     def_test_template!(BatchScalarF64<2>, DualBatchScalar<2, 4, 1>, 2);
     #[cfg(feature = "simd")]

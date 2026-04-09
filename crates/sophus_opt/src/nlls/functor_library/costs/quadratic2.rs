@@ -54,10 +54,10 @@ impl HasResidualFn<2, 1, (), VecF64<2>> for Quadratic2CostTerm {
         robust_kernel: Option<RobustKernel>,
     ) -> EvaluatedCostTerm<2, 1> {
         let residual = Self::residual::<f64, 0, 0>(args, self.z);
-        let dx_res_fn = |x: DualVector<2, 2, 1>| -> DualVector<2, 2, 1> {
-            Self::residual::<DualScalar<2, 1>, 2, 1>(
+        let dx_res_fn = |x: DualVector<f64, 2, 2, 1>| -> DualVector<f64, 2, 2, 1> {
+            Self::residual::<DualScalar<f64, 2, 1>, 2, 1>(
                 x,
-                DualVector::<2, 2, 1>::from_real_vector(self.z),
+                DualVector::<f64, 2, 2, 1>::from_real_vector(self.z),
             )
         };
 

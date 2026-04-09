@@ -80,7 +80,7 @@ impl HasResidualFn<1, 1, Arc<BiConvexLens2F64>, VecF64<1>> for ChiefRayCost {
         );
 
         let dx_res_fn = |x: VecF64<1>| -> VecF64<1> {
-            Self::residual::<DualScalar<1, 1>, 1, 1>(
+            Self::residual::<DualScalar<f64, 1, 1>, 1, 1>(
                 x,
                 &self.scene_point,
                 global_constants,

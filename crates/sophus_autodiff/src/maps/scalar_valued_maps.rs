@@ -169,7 +169,7 @@ fn scalar_valued_map_tests() {
         };
     }
 
-    def_scalar_valued_map_test_template!(1, f64, DualScalar<2,1>, DualScalar<3,2>);
+    def_scalar_valued_map_test_template!(1, f64, DualScalar<f64, 2,1>, DualScalar<f64, 3,2>);
     #[cfg(feature = "simd")]
     def_scalar_valued_map_test_template!(2, BatchScalarF64<2>, DualBatchScalar<2,2,1>,DualBatchScalar<2,3,2>);
     #[cfg(feature = "simd")]

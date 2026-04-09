@@ -54,9 +54,9 @@ impl HasEqConstraintResidualFn<1, 3, 1, (), VecF64<3>> for SphericalConstraint {
         var_kinds: [crate::variables::VarKind; 1],
     ) -> crate::nlls::constraint::evaluated_eq_constraint::EvaluatedEqConstraint<1, 3, 1> {
         let residual = Self::residual(vec3, self.radius);
-        let dx_res_fn = |x: DualVector<3, 3, 1>| -> DualVector<1, 3, 1> {
+        let dx_res_fn = |x: DualVector<f64, 3, 3, 1>| -> DualVector<f64, 1, 3, 1> {
             let radius_dual = DualScalar::from_f64(self.radius);
-            Self::residual::<DualScalar<3, 1>, 3, 1>(x, radius_dual)
+            Self::residual::<DualScalar<f64, 3, 1>, 3, 1>(x, radius_dual)
         };
 
         (|| dx_res_fn(DualVector::var(vec3)).jacobian(),).make_eq(idx, var_kinds, residual)

@@ -252,7 +252,8 @@ fn plane_test() {
             a,
             EPS_F64,
         );
-        let auto_grad = proj_x_onto::<DualScalar<3, 1>, 1, 3, 1>(DualVector::var(a)).jacobian();
+        let auto_grad =
+            proj_x_onto::<DualScalar<f64, 3, 1>, 1, 3, 1>(DualVector::var(a)).jacobian();
 
         approx::assert_abs_diff_eq!(finite_diff, auto_grad, epsilon = 0.00001);
         approx::assert_abs_diff_eq!(plane.dx_proj_x_onto(), auto_grad, epsilon = 0.00001);
@@ -273,7 +274,7 @@ fn plane_test() {
             }
 
             let auto_grad =
-                proj_x_onto::<DualScalar<6, 1>, 1, 6, 1>(DualVector::var(VecF64::zeros()))
+                proj_x_onto::<DualScalar<f64, 6, 1>, 1, 6, 1>(DualVector::var(VecF64::zeros()))
                     .jacobian();
 
             approx::assert_abs_diff_eq!(
@@ -306,7 +307,8 @@ fn plane_test() {
         }
 
         let auto_grad =
-            proj_x_onto::<DualScalar<3, 1>, 1, 3, 1>(DualVector::var(VecF64::zeros())).jacobian();
+            proj_x_onto::<DualScalar<f64, 3, 1>, 1, 3, 1>(DualVector::var(VecF64::zeros()))
+                .jacobian();
 
         approx::assert_abs_diff_eq!(
             Line::dx_proj_onto_line_at_0(&Isometry2::rot(0.2), &VecF64::<2>::new(1.0, 2.0)),

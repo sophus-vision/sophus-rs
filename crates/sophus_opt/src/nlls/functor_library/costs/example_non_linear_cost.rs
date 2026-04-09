@@ -55,8 +55,9 @@ impl HasResidualFn<2, 1, (), VecF64<2>> for ExampleNonLinearCostTerm {
         robust_kernel: Option<RobustKernel>,
     ) -> EvaluatedCostTerm<2, 1> {
         let residual = Self::residual::<f64, 0, 0>(args, self.z);
-        let dx_res_fn =
-            |x| Self::residual::<DualScalar<2, 1>, 2, 1>(x, DualVector::from_real_vector(self.z));
+        let dx_res_fn = |x| {
+            Self::residual::<DualScalar<f64, 2, 1>, 2, 1>(x, DualVector::from_real_vector(self.z))
+        };
 
         (|| dx_res_fn(DualVector::var(args)).jacobian(),).make(
             idx,

@@ -245,8 +245,8 @@ fn matrix_valued_map_from_vector_tests() {
 
     def_test_template!(
         f64,
-        DualScalar<6, 1>,
-        DualScalar<2, 2>,
+        DualScalar<f64, 6, 1>,
+        DualScalar<f64, 2, 2>,
         1);
     #[cfg(feature = "simd")]
     def_test_template!(

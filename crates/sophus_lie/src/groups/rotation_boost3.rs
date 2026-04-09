@@ -434,7 +434,7 @@ mod tests {
         RotationBoost3F64::test_suite();
         #[cfg(feature = "simd")]
         RotationBoost3::<BatchScalarF64<8>, 8, 0, 0>::test_suite();
-        RotationBoost3::<DualScalar<3, 1>, 1, 3, 1>::test_suite();
+        RotationBoost3::<DualScalar<f64, 3, 1>, 1, 3, 1>::test_suite();
         #[cfg(feature = "simd")]
         RotationBoost3::<DualBatchScalar<8, 1, 1>, 8, 1, 1>::test_suite();
     }

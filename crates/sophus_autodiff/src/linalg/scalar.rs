@@ -27,8 +27,11 @@ use crate::{
         DualVector,
     },
     linalg::{
+        EPS_F32,
         EPS_F64,
+        MatF32,
         MatF64,
+        VecF32,
         VecF64,
     },
     prelude::*,
@@ -104,8 +107,8 @@ pub trait IsScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     + DivAssign
     + Sized
     + Neg<Output = Self>
-    + AbsDiffEq<Epsilon = f64>
-    + RelativeEq<Epsilon = f64>
+    + AbsDiffEq
+    + RelativeEq
     + IsCoreScalar
     + 'static
     + Send
@@ -126,6 +129,9 @@ pub trait IsScalar<const BATCH: usize, const DM: usize, const DN: usize>:
 
     /// The real scalar type corresponding to `Self`.
     type RealScalar: IsRealScalar<BATCH>;
+    /// The primitive per-lane real scalar (e.g. `f64` for both `f64` and `BatchScalarF64<BATCH>`).
+    /// Used by [`from_real_array`](Self::from_real_array) / [`to_real_array`](Self::to_real_array).
+    type RealSingleScalar: IsRealScalar<1>;
     /// The real vector type corresponding to `Self`'s vector form.
     type RealVector<const ROWS: usize>: IsRealVector<Self::RealScalar, ROWS, BATCH>;
     /// The real matrix type corresponding to `Self`'s matrix form.
@@ -184,8 +190,8 @@ pub trait IsScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     /// Creates a new scalar from an `f64` value, zeroing out any dual/batch parts.
     fn from_f64(val: f64) -> Self;
 
-    /// Creates a new scalar from an array of real `f64`, used in batch contexts or single-lane.
-    fn from_real_array(arr: [f64; BATCH]) -> Self;
+    /// Creates a new scalar from an array of per-lane real values.
+    fn from_real_array(arr: [Self::RealSingleScalar; BATCH]) -> Self;
 
     /// Converts a real scalar into `Self`, zeroing out any dual/batch parts.
     fn from_real_scalar(val: Self::RealScalar) -> Self;
@@ -223,8 +229,8 @@ pub trait IsScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     /// relevant.
     fn to_dual_const<const M: usize, const N: usize>(&self) -> Self::DualScalar<M, N>;
 
-    /// Returns an array of real values for each lane in a batch. If single-lane, returns `[self]`.
-    fn to_real_array(&self) -> [f64; BATCH];
+    /// Returns an array of per-lane real values. If single-lane, returns `[self]`.
+    fn to_real_array(&self) -> [Self::RealSingleScalar; BATCH];
 
     /// Tangent.
     fn tan(&self) -> Self;
@@ -257,7 +263,7 @@ pub trait IsScalar<const BATCH: usize, const DM: usize, const DN: usize>:
 }
 
 /// Marker trait for real scalars (`f32`, `f64`, or batch forms thereof).
-pub trait IsRealScalar<const BATCH: usize>: IsScalar<BATCH, 0, 0> + Copy {}
+pub trait IsRealScalar<const BATCH: usize>: IsScalar<BATCH, 0, 0> + Copy + PartialOrd {}
 
 /// A trait for single-lane scalars (BATCH=1). This trait ensures certain
 /// single-scalar operations like floor, integer casting, etc.
@@ -270,9 +276,9 @@ pub trait IsSingleScalar<const DM: usize, const DN: usize>:
     /// The matrix type that works with single-lane scalars.
     type SingleMatrix<const ROWS: usize, const COLS: usize>: IsSingleMatrix<Self, ROWS, COLS, DM, DN>;
 
-    /// Returns the real “f64” part if any. For non-real types, you might keep partial derivative
-    /// out.
-    fn single_real_scalar(&self) -> f64;
+    /// Returns the real part of this scalar, stripping any dual/derivative components.
+    /// Returns `Self::RealScalar` (e.g. `f32` for `f32`, `f64` for `f64` or `DualScalar`).
+    fn single_real_scalar(&self) -> Self::RealScalar;
 
     /// Returns a copy of self as a scalar.
     fn single_scalar(&self) -> Self;
@@ -301,13 +307,15 @@ impl IsScalar<1, 0, 0> for f64 {
     type SingleScalar = f64;
 
     type RealScalar = f64;
+    type RealSingleScalar = f64;
     type RealVector<const ROWS: usize> = VecF64<ROWS>;
     type RealMatrix<const ROWS: usize, const COLS: usize> = MatF64<ROWS, COLS>;
 
-    type DualScalar<const M: usize, const N: usize> = DualScalar<M, N>;
-    type DualVector<const ROWS: usize, const M: usize, const N: usize> = DualVector<ROWS, M, N>;
+    type DualScalar<const M: usize, const N: usize> = DualScalar<f64, M, N>;
+    type DualVector<const ROWS: usize, const M: usize, const N: usize> =
+        DualVector<f64, ROWS, M, N>;
     type DualMatrix<const ROWS: usize, const COLS: usize, const M: usize, const N: usize> =
-        DualMatrix<ROWS, COLS, M, N>;
+        DualMatrix<f64, ROWS, COLS, M, N>;
 
     type Mask = bool;
 
@@ -461,13 +469,173 @@ impl IsSingleScalar<0, 0> for f64 {
     }
 }
 
+// Mark `f32` as real single-lane scalar:
+impl IsRealScalar<1> for f32 {}
+
+impl IsScalar<1, 0, 0> for f32 {
+    type Scalar = f32;
+    type Vector<const ROWS: usize> = VecF32<ROWS>;
+    type Matrix<const ROWS: usize, const COLS: usize> = MatF32<ROWS, COLS>;
+
+    type SingleScalar = f32;
+
+    type RealScalar = f32;
+    type RealSingleScalar = f32;
+    type RealVector<const ROWS: usize> = VecF32<ROWS>;
+    type RealMatrix<const ROWS: usize, const COLS: usize> = MatF32<ROWS, COLS>;
+
+    // f32 AD is unsupported; use the f64-based dual types as placeholders.
+    type DualScalar<const M: usize, const N: usize> = DualScalar<f64, M, N>;
+    type DualVector<const ROWS: usize, const M: usize, const N: usize> =
+        DualVector<f64, ROWS, M, N>;
+    type DualMatrix<const ROWS: usize, const COLS: usize, const M: usize, const N: usize> =
+        DualMatrix<f64, ROWS, COLS, M, N>;
+
+    type Mask = bool;
+
+    fn less_equal(&self, rhs: &Self) -> Self::Mask {
+        self <= rhs
+    }
+
+    fn greater_equal(&self, rhs: &Self) -> Self::Mask {
+        self >= rhs
+    }
+
+    fn scalar_examples() -> alloc::vec::Vec<f32> {
+        alloc::vec![1.0_f32, 2.0_f32, 3.0_f32]
+    }
+
+    fn abs(&self) -> f32 {
+        f32::abs(*self)
+    }
+
+    fn cos(&self) -> f32 {
+        f32::cos(*self)
+    }
+
+    fn exp(&self) -> f32 {
+        f32::exp(*self)
+    }
+
+    fn ln(&self) -> Self {
+        f32::ln(*self)
+    }
+
+    fn eps() -> f32 {
+        EPS_F32
+    }
+
+    fn sin(&self) -> f32 {
+        f32::sin(*self)
+    }
+
+    fn sqrt(&self) -> f32 {
+        f32::sqrt(*self)
+    }
+
+    fn from_f64(val: f64) -> f32 {
+        val as f32
+    }
+
+    fn from_real_scalar(val: f32) -> f32 {
+        val
+    }
+
+    fn atan2<S>(&self, x: S) -> Self
+    where
+        S: Borrow<f32>,
+    {
+        f32::atan2(*self, *x.borrow())
+    }
+
+    fn from_real_array(arr: [f32; 1]) -> Self {
+        arr[0]
+    }
+
+    fn to_real_array(&self) -> [f32; 1] {
+        [*self]
+    }
+
+    fn real_part(&self) -> f32 {
+        *self
+    }
+
+    fn to_vec(&self) -> VecF32<1> {
+        VecF32::<1>::new(*self)
+    }
+
+    fn tan(&self) -> Self {
+        f32::tan(*self)
+    }
+
+    fn tanh(&self) -> Self {
+        f32::tanh(*self)
+    }
+
+    fn acos(&self) -> Self {
+        f32::acos(*self)
+    }
+
+    fn asin(&self) -> Self {
+        f32::asin(*self)
+    }
+
+    fn atan(&self) -> Self {
+        f32::atan(*self)
+    }
+
+    fn fract(&self) -> Self {
+        f32::fract(*self)
+    }
+
+    fn floor(&self) -> f32 {
+        f32::floor(*self)
+    }
+
+    fn extract_single(&self, _i: usize) -> f32 {
+        *self
+    }
+
+    fn signum(&self) -> Self {
+        f32::signum(*self)
+    }
+
+    fn to_dual_const<const DM: usize, const DN: usize>(&self) -> Self::DualScalar<DM, DN> {
+        DualScalar::from_f64(*self as f64)
+    }
+
+    fn select(&self, mask: &Self::Mask, other: Self) -> Self {
+        if *mask { *self } else { other }
+    }
+}
+
+impl IsSingleScalar<0, 0> for f32 {
+    type SingleMatrix<const ROWS: usize, const COLS: usize> = MatF32<ROWS, COLS>;
+    type SingleVector<const ROWS: usize> = VecF32<ROWS>;
+
+    fn single_real_scalar(&self) -> f32 {
+        *self
+    }
+
+    fn single_scalar(&self) -> Self {
+        *self
+    }
+
+    fn i64_floor(&self) -> i64 {
+        self.floor() as i64
+    }
+}
+
 #[test]
 fn scalar_prop_tests() {
+    #[cfg(feature = "simd")]
+    use crate::linalg::BatchScalarF32;
     #[cfg(feature = "simd")]
     use crate::linalg::BatchScalarF64;
 
     // Test the f64 suite:
     f64::test_suite();
+    f32::test_suite();
 
     // If simd is enabled, also test batch forms:
     #[cfg(feature = "simd")]
@@ -475,5 +643,7 @@ fn scalar_prop_tests() {
         BatchScalarF64::<2>::test_suite();
         BatchScalarF64::<4>::test_suite();
         BatchScalarF64::<8>::test_suite();
+        BatchScalarF32::<4>::test_suite();
+        BatchScalarF32::<8>::test_suite();
     }
 }

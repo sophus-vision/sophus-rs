@@ -694,13 +694,13 @@ macro_rules! def_real_group_test_template {
 
 def_real_group_test_template!(
     f64,
-    DualScalar<1,1>,
-    DualScalar<2,1>,
-    DualScalar<2,2>,
+    DualScalar<f64, 1,1>,
+    DualScalar<f64, 2,1>,
+    DualScalar<f64, 2,2>,
     Rotation2F64,
-    Rotation2<DualScalar<1,1>, 1, 1, 1>,
-    Rotation2<DualScalar<2,1>, 1, 2, 1>,
-    Rotation2<DualScalar<2,2>, 1, 2, 2>,
+    Rotation2<DualScalar<f64, 1,1>, 1, 1, 1>,
+    Rotation2<DualScalar<f64, 2,1>, 1, 2, 1>,
+    Rotation2<DualScalar<f64, 2,2>, 1, 2, 2>,
     1);
 #[cfg(feature = "simd")]
 def_real_group_test_template!(
@@ -717,13 +717,13 @@ def_real_group_test_template!(
 
 def_real_group_test_template!(
     f64,
-    DualScalar<3, 1>,
-    DualScalar<4, 1>,
-    DualScalar<3, 3>,
+    DualScalar<f64, 3, 1>,
+    DualScalar<f64, 4, 1>,
+    DualScalar<f64, 3, 3>,
     Isometry2F64,
-    Isometry2<DualScalar<3,1>, 1, 3, 1>,
-    Isometry2<DualScalar<4,1>, 1, 4, 1>,
-    Isometry2<DualScalar<3,3>, 1, 3, 3>,
+    Isometry2<DualScalar<f64, 3,1>, 1, 3, 1>,
+    Isometry2<DualScalar<f64, 4,1>, 1, 4, 1>,
+    Isometry2<DualScalar<f64, 3,3>, 1, 3, 3>,
     1);
 #[cfg(feature = "simd")]
 def_real_group_test_template!(
@@ -740,13 +740,13 @@ def_real_group_test_template!(
 
 def_real_group_test_template!(
     f64,
-    DualScalar<3, 1>,
-    DualScalar<4, 1>,
-    DualScalar<3, 3>,
+    DualScalar<f64, 3, 1>,
+    DualScalar<f64, 4, 1>,
+    DualScalar<f64, 3, 3>,
     Rotation3F64,
-    Rotation3<DualScalar<3, 1>, 1, 3, 1>,
-    Rotation3<DualScalar<4, 1>, 1, 4, 1>,
-    Rotation3<DualScalar<3, 3>, 1, 3, 3>,
+    Rotation3<DualScalar<f64, 3, 1>, 1, 3, 1>,
+    Rotation3<DualScalar<f64, 4, 1>, 1, 4, 1>,
+    Rotation3<DualScalar<f64, 3, 3>, 1, 3, 3>,
     1);
 #[cfg(feature = "simd")]
 def_real_group_test_template!(
@@ -762,13 +762,13 @@ def_real_group_test_template!(
 );
 
 def_real_group_test_template!(f64,
-    DualScalar<6, 1>,
-    DualScalar<7, 1>,
-    DualScalar<4, 4>,
+    DualScalar<f64, 6, 1>,
+    DualScalar<f64, 7, 1>,
+    DualScalar<f64, 4, 4>,
     Isometry3F64,
-    Isometry3<DualScalar<6, 1>, 1, 6, 1>,
-    Isometry3<DualScalar<7, 1>, 1, 7, 1>,
-    Isometry3<DualScalar<4, 4>, 1, 4, 4>,
+    Isometry3<DualScalar<f64, 6, 1>, 1, 6, 1>,
+    Isometry3<DualScalar<f64, 7, 1>, 1, 7, 1>,
+    Isometry3<DualScalar<f64, 4, 4>, 1, 4, 4>,
     1);
 #[cfg(feature = "simd")]
 def_real_group_test_template!(

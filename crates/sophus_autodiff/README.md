@@ -82,7 +82,7 @@ let fd_jacobian = VectorValuedVectorMap::<f64, 1>::sym_diff_quotient_jacobian(
 
 // (2) Forward-mode autodiff using dual numbers:
 let auto_jacobian =
-    proj_fn::<DualScalar<3, 1>, 3, 1>(DualVector::var(input)).jacobian();
+    proj_fn::<DualScalar<f64, 3, 1>, 3, 1>(DualVector::var(input)).jacobian();
 
 // Compare the two results:
 approx::assert_abs_diff_eq!(fd_jacobian, auto_jacobian, epsilon = 1e-5);

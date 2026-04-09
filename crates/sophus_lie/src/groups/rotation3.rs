@@ -1080,9 +1080,10 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
     pub fn try_from_mat<M>(mat_r: M) -> Option<Rotation3<S, 1, DM, DN>>
     where
         M: Borrow<S::SingleMatrix<3, 3>>,
+        S::RealMatrix<3, 3>: Into<MatF64<3, 3>>,
     {
         let mat_r = mat_r.borrow();
-        if !Self::is_orthogonal_with_positive_det(&mat_r.single_real_matrix(), EPS_F64) {
+        if !Self::is_orthogonal_with_positive_det(&mat_r.single_real_matrix().into(), EPS_F64) {
             return None;
         }
         // Quaternions, Ken Shoemake
@@ -1239,7 +1240,7 @@ fn rotation3_prop_tests() {
     Rotation3F64::test_suite();
     #[cfg(feature = "simd")]
     Rotation3::<BatchScalarF64<8>, 8, 0, 0>::test_suite();
-    Rotation3::<DualScalar<3, 1>, 1, 3, 1>::test_suite();
+    Rotation3::<DualScalar<f64, 3, 1>, 1, 3, 1>::test_suite();
     #[cfg(feature = "simd")]
     Rotation3::<DualBatchScalar<8, 1, 1>, 8, 1, 1>::test_suite();
 

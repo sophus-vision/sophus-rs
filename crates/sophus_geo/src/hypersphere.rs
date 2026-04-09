@@ -119,7 +119,7 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DIM: usize, const DM: usize, 
     pub fn ray_intersect_with_eps<const DOF: usize>(
         &self,
         ray: &Ray<S, DOF, DIM, 1, DM, DN>,
-        eps: f64,
+        eps: S::RealScalar,
     ) -> Option<S::Vector<DIM>> {
         let t = self.line_intersect_parameters(ray)?;
         let t0 = &t[0];
@@ -149,14 +149,14 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DIM: usize, const DM: usize, 
         &self,
         ray: &Ray<S, DOF, DIM, 1, DM, DN>,
     ) -> Option<S::Vector<DIM>> {
-        self.ray_intersect_with_eps(ray, EPS_F64)
+        self.ray_intersect_with_eps(ray, S::RealScalar::from_f64(EPS_F64))
     }
 
     /// Calculates line intersection
     pub fn line_intersect_with_eps<const DOF: usize>(
         &self,
         ray: &Ray<S, DOF, DIM, 1, DM, DN>,
-        eps: f64,
+        eps: S::RealScalar,
     ) -> Option<LineHypersphereIntersection<S, DIM, DM, DN>> {
         let t = self.line_intersect_parameters(ray)?;
         let t0 = t[0];
@@ -175,6 +175,6 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DIM: usize, const DM: usize, 
         &self,
         ray: &Ray<S, DOF, DIM, 1, DM, DN>,
     ) -> Option<LineHypersphereIntersection<S, DIM, DM, DN>> {
-        self.line_intersect_with_eps(ray, EPS_F64)
+        self.line_intersect_with_eps(ray, S::RealScalar::from_f64(EPS_F64))
     }
 }

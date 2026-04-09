@@ -218,9 +218,9 @@ mod test {
                 let first_control_point_dual = DualVector::from_real_vector(points[p_idx]);
                 let mut segment_control_points = [VecF64::<3>::zeros(); 3];
                 let mut segment_control_points_dual = [
-                    DualVector::<3, 3, 1>::zero(),
-                    DualVector::<3, 3, 1>::zero(),
-                    DualVector::<3, 3, 1>::zero(),
+                    DualVector::<f64, 3, 3, 1>::zero(),
+                    DualVector::<f64, 3, 3, 1>::zero(),
+                    DualVector::<f64, 3, 3, 1>::zero(),
                 ];
                 for i in 0..3 {
                     segment_control_points[i] = points[p_idx + 1];
@@ -228,8 +228,8 @@ mod test {
                         DualVector::from_real_vector(segment_control_points[i]);
                 }
 
-                let f0 = |x| -> DualVector<3, 3, 1> {
-                    CubicBSplineFn::<DualScalar<3, 1>, 3, 3, 1>::interpolate(
+                let f0 = |x| -> DualVector<f64, 3, 3, 1> {
+                    CubicBSplineFn::<DualScalar<f64, 3, 1>, 3, 3, 1>::interpolate(
                         x,
                         segment_control_points_dual,
                         DualScalar::from_real_scalar(u),
@@ -240,10 +240,10 @@ mod test {
                 approx::assert_abs_diff_eq!(auto_dx0, analytic_dx0, epsilon = 0.0001);
 
                 for i in 0..3 {
-                    let fi = |x| -> DualVector<3, 3, 1> {
+                    let fi = |x| -> DualVector<f64, 3, 3, 1> {
                         let mut seg = segment_control_points_dual;
                         seg[i] = x;
-                        CubicBSplineFn::<DualScalar<3, 1>, 3, 3, 1>::interpolate(
+                        CubicBSplineFn::<DualScalar<f64, 3, 1>, 3, 3, 1>::interpolate(
                             first_control_point_dual,
                             seg,
                             DualScalar::from_real_scalar(u),
@@ -287,10 +287,10 @@ mod test {
         for p_idx in 0..points.len() - 4 {
             let mut segment_control_points = [VecF64::<3>::zeros(); 4];
             let mut segment_control_points_dual = [
-                DualVector::<3, 3, 1>::zero(),
-                DualVector::<3, 3, 1>::zero(),
-                DualVector::<3, 3, 1>::zero(),
-                DualVector::<3, 3, 1>::zero(),
+                DualVector::<f64, 3, 3, 1>::zero(),
+                DualVector::<f64, 3, 3, 1>::zero(),
+                DualVector::<f64, 3, 3, 1>::zero(),
+                DualVector::<f64, 3, 3, 1>::zero(),
             ];
 
             for i in 0..4 {
@@ -321,11 +321,12 @@ mod test {
                         let num_dx =
                             VectorValuedVectorMap::sym_diff_quotient_jacobian(f, points[0], 0.0001);
 
-                        let f = |v: DualVector<3, 3, 1>| {
-                            let mut base_dual = CubicBSplineSegment::<DualScalar<3, 1>, 3, 3, 1> {
-                                case,
-                                control_points: segment_control_points_dual,
-                            };
+                        let f = |v: DualVector<f64, 3, 3, 1>| {
+                            let mut base_dual =
+                                CubicBSplineSegment::<DualScalar<f64, 3, 1>, 3, 3, 1> {
+                                    case,
+                                    control_points: segment_control_points_dual,
+                                };
 
                             base_dual.control_points[i] = v;
                             base_dual.interpolate(DualScalar::from_real_scalar(u))

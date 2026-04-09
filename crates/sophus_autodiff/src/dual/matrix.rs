@@ -89,7 +89,7 @@ pub trait IsDualMatrixFromCurve<
     /// as a real matrix of shape `ROWS` x `COLS`.
     ///
     /// For example, if `f: ℝ -> ℝ³ˣ²`, then `curve_derivative()` is a 3x2 real matrix.
-    fn curve_derivative(&self) -> S::RealMatrix<ROWS, COLS>;
+    fn curve_derivative(&self) -> nalgebra::SMatrix<S::RealScalar, ROWS, COLS>;
 }
 
 #[test]
@@ -229,7 +229,7 @@ fn dual_matrix_tests() {
         };
     }
 
-    def_test_template!(f64, DualScalar<2,4>, DualScalar<4,1>, DualScalar<4,4>, 1);
+    def_test_template!(f64, DualScalar<f64,2,4>, DualScalar<f64,4,1>, DualScalar<f64,4,4>, 1);
     #[cfg(feature = "simd")]
     def_test_template!(BatchScalarF64<2>, DualBatchScalar<2, 2, 4>, DualBatchScalar<2, 4, 1>,DualBatchScalar<2, 4, 4>, 2);
     #[cfg(feature = "simd")]

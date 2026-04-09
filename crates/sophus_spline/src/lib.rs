@@ -233,7 +233,7 @@ impl<S: IsSingleScalar<DM, DN> + 'static, const DIMS: usize, const DM: usize, co
         };
         debug!("{idx_and_u:?}");
 
-        let eps = 0.00001;
+        let eps = S::RealScalar::from_f64(0.00001);
 
         if idx_and_u.u.single_real_scalar() > eps {
             debug!("case A");

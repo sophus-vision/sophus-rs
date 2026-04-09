@@ -174,7 +174,10 @@ impl<
         elements
     }
 
-    fn presentability_tests() {
+    fn presentability_tests()
+    where
+        S::RealVector<POINT>: approx::AbsDiffEq<Epsilon = f64>,
+    {
         if G::IS_ORIGIN_PRESERVING {
             for g in &Self::element_examples() {
                 let o = S::Vector::<POINT>::zeros();
@@ -182,7 +185,7 @@ impl<
                 approx::assert_abs_diff_eq!(
                     g.transform(o).real_vector(),
                     o.real_vector(),
-                    epsilon = 0.0001
+                    epsilon = 0.0001_f64
                 );
             }
         } else {
@@ -203,7 +206,11 @@ impl<
         }
     }
 
-    fn adjoint_tests() {
+    fn adjoint_tests()
+    where
+        S::RealMatrix<DOF, DOF>: approx::RelativeEq<Epsilon = f64>,
+        S::RealVector<DOF>: approx::RelativeEq<Epsilon = f64>,
+    {
         let group_examples = Self::element_examples();
         let basis: alloc::vec::Vec<S::Vector<DOF>> = (0..DOF)
             .map(|i| {
@@ -228,7 +235,7 @@ impl<
             assert_relative_eq!(
                 ad_impl.real_matrix(),
                 ad_ref.real_matrix(),
-                epsilon = 0.0001
+                epsilon = 0.0001_f64
             );
         }
         let tangent_examples: alloc::vec::Vec<S::Vector<DOF>> = G::tangent_examples();
@@ -243,13 +250,18 @@ impl<
                 assert_relative_eq!(
                     ad_a_b.real_vector(),
                     lie_bracket_a_b.real_vector(),
-                    epsilon = 0.0001
+                    epsilon = 0.0001_f64
                 );
             }
         }
     }
 
-    fn exp_tests() {
+    fn exp_tests()
+    where
+        S::RealMatrix<POINT, AMBIENT>: approx::RelativeEq<Epsilon = f64>,
+        S::RealVector<DOF>: approx::RelativeEq<Epsilon = f64>,
+        S::Matrix<POINT, AMBIENT>: approx::RelativeEq<Epsilon = f64>,
+    {
         let group_examples: alloc::vec::Vec<_> = Self::element_examples();
         let tangent_examples: alloc::vec::Vec<S::Vector<DOF>> = G::tangent_examples();
 
@@ -257,11 +269,11 @@ impl<
             let matrix_before = g.compact().real_matrix();
             let matrix_after = Self::exp(g.log()).compact().real_matrix();
 
-            assert_relative_eq!(matrix_before, matrix_after, epsilon = 0.0001);
+            assert_relative_eq!(matrix_before, matrix_after, epsilon = 0.0001_f64);
 
             let t = g.inverse().log().real_vector();
             let t2 = -(g.log().real_vector());
-            assert_relative_eq!(t, t2, epsilon = 0.0001);
+            assert_relative_eq!(t, t2, epsilon = 0.0001_f64);
         }
         for omega in tangent_examples {
             let exp_inverse = Self::exp(omega).inverse();
@@ -271,24 +283,30 @@ impl<
             assert_relative_eq!(
                 exp_inverse.compact(),
                 exp_neg_omega.compact(),
-                epsilon = 0.0001
+                epsilon = 0.0001_f64
             );
         }
     }
 
-    fn hat_tests() {
+    fn hat_tests()
+    where
+        S::RealVector<DOF>: approx::RelativeEq<Epsilon = f64>,
+    {
         let tangent_examples: alloc::vec::Vec<S::Vector<DOF>> = G::tangent_examples();
 
         for omega in tangent_examples {
             assert_relative_eq!(
                 omega.real_vector(),
                 Self::vee(Self::hat(omega)).real_vector(),
-                epsilon = 0.0001
+                epsilon = 0.0001_f64
             );
         }
     }
 
-    fn group_operation_tests() {
+    fn group_operation_tests()
+    where
+        S::Matrix<POINT, AMBIENT>: approx::RelativeEq<Epsilon = f64>,
+    {
         let group_examples: alloc::vec::Vec<_> = Self::element_examples();
 
         for g1 in &group_examples {
@@ -299,7 +317,7 @@ impl<
                     assert_relative_eq!(
                         left_hugging.compact(),
                         right_hugging.compact(),
-                        epsilon = 0.0001
+                        epsilon = 0.0001_f64
                     );
                 }
             }
@@ -311,14 +329,21 @@ impl<
                 assert_relative_eq!(
                     daz_from_foo_transform_1.compact(),
                     daz_from_foo_transform_2.compact(),
-                    epsilon = 0.0001
+                    epsilon = 0.0001_f64
                 );
             }
         }
     }
 
     /// run all tests
-    pub fn test_suite() {
+    pub fn test_suite()
+    where
+        S::RealVector<POINT>: approx::AbsDiffEq<Epsilon = f64>,
+        S::RealMatrix<DOF, DOF>: approx::RelativeEq<Epsilon = f64>,
+        S::RealVector<DOF>: approx::RelativeEq<Epsilon = f64>,
+        S::RealMatrix<POINT, AMBIENT>: approx::RelativeEq<Epsilon = f64>,
+        S::Matrix<POINT, AMBIENT>: approx::RelativeEq<Epsilon = f64>,
+    {
         // Most tests will trivially pass if there are no examples. So first we make sure we have at
         // least three examples per group.
         let group_examples: alloc::vec::Vec<_> = Self::element_examples();

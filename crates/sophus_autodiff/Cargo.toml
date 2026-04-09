@@ -18,7 +18,7 @@ num-traits.workspace = true
 snafu.workspace = true
 typenum.workspace = true
 
-sleef = {version = "0.3", optional = true}
+sleef = {version = "0.3.3", optional = true}
 
 [build-dependencies]
 rustc_version.workspace = true

@@ -42,7 +42,7 @@ fn galilei3_rop_tests() {
     Galilei3F64::test_suite();
     #[cfg(feature = "simd")]
     Galilean3::<BatchScalarF64<8>, 8, 0, 0>::test_suite();
-    Galilean3::<DualScalar<1, 1>, 1, 1, 1>::test_suite();
+    Galilean3::<DualScalar<f64, 1, 1>, 1, 1, 1>::test_suite();
     #[cfg(feature = "simd")]
     Galilean3::<DualBatchScalar<8, 1, 1>, 8, 1, 1>::test_suite();
 }
