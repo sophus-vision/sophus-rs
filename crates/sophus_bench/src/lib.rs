@@ -1,16 +1,24 @@
+#![deny(missing_docs)]
+#![allow(clippy::needless_range_loop)]
+#![doc = include_str!(concat!("../", std::env!("CARGO_PKG_README")))]
+
+#[cfg(not(target_arch = "wasm32"))]
 use puffin::GlobalFrameView;
 
 /// Printer for puffin benchmark.
+#[cfg(not(target_arch = "wasm32"))]
 pub struct PuffinPrinter {
     frame_view: GlobalFrameView,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for PuffinPrinter {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl PuffinPrinter {
     /// Create new PuffinPrinter.
     ///
@@ -26,7 +34,7 @@ impl PuffinPrinter {
         time_ns as f64 / 1.0e6
     }
 
-    /// Prints latest frame.
+    /// Print latest frame.
     pub fn print_latest(&self, name: &str) -> Result<(), &str> {
         let view = self.frame_view.lock();
         let frame = view.latest_frame().ok_or("No frame available")?;

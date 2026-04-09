@@ -27,9 +27,11 @@ ndarray.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
 snafu.workspace = true
+web-time.workspace = true
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+puffin.workspace = true
 rayon.workspace = true
 
 [build-dependencies]

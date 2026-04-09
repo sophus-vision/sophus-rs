@@ -2,3 +2,4 @@
 Cargo.lock
 .vscode/
 crates/sophus/dist/
+*.rlib

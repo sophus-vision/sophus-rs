@@ -1,5 +1,4 @@
 use nalgebra::{
-    DMatrix,
     DMatrixView,
     DMatrixViewMut,
     DVector,
@@ -11,19 +10,27 @@ use snafu::prelude::*;
 use crate::{
     DenseLdltSnafu,
     LdltDecompositionError,
+    LinearSolverEnum,
     LinearSolverError,
     kernel::{
-        diag_rightsolve_inplace,
+        diag_matsolve_inplaced,
+        diag_right_matsolve_inplace,
         diag_solve_inplaced,
+        lower_matsolve_inplace,
         lower_right_solve_inplace,
         lower_solve_inplace,
+        lower_transpose_matsolve_inplace,
         lower_transpose_rightsolve_inplace,
         lower_transpose_solve_inplace,
     },
+    ldlt::IsFactor,
     matrix::{
-        DenseSymmetricMatrixBuilder,
-        PartitionSpec,
+        PartitionSet,
         SymmetricMatrixBuilderEnum,
+        dense::{
+            DenseSymmetricMatrix,
+            DenseSymmetricMatrixBuilder,
+        },
     },
     prelude::*,
 };
@@ -42,67 +49,70 @@ impl Default for DenseLdlt {
 }
 
 /// Dense LDLᵀ factors: unit-lower `L` in the lower triangle of `mat_l`, diagonal in `diag_d`.
-pub struct LdltFactors {
-    mat_l: DMatrix<f64>,
-    diag_d: DVector<f64>,
-    tol_rel: f64,
+#[derive(Clone, Debug)]
+pub struct DenseLdltFactor {
+    pub(crate) mat_l: DenseSymmetricMatrix,
+    pub(crate) diag_d: DVector<f64>,
+    pub(crate) rank: usize,
+    pub(crate) _tol_rel: f64,
 }
 
-impl LdltFactors {
-    #[inline]
-    fn new(mat_l: DMatrix<f64>, tol_rel: f64) -> Self {
-        debug_assert_eq!(mat_l.nrows(), mat_l.ncols());
-        let n = mat_l.nrows();
-        Self {
-            mat_l,
-            diag_d: DVector::<f64>::zeros(n),
-            tol_rel,
-        }
+impl DenseLdltFactor {
+    /// Return rank of matrix A.
+    pub fn rank(&self) -> usize {
+        self.rank
     }
+}
 
-    #[inline]
-    fn decompose_in_place(&mut self) -> Result<u64, LdltDecompositionError> {
-        ldlt_decompose_inplace(
-            self.mat_l.as_view_mut(),
-            self.diag_d.as_view_mut(),
-            self.tol_rel,
-        )
-    }
+impl IsFactor for DenseLdltFactor {
+    type Matrix = DenseSymmetricMatrix;
 
-    #[inline]
-    fn solve_in_place(&self, b_in_x_out: &mut DVector<f64>) {
-        ldlt_solve_in_place(
-            self.mat_l.as_view(),
+    fn solve_inplace(
+        &self,
+        b_in_x_out: &mut nalgebra::DVector<f64>,
+    ) -> Result<(), LinearSolverError> {
+        ldlt_solve_inplace(
+            self.mat_l.view(),
             self.diag_d.as_view(),
             b_in_x_out.as_view_mut(),
-            self.tol_rel,
         );
+
+        Ok(())
     }
 }
 
 impl IsLinearSolver for DenseLdlt {
-    type Matrix = DMatrix<f64>;
+    type SymmetricMatrixBuilder = DenseSymmetricMatrixBuilder;
 
     const NAME: &'static str = "dense LDLᵀ";
 
-    fn matrix_builder(&self, partitions: &[PartitionSpec]) -> SymmetricMatrixBuilderEnum {
-        SymmetricMatrixBuilderEnum::Dense(DenseSymmetricMatrixBuilder::zero(partitions))
+    fn zero(&self, partitions: PartitionSet) -> SymmetricMatrixBuilderEnum {
+        SymmetricMatrixBuilderEnum::Dense(
+            DenseSymmetricMatrixBuilder::zero(partitions),
+            LinearSolverEnum::DenseLdlt(*self),
+        )
     }
 
-    fn solve_in_place(
-        &self,
-        _parallelize: bool,
-        mat_a: &Self::Matrix,
-        b_in_x_out: &mut DVector<f64>,
-    ) -> Result<(), LinearSolverError> {
-        let n = mat_a.nrows();
-        assert_eq!(n, mat_a.ncols());
-        assert_eq!(n, b_in_x_out.len());
+    type Factor = DenseLdltFactor;
 
-        let mut ldlt = LdltFactors::new(mat_a.clone(), self.tol_rel);
-        ldlt.decompose_in_place().context(DenseLdltSnafu)?;
-        ldlt.solve_in_place(b_in_x_out);
-        Ok(())
+    fn factorize(&self, mat_a: &DenseSymmetricMatrix) -> Result<Self::Factor, LinearSolverError> {
+        let mut diag_d = DVector::<f64>::zeros(mat_a.scalar_dimension());
+
+        let mut mat_l = mat_a.clone();
+        let rank = ldlt_decompose_inplace(mat_l.view_mut(), diag_d.as_view_mut(), self.tol_rel)
+            .context(DenseLdltSnafu)?;
+
+        Ok(DenseLdltFactor {
+            mat_l,
+            diag_d,
+            rank,
+            _tol_rel: self.tol_rel,
+        })
+    }
+
+    /// Does not support parallel execution.
+    fn set_parallelize(&mut self, _parallelize: bool) {
+        // no-op
     }
 }
 
@@ -117,7 +127,7 @@ pub fn ldlt_decompose_inplace(
     mut mat_a_lower: DMatrixViewMut<'_, f64>,
     mut mat_d: DVectorViewMut<'_, f64>,
     rel_tol: f64,
-) -> Result<u64, LdltDecompositionError> {
+) -> Result<usize, LdltDecompositionError> {
     let n = mat_a_lower.nrows();
 
     assert_eq!(n, mat_a_lower.ncols());
@@ -125,7 +135,7 @@ pub fn ldlt_decompose_inplace(
 
     // Tracks largest positive pivot to set a relative zero threshold.
     let mut max_abs_pivot: f64 = 1.0;
-    let mut rank: u64 = 0;
+    let mut rank: usize = 0;
 
     for j in 0..n {
         // Compute column j below the diagonal
@@ -172,15 +182,21 @@ pub fn ldlt_decompose_inplace(
         // Unit diagonal for L
         mat_a_lower[(j, j)] = 1.0;
     }
+
+    // Zero the strict upper part of L[j, j].
+    for r in 0..mat_a_lower.nrows() {
+        for c in (r + 1)..mat_a_lower.ncols() {
+            mat_a_lower[(r, c)] = 0.0;
+        }
+    }
     Ok(rank)
 }
 
 /// Solve A x = b using A = L D Lᵀ decomposition (in place on `x`).
-pub fn ldlt_solve_in_place(
+pub fn ldlt_solve_inplace(
     mat_l: DMatrixView<'_, f64>,
     mat_d: DVectorView<'_, f64>,
     mut x: DVectorViewMut<'_, f64>,
-    rel_tol: f64,
 ) {
     debug_assert_eq!(mat_l.nrows(), mat_l.ncols());
     debug_assert_eq!(mat_d.len(), mat_l.nrows());
@@ -190,22 +206,41 @@ pub fn ldlt_solve_in_place(
     lower_solve_inplace(&mat_l, &mut x);
 
     // z = D^{-1} y   (PSD-aware)
-    diag_solve_inplaced(mat_d, &mut x, rel_tol);
+    diag_solve_inplaced(mat_d, &mut x);
 
     // Backward: Lᵀ x = z
     lower_transpose_solve_inplace(&mat_l, &mut x);
 }
 
+/// Solve A X = B using A = L D Lᵀ decomposition (in place on `x`).
+pub fn ldlt_matsolve_inplace(
+    mat_l: DMatrixView<'_, f64>,
+    mat_d: DVectorView<'_, f64>,
+    mut mat_x: DMatrixViewMut<'_, f64>,
+) {
+    debug_assert_eq!(mat_l.nrows(), mat_l.ncols());
+    debug_assert_eq!(mat_d.len(), mat_l.nrows());
+    debug_assert_eq!(mat_x.nrows(), mat_l.nrows());
+
+    // Forward: L Y = LB
+    lower_matsolve_inplace(&mat_l, &mut mat_x);
+
+    // Z = D^{-1} Y   (PSD-aware)
+    diag_matsolve_inplaced(mat_d, &mut mat_x);
+
+    // Backward: Lᵀ X = Z
+    lower_transpose_matsolve_inplace(&mat_l, &mut mat_x);
+}
+
 /// In-place block right solve: X ← X * (Lᵈᵀ)^{-1} * diag(d)^{-1} * (Lᵈ)^{-1}
 #[inline]
-pub fn ldlt_right_solve_inplace(
+pub fn ldlt_right_matsolve_inplace(
     ld: DMatrixView<'_, f64>,       // unit-lower Lᵈ
     d: DVectorView<'_, f64>,        // diagonal d
     mut x: DMatrixViewMut<'_, f64>, // in/out
-    rel_tol: f64,
 ) {
     lower_transpose_rightsolve_inplace(ld.as_view(), &mut x);
-    diag_rightsolve_inplace(d, &mut x, rel_tol);
+    diag_right_matsolve_inplace(d, &mut x);
     lower_right_solve_inplace(ld, &mut x);
 }
 
@@ -215,14 +250,15 @@ mod tests {
         DMatrix,
         DVector,
     };
+    use sophus_assert::assert_le;
 
     use super::{
         ldlt_decompose_inplace,
-        ldlt_solve_in_place,
+        ldlt_solve_inplace,
+        *,
     };
-    use crate::assert_le;
 
-    const LDLT_EPS: f64 = 1e-12;
+    const LDLT_TOL: f64 = 1e-12;
 
     fn reconstruct_from_ldlt(mat_l: &DMatrix<f64>, diag: &DVector<f64>) -> DMatrix<f64> {
         let n = mat_l.nrows();
@@ -250,7 +286,7 @@ mod tests {
 
         let mut a_fact = a_spd.clone();
         let mut d = DVector::<f64>::zeros(3);
-        let rank = ldlt_decompose_inplace(a_fact.as_view_mut(), d.as_view_mut(), LDLT_EPS).unwrap();
+        let rank = ldlt_decompose_inplace(a_fact.as_view_mut(), d.as_view_mut(), LDLT_TOL).unwrap();
         assert_eq!(rank, 3);
 
         let a_rec = reconstruct_from_ldlt(&a_fact, &d);
@@ -267,7 +303,7 @@ mod tests {
 
         let mut mat_l = mat_a.clone();
         let mut d = DVector::<f64>::zeros(3);
-        let rank = ldlt_decompose_inplace(mat_l.as_view_mut(), d.as_view_mut(), LDLT_EPS).unwrap();
+        let rank = ldlt_decompose_inplace(mat_l.as_view_mut(), d.as_view_mut(), LDLT_TOL).unwrap();
         assert_eq!(rank, 2);
 
         let a_rec = reconstruct_from_ldlt(&mat_l, &d);
@@ -286,7 +322,7 @@ mod tests {
         let mut mat_l = mat_a.clone();
         let mut d = DVector::<f64>::zeros(2);
 
-        let res = ldlt_decompose_inplace(mat_l.as_view_mut(), d.as_view_mut(), LDLT_EPS);
+        let res = ldlt_decompose_inplace(mat_l.as_view_mut(), d.as_view_mut(), LDLT_TOL);
         assert!(
             res.is_err(),
             "expected failure on negative pivot (indefinite)"
@@ -302,7 +338,7 @@ mod tests {
         // Factor
         let mut mat_l = mat_a.clone();
         let mut d = DVector::zeros(3);
-        let rank = ldlt_decompose_inplace(mat_l.as_view_mut(), d.as_view_mut(), LDLT_EPS).unwrap();
+        let rank = ldlt_decompose_inplace(mat_l.as_view_mut(), d.as_view_mut(), LDLT_TOL).unwrap();
         assert_eq!(rank, 2);
 
         // Choose b in Range(A): b = A * u
@@ -311,10 +347,47 @@ mod tests {
 
         // Solve A x = b (min-norm)
         let mut x = b.clone();
-        ldlt_solve_in_place(mat_l.as_view(), d.as_view(), x.as_view_mut(), LDLT_EPS);
+        ldlt_solve_inplace(mat_l.as_view(), d.as_view(), x.as_view_mut());
 
         // Check Ax ≈ b
         let r = &mat_a * &x - &b;
         assert!(r.norm() < 1e-9, "residual too large: {}", r.norm());
+    }
+
+    #[test]
+    fn left_right_equivalence_on_spd() {
+        use nalgebra::{
+            DMatrix,
+            DVector,
+        };
+        let n = 6;
+        let k = 3;
+
+        // make a random unit-lower L and positive D
+        let mut l = DMatrix::<f64>::identity(n, n);
+        for i in 1..n {
+            for j in 0..i {
+                l[(i, j)] = (i + 2 * j + 1) as f64 / 17.0;
+            }
+        }
+        let d = DVector::from_fn(n, |i, _| 1.0 + 0.2 * (i as f64));
+
+        // random RHS B (n×k)
+        let b = DMatrix::<f64>::from_fn(n, k, |i, j| ((3 * i + 5 * j + 1) as f64) / 13.0);
+
+        // left: solve H X = B
+        let mut left = b.clone();
+        lower_matsolve_inplace(&l.as_view(), &mut left.as_view_mut());
+        diag_matsolve_inplaced(d.as_view(), &mut left.as_view_mut());
+        lower_transpose_matsolve_inplace(&l.as_view(), &mut left.as_view_mut());
+
+        // right: compute Bᵀ H^{-1} then transpose
+        let mut right_t = b.transpose();
+        lower_transpose_rightsolve_inplace(l.as_view(), &mut right_t.as_view_mut());
+        diag_right_matsolve_inplace(d.as_view(), &mut right_t.as_view_mut());
+        lower_right_solve_inplace(l.as_view(), &mut right_t.as_view_mut());
+        let right = right_t.transpose();
+
+        assert!((&left - &right).norm() < 1e-12);
     }
 }

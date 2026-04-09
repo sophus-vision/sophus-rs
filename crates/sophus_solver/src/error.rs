@@ -1,28 +1,37 @@
 use snafu::Snafu;
 
+use crate::matrix::PartitionBlockIndex;
+
 /// Linear solver error.
-#[derive(Snafu, Debug)]
+#[derive(Snafu, Debug, Clone)]
 #[snafu(visibility(pub(crate)))]
 pub enum LinearSolverError {
+    /// Solver does not support `inverse_block` (requires an LDLᵀ-based solver).
+    #[snafu(display("inverse_block not supported for solver '{solver}'"))]
+    UnsupportedForInverseBlock {
+        /// Solver name.
+        solver: String,
+    },
+
     /// Error in faer sparse LDLᵀ.
     #[snafu(display("faer sparse LDLᵀ: {}", faer_error))]
     FaerSparseLdltError {
         /// source
-        faer_error: FearSparseSolverError,
+        faer_error: FaerSparseSolverError,
     },
 
     /// Error in faer sparse LU.
     #[snafu(display("faer sparse LU: {}", faer_error))]
     FaerSparseLuError {
         /// source
-        faer_error: FearSparseSolverError,
+        faer_error: FaerSparseSolverError,
     },
 
     /// Error in faer sparse QR.
     #[snafu(display("sparse QR: {}", faer_error))]
     FaerSparseQrError {
         /// source
-        faer_error: FearSparseSolverError,
+        faer_error: FaerSparseSolverError,
     },
 
     /// Dense LU error
@@ -52,10 +61,29 @@ pub enum LinearSolverError {
         /// source
         source: BlockSparseLdltError,
     },
+
+    /// Marginalized variable block H_mm[b] is singular; Schur complement not applicable.
+    #[snafu(display("SingularMargBlock: partition={} block={}", partition, block))]
+    SingularMargBlock {
+        /// partition index
+        partition: usize,
+        /// block index within partition
+        block: usize,
+    },
+
+    /// The range-space KKT Schur complement M = G_f S_ff⁻¹ G_fᵀ is singular.
+    ///
+    /// This means the equality constraints are linearly dependent or
+    /// under-determined with respect to the free variables.
+    #[snafu(display("SingularKktConstraint: M = G_f S_ff⁻¹ G_fᵀ is singular (nc={})", nc))]
+    SingularKktConstraint {
+        /// number of constraint scalars
+        nc: usize,
+    },
 }
 
 /// Error of LU decomposition.
-#[derive(Snafu, Debug)]
+#[derive(Snafu, Debug, Clone)]
 #[snafu(visibility(pub(crate)))]
 pub enum LuDecompositionError {
     /// Pivot is near-singular.
@@ -64,7 +92,7 @@ pub enum LuDecompositionError {
 }
 
 /// Error of LDLᵀ decomposition.
-#[derive(Snafu, Debug)]
+#[derive(Snafu, Debug, Clone)]
 #[snafu(visibility(pub(crate)))]
 pub enum LdltDecompositionError {
     /// Pivot `d[j]` is not finite.
@@ -87,24 +115,22 @@ pub enum LdltDecompositionError {
 }
 
 /// Error of LDLᵀ decomposition.
-#[derive(Snafu, Debug)]
+#[derive(Snafu, Debug, Clone)]
 #[snafu(visibility(pub(crate)))]
 pub enum BlockSparseLdltError {
     /// Factorization failure
-    #[snafu(display("block diagonal ({}, {}): {}", partition_idx, local_block_idx, source))]
+    #[snafu(display("block diagonal ({:?}): {}", idx, source))]
     BlockDiagLdltError {
         /// source
         source: LdltDecompositionError,
         /// partition index
-        partition_idx: usize,
-        /// local block index
-        local_block_idx: usize,
+        idx: PartitionBlockIndex,
     },
 }
 
 /// Wrapper error type - for faer sparse solver errors.
-#[derive(Snafu, Debug)]
-pub enum FearSparseSolverError {
+#[derive(Snafu, Debug, Clone)]
+pub enum FaerSparseSolverError {
     /// An index exceeding the maximum value.
     IndexOverflow,
     /// Memory allocation failed.

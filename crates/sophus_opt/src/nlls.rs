@@ -33,7 +33,7 @@ use sophus_solver::{
     LinearSolverEnum,
     LinearSolverError,
     matrix::{
-        CompressibleMatrixEnum,
+        SymmetricMatrixEnum,
         block::BlockVector,
     },
 };
@@ -103,7 +103,7 @@ pub struct OptimizationSolution {
     /// the gradient vector
     pub final_neg_gradient: BlockVector,
     /// the hessian matrix
-    pub final_hessian_plus_damping: CompressibleMatrixEnum,
+    pub final_hessian_plus_damping: SymmetricMatrixEnum,
 }
 
 /// Linear solver error

@@ -20,6 +20,27 @@ pub fn lower_solve_inplace(l: &DMatrixView<'_, f64>, y: &mut DVectorViewMut<'_, 
     }
 }
 
+/// `Y := L^{-1} * Y`, where `L` is lower-triangular with unit diagonal.
+#[inline]
+pub fn lower_matsolve_inplace(l: &DMatrixView<'_, f64>, y: &mut DMatrixViewMut<'_, f64>) {
+    let n = l.nrows();
+    debug_assert_eq!(l.ncols(), n);
+    debug_assert_eq!(y.nrows(), n);
+
+    let (_rows, nrhs) = y.shape();
+    for c in 0..nrhs {
+        for i in 0..n {
+            let mut s = y[(i, c)];
+            for k in 0..i {
+                s -= l[(i, k)] * y[(k, c)];
+            }
+            // unit diag: no division
+            debug_assert!((l[(i, i)] - 1.0).abs() <= 1e-14);
+            y[(i, c)] = s;
+        }
+    }
+}
+
 /// `y := (Lᵀ)^{-1} y`, where `L` is lower-triangular with unit diagonal.
 #[inline]
 pub fn lower_transpose_solve_inplace(l: &DMatrixView<'_, f64>, y: &mut DVectorViewMut<'_, f64>) {
@@ -35,16 +56,52 @@ pub fn lower_transpose_solve_inplace(l: &DMatrixView<'_, f64>, y: &mut DVectorVi
     }
 }
 
+/// `Y := (Lᵀ)^{-1} * Y`, where `L` is lower-triangular with unit diagonal.
+#[inline]
+pub fn lower_transpose_matsolve_inplace(l: &DMatrixView<'_, f64>, y: &mut DMatrixViewMut<'_, f64>) {
+    let n = l.nrows();
+    debug_assert_eq!(l.ncols(), n);
+    debug_assert_eq!(y.nrows(), n);
+
+    let (_rows, nrhs) = y.shape();
+    for c in 0..nrhs {
+        for i in (0..n).rev() {
+            let mut s = y[(i, c)];
+            for k in (i + 1)..n {
+                s -= l[(k, i)] * y[(k, c)];
+            }
+            // unit diag: no division
+            debug_assert!((l[(i, i)] - 1.0).abs() <= 1e-14);
+            y[(i, c)] = s;
+        }
+    }
+}
+
 /// `y := diag(d)^{-1} y`
 ///
 /// Semi-definite aware: If `d[i] ~ 0`, then `y[i] = 0`.
 #[inline]
-pub fn diag_solve_inplaced(d: DVectorView<'_, f64>, y: &mut DVectorViewMut<'_, f64>, rel_tol: f64) {
-    let max_abs = d.iter().fold(0.0f64, |mx, &v| mx.max(v.abs())).max(1.0);
-    let dzero = max_abs * rel_tol;
+pub fn diag_solve_inplaced(d: DVectorView<'_, f64>, y: &mut DVectorViewMut<'_, f64>) {
     for i in 0..y.len() {
         let di = d[i];
-        y[i] = if di.abs() <= dzero { 0.0 } else { y[i] / di };
+        y[i] = if di == 0.0 { 0.0 } else { y[i] / di };
+    }
+}
+
+/// `Y := diag(d)^{-1} * Y`
+///
+/// Semi-definite aware: If `d[i] ~ 0`, then the i-th row of `Y` becomes 0.
+#[inline]
+pub fn diag_matsolve_inplaced(d: DVectorView<'_, f64>, y: &mut DMatrixViewMut<'_, f64>) {
+    let n = y.nrows();
+    debug_assert_eq!(d.len(), n);
+
+    let (_rows, nrhs) = y.shape();
+    for i in 0..n {
+        let inv = if d[i] == 0.0 { 0.0 } else { 1.0 / d[i] };
+        for c in 0..nrhs {
+            y[(i, c)] *= inv;
+        }
     }
 }
 
@@ -95,18 +152,12 @@ pub fn lower_transpose_rightsolve_inplace(
 ///
 /// Semi-definite aware: If `d[j] ~ 0`, then `Y[:,j] = 0`.
 #[inline]
-pub fn diag_rightsolve_inplace(
-    d: DVectorView<'_, f64>,
-    mat_y: &mut DMatrixViewMut<'_, f64>,
-    rel_tol: f64,
-) {
+pub fn diag_right_matsolve_inplace(d: DVectorView<'_, f64>, mat_y: &mut DMatrixViewMut<'_, f64>) {
     let (m, n) = mat_y.shape();
     debug_assert_eq!(d.len(), n);
 
-    let max_abs = d.iter().fold(0.0f64, |mx, &v| mx.max(v.abs())).max(1.0);
-    let dzero = max_abs * rel_tol;
     for j in 0..n {
-        let inv = if d[j].abs() <= dzero { 0.0 } else { 1.0 / d[j] };
+        let inv = if d[j] == 0.0 { 0.0 } else { 1.0 / d[j] };
         for r in 0..m {
             mat_y[(r, j)] *= inv;
         }
@@ -115,7 +166,7 @@ pub fn diag_rightsolve_inplace(
 
 /// `y -= A * diag(d) * Bᵀ`
 #[inline]
-pub fn sub_mat_diag_mat_t_in_place(
+pub fn sub_mat_diag_mat_t_inplace(
     y: &mut DMatrixViewMut<'_, f64>, // m×n
     mat_a: DMatrixView<'_, f64>,     // m×k
     d: DVectorView<'_, f64>,         // k
@@ -143,9 +194,38 @@ pub fn sub_mat_diag_mat_t_in_place(
     }
 }
 
+/// `y += A * diag(d) * Bᵀ``
+pub fn add_mat_diag_mat_t_inplace(
+    y: &mut DMatrixViewMut<'_, f64>,
+    mat_a: DMatrixView<'_, f64>,
+    d: DVectorView<'_, f64>,
+    mat_b: DMatrixView<'_, f64>,
+) {
+    debug_assert_eq!(y.nrows(), mat_a.nrows());
+    debug_assert_eq!(y.ncols(), mat_b.nrows());
+    debug_assert_eq!(mat_a.ncols(), mat_b.ncols());
+    debug_assert_eq!(mat_a.ncols(), d.len());
+
+    let m = y.nrows();
+    let n = y.ncols();
+    let k = mat_a.ncols();
+
+    for t in 0..k {
+        let d_t = d[t];
+        let vec_a_t = mat_a.column(t); // m
+        let vec_b_t = mat_b.column(t); // n
+        for j in 0..n {
+            let bj = vec_b_t[j] * d_t;
+            for i in 0..m {
+                y[(i, j)] += vec_a_t[i] * bj;
+            }
+        }
+    }
+}
+
 /// `y -= L * b`
 #[inline]
-pub fn sub_mat_plus_vec_in_place(
+pub fn sub_mat_plus_vec_inplace(
     y: &mut [f64],               // m
     mat_a: DMatrixView<'_, f64>, // m×n
     b: &[f64],                   // n

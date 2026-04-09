@@ -1,11 +1,6 @@
-use sophus_autodiff::linalg::MatF64;
 use sophus_solver::{
-    matrix::{
-        ColumnCompressedMatrix,
-        PartitionSpec,
-        SparseSymmetricMatrixBuilder,
-    },
-    positive_semidefinite::{
+    LinearSolverEnum,
+    ldlt::{
         EliminationTree,
         IsLdltTracer,
         LdltIndices,
@@ -14,6 +9,7 @@ use sophus_solver::{
         SparseLdlt,
     },
     prelude::*,
+    test_examples::positive_semidefinite::create_small_linear_system,
 };
 
 /// LDLᵀ ascii tracer.
@@ -122,38 +118,13 @@ impl IsLdltTracer<LdltWorkspace> for AsciiTracer {
 }
 
 fn main() {
-    let partitions = vec![PartitionSpec {
-        block_count: 2,
-        block_dimension: 3,
-    }];
-    let mut builder = SparseSymmetricMatrixBuilder::zero(&partitions);
+    let linear_system =
+        create_small_linear_system(&LinearSolverEnum::SparseLdlt(SparseLdlt::default()));
+    let mat_a = &linear_system.mat_a.as_sparse_lower().unwrap();
 
-    let a00 = MatF64::<3, 3>::from_array2([
-        [3.3, 0.0, 0.0], //
-        [0.0, 3.2, 0.0],
-        [1.1, 1.2, 3.1],
-    ]);
-    let a10 = MatF64::<3, 3>::from_array2([
-        [0.0, 0.0, 0.0], //
-        [0.0, 0.0, 0.0],
-        [0.0, 1.3, 0.0],
-    ]);
-    let a11 = MatF64::<3, 3>::from_array2([
-        [2.3, 0.0, 0.0], //
-        [0.9, 2.2, 0.0],
-        [0.0, 1.0, 2.1],
-    ]);
-
-    builder.add_lower_block(&[0, 0], [0, 0], &a00.as_view());
-    builder.add_lower_block(&[0, 0], [1, 0], &a10.as_view());
-    builder.add_lower_block(&[0, 0], [1, 1], &a11.as_view());
-
-    let lower_mat_a = ColumnCompressedMatrix::from_triplets(&builder.build());
-    let dense_lower_mat_a = lower_mat_a.triangular_to_dense_symmetric();
-
-    print!("lower(A) = \n{dense_lower_mat_a:.3}");
+    print!("A = \n{:.3}", mat_a.to_dense());
 
     let mut tracer = AsciiTracer {};
     let solver = SparseLdlt::default();
-    solver.factorize(&lower_mat_a, &mut tracer).unwrap();
+    let _fact = solver.factorize_impl(mat_a, &mut tracer);
 }
