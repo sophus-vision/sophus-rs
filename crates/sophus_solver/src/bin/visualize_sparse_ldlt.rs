@@ -126,5 +126,5 @@ fn main() {
 
     let mut tracer = AsciiTracer {};
     let solver = SparseLdlt::default();
-    let _fact = solver.factorize_impl(mat_a, &mut tracer);
+    let _fact = solver.factorize_impl(mat_a, &mut tracer, None);
 }

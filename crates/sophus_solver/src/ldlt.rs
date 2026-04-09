@@ -11,10 +11,39 @@ pub use block_diag_ldlt::*;
 pub use block_sparse_ldlt::*;
 pub use dense_ldlt::*;
 pub use elimination_tree::*;
+use faer::{
+    dyn_stack::{
+        MemBuffer,
+        MemStack,
+    },
+    sparse::linalg::amd,
+};
 pub use faer_sparse_ldlt::*;
 pub use sparse_ldlt::*;
 
 use crate::IsFactor;
+
+/// Run AMD fill-reducing ordering on a symbolic upper-triangular sparse matrix.
+///
+/// Returns `(perm, perm_inv)` where `perm[new_pos] = old_pos`.
+pub(crate) fn amd_order(
+    symbolic: faer::sparse::SymbolicSparseColMatRef<'_, usize>,
+) -> (Vec<usize>, Vec<usize>) {
+    let nb = symbolic.nrows();
+    let nnz = symbolic.col_ptr()[nb];
+    let mut perm = vec![0usize; nb];
+    let mut perm_inv = vec![0usize; nb];
+    let mut mem = MemBuffer::try_new(amd::order_scratch::<usize>(nb, nnz)).unwrap();
+    amd::order(
+        &mut perm,
+        &mut perm_inv,
+        symbolic,
+        amd::Control::default(),
+        MemStack::new(&mut mem),
+    )
+    .unwrap();
+    (perm, perm_inv)
+}
 
 /// Workspace for sparse LDLᵀ such as [SparseLdlt] or [BlockSparseLdlt].
 pub trait IsLdltWorkspace: Sized {

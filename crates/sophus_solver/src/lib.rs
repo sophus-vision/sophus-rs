@@ -33,6 +33,8 @@ use crate::{
         FaerSparseLdltSystem,
         SparseLdlt,
         SparseLdltFactor,
+        faer_sparse_ldlt::FaerSparseLdltSymbolic,
+        sparse_ldlt::SparseLdltSymbolic,
     },
     lu::{
         DenseLu,
@@ -401,6 +403,7 @@ impl LinearSolverEnum {
     pub(crate) fn factorize_inner(
         &self,
         inner: &DirectSolveMatrix,
+        cached_symb: Option<CachedSymbolicFactor>,
     ) -> Result<FactorEnum, LinearSolverError> {
         match self {
             LinearSolverEnum::DenseLdlt(dense_ldlt) => {
@@ -428,6 +431,13 @@ impl LinearSolverEnum {
                 Ok(FactorEnum::DenseLu(dense_lu.factorize(dense)?))
             }
             LinearSolverEnum::SparseLdlt(sparse_ldlt) => {
+                let cached = cached_symb.and_then(|c| {
+                    if let CachedSymbolicFactorInner::SparseLdlt(s) = c.0 {
+                        Some(s)
+                    } else {
+                        None
+                    }
+                });
                 let owned;
                 let sparse = if let DirectSolveMatrix::SparseLower(s) = inner {
                     s
@@ -437,7 +447,9 @@ impl LinearSolverEnum {
                 } else {
                     inner.as_sparse_lower().unwrap()
                 };
-                Ok(FactorEnum::SparseLdlt(sparse_ldlt.factorize(sparse)?))
+                Ok(FactorEnum::SparseLdlt(
+                    sparse_ldlt.factorize_with_cached_symb(sparse, cached)?,
+                ))
             }
             LinearSolverEnum::BlockSparseLdlt(block_sparse_ldlt) => {
                 Ok(FactorEnum::BlockSparseLdlt(
@@ -469,6 +481,13 @@ impl LinearSolverEnum {
                 Ok(FactorEnum::FaerSparseLu(faer_sparse_lu.factorize(faer)?))
             }
             LinearSolverEnum::FaerSparseLdlt(faer_sparse_ldlt) => {
+                let cached = cached_symb.and_then(|c| {
+                    if let CachedSymbolicFactorInner::FaerSparseLdlt(f) = c.0 {
+                        Some(f)
+                    } else {
+                        None
+                    }
+                });
                 let owned;
                 let faer = if let DirectSolveMatrix::FaerSparseUpper(s) = inner {
                     s
@@ -479,7 +498,7 @@ impl LinearSolverEnum {
                     inner.as_faer_sparse_upper().unwrap()
                 };
                 Ok(FactorEnum::FaerSparseLdlt(
-                    faer_sparse_ldlt.factorize(faer)?,
+                    faer_sparse_ldlt.factorize_with_cached_symb(faer, cached)?,
                 ))
             }
         }
@@ -491,7 +510,7 @@ impl LinearSolverEnum {
     /// on-the-fly so callers can always use the fast `BlockSparsePattern` populate path.
     pub fn factorize(&self, mat_a: &SymmetricMatrixEnum) -> Result<FactorEnum, LinearSolverError> {
         match mat_a {
-            SymmetricMatrixEnum::Direct(ds) => self.factorize_inner(&ds.inner),
+            SymmetricMatrixEnum::Direct(ds) => self.factorize_inner(&ds.inner, None),
         }
     }
 
@@ -552,6 +571,34 @@ pub enum FactorEnum {
     FaerSparseLu(FaerSparseLuSystem),
     /// Sparse solver using faer's LDLᵀ factorization.
     FaerSparseLdlt(FaerSparseLdltSystem),
+}
+
+#[derive(Clone, Debug)]
+enum CachedSymbolicFactorInner {
+    SparseLdlt(SparseLdltSymbolic),
+    FaerSparseLdlt(FaerSparseLdltSymbolic),
+}
+
+/// Cached symbolic factor (AMD ordering + sparsity analysis) for reuse across iterations.
+///
+/// The sparsity pattern of the Hessian does not change between optimizer iterations, so the
+/// expensive AMD ordering and symbolic factorization can be computed once and reused.
+#[derive(Clone, Debug)]
+pub struct CachedSymbolicFactor(CachedSymbolicFactorInner);
+
+impl FactorEnum {
+    /// Extract the cached symbolic factor for reuse in the next iteration.
+    pub fn into_symbolic(self) -> Option<CachedSymbolicFactor> {
+        match self {
+            FactorEnum::SparseLdlt(f) => f
+                .into_symbolic()
+                .map(|s| CachedSymbolicFactor(CachedSymbolicFactorInner::SparseLdlt(s))),
+            FactorEnum::FaerSparseLdlt(f) => Some(CachedSymbolicFactor(
+                CachedSymbolicFactorInner::FaerSparseLdlt(f.into_symbolic()),
+            )),
+            _ => None,
+        }
+    }
 }
 
 impl IsFactor for FactorEnum {

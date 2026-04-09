@@ -4,6 +4,7 @@ use nalgebra::{
 };
 
 use crate::{
+    CachedSymbolicFactor,
     IsFactor,
     LinearSolverEnum,
     error::LinearSolverError,
@@ -131,19 +132,27 @@ impl DirectSolveMatrix {
 /// Direct-solve wrapper: bundles a concrete symmetric matrix with solver state.
 ///
 /// Analogous to `Schur<M>` but for the non-Schur (direct factorization) path.
-/// `solve()` calls `LinearSolverEnum::factorize_inner`.
+/// `solve()` calls `LinearSolverEnum::factorize_inner`, caching the AMD
+/// symbolic factorization across optimizer iterations.
 #[derive(Debug)]
 pub struct DirectSolve {
     /// The underlying concrete matrix.
     pub inner: DirectSolveMatrix,
     /// Solver used for factorization.
     pub(crate) solver: LinearSolverEnum,
+    /// Cached AMD permutation + symbolic factorization.  Reused across calls to
+    /// avoid the expensive AMD step on subsequent optimizer iterations.
+    cached_h_symbolic: Option<CachedSymbolicFactor>,
 }
 
 impl DirectSolve {
     /// Create a new `DirectSolve` wrapper.
     pub fn new(inner: DirectSolveMatrix, solver: LinearSolverEnum) -> Self {
-        Self { inner, solver }
+        Self {
+            inner,
+            solver,
+            cached_h_symbolic: None,
+        }
     }
 }
 
@@ -192,7 +201,10 @@ impl IsSymmetricMatrix for DirectSolve {
         } else {
             self.solver
         };
-        let factor = effective_solver.factorize_inner(&self.inner)?;
-        factor.solve(rhs)
+        let cached_symb = self.cached_h_symbolic.take();
+        let factor = effective_solver.factorize_inner(&self.inner, cached_symb)?;
+        let dx = factor.solve(rhs)?;
+        self.cached_h_symbolic = factor.into_symbolic();
+        Ok(dx)
     }
 }

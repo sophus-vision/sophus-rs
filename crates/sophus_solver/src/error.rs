@@ -62,7 +62,7 @@ pub enum LinearSolverError {
         source: BlockSparseLdltError,
     },
 
-    /// Marginalized variable block H_mm[b] is singular; Schur complement not applicable.
+    /// Marginalized variable block `H_mm[b]` is singular; Schur complement not applicable.
     #[snafu(display("SingularMargBlock: partition={} block={}", partition, block))]
     SingularMargBlock {
         /// partition index
