@@ -70,6 +70,9 @@ pub type BrownConradyCameraF64 = BrownConradyCamera<f64, 1, 0, 0>;
 /// Enhanced unified camera model (EUCM) with f64 scalar type
 pub type EnhancedUnifiedCameraF64 = EnhancedUnifiedCamera<f64, 1, 0, 0>;
 
+/// Kannala-Brandt camera with f32 scalar type
+pub type KannalaBrandtCameraF32 = KannalaBrandtCamera<f32, 1, 0, 0>;
+
 impl<
     const DISTORT: usize,
     const PARAMS: usize,

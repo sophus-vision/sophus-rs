@@ -74,12 +74,15 @@ pub type MatF64<const ROWS: usize, const COLS: usize> = nalgebra::SMatrix<f64, R
 /// A small epsilon value (`1e-6`) for `f64` computations.
 pub const EPS_F64: f64 = 1e-6;
 
+/// A small epsilon value (`1e-6`) for `f32` computations.
+pub const EPS_F32: f32 = 1e-6_f32;
+
 #[cfg(feature = "simd")]
 /// A batch scalar type for SIMD usage.
 ///
 /// Each instance holds an underlying [`Simd<ScalarLike, BATCH>`] of length `BATCH`,
 /// allowing parallel operations on multiple lanes.
-#[derive(Clone, Debug, PartialEq, Copy)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Copy)]
 pub struct BatchScalar<ScalarLike: SimdElement, const BATCH: usize>(
     pub(crate) Simd<ScalarLike, BATCH>,
 );
@@ -116,6 +119,19 @@ pub type BatchVecF64<const ROWS: usize, const BATCH: usize> = BatchVec<f64, ROWS
 #[cfg(feature = "simd")]
 pub type BatchMatF64<const ROWS: usize, const COLS: usize, const BATCH: usize> =
     BatchMat<f64, ROWS, COLS, BATCH>;
+
+#[cfg(feature = "simd")]
+/// A batch scalar specialized for `f32` values.
+pub type BatchScalarF32<const BATCH: usize> = BatchScalar<f32, BATCH>;
+
+#[cfg(feature = "simd")]
+/// A batch vector specialized for `f32`, dimension `[ROWS]` with `BATCH` lanes.
+pub type BatchVecF32<const ROWS: usize, const BATCH: usize> = BatchVec<f32, ROWS, BATCH>;
+
+#[cfg(feature = "simd")]
+/// A batch matrix specialized for `f32`, dimension `[ROWS, COLS]` with `BATCH` lanes.
+pub type BatchMatF32<const ROWS: usize, const COLS: usize, const BATCH: usize> =
+    BatchMat<f32, ROWS, COLS, BATCH>;
 
 #[cfg(feature = "simd")]
 impl<S, const BATCH: usize> Add for BatchScalar<S, BATCH>
@@ -182,4 +198,10 @@ fn test_simd_core() {
         batch_scalar,
         BatchScalarF64::<4>::from_real_array([1.0, 2.0, 3.0, 4.0])
     );
+
+    BatchScalarF64::<2>::test_suite();
+    BatchScalarF64::<4>::test_suite();
+    BatchScalarF64::<8>::test_suite();
+    BatchScalarF32::<4>::test_suite();
+    BatchScalarF32::<8>::test_suite();
 }

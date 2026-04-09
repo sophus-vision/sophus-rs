@@ -274,12 +274,13 @@ where
 
     // The "real" portion of the scalar is `BatchScalarF64<BATCH>`.
     type RealScalar = BatchScalarF64<BATCH>;
+    type RealSingleScalar = f64;
     // Real (non-dual) vectors / matrices in the batch domain:
     type RealVector<const ROWS: usize> = BatchVecF64<ROWS, BATCH>;
     type RealMatrix<const ROWS: usize, const COLS: usize> = BatchMatF64<ROWS, COLS, BATCH>;
 
-    // Single-scalar version is the non-batch `DualScalar<DM, DN>`.
-    type SingleScalar = DualScalar<DM, DN>;
+    // Single-scalar version is the non-batch `DualScalar<f64, DM, DN>`.
+    type SingleScalar = DualScalar<f64, DM, DN>;
 
     // Another batch dual version:
     type DualScalar<const M: usize, const N: usize> = DualBatchScalar<BATCH, M, N>;
@@ -299,14 +300,12 @@ where
         }
     }
 
-    fn from_real_array(_arr: [f64; BATCH]) -> Self {
-        // Optional: allow constructing from an array of BATCH f64.
-        todo!("Construct from a per-lane array is not implemented yet.")
+    fn from_real_array(arr: [f64; BATCH]) -> Self {
+        Self::from_real_scalar(BatchScalarF64::from_real_array(arr))
     }
 
     fn to_real_array(&self) -> [f64; BATCH] {
-        // Optional: convert each lane of real_part to an array.
-        todo!("Convert dual batch scalar to real array is not implemented yet.")
+        self.real_part.to_real_array()
     }
 
     // Basic math ops: cos, sin, etc. We'll only define the real part's derivative if

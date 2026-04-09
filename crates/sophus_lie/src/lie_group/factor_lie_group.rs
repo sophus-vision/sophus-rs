@@ -175,9 +175,9 @@ macro_rules! def_real_group_test_template {
 
 def_real_group_test_template!(
     f64,
-    DualScalar<2,1>,
+    DualScalar<f64, 2,1>,
     Rotation2<f64, 1,0,0>,
-    Rotation2<DualScalar<2,1>, 1,2,1>,
+    Rotation2<DualScalar<f64, 2,1>, 1,2,1>,
     1);
 #[cfg(feature = "simd")]
 def_real_group_test_template!(
@@ -190,9 +190,9 @@ def_real_group_test_template!(
 
 def_real_group_test_template!(
     f64,
-    DualScalar<4, 1>,
+    DualScalar<f64, 4, 1>,
     Rotation3<f64, 1, 0, 0>,
-    Rotation3<DualScalar<4, 1>, 1, 4, 1>,
+    Rotation3<DualScalar<f64, 4, 1>, 1, 4, 1>,
     1);
 #[cfg(feature = "simd")]
 def_real_group_test_template!(

@@ -53,7 +53,7 @@ let finite_diff = VectorValuedVectorMap::<f64, 1>::sym_diff_quotient_jacobian(
 );
 // Automatic differentiation Jacobian
 let auto_diff =
-  proj_fn::<DualScalar<3, 1>, 3, 1>(DualVector::var(a)).jacobian();
+  proj_fn::<DualScalar<f64, 3, 1>, 3, 1>(DualVector::var(a)).jacobian();
 
 approx::assert_abs_diff_eq!(finite_diff, auto_diff, epsilon = 0.0001);
 ```
@@ -62,7 +62,7 @@ Note that `proj_fn` is a function that takes a 3D vector and returns a 2D vector
 The Jacobian of `proj_fn` is `2x3` matrix. When a (three dimensional) dual
 vector is passed to proj_fn, then a 2d dual vector is returned. Since we are
 expecting a `2x3` Jacobian, each element of the 2d dual vector must represent
-`3x1` Jacobian. This is why we use `DualScalar<3, 1>` as the scalar type.
+`3x1` Jacobian. This is why we use `DualScalar<f64, 3, 1>` as the scalar type.
 
 ## Lie Groups
 
@@ -182,7 +182,7 @@ impl HasResidualFn<3, 1, (), Isometry2F64> for Isometry2PriorCostTerm {
         let isometry: Isometry2F64 = args;
 
         let residual = Self::residual(isometry, self.isometry_prior_mean);
-        let dx_res_fn = |x: DualVector<3, 3, 1>| -> DualVector<3, 3, 1> {
+        let dx_res_fn = |x: DualVector<f64, 3, 3, 1>| -> DualVector<f64, 3, 3, 1> {
             Self::residual(
                 Isometry2::exp(x) * isometry.to_dual_c(),
                 self.isometry_prior_mean.to_dual_c(),

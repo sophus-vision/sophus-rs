@@ -18,7 +18,9 @@ use approx::{
 use crate::{
     dual::DualVector,
     linalg::{
+        MatF32,
         MatF64,
+        VecF32,
         VecF64,
     },
     prelude::*,
@@ -47,8 +49,8 @@ pub trait IsVector<
     + Add<Output = Self>
     + Sub<Output = Self>
     + Debug
-    + AbsDiffEq<Epsilon = f64>
-    + RelativeEq<Epsilon = f64>
+    + AbsDiffEq
+    + RelativeEq
 {
     /// Creates a new vector by concatenating two smaller vectors `top_row` and `bot_row`.
     /// The resulting vector has dimension `R0 + R1`.
@@ -214,7 +216,7 @@ pub trait IsSingleVector<
 >: IsVector<S, ROWS, 1, DM, DN>
 {
     /// Sets the real part of the element at `idx` to `v`.
-    fn set_real_scalar(&mut self, idx: usize, v: f64);
+    fn set_real_scalar(&mut self, idx: usize, v: S::RealScalar);
 }
 
 impl<const BATCH: usize> IsSingleVector<f64, BATCH, 0, 0> for VecF64<BATCH> {
@@ -387,4 +389,141 @@ pub fn cross<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, co
     let r2 = rhs.elem(2);
 
     S::Vector::from_array([l1 * r2 - l2 * r1, l2 * r0 - l0 * r2, l0 * r1 - l1 * r0])
+}
+
+impl<const BATCH: usize> IsSingleVector<f32, BATCH, 0, 0> for VecF32<BATCH> {
+    fn set_real_scalar(&mut self, idx: usize, v: f32) {
+        self[idx] = v;
+    }
+}
+
+impl<const ROWS: usize> IsRealVector<f32, ROWS, 1> for VecF32<ROWS> {}
+
+impl<const ROWS: usize> IsVector<f32, ROWS, 1, 0, 0> for VecF32<ROWS> {
+    fn block_vec2<const R0: usize, const R1: usize>(
+        top_row: VecF32<R0>,
+        bot_row: VecF32<R1>,
+    ) -> Self {
+        assert_eq!(ROWS, R0 + R1);
+        let mut m = Self::zeros();
+        m.fixed_view_mut::<R0, 1>(0, 0).copy_from(&top_row);
+        m.fixed_view_mut::<R1, 1>(R0, 0).copy_from(&bot_row);
+        m
+    }
+
+    fn block_vec3<const R0: usize, const R1: usize, const R2: usize>(
+        top_row: VecF32<R0>,
+        middle_row: VecF32<R1>,
+        bot_row: VecF32<R2>,
+    ) -> Self {
+        assert_eq!(ROWS, R0 + R1 + R2);
+        let mut m = Self::zeros();
+        m.fixed_view_mut::<R0, 1>(0, 0).copy_from(&top_row);
+        m.fixed_view_mut::<R1, 1>(R0, 0).copy_from(&middle_row);
+        m.fixed_view_mut::<R2, 1>(R1, 0).copy_from(&bot_row);
+        m
+    }
+
+    fn from_array<A>(vals: A) -> VecF32<ROWS>
+    where
+        A: Borrow<[f32; ROWS]>,
+    {
+        VecF32::<ROWS>::from_row_slice(&vals.borrow()[..])
+    }
+
+    fn from_real_array<A>(vals: A) -> Self
+    where
+        A: Borrow<[f32; ROWS]>,
+    {
+        VecF32::<ROWS>::from_row_slice(&vals.borrow()[..])
+    }
+
+    fn from_real_vector<A>(val: A) -> Self
+    where
+        A: Borrow<VecF32<ROWS>>,
+    {
+        *val.borrow()
+    }
+
+    fn from_f64_array<A>(vals: A) -> Self
+    where
+        A: Borrow<[f64; ROWS]>,
+    {
+        let vals = vals.borrow();
+        VecF32::<ROWS>::from_fn(|i, _| vals[i] as f32)
+    }
+
+    fn from_scalar_array<A>(vals: A) -> Self
+    where
+        A: Borrow<[f32; ROWS]>,
+    {
+        VecF32::<ROWS>::from_row_slice(&vals.borrow()[..])
+    }
+
+    fn elem(&self, idx: usize) -> f32 {
+        self[idx]
+    }
+
+    fn elem_mut(&mut self, idx: usize) -> &mut f32 {
+        &mut self[idx]
+    }
+
+    fn norm(&self) -> f32 {
+        nalgebra::Matrix::norm(self)
+    }
+
+    fn real_vector(&self) -> Self {
+        *self
+    }
+
+    fn squared_norm(&self) -> f32 {
+        self.norm_squared()
+    }
+
+    fn to_mat(&self) -> MatF32<ROWS, 1> {
+        *self
+    }
+
+    fn scaled(&self, v: f32) -> Self {
+        self * v
+    }
+
+    fn dot<V>(&self, rhs: V) -> f32
+    where
+        V: Borrow<Self>,
+    {
+        VecF32::dot(self, rhs.borrow())
+    }
+
+    fn normalized(&self) -> Self {
+        self.normalize()
+    }
+
+    fn from_f64(val: f64) -> Self {
+        VecF32::<ROWS>::from_element(val as f32)
+    }
+
+    fn to_dual_const<const M: usize, const N: usize>(
+        &self,
+    ) -> <f32 as IsScalar<1, 0, 0>>::DualVector<ROWS, M, N> {
+        DualVector::from_real_vector(self.map(|x| x as f64))
+    }
+
+    fn outer<const R2: usize, V>(&self, rhs: V) -> MatF32<ROWS, R2>
+    where
+        V: Borrow<VecF32<R2>>,
+    {
+        self * rhs.borrow().transpose()
+    }
+
+    fn select<Q>(&self, mask: &bool, other: Q) -> Self
+    where
+        Q: Borrow<Self>,
+    {
+        if *mask { *self } else { *other.borrow() }
+    }
+
+    fn get_fixed_subvec<const R: usize>(&self, start_r: usize) -> VecF32<R> {
+        self.fixed_rows::<R>(start_r).into()
+    }
 }

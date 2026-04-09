@@ -18,6 +18,7 @@ use approx::{
     AbsDiffEq,
     RelativeEq,
 };
+use nalgebra::SMatrix;
 use num_traits::{
     One,
     Zero,
@@ -30,11 +31,8 @@ use super::{
 };
 use crate::{
     linalg::{
-        EPS_F64,
-        MatF64,
         NumberCategory,
         SVec,
-        VecF64,
     },
     prelude::*,
 };
@@ -45,36 +43,46 @@ extern crate alloc;
 /// (the derivative or Jacobian block).
 ///
 /// # Structure
-/// - `real_part` (`f64`): The main (real) value.
-/// - `infinitesimal_part` (`Option<MatF64<DM, DN>>`): Stores the derivative information, shaped
+/// - `real_part` (`R`): The main (real) value.
+/// - `infinitesimal_part` (`Option<SMatrix<R, DM, DN>>`): Stores the derivative information, shaped
 ///   `[DM × DN]`.
 ///   - If `DM=1, DN=1`, this represents a single partial derivative d/dx.
 ///   - If `DM>1` or `DN>1`, it can represent more complex derivatives (e.g., gradients, Jacobians).
 ///
 /// # Generic Parameters
+/// - `R`: The underlying real scalar type (e.g. `f64` or `f32`).
 /// - `DM`: The number of derivative rows.
 /// - `DN`: The number of derivative columns.
 ///
-/// For instance, `DualScalar<3, 1>` might store partials w.r.t. a 3D input, resulting in a 3×1
-/// derivative for each scalar.
+/// For instance, `DualScalar<f64, 3, 1>` might store partials w.r.t. a 3D input, resulting in a
+/// 3×1 derivative for each scalar.
 ///
 /// See [crate::dual::IsDualScalar] for more details.
 #[derive(Clone, Debug, Copy)]
-pub struct DualScalar<const DM: usize, const DN: usize> {
+pub struct DualScalar<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> {
     /// The real (non-infinitesimal) part of the dual number.
-    pub real_part: f64,
+    pub real_part: R,
 
     /// The infinitesimal part, storing derivative information if present.
     ///
     /// If `None`, the derivative is assumed to be zero.
-    pub infinitesimal_part: Option<MatF64<DM, DN>>,
+    pub infinitesimal_part: Option<SMatrix<R, DM, DN>>,
 }
 
-impl<const DM: usize, const DN: usize> AbsDiffEq for DualScalar<DM, DN> {
-    type Epsilon = f64;
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> AbsDiffEq for DualScalar<R, DM, DN>
+{
+    type Epsilon = R;
 
     fn default_epsilon() -> Self::Epsilon {
-        EPS_F64
+        <R as IsScalar<1, 0, 0>>::eps()
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
@@ -82,9 +90,14 @@ impl<const DM: usize, const DN: usize> AbsDiffEq for DualScalar<DM, DN> {
     }
 }
 
-impl<const DM: usize, const DN: usize> RelativeEq for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> RelativeEq for DualScalar<R, DM, DN>
+{
     fn default_max_relative() -> Self::Epsilon {
-        EPS_F64
+        <R as IsScalar<1, 0, 0>>::eps()
     }
 
     fn relative_eq(
@@ -98,7 +111,12 @@ impl<const DM: usize, const DN: usize> RelativeEq for DualScalar<DM, DN> {
     }
 }
 
-impl<const DM: usize, const DN: usize> IsCoreScalar for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> IsCoreScalar for DualScalar<R, DM, DN>
+{
     fn number_category() -> NumberCategory {
         // We treat dual numbers as "Real" in the sense that they
         // can represent floating scalars with derivatives.
@@ -106,17 +124,27 @@ impl<const DM: usize, const DN: usize> IsCoreScalar for DualScalar<DM, DN> {
     }
 }
 
-impl<const DM: usize, const DN: usize> SubAssign<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> SubAssign<DualScalar<R, DM, DN>> for DualScalar<R, DM, DN>
+{
     fn sub_assign(&mut self, rhs: Self) {
         *self = (*self).sub(&rhs);
     }
 }
 
-impl<const DM: usize, const DN: usize> IsSingleScalar<DM, DN> for DualScalar<DM, DN> {
-    type SingleVector<const ROWS: usize> = DualVector<ROWS, DM, DN>;
-    type SingleMatrix<const ROWS: usize, const COLS: usize> = DualMatrix<ROWS, COLS, DM, DN>;
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> IsSingleScalar<DM, DN> for DualScalar<R, DM, DN>
+{
+    type SingleVector<const ROWS: usize> = DualVector<R, ROWS, DM, DN>;
+    type SingleMatrix<const ROWS: usize, const COLS: usize> = DualMatrix<R, ROWS, COLS, DM, DN>;
 
-    fn single_real_scalar(&self) -> f64 {
+    fn single_real_scalar(&self) -> R {
         self.real_part
     }
 
@@ -125,72 +153,105 @@ impl<const DM: usize, const DN: usize> IsSingleScalar<DM, DN> for DualScalar<DM,
     }
 
     fn i64_floor(&self) -> i64 {
-        self.real_part.floor() as i64
+        self.real_part.i64_floor()
     }
 }
 
-impl<const DM: usize, const DN: usize> AsRef<DualScalar<DM, DN>> for DualScalar<DM, DN> {
-    fn as_ref(&self) -> &DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> AsRef<DualScalar<R, DM, DN>> for DualScalar<R, DM, DN>
+{
+    fn as_ref(&self) -> &DualScalar<R, DM, DN> {
         self
     }
 }
 
-impl<const DM: usize, const DN: usize> One for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> One for DualScalar<R, DM, DN>
+{
     fn one() -> Self {
         Self::from_f64(1.0)
     }
 }
 
-impl<const DM: usize, const DN: usize> Zero for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> Zero for DualScalar<R, DM, DN>
+{
     fn zero() -> Self {
         Self::from_f64(0.0)
     }
 
     fn is_zero(&self) -> bool {
-        self.real_part == 0.0
+        self.real_part == <R as IsScalar<1, 0, 0>>::from_f64(0.0)
     }
 }
 
-impl<const DM: usize, const DN: usize> IsDualScalar<1, DM, DN> for DualScalar<DM, DN> {
-    fn var(val: f64) -> Self {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> IsDualScalar<1, DM, DN> for DualScalar<R, DM, DN>
+{
+    fn var(val: R) -> Self {
         // Creating a "variable" means setting derivative=identity w.r.t. this scalar.
         Self {
             real_part: val,
-            infinitesimal_part: Some(MatF64::<DM, DN>::from_f64(1.0)),
+            infinitesimal_part: Some(SMatrix::<R, DM, DN>::from_element(<R as IsScalar<
+                1,
+                0,
+                0,
+            >>::from_f64(
+                1.0
+            ))),
         }
     }
 
     fn vector_var<const ROWS: usize>(val: Self::RealVector<ROWS>) -> Self::Vector<ROWS> {
-        DualVector::<ROWS, DM, DN>::var(val)
+        DualVector::<R, ROWS, DM, DN>::var(val)
     }
 
     fn matrix_var<const ROWS: usize, const COLS: usize>(
         val: Self::RealMatrix<ROWS, COLS>,
     ) -> Self::Matrix<ROWS, COLS> {
-        DualMatrix::<ROWS, COLS, DM, DN>::var(val)
+        DualMatrix::<R, ROWS, COLS, DM, DN>::var(val)
     }
 
-    fn derivative(&self) -> MatF64<DM, DN> {
+    fn derivative(&self) -> nalgebra::SMatrix<R, DM, DN> {
         self.infinitesimal_part
-            .unwrap_or_else(MatF64::<DM, DN>::zeros)
+            .unwrap_or_else(SMatrix::<R, DM, DN>::zeros)
     }
 }
 
-impl IsDualScalarFromCurve<DualScalar<1, 1>, 1> for DualScalar<1, 1> {
-    fn curve_derivative(&self) -> f64 {
+impl<R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>>
+    IsDualScalarFromCurve<DualScalar<R, 1, 1>, 1> for DualScalar<R, 1, 1>
+{
+    fn curve_derivative(&self) -> R {
         // The derivative matrix is 1×1, so we just return that single element.
         self.derivative()[0]
     }
 }
 
-impl<const DM: usize, const DN: usize> DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> DualScalar<R, DM, DN>
+{
     /// Internal helper to combine derivative parts from two dual scalars during binary ops.
     fn binary_dij(
-        lhs_dx: &Option<MatF64<DM, DN>>,
-        rhs_dx: &Option<MatF64<DM, DN>>,
-        mut left_op: impl FnMut(&MatF64<DM, DN>) -> MatF64<DM, DN>,
-        mut right_op: impl FnMut(&MatF64<DM, DN>) -> MatF64<DM, DN>,
-    ) -> Option<MatF64<DM, DN>> {
+        lhs_dx: &Option<SMatrix<R, DM, DN>>,
+        rhs_dx: &Option<SMatrix<R, DM, DN>>,
+        mut left_op: impl FnMut(&SMatrix<R, DM, DN>) -> SMatrix<R, DM, DN>,
+        mut right_op: impl FnMut(&SMatrix<R, DM, DN>) -> SMatrix<R, DM, DN>,
+    ) -> Option<SMatrix<R, DM, DN>> {
         match (lhs_dx, rhs_dx) {
             (None, None) => None,
             (None, Some(rhs_dij)) => Some(right_op(rhs_dij)),
@@ -200,7 +261,12 @@ impl<const DM: usize, const DN: usize> DualScalar<DM, DN> {
     }
 }
 
-impl<const DM: usize, const DN: usize> Neg for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> Neg for DualScalar<R, DM, DN>
+{
     type Output = Self;
 
     fn neg(self) -> Self::Output {
@@ -211,55 +277,72 @@ impl<const DM: usize, const DN: usize> Neg for DualScalar<DM, DN> {
     }
 }
 
-impl<const DM: usize, const DN: usize> PartialEq for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> PartialEq for DualScalar<R, DM, DN>
+{
     fn eq(&self, other: &Self) -> bool {
         self.real_part == other.real_part
     }
 }
 
-impl<const DM: usize, const DN: usize> PartialOrd for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> PartialOrd for DualScalar<R, DM, DN>
+{
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         self.real_part.partial_cmp(&other.real_part)
     }
 }
 
-impl<const DM: usize, const DN: usize> From<f64> for DualScalar<DM, DN> {
+impl<R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>> From<f64>
+    for DualScalar<R, 0, 0>
+{
     fn from(value: f64) -> Self {
-        Self::from_real_scalar(value)
+        Self::from_real_scalar(<R as IsScalar<1, 0, 0>>::from_f64(value))
     }
 }
 
-/// Defines the main scalar trait for `DualScalar<DM, DN>` in single-lane usage (BATCH=1).
-impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN> {
+/// Defines the main scalar trait for `DualScalar<R, DM, DN>` in single-lane usage (BATCH=1).
+impl<R, const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<R, DM, DN>
+where
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    R::RealVector<1>: IsRealVector<R, 1, 1>,
+{
     type Scalar = Self;
-    type Vector<const ROWS: usize> = DualVector<ROWS, DM, DN>;
-    type Matrix<const ROWS: usize, const COLS: usize> = DualMatrix<ROWS, COLS, DM, DN>;
+    type Vector<const ROWS: usize> = DualVector<R, ROWS, DM, DN>;
+    type Matrix<const ROWS: usize, const COLS: usize> = DualMatrix<R, ROWS, COLS, DM, DN>;
 
-    type RealScalar = f64;
-    type RealMatrix<const ROWS: usize, const COLS: usize> = MatF64<ROWS, COLS>;
-    type RealVector<const ROWS: usize> = VecF64<ROWS>;
+    type RealScalar = R;
+    type RealSingleScalar = R;
+    type RealMatrix<const ROWS: usize, const COLS: usize> = R::RealMatrix<ROWS, COLS>;
+    type RealVector<const ROWS: usize> = R::RealVector<ROWS>;
 
     type SingleScalar = Self;
 
-    type DualScalar<const M: usize, const N: usize> = DualScalar<M, N>;
-    type DualVector<const ROWS: usize, const M: usize, const N: usize> = DualVector<ROWS, M, N>;
+    type DualScalar<const M: usize, const N: usize> = DualScalar<R, M, N>;
+    type DualVector<const ROWS: usize, const M: usize, const N: usize> = DualVector<R, ROWS, M, N>;
     type DualMatrix<const ROWS: usize, const COLS: usize, const M: usize, const N: usize> =
-        DualMatrix<ROWS, COLS, M, N>;
+        DualMatrix<R, ROWS, COLS, M, N>;
 
     type Mask = bool;
 
-    fn from_real_scalar(val: f64) -> Self {
+    fn from_real_scalar(val: R) -> Self {
         Self {
             real_part: val,
             infinitesimal_part: None,
         }
     }
 
-    fn from_real_array(arr: [f64; 1]) -> Self {
-        Self::from_f64(arr[0])
+    fn from_real_array(arr: [R; 1]) -> Self {
+        Self::from_real_scalar(arr[0])
     }
 
-    fn to_real_array(&self) -> [f64; 1] {
+    fn to_real_array(&self) -> [R; 1] {
         [self.real_part]
     }
 
@@ -320,7 +403,8 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
     {
         let rhs = rhs.borrow();
         // The usual derivative of atan2(y, x) wrt y => x / (x^2 + y^2), wrt x => -y / (x^2 + y^2)
-        let inv_sq_nrm = 1.0 / (self.real_part * self.real_part + rhs.real_part * rhs.real_part);
+        let inv_sq_nrm = <R as IsScalar<1, 0, 0>>::from_f64(1.0)
+            / (self.real_part * self.real_part + rhs.real_part * rhs.real_part);
         Self {
             real_part: self.real_part.atan2(rhs.real_part),
             infinitesimal_part: Self::binary_dij(
@@ -332,22 +416,23 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
         }
     }
 
-    fn real_part(&self) -> f64 {
+    fn real_part(&self) -> R {
         self.real_part
     }
 
     fn sqrt(&self) -> Self {
         let sqrt_val = self.real_part.sqrt();
         // d/dx of sqrt(x) = 1 / (2 sqrt(x))
-        let half_inv_sqrt = 1.0 / (2.0 * sqrt_val);
+        let half_inv_sqrt = <R as IsScalar<1, 0, 0>>::from_f64(1.0)
+            / (<R as IsScalar<1, 0, 0>>::from_f64(2.0) * sqrt_val);
         Self {
             real_part: sqrt_val,
             infinitesimal_part: self.infinitesimal_part.map(|dij| dij * half_inv_sqrt),
         }
     }
 
-    fn to_vec(&self) -> DualVector<1, DM, DN> {
-        DualVector::<1, DM, DN> {
+    fn to_vec(&self) -> DualVector<R, 1, DM, DN> {
+        DualVector::<R, 1, DM, DN> {
             inner: SVec::<Self, 1>::from_element(*self),
         }
     }
@@ -355,7 +440,7 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
     fn tan(&self) -> Self {
         let cos_val = self.real_part.cos();
         // d/dx (tan x) = sec^2(x) = 1 / cos^2(x)
-        let sec_sq = 1.0 / (cos_val * cos_val);
+        let sec_sq = <R as IsScalar<1, 0, 0>>::from_f64(1.0) / (cos_val * cos_val);
         Self {
             real_part: self.real_part.tan(),
             infinitesimal_part: self.infinitesimal_part.map(|dij_val| dij_val * sec_sq),
@@ -366,20 +451,21 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
         let tanh_x = self.real_part.tanh();
         Self {
             real_part: tanh_x,
-            infinitesimal_part: self
-                .infinitesimal_part
-                .map(|dij_val| dij_val * (1.0 - tanh_x * tanh_x)),
+            infinitesimal_part: self.infinitesimal_part.map(|dij_val| {
+                dij_val * (<R as IsScalar<1, 0, 0>>::from_f64(1.0) - tanh_x * tanh_x)
+            }),
         }
     }
 
     fn acos(&self) -> Self {
         // d/dx (acos(x)) = -1 / sqrt(1 - x^2)
-        let denom = 1.0 - self.real_part * self.real_part;
-        let dval = if denom > 0.0 {
-            -1.0 / denom.sqrt()
+        let one = <R as IsScalar<1, 0, 0>>::from_f64(1.0);
+        let denom = one - self.real_part * self.real_part;
+        let dval = if denom > <R as IsScalar<1, 0, 0>>::from_f64(0.0) {
+            -one / denom.sqrt()
         } else {
             // For out-of-domain or edge cases, we won't handle gracefully here.
-            f64::NAN
+            <R as IsScalar<1, 0, 0>>::from_f64(f64::NAN)
         };
 
         Self {
@@ -390,11 +476,12 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
 
     fn asin(&self) -> Self {
         // d/dx (asin(x)) = 1 / sqrt(1 - x^2)
-        let denom = 1.0 - self.real_part * self.real_part;
-        let dval = if denom > 0.0 {
-            1.0 / denom.sqrt()
+        let one = <R as IsScalar<1, 0, 0>>::from_f64(1.0);
+        let denom = one - self.real_part * self.real_part;
+        let dval = if denom > <R as IsScalar<1, 0, 0>>::from_f64(0.0) {
+            one / denom.sqrt()
         } else {
-            f64::NAN
+            <R as IsScalar<1, 0, 0>>::from_f64(f64::NAN)
         };
 
         Self {
@@ -405,8 +492,8 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
 
     fn atan(&self) -> Self {
         // d/dx (atan(x)) = 1 / (1 + x^2)
-        let denom = 1.0 + self.real_part * self.real_part;
-        let dval = 1.0 / denom;
+        let denom = <R as IsScalar<1, 0, 0>>::from_f64(1.0) + self.real_part * self.real_part;
+        let dval = <R as IsScalar<1, 0, 0>>::from_f64(1.0) / denom;
         Self {
             real_part: self.real_part.atan(),
             infinitesimal_part: self.infinitesimal_part.map(|dij_val| dij_val * dval),
@@ -423,13 +510,13 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
         }
     }
 
-    fn floor(&self) -> f64 {
+    fn floor(&self) -> R {
         self.real_part.floor()
     }
 
     fn from_f64(val: f64) -> Self {
         Self {
-            real_part: val,
+            real_part: <R as IsScalar<1, 0, 0>>::from_f64(val),
             infinitesimal_part: None,
         }
     }
@@ -471,38 +558,63 @@ impl<const DM: usize, const DN: usize> IsScalar<1, DM, DN> for DualScalar<DM, DN
     }
 
     fn eps() -> Self {
-        Self::from_real_scalar(EPS_F64)
+        Self::from_real_scalar(<R as IsScalar<1, 0, 0>>::eps())
     }
 }
 
 // Implement additive and multiplicative assignment for convenience:
-impl<const DM: usize, const DN: usize> AddAssign<Self> for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> AddAssign<Self> for DualScalar<R, DM, DN>
+{
     fn add_assign(&mut self, rhs: Self) {
         *self = (*self).add(&rhs);
     }
 }
 
-impl<const DM: usize, const DN: usize> MulAssign<Self> for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> MulAssign<Self> for DualScalar<R, DM, DN>
+{
     fn mul_assign(&mut self, rhs: Self) {
         *self = (*self).mul(&rhs);
     }
 }
 
-impl<const DM: usize, const DN: usize> DivAssign<Self> for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> DivAssign<Self> for DualScalar<R, DM, DN>
+{
     fn div_assign(&mut self, rhs: Self) {
         *self = (*self).div(&rhs);
     }
 }
 
 // Basic arithmetic ops to combine derivatives:
-impl<const DM: usize, const DN: usize> Add<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> Add<DualScalar<R, DM, DN>> for DualScalar<R, DM, DN>
+{
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
         self.add(&rhs)
     }
 }
 
-impl<const DM: usize, const DN: usize> Add<&Self> for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> Add<&Self> for DualScalar<R, DM, DN>
+{
     type Output = Self;
 
     fn add(self, rhs: &Self) -> Self::Output {
@@ -519,14 +631,24 @@ impl<const DM: usize, const DN: usize> Add<&Self> for DualScalar<DM, DN> {
     }
 }
 
-impl<const DM: usize, const DN: usize> Sub<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> Sub<DualScalar<R, DM, DN>> for DualScalar<R, DM, DN>
+{
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
         self.sub(&rhs)
     }
 }
 
-impl<const DM: usize, const DN: usize> Sub<&Self> for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> Sub<&Self> for DualScalar<R, DM, DN>
+{
     type Output = Self;
 
     fn sub(self, rhs: &Self) -> Self::Output {
@@ -542,7 +664,12 @@ impl<const DM: usize, const DN: usize> Sub<&Self> for DualScalar<DM, DN> {
     }
 }
 
-impl<const DM: usize, const DN: usize> Mul<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> Mul<DualScalar<R, DM, DN>> for DualScalar<R, DM, DN>
+{
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -550,7 +677,12 @@ impl<const DM: usize, const DN: usize> Mul<DualScalar<DM, DN>> for DualScalar<DM
     }
 }
 
-impl<const DM: usize, const DN: usize> Mul<&Self> for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> Mul<&Self> for DualScalar<R, DM, DN>
+{
     type Output = Self;
 
     fn mul(self, rhs: &Self) -> Self::Output {
@@ -567,7 +699,12 @@ impl<const DM: usize, const DN: usize> Mul<&Self> for DualScalar<DM, DN> {
     }
 }
 
-impl<const DM: usize, const DN: usize> Div<DualScalar<DM, DN>> for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> Div<DualScalar<R, DM, DN>> for DualScalar<R, DM, DN>
+{
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
@@ -575,11 +712,16 @@ impl<const DM: usize, const DN: usize> Div<DualScalar<DM, DN>> for DualScalar<DM
     }
 }
 
-impl<const DM: usize, const DN: usize> Div<&Self> for DualScalar<DM, DN> {
+impl<
+    R: IsRealScalar<1, RealScalar = R> + nalgebra::RealField + IsSingleScalar<0, 0>,
+    const DM: usize,
+    const DN: usize,
+> Div<&Self> for DualScalar<R, DM, DN>
+{
     type Output = Self;
 
     fn div(self, rhs: &Self) -> Self::Output {
-        let inv = 1.0 / rhs.real_part;
+        let inv = <R as IsScalar<1, 0, 0>>::from_f64(1.0) / rhs.real_part;
         let new_real = self.real_part * inv;
         Self {
             real_part: new_real,
@@ -587,7 +729,7 @@ impl<const DM: usize, const DN: usize> Div<&Self> for DualScalar<DM, DN> {
                 &self.infinitesimal_part,
                 &rhs.infinitesimal_part,
                 |l_dij| *l_dij * inv,
-                |r_dij| -self.real_part * *r_dij * inv * inv,
+                |r_dij| *r_dij * (-self.real_part * inv * inv),
             ),
         }
     }

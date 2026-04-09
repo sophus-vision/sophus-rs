@@ -70,7 +70,7 @@ impl HasResidualFn<3, 1, (), Isometry2F64> for Isometry2PriorCostTerm {
         let isometry: Isometry2F64 = args;
 
         let residual = Self::residual(isometry, self.isometry_prior_mean);
-        let dx_res_fn = |x: DualVector<3, 3, 1>| -> DualVector<3, 3, 1> {
+        let dx_res_fn = |x: DualVector<f64, 3, 3, 1>| -> DualVector<f64, 3, 3, 1> {
             Self::residual(
                 Isometry2::exp(x) * isometry.to_dual_c(),
                 self.isometry_prior_mean.to_dual_c(),

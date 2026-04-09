@@ -1,11 +1,17 @@
 use core::borrow::Borrow;
 
-use super::batch_mask::BatchMask;
+use super::batch_mask::{
+    BatchMask,
+    BatchMaskF32,
+};
 use crate::{
     dual::DualBatchMatrix,
     linalg::{
+        BatchMatF32,
         BatchMatF64,
+        BatchScalarF32,
         BatchScalarF64,
+        BatchVecF32,
         BatchVecF64,
     },
     prelude::*,
@@ -172,5 +178,171 @@ impl<const ROWS: usize, const COLS: usize, const BATCH: usize>
 
 impl<const ROWS: usize, const COLS: usize, const BATCH: usize>
     IsRealMatrix<BatchScalarF64<BATCH>, ROWS, COLS, BATCH> for BatchMatF64<ROWS, COLS, BATCH>
+{
+}
+
+impl<const ROWS: usize, const COLS: usize, const BATCH: usize>
+    IsMatrix<BatchScalarF32<BATCH>, ROWS, COLS, BATCH, 0, 0> for BatchMatF32<ROWS, COLS, BATCH>
+{
+    fn from_scalar<S>(val: S) -> Self
+    where
+        S: Borrow<BatchScalarF32<BATCH>>,
+    {
+        let val = val.borrow();
+        Self::from_element(*val)
+    }
+
+    fn from_real_matrix<M>(val: M) -> Self
+    where
+        M: Borrow<BatchMatF32<ROWS, COLS, BATCH>>,
+    {
+        *val.borrow()
+    }
+
+    fn real_matrix(&self) -> Self {
+        *self
+    }
+
+    fn scaled<S>(&self, v: S) -> Self
+    where
+        S: Borrow<BatchScalarF32<BATCH>>,
+    {
+        *self * *v.borrow()
+    }
+
+    fn identity() -> Self {
+        nalgebra::SMatrix::<BatchScalarF32<BATCH>, ROWS, COLS>::identity()
+    }
+
+    fn from_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[BatchScalarF32<BATCH>; COLS]; ROWS]>,
+    {
+        let vals = vals.borrow();
+        Self::from_fn(|r, c| vals[r][c])
+    }
+
+    fn from_real_scalar_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[BatchScalarF32<BATCH>; COLS]; ROWS]>,
+    {
+        let vals = vals.borrow();
+        Self::from_fn(|r, c| vals[r][c])
+    }
+
+    fn from_f64_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[f64; COLS]; ROWS]>,
+    {
+        let vals = vals.borrow();
+        Self::from_fn(|r, c| BatchScalarF32::<BATCH>::from_f64(vals[r][c]))
+    }
+
+    fn elem(&self, idx: [usize; 2]) -> BatchScalarF32<BATCH> {
+        self[(idx[0], idx[1])]
+    }
+
+    fn elem_mut(&mut self, idx: [usize; 2]) -> &mut BatchScalarF32<BATCH> {
+        &mut self[(idx[0], idx[1])]
+    }
+
+    fn block_mat2x1<const R0: usize, const R1: usize>(
+        top_row: BatchMatF32<R0, COLS, BATCH>,
+        bot_row: BatchMatF32<R1, COLS, BATCH>,
+    ) -> Self {
+        Self::from_fn(|r, c| {
+            if r < R0 {
+                top_row[(r, c)]
+            } else {
+                bot_row[(r - R0, c)]
+            }
+        })
+    }
+
+    fn block_mat1x2<const C0: usize, const C1: usize>(
+        left_col: BatchMatF32<ROWS, C0, BATCH>,
+        righ_col: BatchMatF32<ROWS, C1, BATCH>,
+    ) -> Self {
+        Self::from_fn(|r, c| {
+            if c < C0 {
+                left_col[(r, c)]
+            } else {
+                righ_col[(r, c - C0)]
+            }
+        })
+    }
+
+    fn block_mat2x2<const R0: usize, const R1: usize, const C0: usize, const C1: usize>(
+        top_row: (BatchMatF32<R0, C0, BATCH>, BatchMatF32<R0, C1, BATCH>),
+        bot_row: (BatchMatF32<R1, C0, BATCH>, BatchMatF32<R1, C1, BATCH>),
+    ) -> Self {
+        Self::from_fn(|r, c| {
+            if r < R0 {
+                if c < C0 {
+                    top_row.0[(r, c)]
+                } else {
+                    top_row.1[(r, c - C0)]
+                }
+            } else if c < C0 {
+                bot_row.0[(r - R0, c)]
+            } else {
+                bot_row.1[(r - R0, c - C0)]
+            }
+        })
+    }
+
+    fn mat_mul<const C2: usize, M>(&self, other: M) -> BatchMatF32<ROWS, C2, BATCH>
+    where
+        M: Borrow<BatchMatF32<COLS, C2, BATCH>>,
+    {
+        self * other.borrow()
+    }
+
+    fn set_col_vec(&mut self, c: usize, v: BatchVecF32<ROWS, BATCH>) {
+        self.fixed_columns_mut::<1>(c).copy_from(&v);
+    }
+
+    fn get_fixed_submat<const R: usize, const C: usize>(
+        &self,
+        start_r: usize,
+        start_c: usize,
+    ) -> BatchMatF32<R, C, BATCH> {
+        self.fixed_view::<R, C>(start_r, start_c).into()
+    }
+
+    fn get_col_vec(&self, c: usize) -> BatchVecF32<ROWS, BATCH> {
+        self.fixed_view::<ROWS, 1>(0, c).into()
+    }
+
+    fn get_row_vec(&self, r: usize) -> BatchVecF32<COLS, BATCH> {
+        self.fixed_view::<1, COLS>(r, 0).transpose()
+    }
+
+    fn from_f64(val: f64) -> Self {
+        Self::from_element(BatchScalarF32::<BATCH>::from_f64(val))
+    }
+
+    fn to_dual_const<const M: usize, const N: usize>(
+        &self,
+    ) -> DualBatchMatrix<ROWS, COLS, BATCH, M, N> {
+        DualBatchMatrix::from_real_matrix(&self.map(|x| {
+            BatchScalarF64::<BATCH>::from_real_array(core::array::from_fn(|i| x.0[i] as f64))
+        }))
+    }
+
+    fn select<Q>(&self, mask: &BatchMaskF32<BATCH>, other: Q) -> Self
+    where
+        Q: Borrow<Self>,
+    {
+        self.zip_map(other.borrow(), |a, b| a.select(mask, b))
+    }
+
+    fn transposed(&self) -> BatchMatF32<COLS, ROWS, BATCH> {
+        self.transpose()
+    }
+}
+
+impl<const ROWS: usize, const COLS: usize, const BATCH: usize>
+    IsRealMatrix<BatchScalarF32<BATCH>, ROWS, COLS, BATCH> for BatchMatF32<ROWS, COLS, BATCH>
 {
 }

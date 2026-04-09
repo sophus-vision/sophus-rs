@@ -224,7 +224,7 @@ fn isometry2_prop_tests() {
     Isometry2F64::test_suite();
     #[cfg(feature = "simd")]
     Isometry2::<BatchScalarF64<8>, 8, 0, 0>::test_suite();
-    Isometry2::<DualScalar<1, 1>, 1, 1, 1>::test_suite();
+    Isometry2::<DualScalar<f64, 1, 1>, 1, 1, 1>::test_suite();
     #[cfg(feature = "simd")]
     Isometry2::<DualBatchScalar<8, 1, 1>, 8, 1, 1>::test_suite();
 

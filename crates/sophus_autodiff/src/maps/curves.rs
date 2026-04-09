@@ -179,7 +179,7 @@ fn curve_test() {
         };
     }
 
-    def_curve_test_template!(1, f64, DualScalar<1,1>);
+    def_curve_test_template!(1, f64, DualScalar<f64, 1,1>);
     #[cfg(feature = "simd")]
     def_curve_test_template!(2, BatchScalarF64<2>, DualBatchScalar<2,1,1>);
     #[cfg(feature = "simd")]

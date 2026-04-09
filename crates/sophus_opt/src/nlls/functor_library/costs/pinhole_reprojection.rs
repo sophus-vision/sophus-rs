@@ -1,7 +1,4 @@
-use sophus_autodiff::{
-    dual::DualVector,
-    linalg::VecF64,
-};
+use sophus_autodiff::linalg::VecF64;
 use sophus_lie::{
     Isometry3,
     Isometry3F64,
@@ -9,6 +6,7 @@ use sophus_lie::{
 use sophus_sensor::{
     PinholeCamera,
     PinholeCameraF64,
+    projections::PerspectiveProjectionImpl,
 };
 
 use crate::{
@@ -21,7 +19,7 @@ use crate::{
 /// Pinhole camera reprojection residual cost term.
 ///
 ///
-/// `g(p, ʷT꜀, xʷ) = πₚ((ʷT꜀)⁻¹ * xʷ) - z`
+/// `g(p, ʷT꜀, xʷ) = z - πₚ((ʷT꜀)⁻¹ * xʷ)`
 ///
 /// where `ʷT꜀ ∈ SE(3)` is the camera pose in the world reference frame, `xʷ ∈ ℝ³` is the 3D point
 /// in world coordinates, `p` camera intrinsic parameters, `π` is the camera projection function,
@@ -40,15 +38,15 @@ pub struct PinholeCameraReprojectionCostTerm {
 impl PinholeCameraReprojectionCostTerm {
     /// Compute the residual:
     ///
-    /// `g(p, ʷT꜀, xʷ) = πₚ((ʷT꜀)⁻¹ * xʷ) - z`
+    /// `g(p, ʷT꜀, xʷ) = z - πₚ((ʷT꜀)⁻¹ * xʷ)`
     pub fn residual<Scalar: IsSingleScalar<DM, DN>, const DM: usize, const DN: usize>(
-        intrinscs: PinholeCamera<Scalar, 1, DM, DN>,
+        intrinsics: PinholeCamera<Scalar, 1, DM, DN>,
         world_from_camera: Isometry3<Scalar, 1, DM, DN>,
         point_in_world: Scalar::Vector<3>,
         uv_in_image: Scalar::Vector<2>,
     ) -> Scalar::Vector<2> {
         let point_in_cam = world_from_camera.inverse().transform(point_in_world);
-        uv_in_image - intrinscs.cam_proj(point_in_cam)
+        uv_in_image - intrinsics.cam_proj(point_in_cam)
     }
 }
 
@@ -71,53 +69,28 @@ impl HasResidualFn<13, 3, (), (PinholeCameraF64, Isometry3F64, VecF64<3>)>
         var_kinds: [VarKind; 3],
         robust_kernel: Option<robust_kernel::RobustKernel>,
     ) -> EvaluatedCostTerm<13, 3> {
-        // calculate residual
-        let residual = Self::residual(
-            intrinsics,
-            world_from_camera_pose,
-            point_in_world,
-            self.uv_in_image,
-        );
+        let camera_from_world = world_from_camera_pose.inverse();
+        let x_cam = camera_from_world.transform(point_in_world);
+        let proj_z1 = PerspectiveProjectionImpl::<f64, 1, 0, 0>::proj(x_cam);
 
-        // calculate jacobian wrt intrinsics
-        let d0_res_fn = |x: DualVector<4, 4, 1>| {
-            Self::residual(
-                PinholeCamera::from_params_and_size(x, intrinsics.image_size()),
-                world_from_camera_pose.to_dual_c(),
-                DualVector::from_real_vector(point_in_world),
-                DualVector::from_real_vector(self.uv_in_image),
-            )
-        };
-        // calculate jacobian wrt world_from_camera_pose
-        let d1_res_fn = |x: DualVector<6, 6, 1>| -> DualVector<2, 6, 1> {
-            Self::residual(
-                PinholeCamera::from_params_and_size(
-                    DualVector::from_real_vector(*intrinsics.params()),
-                    intrinsics.image_size(),
-                ),
-                Isometry3::exp(x) * world_from_camera_pose.to_dual_c(),
-                DualVector::from_real_vector(point_in_world),
-                DualVector::from_real_vector(self.uv_in_image),
-            )
-        };
-        // calculate jacobian wrt point_in_world
-        let d2_res_fn = |x: DualVector<3, 3, 1>| -> DualVector<2, 3, 1> {
-            Self::residual(
-                PinholeCamera::from_params_and_size(
-                    DualVector::from_real_vector(*intrinsics.params()),
-                    intrinsics.image_size(),
-                ),
-                world_from_camera_pose.to_dual_c(),
-                x,
-                DualVector::from_real_vector(self.uv_in_image),
-            )
-        };
+        let residual = self.uv_in_image - intrinsics.cam_proj(x_cam);
 
-        (
-            || d0_res_fn(DualVector::var(*intrinsics.params())).jacobian(),
-            || d1_res_fn(DualVector::var(VecF64::<6>::zeros())).jacobian(),
-            || d2_res_fn(DualVector::var(point_in_world)).jacobian(),
-        )
-            .make(idx, var_kinds, residual, robust_kernel, None)
+        // d_pi * R_cw  (2×3) — shared by J_pose and J_point, computed once.
+        // where d_π = dx_distort_x(proj_z1) * dx_proj_x(x_cam)  [2×3]
+        let d_pi_r_cw = intrinsics.dx_distort_x(proj_z1)
+            * PerspectiveProjectionImpl::<f64, 1, 0, 0>::dx_proj_x(x_cam)
+            * camera_from_world.rotation().matrix();
+
+        // J_cam (2×4): dr/d[fx,fy,cx,cy] = -d(distort)/d(params)
+        let d0 = || -intrinsics.dx_distort_params(proj_z1);
+
+        // J_pose (2×6): left perturbation exp(δ)*T_wc, tangent = [ω,ν]
+        // dr/dδ = d_pi_r_cw * dx_exp_x_times_point_at_0(x_w)
+        let d1 = || d_pi_r_cw * Isometry3F64::dx_exp_x_times_point_at_0(point_in_world);
+
+        // J_pt (2×3): dr/dx_w = -d_pi_r_cw
+        let d2 = || -d_pi_r_cw;
+
+        (d0, d1, d2).make(idx, var_kinds, residual, robust_kernel, None)
     }
 }

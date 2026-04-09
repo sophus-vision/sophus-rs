@@ -52,9 +52,9 @@ impl HasEqConstraintResidualFn<1, 2, 1, (), VecF64<2>> for ExampleNonLinearEqCon
         var_kinds: [crate::variables::VarKind; 1],
     ) -> crate::nlls::constraint::evaluated_eq_constraint::EvaluatedEqConstraint<1, 2, 1> {
         let residual = Self::residual(x, self.lhs);
-        let dx0_res_fn = |x: DualVector<2, 2, 1>| -> DualVector<1, 2, 1> {
+        let dx0_res_fn = |x: DualVector<f64, 2, 2, 1>| -> DualVector<f64, 1, 2, 1> {
             let lhs_dual = DualScalar::from_f64(self.lhs);
-            Self::residual::<DualScalar<2, 1>, 2, 1>(x, lhs_dual)
+            Self::residual::<DualScalar<f64, 2, 1>, 2, 1>(x, lhs_dual)
         };
 
         (|| dx0_res_fn(DualVector::var(x)).jacobian(),).make_eq(idx, var_kinds, residual)

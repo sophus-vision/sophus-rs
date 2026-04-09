@@ -19,7 +19,9 @@ use approx::{
 use crate::{
     dual::DualMatrix,
     linalg::{
+        MatF32,
         MatF64,
+        VecF32,
         VecF64,
     },
     prelude::*,
@@ -54,8 +56,8 @@ pub trait IsMatrix<
     + Neg<Output = Self>
     + Add<Output = Self>
     + Sub<Output = Self>
-    + AbsDiffEq<Epsilon = f64>
-    + RelativeEq<Epsilon = f64>
+    + AbsDiffEq
+    + RelativeEq
 {
     /// Combines two matrices side-by-side along columns into one.
     ///
@@ -218,9 +220,8 @@ pub trait IsSingleMatrix<
 >:
     IsMatrix<S, ROWS, COLS, 1, DM, DN> + Mul<S::SingleVector<COLS>, Output = S::SingleVector<ROWS>>
 {
-    /// Extracts the real (f64-based) version of this matrix, ignoring dual derivative info if
-    /// present.
-    fn single_real_matrix(&self) -> MatF64<ROWS, COLS>;
+    /// Extracts the real version of this matrix, ignoring dual derivative info if present.
+    fn single_real_matrix(&self) -> S::RealMatrix<ROWS, COLS>;
 }
 
 impl<const ROWS: usize, const COLS: usize> IsSingleMatrix<f64, ROWS, COLS, 0, 0>
@@ -402,6 +403,183 @@ impl<const ROWS: usize, const COLS: usize> IsMatrix<f64, ROWS, COLS, 1, 0, 0>
     }
 
     fn transposed(&self) -> MatF64<COLS, ROWS> {
+        self.transpose()
+    }
+}
+
+impl<const ROWS: usize, const COLS: usize> IsSingleMatrix<f32, ROWS, COLS, 0, 0>
+    for MatF32<ROWS, COLS>
+{
+    fn single_real_matrix(&self) -> MatF32<ROWS, COLS> {
+        *self
+    }
+}
+
+impl<const ROWS: usize, const COLS: usize> IsRealMatrix<f32, ROWS, COLS, 1> for MatF32<ROWS, COLS> {}
+
+impl<const ROWS: usize, const COLS: usize> IsMatrix<f32, ROWS, COLS, 1, 0, 0>
+    for MatF32<ROWS, COLS>
+{
+    fn from_real_matrix<A>(val: A) -> Self
+    where
+        A: Borrow<MatF32<ROWS, COLS>>,
+    {
+        *val.borrow()
+    }
+
+    fn from_scalar<S>(val: S) -> Self
+    where
+        S: Borrow<f32>,
+    {
+        Self::from_f64(*val.borrow() as f64)
+    }
+
+    fn from_array2<A>(vals: A) -> MatF32<ROWS, COLS>
+    where
+        A: Borrow<[[f32; COLS]; ROWS]>,
+    {
+        let vals = vals.borrow();
+        let mut m = MatF32::<ROWS, COLS>::zeros();
+        for c in 0..COLS {
+            for r in 0..ROWS {
+                m[(r, c)] = vals[r][c];
+            }
+        }
+        m
+    }
+
+    fn from_real_scalar_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[f32; COLS]; ROWS]>,
+    {
+        let vals = vals.borrow();
+        let mut m = MatF32::<ROWS, COLS>::zeros();
+        for c in 0..COLS {
+            for r in 0..ROWS {
+                m[(r, c)] = vals[r][c];
+            }
+        }
+        m
+    }
+
+    fn elem(&self, idx: [usize; 2]) -> f32 {
+        self[(idx[0], idx[1])]
+    }
+
+    fn elem_mut(&mut self, idx: [usize; 2]) -> &mut f32 {
+        &mut self[(idx[0], idx[1])]
+    }
+
+    fn identity() -> Self {
+        Self::identity()
+    }
+
+    fn real_matrix(&self) -> Self {
+        *self
+    }
+
+    fn mat_mul<const C2: usize, M>(&self, other: M) -> MatF32<ROWS, C2>
+    where
+        M: Borrow<MatF32<COLS, C2>>,
+    {
+        self * other.borrow()
+    }
+
+    fn block_mat2x1<const R0: usize, const R1: usize>(
+        top_row: MatF32<R0, COLS>,
+        bot_row: MatF32<R1, COLS>,
+    ) -> Self {
+        assert_eq!(ROWS, R0 + R1);
+        let mut m = Self::zeros();
+        m.fixed_view_mut::<R0, COLS>(0, 0).copy_from(&top_row);
+        m.fixed_view_mut::<R1, COLS>(R0, 0).copy_from(&bot_row);
+        m
+    }
+
+    fn block_mat2x2<const R0: usize, const R1: usize, const C0: usize, const C1: usize>(
+        top_row: (MatF32<R0, C0>, MatF32<R0, C1>),
+        bot_row: (MatF32<R1, C0>, MatF32<R1, C1>),
+    ) -> Self {
+        assert_eq!(ROWS, R0 + R1);
+        assert_eq!(COLS, C0 + C1);
+        let mut m = Self::zeros();
+        m.fixed_view_mut::<R0, C0>(0, 0).copy_from(&top_row.0);
+        m.fixed_view_mut::<R0, C1>(0, C0).copy_from(&top_row.1);
+        m.fixed_view_mut::<R1, C0>(R0, 0).copy_from(&bot_row.0);
+        m.fixed_view_mut::<R1, C1>(R0, C0).copy_from(&bot_row.1);
+        m
+    }
+
+    fn block_mat1x2<const C0: usize, const C1: usize>(
+        left_col: MatF32<ROWS, C0>,
+        righ_col: MatF32<ROWS, C1>,
+    ) -> Self {
+        assert_eq!(COLS, C0 + C1);
+        let mut m = Self::zeros();
+        m.fixed_view_mut::<ROWS, C0>(0, 0).copy_from(&left_col);
+        m.fixed_view_mut::<ROWS, C1>(0, C0).copy_from(&righ_col);
+        m
+    }
+
+    fn get_fixed_submat<const R: usize, const C: usize>(
+        &self,
+        start_r: usize,
+        start_c: usize,
+    ) -> MatF32<R, C> {
+        self.fixed_view::<R, C>(start_r, start_c).into()
+    }
+
+    fn get_col_vec(&self, c: usize) -> VecF32<ROWS> {
+        self.fixed_view::<ROWS, 1>(0, c).into()
+    }
+
+    fn get_row_vec(&self, r: usize) -> VecF32<COLS> {
+        self.fixed_view::<1, COLS>(r, 0).transpose()
+    }
+
+    fn scaled<Q>(&self, v: Q) -> Self
+    where
+        Q: Borrow<f32>,
+    {
+        *self * *v.borrow()
+    }
+
+    fn from_f64_array2<A>(vals: A) -> Self
+    where
+        A: Borrow<[[f64; COLS]; ROWS]>,
+    {
+        let vals = vals.borrow();
+        let mut m = MatF32::<ROWS, COLS>::zeros();
+        for c in 0..COLS {
+            for r in 0..ROWS {
+                m[(r, c)] = vals[r][c] as f32;
+            }
+        }
+        m
+    }
+
+    fn from_f64(val: f64) -> Self {
+        MatF32::<ROWS, COLS>::from_element(val as f32)
+    }
+
+    fn set_col_vec(&mut self, c: usize, v: VecF32<ROWS>) {
+        self.fixed_columns_mut::<1>(c).copy_from(&v);
+    }
+
+    fn to_dual_const<const M: usize, const N: usize>(
+        &self,
+    ) -> <f32 as IsScalar<1, 0, 0>>::DualMatrix<ROWS, COLS, M, N> {
+        DualMatrix::from_real_matrix(&self.map(|x| x as f64))
+    }
+
+    fn select<Q>(&self, mask: &bool, other: Q) -> Self
+    where
+        Q: Borrow<Self>,
+    {
+        if *mask { *self } else { *other.borrow() }
+    }
+
+    fn transposed(&self) -> MatF32<COLS, ROWS> {
         self.transpose()
     }
 }

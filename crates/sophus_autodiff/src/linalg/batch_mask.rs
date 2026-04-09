@@ -62,3 +62,47 @@ impl<const BATCH: usize> IsBoolMask for BatchMask<BATCH> {
         BATCH
     }
 }
+
+/// A lane-wise boolean mask for batch (SIMD) f32 operations.
+///
+/// Wraps [`Mask<i32, N>`][core::simd::Mask] — f32 SIMD comparisons return i32 masks.
+#[cfg(feature = "simd")]
+pub struct BatchMaskF32<const N: usize> {
+    pub(crate) inner: Mask<i32, N>,
+}
+
+impl<const N: usize> Debug for BatchMaskF32<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "BatchMaskF32({:?})", self.inner)
+    }
+}
+
+impl<const BATCH: usize> IsBoolMask for BatchMaskF32<BATCH> {
+    fn all_true() -> Self {
+        BatchMaskF32 {
+            inner: Mask::from_array([true; BATCH]),
+        }
+    }
+
+    fn all_false() -> Self {
+        BatchMaskF32 {
+            inner: Mask::from_array([false; BATCH]),
+        }
+    }
+
+    fn all(&self) -> bool {
+        Mask::all(self.inner)
+    }
+
+    fn any(&self) -> bool {
+        Mask::any(self.inner)
+    }
+
+    fn count(&self) -> usize {
+        self.inner.to_array().iter().filter(|x| **x).count()
+    }
+
+    fn lanes(&self) -> usize {
+        BATCH
+    }
+}

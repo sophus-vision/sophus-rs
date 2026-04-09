@@ -506,7 +506,7 @@ fn rotation2_prop_tests() {
     #[cfg(feature = "simd")]
     Rotation2::<BatchScalarF64<8>, 8, 0, 0>::test_suite();
 
-    Rotation2::<DualScalar<0, 0>, 1, 0, 0>::test_suite();
+    Rotation2::<DualScalar<f64, 0, 0>, 1, 0, 0>::test_suite();
     #[cfg(feature = "simd")]
     Rotation2::<DualBatchScalar<8, 1, 1>, 8, 1, 1>::test_suite();
 

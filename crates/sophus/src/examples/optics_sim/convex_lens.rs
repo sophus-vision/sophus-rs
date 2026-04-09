@@ -61,11 +61,14 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
         front_surface: Circle<S, 1, DM, DN>,
         back_surface: Circle<S, 1, DM, DN>,
         material_index: S,
-    ) -> Self {
+    ) -> Self
+    where
+        S::RealSingleScalar: Into<f64>,
+    {
         let intersection_points = front_surface.intersect_circle(&back_surface).unwrap();
 
-        let mut front_angles = vec![];
-        let mut back_angles = vec![];
+        let mut front_angles: Vec<f64> = vec![];
+        let mut back_angles: Vec<f64> = vec![];
 
         for intersection_point in intersection_points {
             let front_intersection = intersection_point - front_surface.center;
@@ -75,14 +78,16 @@ impl<S: IsSingleScalar<DM, DN> + PartialOrd, const DM: usize, const DN: usize>
                 front_intersection
                     .elem(1)
                     .atan2(front_intersection.elem(0))
-                    .single_real_scalar(),
+                    .to_real_array()[0]
+                    .into(),
             );
 
             back_angles.push(
                 back_intersection
                     .elem(1)
                     .atan2(back_intersection.elem(0))
-                    .single_real_scalar(),
+                    .to_real_array()[0]
+                    .into(),
             );
         }
 

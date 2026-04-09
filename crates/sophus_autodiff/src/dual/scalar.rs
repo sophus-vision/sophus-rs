@@ -28,7 +28,7 @@ pub trait IsDualScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     ///
     /// // Suppose we want to differentiate f(x) = x² at x = 0.1
     /// // First, create the variable as a dual:
-    /// let x_dual = DualScalar::<1, 1>::var(0.1);
+    /// let x_dual = DualScalar::<f64, 1, 1>::var(0.1);
     /// // Then define f in terms of the dual variable:
     /// let f_dual = x_dual * x_dual;
     /// // We can now get the derivative with respect to x:
@@ -54,7 +54,7 @@ pub trait IsDualScalar<const BATCH: usize, const DM: usize, const DN: usize>:
     /// - If `DM=1, DN=1`, this corresponds to a scalar derivative in `ℝ`.
     /// - If `DM>1, DN=1`, it corresponds to a vector derivative in `ℝ^DM`.
     /// - For more complex shapes, it can represent Jacobians or Hessians as needed.
-    fn derivative(&self) -> Self::RealMatrix<DM, DN>;
+    fn derivative(&self) -> nalgebra::SMatrix<Self::RealScalar, DM, DN>;
 }
 
 /// A trait extension indicating the scalar is the result of a curve `f: ℝ -> ℝ`,
@@ -77,7 +77,7 @@ pub trait IsDualScalarFromCurve<S: IsDualScalar<BATCH, 1, 1>, const BATCH: usize
     /// };
     /// // Suppose we want to differentiate f(x)=x³ at x=2:
     /// // First, we wrap x=2 as a dual variable:
-    /// let x_dual = DualScalar::<1, 1>::var(2.0);
+    /// let x_dual = DualScalar::<f64, 1, 1>::var(2.0);
     /// // Then compute f(x):
     /// let f_dual = x_dual * x_dual * x_dual;
     /// // The derivative is 3 * x² = 12:
@@ -353,7 +353,7 @@ fn dual_scalar_tests() {
     }
 
     // Expand the test template for each combination of (batch, real scalar, dual scalar).
-    def_dual_scalar_test_template!(1, f64, DualScalar<1,1>);
+    def_dual_scalar_test_template!(1, f64, DualScalar<f64,1,1>);
     #[cfg(feature = "simd")]
     def_dual_scalar_test_template!(2, BatchScalarF64<2>, DualBatchScalar<2,1,1>);
     #[cfg(feature = "simd")]
@@ -362,7 +362,7 @@ fn dual_scalar_tests() {
     def_dual_scalar_test_template!(8, BatchScalarF64<8>, DualBatchScalar<8,1,1>);
 
     // Now run the test suites:
-    DualScalar::run_dual_scalar_test();
+    DualScalar::<f64, 1, 1>::run_dual_scalar_test();
     #[cfg(feature = "simd")]
     DualBatchScalar::<2, 1, 1>::run_dual_scalar_test();
     #[cfg(feature = "simd")]

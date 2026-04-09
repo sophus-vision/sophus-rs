@@ -55,13 +55,21 @@ impl HasEqConstraintResidualFn<1, 2, 2, (), (VecF64<1>, VecF64<1>)> for ExampleL
     ) -> crate::nlls::constraint::evaluated_eq_constraint::EvaluatedEqConstraint<1, 2, 2> {
         let (x, y) = args;
         let residual: VecF64<1> = Self::residual(x, y, self.lhs);
-        let dx0_res_fn = |a: DualVector<1, 1, 1>| -> DualVector<1, 1, 1> {
+        let dx0_res_fn = |a: DualVector<f64, 1, 1, 1>| -> DualVector<f64, 1, 1, 1> {
             let lhs_dual = DualScalar::from_f64(self.lhs);
-            Self::residual::<DualScalar<1, 1>, 1, 1>(a, DualVector::from_real_vector(y), lhs_dual)
+            Self::residual::<DualScalar<f64, 1, 1>, 1, 1>(
+                a,
+                DualVector::from_real_vector(y),
+                lhs_dual,
+            )
         };
-        let dx1_res_fn = |a: DualVector<1, 1, 1>| -> DualVector<1, 1, 1> {
+        let dx1_res_fn = |a: DualVector<f64, 1, 1, 1>| -> DualVector<f64, 1, 1, 1> {
             let lhs_dual = DualScalar::from_f64(self.lhs);
-            Self::residual::<DualScalar<1, 1>, 1, 1>(DualVector::from_real_vector(x), a, lhs_dual)
+            Self::residual::<DualScalar<f64, 1, 1>, 1, 1>(
+                DualVector::from_real_vector(x),
+                a,
+                lhs_dual,
+            )
         };
 
         (
