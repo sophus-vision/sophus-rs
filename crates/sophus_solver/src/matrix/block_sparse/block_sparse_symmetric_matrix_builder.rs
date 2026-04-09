@@ -140,7 +140,7 @@ impl BlockSparseSymmetricMatrixPattern {
 
     /// Take ownership of the worker pool for parallel use.
     ///
-    /// Must be followed by [`return_workers`] to restore them for the next iteration.
+    /// Must be followed by [`Self::return_workers`] to restore them for the next iteration.
     pub fn take_workers(&mut self) -> Vec<Self> {
         std::mem::take(&mut self.workers)
     }

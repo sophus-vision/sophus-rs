@@ -154,7 +154,7 @@ impl BlockSparseMatrixPattern {
         }
     }
 
-    /// Assemble the final [`BlockSparseMatrix`] from the current storage.
+    /// Assemble the final `BlockSparseMatrix` from the current storage.
     ///
     /// The pattern (CSC structure) is cloned cheaply; only the value storage
     /// is copied.

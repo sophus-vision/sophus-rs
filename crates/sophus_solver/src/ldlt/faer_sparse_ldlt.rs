@@ -73,6 +73,14 @@ impl Default for FaerSparseLdlt {
     }
 }
 
+/// Symbolic factor (AMD permutation + symbolic Cholesky) for faer sparse LDLᵀ.
+///
+/// Reusable across iterations when the sparsity pattern does not change.
+#[derive(Clone, Debug)]
+pub(crate) struct FaerSparseLdltSymbolic {
+    pub(crate) symb: SparseLdltPermSymb,
+}
+
 /// Numeric factorization result for the faer sparse LDLᵀ solver.
 #[derive(Clone, Debug)]
 pub struct FaerSparseLdltSystem {
@@ -80,6 +88,13 @@ pub struct FaerSparseLdltSystem {
     params: FaerSparseLdlt,
     symb: SparseLdltPermSymb,
     parallelize: bool,
+}
+
+impl FaerSparseLdltSystem {
+    /// Extract the symbolic factor (AMD + symbolic Cholesky) for reuse in the next iteration.
+    pub(crate) fn into_symbolic(self) -> FaerSparseLdltSymbolic {
+        FaerSparseLdltSymbolic { symb: self.symb }
+    }
 }
 
 impl IsLinearSolver for FaerSparseLdlt {
@@ -104,7 +119,29 @@ impl IsLinearSolver for FaerSparseLdlt {
         &self,
         mat_a: &FaerSparseSymmetricMatrix,
     ) -> Result<Self::Factor, LinearSolverError> {
-        let symb = SparseLdltPermSymb::compute(&mat_a.upper)?;
+        self.factorize_with_cached_symb(mat_a, None)
+    }
+
+    /// Set the `parallelize`` option.
+    fn set_parallelize(&mut self, parallelize: bool) {
+        self.parallelize = parallelize;
+    }
+}
+
+impl FaerSparseLdlt {
+    /// Factorize `mat_a`, reusing a previously computed symbolic factor if provided.
+    ///
+    /// When `cached_symb` is `Some`, the AMD ordering and symbolic Cholesky are skipped,
+    /// saving the dominant O(n·nnz) symbolic work when the sparsity pattern is unchanged.
+    pub(crate) fn factorize_with_cached_symb(
+        &self,
+        mat_a: &FaerSparseSymmetricMatrix,
+        cached_symb: Option<FaerSparseLdltSymbolic>,
+    ) -> Result<FaerSparseLdltSystem, LinearSolverError> {
+        let symb = match cached_symb {
+            Some(c) => c.symb,
+            None => SparseLdltPermSymb::compute(&mat_a.upper)?,
+        };
 
         Ok(FaerSparseLdltSystem {
             params: *self,
@@ -112,11 +149,6 @@ impl IsLinearSolver for FaerSparseLdlt {
             symb,
             mat_a: mat_a.clone(),
         })
-    }
-
-    /// Set the `parallelize`` option.
-    fn set_parallelize(&mut self, parallelize: bool) {
-        self.parallelize = parallelize;
     }
 }
 

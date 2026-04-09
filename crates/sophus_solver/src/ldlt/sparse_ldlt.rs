@@ -27,6 +27,190 @@ use crate::{
     prelude::*,
 };
 
+// ---------------------------------------------------------------------------
+// Block-level AMD helpers
+// ---------------------------------------------------------------------------
+
+/// Build a block-level upper CSC pattern from the scalar lower CSC + partition info.
+///
+/// For each scalar off-diagonal lower entry `(row_i, col_j)` with `row_i > col_j`,
+/// we add a block-level edge `(gb_col_j, gb_row_i)` to the upper triangle,
+/// where `gb_*` is the global block index of that scalar.
+fn build_block_upper_from_scalar(
+    lower: &SparseMatrix,
+    partitions: &PartitionSet,
+) -> ColumnCompressedPattern {
+    let n = lower.scalar_dim();
+    let nb: usize = partitions.specs().iter().map(|s| s.block_count).sum();
+
+    // Build scalar → global block lookup.
+    let mut scalar_to_block = vec![0usize; n];
+    let mut global_block = 0usize;
+    for (p_idx, spec) in partitions.specs().iter().enumerate() {
+        let p_start = partitions.scalar_offsets_by_partition()[p_idx];
+        for b in 0..spec.block_count {
+            let b_start = p_start + b * spec.block_dim;
+            for s in 0..spec.block_dim {
+                scalar_to_block[b_start + s] = global_block;
+            }
+            global_block += 1;
+        }
+    }
+
+    // Collect (col_block, row_block) edges for the upper triangle (row_block < col_block).
+    let mut edges: Vec<(usize, usize)> = Vec::new();
+    for col_j in 0..n {
+        let gb_j = scalar_to_block[col_j];
+        for idx in lower.storage_idx_by_col()[col_j]..lower.storage_idx_by_col()[col_j + 1] {
+            let row_i = lower.row_idx_storage()[idx];
+            if row_i > col_j {
+                let gb_i = scalar_to_block[row_i];
+                if gb_i > gb_j {
+                    // Lower block entry (gb_i, gb_j) → upper entry at col=gb_i, row=gb_j.
+                    edges.push((gb_i, gb_j));
+                }
+            }
+        }
+    }
+    edges.sort_unstable();
+    edges.dedup();
+
+    // Build CSC from sorted, deduped edges.
+    let mut counts = vec![0usize; nb];
+    for &(col, _) in &edges {
+        counts[col] += 1;
+    }
+    let mut storage_offset_by_col = vec![0usize; nb + 1];
+    for i in 0..nb {
+        storage_offset_by_col[i + 1] = storage_offset_by_col[i] + counts[i];
+    }
+    let nnz = storage_offset_by_col[nb];
+    let mut row_idx = vec![0usize; nnz];
+    let mut next = storage_offset_by_col.clone();
+    for &(col, row) in &edges {
+        row_idx[next[col]] = row;
+        next[col] += 1;
+    }
+
+    ColumnCompressedPattern::new(nb, storage_offset_by_col, row_idx)
+}
+
+/// Run block-level AMD on the scalar sparse matrix using the partition structure.
+///
+/// Returns `(block_perm, block_perm_inv)` where `block_perm[new_gb] = old_gb`.
+fn block_amd_from_scalar(
+    lower: &SparseMatrix,
+    partitions: &PartitionSet,
+) -> (Vec<usize>, Vec<usize>) {
+    let block_upper = build_block_upper_from_scalar(lower, partitions);
+    let nb = block_upper.scalar_dim();
+
+    // SAFETY: `block_upper` was built with valid CSC invariants.
+    let symbolic = unsafe {
+        faer::sparse::SymbolicSparseColMat::<usize>::new_unchecked(
+            nb,
+            nb,
+            block_upper.storage_idx_by_col().to_vec(),
+            None,
+            block_upper.row_idx_storage().to_vec(),
+        )
+    };
+
+    crate::ldlt::amd_order(symbolic.as_ref())
+}
+
+/// Build scalar permutation from a block-level AMD permutation.
+///
+/// Returns `(scalar_perm, scalar_perm_inv)` where `scalar_perm[new_pos] = old_pos`.
+fn scalar_perm_from_block_perm(
+    partitions: &PartitionSet,
+    block_perm: &[usize],
+) -> (Vec<usize>, Vec<usize>) {
+    let n = partitions.scalar_dim();
+    let mut scalar_perm = vec![0usize; n];
+    let mut scalar_perm_inv = vec![0usize; n];
+
+    // Build global_block → (partition_idx, block_within_partition) lookup.
+    let nb: usize = partitions.specs().iter().map(|s| s.block_count).sum();
+    let mut block_to_scalar_start = vec![0usize; nb];
+    let mut block_to_dim = vec![0usize; nb];
+    let mut gb = 0usize;
+    for (p_idx, spec) in partitions.specs().iter().enumerate() {
+        let p_start = partitions.scalar_offsets_by_partition()[p_idx];
+        for b in 0..spec.block_count {
+            block_to_scalar_start[gb] = p_start + b * spec.block_dim;
+            block_to_dim[gb] = spec.block_dim;
+            gb += 1;
+        }
+    }
+
+    let mut new_scalar = 0usize;
+    for &old_gb in block_perm {
+        let old_start = block_to_scalar_start[old_gb];
+        let dim = block_to_dim[old_gb];
+        for s in 0..dim {
+            scalar_perm[new_scalar + s] = old_start + s;
+            scalar_perm_inv[old_start + s] = new_scalar + s;
+        }
+        new_scalar += dim;
+    }
+
+    (scalar_perm, scalar_perm_inv)
+}
+
+/// Permute a lower-triangular scalar sparse matrix using a scalar permutation.
+///
+/// For entry `(row_i, col_j, val)` in original lower:
+/// `new_row = perm_inv[row_i]`, `new_col = perm_inv[col_j]`.
+/// Stored in lower triangle (new_row >= new_col); if new_row < new_col, the entry
+/// is reflected (symmetric matrix, value is unchanged).
+fn permute_sparse_lower(lower: &SparseMatrix, scalar_perm_inv: &[usize]) -> SparseMatrix {
+    let n = lower.scalar_dim();
+
+    // Collect permuted (col, row, val) triples.
+    let mut entries: Vec<(usize, usize, f64)> = Vec::with_capacity(lower.row_idx_storage().len());
+    for col_j in 0..n {
+        for idx in lower.storage_idx_by_col()[col_j]..lower.storage_idx_by_col()[col_j + 1] {
+            let row_i = lower.row_idx_storage()[idx];
+            let val = lower.value_storage()[idx];
+            let new_col = scalar_perm_inv[col_j];
+            let new_row = scalar_perm_inv[row_i];
+            // Keep in lower triangle.
+            let (r, c) = if new_row >= new_col {
+                (new_row, new_col)
+            } else {
+                (new_col, new_row)
+            };
+            entries.push((c, r, val));
+        }
+    }
+    entries.sort_unstable_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
+
+    // Build CSC.
+    let mut storage_idx_by_col = vec![0usize; n + 1];
+    for &(col, _, _) in &entries {
+        storage_idx_by_col[col + 1] += 1;
+    }
+    for i in 0..n {
+        storage_idx_by_col[i + 1] += storage_idx_by_col[i];
+    }
+    let nnz = entries.len();
+    let mut row_idx_storage = vec![0usize; nnz];
+    let mut value_storage = vec![0.0f64; nnz];
+    let mut next = storage_idx_by_col.clone();
+    for &(col, row, val) in &entries {
+        let pos = next[col];
+        row_idx_storage[pos] = row;
+        value_storage[pos] = val;
+        next[col] += 1;
+    }
+
+    SparseMatrix::new(
+        ColumnCompressedPattern::new(n, storage_idx_by_col, row_idx_storage),
+        value_storage,
+    )
+}
+
 /// Sparse solver using LDLᵀ decomposition.
 #[derive(Clone, Copy, Debug)]
 pub struct SparseLdlt {
@@ -57,7 +241,7 @@ impl IsLinearSolver for SparseLdlt {
     fn factorize(&self, mat_a: &SparseSymmetricMatrix) -> Result<Self::Factor, LinearSolverError> {
         let mut tracer = NoopLdltTracer::new();
         let fact = self
-            .factorize_impl(mat_a, &mut tracer)
+            .factorize_impl(mat_a, &mut tracer, None)
             .context(SparseLdltSnafu)?;
         Ok(fact)
     }
@@ -369,19 +553,51 @@ impl LCol {
 }
 
 impl SparseLdlt {
+    /// Factorize `mat_a`, reusing a previously computed symbolic factor if provided.
+    ///
+    /// When `cached_symb` is `Some`, block-level AMD is skipped.
+    pub(crate) fn factorize_with_cached_symb(
+        &self,
+        mat_a: &SparseSymmetricMatrix,
+        cached_symb: Option<SparseLdltSymbolic>,
+    ) -> Result<SparseLdltFactor, LinearSolverError> {
+        let mut tracer = NoopLdltTracer::new();
+        self.factorize_impl(mat_a, &mut tracer, cached_symb)
+            .context(SparseLdltSnafu)
+    }
+
     /// Factorize `a_lower` (lower triangle of `A`) into `L` and `D`.
+    ///
+    /// When `cached_symb` is `Some`, the AMD ordering is skipped and the cached permutation
+    /// is reused directly, saving O(nb²) AMD work when the sparsity pattern is unchanged.
     pub fn factorize_impl(
         &self,
         mat_a: &SparseSymmetricMatrix,
         tracer: &mut impl IsLdltTracer<LdltWorkspace>,
+        cached_symb: Option<SparseLdltSymbolic>,
     ) -> Result<SparseLdltFactor, LdltDecompositionError> {
         profile_scope!("ldlt fact");
 
-        let a_lower = mat_a.lower();
+        // --- Block-level AMD ordering or reuse cached permutation ---------
+        let (scalar_perm, scalar_perm_inv) = if let Some(c) = cached_symb {
+            (c.scalar_perm, c.scalar_perm_inv)
+        } else {
+            let (block_perm, _block_perm_inv) = {
+                profile_scope!("block_amd");
+                block_amd_from_scalar(mat_a.lower(), mat_a.partitions())
+            };
+            scalar_perm_from_block_perm(mat_a.partitions(), &block_perm)
+        };
 
-        // --- Numeric LDLᵀ on original matrix ----------------------------
-        let n = a_lower.scalar_dim();
-        let mut etree = LdltWorkspace::calc_etree(a_lower);
+        // --- Permuted lower matrix (always needed: values change each iter) --
+        let a_lower_perm = {
+            profile_scope!("permute");
+            permute_sparse_lower(mat_a.lower(), &scalar_perm_inv)
+        };
+
+        // --- Numeric LDLᵀ on permuted matrix ----------------------------
+        let n = a_lower_perm.scalar_dim();
+        let mut etree = LdltWorkspace::calc_etree(&a_lower_perm);
 
         tracer.after_etree(&etree);
 
@@ -391,7 +607,7 @@ impl SparseLdlt {
 
         for j in 0..n {
             ws.activate_col(j);
-            ws.load_column(a_lower);
+            ws.load_column(&a_lower_perm);
             let reach = etree.reach(j);
 
             tracer.after_load_column_and_reach(j, reach, &ws);
@@ -411,20 +627,47 @@ impl SparseLdlt {
             mat_l: l_storage.compress(),
             d,
             partitions: mat_a.partitions().clone(),
-            scalar_perm: None,
+            scalar_perm: Some(scalar_perm),
+            scalar_perm_inv: Some(scalar_perm_inv),
         })
     }
+}
+
+/// Symbolic factor (AMD permutation) for scalar sparse LDLᵀ.
+///
+/// Reusable across iterations when the sparsity pattern does not change.
+#[derive(Clone, Debug)]
+pub struct SparseLdltSymbolic {
+    /// Scalar permutation: `scalar_perm[new_pos] = old_pos`.
+    pub(crate) scalar_perm: Vec<usize>,
+    /// Inverse scalar permutation: `scalar_perm_inv[old_pos] = new_pos`.
+    pub(crate) scalar_perm_inv: Vec<usize>,
 }
 
 /// Factorization product `A = L D Lᵀ`.
 #[derive(Clone, Debug)]
 pub struct SparseLdltFactor {
-    /// unit-lower in CSC, diagonal implied `1.0`, only strict lower stored
+    /// unit-lower in CSC, diagonal implied `1.0`, only strict lower stored (in AMD-permuted order)
     pub mat_l: SparseMatrix,
-    /// diagonal pivots
+    /// diagonal pivots (in AMD-permuted order)
     pub d: Vec<f64>,
-    /// Partition set.
+    /// Original (pre-AMD) partition set — used for external block-range queries.
     pub partitions: PartitionSet,
     /// Scalar permutation: `scalar_perm[new_pos] = old_pos`. `None` = identity.
     pub(crate) scalar_perm: Option<Vec<usize>>,
+    /// Inverse scalar permutation (new_pos = perm_inv[old_pos]). Cached for symbolic reuse.
+    pub(crate) scalar_perm_inv: Option<Vec<usize>>,
+}
+
+impl SparseLdltFactor {
+    /// Extract the symbolic factor (AMD permutation) for reuse in the next iteration.
+    pub(crate) fn into_symbolic(self) -> Option<SparseLdltSymbolic> {
+        match (self.scalar_perm, self.scalar_perm_inv) {
+            (Some(sp), Some(sp_inv)) => Some(SparseLdltSymbolic {
+                scalar_perm: sp,
+                scalar_perm_inv: sp_inv,
+            }),
+            _ => None,
+        }
+    }
 }
