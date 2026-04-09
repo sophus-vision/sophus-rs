@@ -75,10 +75,13 @@ pub enum LinearSolverError {
     ///
     /// This means the equality constraints are linearly dependent or
     /// under-determined with respect to the free variables.
-    #[snafu(display("SingularKktConstraint: M = G_f S_ff⁻¹ G_fᵀ is singular (nc={})", nc))]
+    #[snafu(display(
+        "SingularKktConstraint: M = G_f S_ff⁻¹ G_fᵀ is singular (num_constraints={})",
+        num_constraints
+    ))]
     SingularKktConstraint {
         /// number of constraint scalars
-        nc: usize,
+        num_constraints: usize,
     },
 }
 

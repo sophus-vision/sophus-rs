@@ -199,6 +199,69 @@ impl CamCalibProblem {
                 initial_lm_damping: 1.0,
                 parallelize: true,
                 solver,
+                skip_final_hessian: false,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let refined_variables = solution.variables;
+        let refined_world_from_robot = refined_variables.get_members::<Isometry3F64>(Self::POSES);
+
+        approx::assert_abs_diff_eq!(
+            refined_world_from_robot[2].translation(),
+            self.true_world_from_cameras[2].translation(),
+            epsilon = 0.1
+        );
+    }
+
+    /// optimize with two poses fixed and points marginalized (Schur complement path)
+    pub fn optimize_with_marg_points(
+        &self,
+        intrinsics_var_kind: VarKind,
+        solver: LinearSolverEnum,
+    ) {
+        let reproj_obs = CostTerms::new(
+            [Self::CAMS, Self::POSES, Self::POINTS],
+            self.observations.clone(),
+        );
+
+        let mut id = alloc::collections::BTreeMap::new();
+        id.insert(0, ());
+        id.insert(1, ());
+
+        let variables = VarBuilder::new()
+            .add_family(
+                Self::CAMS,
+                VarFamily::new(intrinsics_var_kind, alloc::vec![self.intrinsics]),
+            )
+            .add_family(
+                Self::POSES,
+                VarFamily::new_with_const_ids(
+                    VarKind::Free,
+                    self.world_from_cameras.clone(),
+                    id.clone(),
+                ),
+            )
+            .add_family(
+                Self::POINTS,
+                VarFamily::new(VarKind::Marginalized, self.points_in_world.clone()),
+            )
+            .build();
+
+        let solution = optimize_nlls(
+            variables,
+            alloc::vec![CostFn::new_boxed_robust(
+                (),
+                reproj_obs.clone(),
+                crate::robust_kernel::RobustKernel::Huber(HuberKernel::new(1.0)),
+            ),],
+            OptParams {
+                num_iterations: 25,
+                initial_lm_damping: 1.0,
+                parallelize: false,
+                solver,
+                skip_final_hessian: false,
+                ..Default::default()
             },
         )
         .unwrap();
@@ -261,6 +324,8 @@ impl CamCalibProblem {
                 initial_lm_damping: 1.0,
                 parallelize: true,
                 solver,
+                skip_final_hessian: false,
+                ..Default::default()
             },
         )
         .unwrap();
@@ -275,6 +340,7 @@ impl CamCalibProblem {
     }
 }
 
+#[cfg(test)]
 mod tests {
 
     #[test]
@@ -290,6 +356,8 @@ mod tests {
             CamCalibProblem::new(true).optimize_with_two_poses_fixed(VarKind::Free, solver);
             CamCalibProblem::new(false).optimize_with_two_poses_fixed(VarKind::Conditioned, solver);
             CamCalibProblem::new(false).optimize_with_priors(solver);
+            CamCalibProblem::new(false).optimize_with_marg_points(VarKind::Free, solver);
+            CamCalibProblem::new(false).optimize_with_marg_points(VarKind::Conditioned, solver);
         }
     }
 }

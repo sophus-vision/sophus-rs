@@ -55,4 +55,11 @@ pub trait IsEvaluatedEqConstraintSet: Debug + DynClone {
         block_triplet: &mut SymmetricMatrixBuilderEnum,
         b: &mut BlockVector,
     );
+
+    /// Build the dense constraint Jacobian G (num_constraint_rows × num_active_scalars).
+    fn dense_constraint_jacobian(
+        &self,
+        variables: &VarFamilies,
+        num_active_scalars: usize,
+    ) -> nalgebra::DMatrix<f64>;
 }

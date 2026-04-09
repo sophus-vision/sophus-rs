@@ -64,6 +64,9 @@ pub trait IsVarFamily: as_any::AsAny + Debug + DynClone {
     /// total number of free scalars (#free variables * #DOF)
     fn num_free_scalars(&self) -> usize;
 
+    /// total number of active (free or marginalized) variables (non-constant members)
+    fn num_active_vars(&self) -> usize;
+
     /// start indices in linear system of equations
     fn calc_start_indices(&mut self, scalar_offset: &mut usize);
 
@@ -119,6 +122,15 @@ impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
             VarKind::Free => self.members.len() - self.constant_members.len(),
             VarKind::Conditioned => 0,
             VarKind::Marginalized => 0,
+        }
+    }
+
+    fn num_active_vars(&self) -> usize {
+        match self.get_var_kind() {
+            VarKind::Free | VarKind::Marginalized => {
+                self.members.len() - self.constant_members.len()
+            }
+            VarKind::Conditioned => 0,
         }
     }
 
@@ -195,13 +207,26 @@ impl<Var: IsVariable + 'static> IsVarFamily for VarFamily<Var> {
                 self.block_indices = block_indices;
             }
             VarKind::Marginalized => {
+                // Same as Free: assign real scalar/block indices (continuing from free offset).
                 let mut scalar_indices = alloc::vec![];
                 let mut block_indices = alloc::vec![];
 
-                for _i in 0..self.members.len() {
-                    scalar_indices.push(-2);
-                    block_indices.push(-2);
+                let mut scalar_idx: usize = *inout_scalar_offset;
+                let mut block_idx: usize = 0;
+
+                for i in 0..self.members.len() {
+                    if self.constant_members.contains_key(&i) {
+                        scalar_indices.push(-1);
+                        block_indices.push(-1);
+                    } else {
+                        scalar_indices.push(scalar_idx as i64);
+                        block_indices.push(block_idx as i64);
+                        scalar_idx += Var::NUM_DOF;
+                        block_idx += 1;
+                    }
                 }
+                *inout_scalar_offset = scalar_idx;
+
                 assert_eq!(scalar_indices.len(), self.members.len());
                 assert_eq!(block_indices.len(), self.members.len());
 

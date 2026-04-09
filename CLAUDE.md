@@ -10,14 +10,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This repo uses `just` as a task runner. Prefer `just` commands over raw `cargo` where available.
 
 ```sh
-just build          # cargo build --release --all-targets --features std
+just build          # cargo build --release --all-targets
 just build-simd     # cargo +nightly build --release --all-targets --features simd
 just check-wasm     # cargo check --lib --target wasm32-unknown-unknown
 just test           # cargo test --release --features std
 just test-simd      # cargo +nightly test --release --features simd
-just clippy         # cargo clippy
+just clippy         # cargo clippy --tests --features std
 just format         # pre-commit run -a && cargo +nightly fmt
 just doc            # cargo +nightly doc --no-deps --all-features + doctests
+
+# Benchmarks
+just solver-bench          # sparse solver benchmarks
+just ba-bench              # bundle adjustment benchmark (standard vs Schur)
+just kb-projection-bench   # KB projection SIMD benchmark (requires nightly)
 
 # SIMD (requires nightly)
 just build-simd     # cargo +nightly build --release --all-targets --features simd
@@ -27,6 +32,11 @@ just test-simd      # cargo +nightly test --release --features simd
 To run a single test:
 ```sh
 cargo test --release --features std <test_name> -- --nocapture
+```
+
+To run the interactive demo app (bundle adjustment, optimization visualizations):
+```sh
+cargo run --release --features std --bin demo
 ```
 
 ## Workspace Architecture
@@ -49,7 +59,7 @@ cargo test --release --features std <test_name> -- --nocapture
 - `sophus_spline` — Cubic B-splines
 - `sophus_timeseries` — Temporal data structures
 - `sophus_solver` — Block-sparse matrices, LDLᵀ factorization, LU, QR, SVD solvers, DirectSolve dispatch
-- `sophus_opt` — Non-linear least squares (NLLS), robust kernels, sparse optimization
+- `sophus_opt` — Unified Optimizer (NLLS), StepInfo, TerminationReason, robust kernels, BA problem
 
 **Graphics:**
 - `sophus_renderer` — `wgpu`-based rendering

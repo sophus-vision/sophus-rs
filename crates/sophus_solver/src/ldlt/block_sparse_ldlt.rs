@@ -186,10 +186,6 @@ impl IsFactor for BlockSparseLdltFactor {
     }
 }
 
-// ---------------------------------------------------------------------------
-// AMD + symbolic helpers
-// ---------------------------------------------------------------------------
-
 /// Run block-level AMD on the lower block-sparse matrix.
 ///
 /// Returns `(perm, perm_inv)` where `perm[new_block] = old_block`.
@@ -208,7 +204,7 @@ fn block_amd_ordering(a_lower: &BlockSparseMatrix) -> (Vec<usize>, Vec<usize>) {
         )
     };
 
-    crate::ldlt::amd_order(symbolic.as_ref())
+    crate::ldlt::amd_order(symbolic.as_ref()).expect("AMD ordering allocation failed")
 }
 
 /// Build a flat `BlockMatrixSubdivision` (one block per partition) for the
@@ -448,10 +444,6 @@ fn make_scalar_perm(
     scalar_perm
 }
 
-// ---------------------------------------------------------------------------
-// BlockSparseLdlt factorization
-// ---------------------------------------------------------------------------
-
 impl BlockSparseLdlt {
     /// Factorize `a_lower` (lower triangle of `A`) into `L` and `D`.
     pub fn factorize_impl(
@@ -508,7 +500,7 @@ impl BlockSparseLdlt {
             mat_l: mat_l.compress(),
             block_diag: diag_d,
             scalar_perm: Some(scalar_perm),
-            _original_partitions: a_lower.subdivision().partitions().clone(),
+            original_partitions: a_lower.subdivision().partitions().clone(),
         })
     }
 }
@@ -524,7 +516,7 @@ pub struct BlockSparseLdltFactor {
     /// `None` if no reordering was applied (identity).
     pub(crate) scalar_perm: Option<Vec<usize>>,
     /// Original (pre-AMD) partition set — used for external block-range queries.
-    pub(crate) _original_partitions: PartitionSet,
+    pub(crate) original_partitions: PartitionSet,
 }
 
 /// LDLᵀ workspace

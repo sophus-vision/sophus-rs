@@ -6,8 +6,12 @@ use nalgebra::{
 use crate::{
     CachedSymbolicFactor,
     IsFactor,
+    IsInvertible,
     LinearSolverEnum,
-    error::LinearSolverError,
+    error::{
+        LinearSolverError,
+        UnsupportedForInverseBlockSnafu,
+    },
     matrix::{
         IsSymmetricMatrix,
         PartitionBlockIndex,
@@ -23,7 +27,7 @@ use crate::{
 };
 
 /// Inner matrix type for the direct-solve path (all non-Schur variants).
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DirectSolveMatrix {
     /// Dense symmetric matrix.
     Dense(DenseSymmetricMatrix),
@@ -88,6 +92,19 @@ impl IsSymmetricMatrix for DirectSolveMatrix {
 }
 
 impl DirectSolveMatrix {
+    /// Subtract `nu` from every scalar diagonal entry `M[i,i]` in-place.
+    ///
+    /// The sparsity structure is unchanged, so no caches need invalidation.
+    pub fn subtract_scalar_diagonal(&mut self, nu: f64) {
+        match self {
+            DirectSolveMatrix::Dense(m) => m.subtract_scalar_diagonal(nu),
+            DirectSolveMatrix::SparseLower(m) => m.subtract_scalar_diagonal(nu),
+            DirectSolveMatrix::BlockSparseLower(m) => m.subtract_scalar_diagonal(nu),
+            DirectSolveMatrix::FaerSparse(m) => m.subtract_scalar_diagonal(nu),
+            DirectSolveMatrix::FaerSparseUpper(m) => m.subtract_scalar_diagonal(nu),
+        }
+    }
+
     /// Return a reference to the inner `DenseSymmetricMatrix`, if that variant.
     pub fn as_dense(&self) -> Option<&DenseSymmetricMatrix> {
         match self {
@@ -134,7 +151,7 @@ impl DirectSolveMatrix {
 /// Analogous to `Schur<M>` but for the non-Schur (direct factorization) path.
 /// `solve()` calls `LinearSolverEnum::factorize_inner`, caching the AMD
 /// symbolic factorization across optimizer iterations.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DirectSolve {
     /// The underlying concrete matrix.
     pub inner: DirectSolveMatrix,
@@ -177,21 +194,27 @@ impl IsSymmetricMatrix for DirectSolve {
         self.inner.to_dense()
     }
 
-    /// Extract a block from the matrix pseudo-inverse H⁺ via SVD fallback.
+    /// Compute a block of the (pseudo) inverse of H via min-norm LDLᵀ factorization.
     fn inverse_block(
         &mut self,
         row_idx: PartitionBlockIndex,
         col_idx: PartitionBlockIndex,
     ) -> Result<DMatrix<f64>, LinearSolverError> {
-        let dense = self.to_dense();
-        let pinv = nalgebra::SVD::new(dense, true, true)
-            .pseudo_inverse(1e-10)
-            .expect("pseudo-inverse of symmetric matrix");
-        let rr = self.block_range(row_idx);
-        let cr = self.block_range(col_idx);
-        Ok(pinv
-            .view((rr.start_idx, cr.start_idx), (rr.block_dim, cr.block_dim))
-            .into_owned())
+        let effective_solver = if self.solver.is_schur() {
+            self.solver.schur_inner_solver()
+        } else {
+            self.solver
+        };
+        let factor = effective_solver
+            .factorize_inner(&self.inner, None)
+            .expect("factorize_inner failed in inverse_block");
+        match factor.into_invertible() {
+            Some(mut invertible) => Ok(invertible.pseudo_inverse_block(row_idx, col_idx)),
+            None => Err(UnsupportedForInverseBlockSnafu {
+                solver: format!("{:?}", effective_solver),
+            }
+            .build()),
+        }
     }
 
     fn solve(&mut self, rhs: &DVector<f64>) -> Result<DVector<f64>, LinearSolverError> {

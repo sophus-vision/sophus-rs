@@ -224,6 +224,16 @@ impl SymmetricMatrixBuilderEnum {
                 BlockSparseSymmetricMatrixBuilder::zero(partitions),
                 solver,
             ),
+            // Schur variants always use BlockSparseLower for H (the Schur forward pass requires
+            // block-sparse structure).
+            LinearSolverEnum::SchurBlockSparseLdlt(_)
+            | LinearSolverEnum::SchurSparseLdlt(_)
+            | LinearSolverEnum::SchurFaerSparseLdlt(_) => {
+                SymmetricMatrixBuilderEnum::BlockSparseLower(
+                    BlockSparseSymmetricMatrixBuilder::zero(partitions),
+                    solver,
+                )
+            }
         }
     }
 
@@ -317,6 +327,8 @@ impl SymmetricMatrixBuilderEnum {
                 // Build the matrix from the current accumulated values.
                 let mat = pat.build();
                 // Reuse the same pattern for the next iteration: just zero the storage.
+                // This avoids the O(K log K) symbolic rebuild that mat.clone().into_pattern()
+                // would do (sorting 13K+ blocks, CSC computation, fresh allocations).
                 pat.reset();
                 (
                     SymmetricMatrixEnum::Direct(DirectSolve::new(
@@ -343,10 +355,17 @@ impl SymmetricMatrixBuilderEnum {
 }
 
 /// Symmetric `N x N` matrix enum.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum SymmetricMatrixEnum {
     /// Direct-solve path: any non-Schur matrix bundled with its solver.
     Direct(DirectSolve),
+    /// Schur-complement-wrapped block-sparse matrix (free + marginalized partitions).
+    Schur(
+        crate::matrix::schur::Schur<
+            crate::matrix::block_sparse::block_sparse_symmetric_matrix::BlockSparseSymmetricMatrix,
+        >,
+    ),
 }
 
 impl SymmetricMatrixEnum {
@@ -369,6 +388,7 @@ impl SymmetricMatrixEnum {
                 DirectSolveMatrix::BlockSparseLower(m) => Some(m),
                 _ => None,
             },
+            _ => None,
         }
     }
 
@@ -376,6 +396,7 @@ impl SymmetricMatrixEnum {
     pub fn as_direct(&self) -> Option<&DirectSolve> {
         match self {
             SymmetricMatrixEnum::Direct(ds) => Some(ds),
+            _ => None,
         }
     }
 
@@ -383,6 +404,35 @@ impl SymmetricMatrixEnum {
     pub fn as_direct_mut(&mut self) -> Option<&mut DirectSolve> {
         match self {
             SymmetricMatrixEnum::Direct(ds) => Some(ds),
+            _ => None,
+        }
+    }
+
+    /// Return a reference to the `Schur` wrapper, if this is the `Schur` variant.
+    pub fn as_schur(
+        &self,
+    ) -> Option<
+        &crate::matrix::schur::Schur<
+            crate::matrix::block_sparse::block_sparse_symmetric_matrix::BlockSparseSymmetricMatrix,
+        >,
+    > {
+        match self {
+            SymmetricMatrixEnum::Schur(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    /// Return a mutable reference to the `Schur` wrapper, if this is the `Schur` variant.
+    pub fn as_schur_mut(
+        &mut self,
+    ) -> Option<
+        &mut crate::matrix::schur::Schur<
+            crate::matrix::block_sparse::block_sparse_symmetric_matrix::BlockSparseSymmetricMatrix,
+        >,
+    > {
+        match self {
+            SymmetricMatrixEnum::Schur(s) => Some(s),
+            _ => None,
         }
     }
 
@@ -390,6 +440,7 @@ impl SymmetricMatrixEnum {
     pub fn as_block_sparse_lower(&self) -> Option<&BlockSparseSymmetricMatrix> {
         match self {
             SymmetricMatrixEnum::Direct(ds) => ds.inner.as_block_sparse_lower(),
+            _ => None,
         }
     }
 
@@ -397,6 +448,7 @@ impl SymmetricMatrixEnum {
     pub fn as_dense(&self) -> Option<&DenseSymmetricMatrix> {
         match self {
             SymmetricMatrixEnum::Direct(ds) => ds.inner.as_dense(),
+            _ => None,
         }
     }
 
@@ -404,6 +456,7 @@ impl SymmetricMatrixEnum {
     pub fn as_sparse_lower(&self) -> Option<&SparseSymmetricMatrix> {
         match self {
             SymmetricMatrixEnum::Direct(ds) => ds.inner.as_sparse_lower(),
+            _ => None,
         }
     }
 
@@ -411,6 +464,7 @@ impl SymmetricMatrixEnum {
     pub fn as_faer_sparse(&self) -> Option<&FaerSparseMatrix> {
         match self {
             SymmetricMatrixEnum::Direct(ds) => ds.inner.as_faer_sparse(),
+            _ => None,
         }
     }
 
@@ -418,6 +472,17 @@ impl SymmetricMatrixEnum {
     pub fn as_faer_sparse_upper(&self) -> Option<&FaerSparseSymmetricMatrix> {
         match self {
             SymmetricMatrixEnum::Direct(ds) => ds.inner.as_faer_sparse_upper(),
+            _ => None,
+        }
+    }
+
+    /// Subtract `nu` from every scalar diagonal entry `M[i,i]` in-place.
+    ///
+    /// The sparsity structure is unchanged, so no caches need invalidation.
+    pub fn subtract_scalar_diagonal(&mut self, nu: f64) {
+        match self {
+            SymmetricMatrixEnum::Direct(ds) => ds.inner.subtract_scalar_diagonal(nu),
+            SymmetricMatrixEnum::Schur(s) => s.inner.subtract_scalar_diagonal(nu),
         }
     }
 }
@@ -426,6 +491,7 @@ impl IsSymmetricMatrix for SymmetricMatrixEnum {
     fn has_block(&self, row_idx: PartitionBlockIndex, col_idx: PartitionBlockIndex) -> bool {
         match self {
             SymmetricMatrixEnum::Direct(ds) => ds.has_block(row_idx, col_idx),
+            SymmetricMatrixEnum::Schur(m) => m.has_block(row_idx, col_idx),
         }
     }
 
@@ -436,6 +502,7 @@ impl IsSymmetricMatrix for SymmetricMatrixEnum {
     ) -> nalgebra::DMatrix<f64> {
         match self {
             SymmetricMatrixEnum::Direct(ds) => ds.get_block(row_idx, col_idx),
+            SymmetricMatrixEnum::Schur(m) => m.get_block(row_idx, col_idx),
         }
     }
 
@@ -443,18 +510,21 @@ impl IsSymmetricMatrix for SymmetricMatrixEnum {
     fn partitions(&self) -> &PartitionSet {
         match self {
             SymmetricMatrixEnum::Direct(ds) => ds.partitions(),
+            SymmetricMatrixEnum::Schur(m) => m.partitions(),
         }
     }
 
     fn to_dense(&self) -> DMatrix<f64> {
         match self {
             SymmetricMatrixEnum::Direct(ds) => ds.to_dense(),
+            SymmetricMatrixEnum::Schur(m) => m.to_dense(),
         }
     }
 
     fn solve(&mut self, rhs: &DVector<f64>) -> Result<DVector<f64>, LinearSolverError> {
         match self {
             SymmetricMatrixEnum::Direct(ds) => ds.solve(rhs),
+            SymmetricMatrixEnum::Schur(m) => m.solve(rhs),
         }
     }
 
@@ -465,6 +535,7 @@ impl IsSymmetricMatrix for SymmetricMatrixEnum {
     ) -> Result<DMatrix<f64>, LinearSolverError> {
         match self {
             SymmetricMatrixEnum::Direct(ds) => ds.inverse_block(row_idx, col_idx),
+            SymmetricMatrixEnum::Schur(m) => m.inverse_block(row_idx, col_idx),
         }
     }
 }
@@ -493,12 +564,18 @@ impl SymmetricMatrixEnum {
                     }
                 }
             },
+            SymmetricMatrixEnum::Schur(m) => m
+                .inner
+                .try_get_lower_block_view(row_idx, col_idx)
+                .map(|v| v.clone_owned()),
         }
     }
 
     /// Zero-copy view of a lower-triangular block, or `None` if structurally zero.
     ///
     /// Only works for `BlockSparseLower`; returns `None` for all other variants.
+    /// Avoids any heap allocation — use this in hot loops where the matrix is known
+    /// to be block-sparse lower-triangular (e.g. Schur complement forward pass).
     #[inline]
     pub fn try_get_lower_block_view<'a>(
         &'a self,
@@ -512,27 +589,33 @@ impl SymmetricMatrixEnum {
                 }
                 _ => None,
             },
+            SymmetricMatrixEnum::Schur(m) => m.inner.try_get_lower_block_view(row_idx, col_idx),
         }
     }
 
     /// Visit every non-zero lower-triangular H_mf block across all free columns.
     ///
     /// Scans global block columns `0..total_free_blocks` in order.  For each entry
-    /// whose row scalar start is >= `nf` (i.e. belongs to a marginalized partition),
+    /// whose row scalar start is ≥ `num_free_scalars` (i.e. belongs to a marginalized partition),
     /// calls `f(free_scalar_start, free_dim, marg_offset, view)` where
-    /// `marg_offset = row_scalar_start - nf`.
+    /// `marg_offset = row_scalar_start − num_free_scalars`.
     ///
-    /// Only active for `BlockSparseLower` matrices; no-op for all other variants.
+    /// Only active for `BlockSparseLower` and `Schur` matrices; no-op for all other variants.
+    /// Avoids binary search — each block is visited via the pre-built CSC column lists.
     #[inline]
-    pub fn visit_lower_hff_hmf<F>(&self, total_free_blocks: usize, nf: usize, f: F)
+    pub fn visit_lower_hff_hmf<F>(&self, total_free_blocks: usize, num_free_scalars: usize, f: F)
     where
         F: FnMut(usize, usize, usize, nalgebra::DMatrixView<'_, f64>),
     {
         match self {
             SymmetricMatrixEnum::Direct(ds) => {
                 if let DirectSolveMatrix::BlockSparseLower(m) = &ds.inner {
-                    m.visit_lower_hff_hmf(total_free_blocks, nf, f)
+                    m.visit_lower_hff_hmf(total_free_blocks, num_free_scalars, f)
                 }
+            }
+            SymmetricMatrixEnum::Schur(m) => {
+                m.inner
+                    .visit_lower_hff_hmf(total_free_blocks, num_free_scalars, f)
             }
         }
     }

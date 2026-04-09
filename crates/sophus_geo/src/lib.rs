@@ -15,6 +15,7 @@ pub struct ReadmeDoctests;
 
 mod hyperplane;
 mod hypersphere;
+mod inverse_depth;
 mod ray;
 /// Intervals and box regions.
 pub mod region;
@@ -25,6 +26,7 @@ pub use sophus_lie::Quaternion;
 pub use crate::{
     hyperplane::*,
     hypersphere::*,
+    inverse_depth::*,
     ray::*,
     unit_vector::*,
 };

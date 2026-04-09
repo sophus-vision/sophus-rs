@@ -43,11 +43,12 @@ pub trait IsEvaluatedCost: Debug + DynClone {
     fn calc_square_error(&self) -> f64;
 
     /// Populate upper triangular matrix of the normal equation.
-    fn populate_upper_triangulatr_normal_equation(
+    fn populate_upper_triangular_normal_equation(
         &self,
         variables: &VarFamilies,
         nu: f64,
         hessian_block_triplet: &mut SymmetricMatrixBuilderEnum,
         neg_grad: &mut BlockVector,
+        parallelize: bool,
     );
 }

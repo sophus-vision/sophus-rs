@@ -52,7 +52,7 @@ impl IsSymmetricMatrixBuilder for FaerSparseMatrixBuilder {
 }
 
 /// Sparse `N x N` matrix which wraps around [faer::sparse::SparseColMat].
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FaerSparseMatrix {
     pub(crate) square: faer::sparse::SparseColMat<usize, f64>,
     partitions: PartitionSet,
@@ -83,6 +83,26 @@ impl FaerSparseMatrix {
             )
             .unwrap(),
             partitions,
+        }
+    }
+}
+
+impl FaerSparseMatrix {
+    /// Subtract `nu` from every scalar diagonal entry `M[i,i]` in-place.
+    ///
+    /// The sparsity structure is unchanged.
+    pub fn subtract_scalar_diagonal(&mut self, nu: f64) {
+        let n = self.square.nrows();
+        let col_ptrs = self.square.col_ptr().to_vec();
+        let row_ind = self.square.row_idx().to_vec();
+        let vals = self.square.val_mut();
+        for j in 0..n {
+            let start = col_ptrs[j];
+            let end = col_ptrs[j + 1];
+            let rows = &row_ind[start..end];
+            if let Ok(pos) = rows.binary_search(&j) {
+                vals[start + pos] -= nu;
+            }
         }
     }
 }

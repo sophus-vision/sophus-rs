@@ -3,6 +3,10 @@ pub(crate) mod block_sparse_ldlt;
 pub(crate) mod dense_ldlt;
 pub(crate) mod elimination_tree;
 pub(crate) mod faer_sparse_ldlt;
+/// Min-norm LDLt pseudo-inverse solver.
+pub mod min_norm_ldlt;
+/// Schur-complement factorization.
+pub mod schur_ldlt;
 pub(crate) mod sparse_ldlt;
 
 use std::marker::PhantomData;
@@ -16,24 +20,33 @@ use faer::{
         MemBuffer,
         MemStack,
     },
-    sparse::linalg::amd,
+    sparse::{
+        FaerError,
+        linalg::amd,
+    },
 };
 pub use faer_sparse_ldlt::*;
+pub use schur_ldlt::SchurFactor;
 pub use sparse_ldlt::*;
 
-use crate::IsFactor;
+use crate::{
+    FaerSparseSolverError,
+    IsFactor,
+    LinearSolverError,
+};
 
 /// Run AMD fill-reducing ordering on a symbolic upper-triangular sparse matrix.
 ///
 /// Returns `(perm, perm_inv)` where `perm[new_pos] = old_pos`.
 pub(crate) fn amd_order(
     symbolic: faer::sparse::SymbolicSparseColMatRef<'_, usize>,
-) -> (Vec<usize>, Vec<usize>) {
+) -> Result<(Vec<usize>, Vec<usize>), LinearSolverError> {
     let nb = symbolic.nrows();
     let nnz = symbolic.col_ptr()[nb];
     let mut perm = vec![0usize; nb];
     let mut perm_inv = vec![0usize; nb];
-    let mut mem = MemBuffer::try_new(amd::order_scratch::<usize>(nb, nnz)).unwrap();
+    let mut mem = MemBuffer::try_new(amd::order_scratch::<usize>(nb, nnz))
+        .map_err(|e| faer_amd_err(e.into()))?;
     amd::order(
         &mut perm,
         &mut perm_inv,
@@ -41,8 +54,18 @@ pub(crate) fn amd_order(
         amd::Control::default(),
         MemStack::new(&mut mem),
     )
-    .unwrap();
-    (perm, perm_inv)
+    .map_err(faer_amd_err)?;
+    Ok((perm, perm_inv))
+}
+
+fn faer_amd_err(e: FaerError) -> LinearSolverError {
+    LinearSolverError::FaerSparseLdltError {
+        faer_error: match e {
+            FaerError::OutOfMemory => FaerSparseSolverError::OutOfMemory,
+            FaerError::IndexOverflow => FaerSparseSolverError::IndexOverflow,
+            _ => FaerSparseSolverError::Unspecific,
+        },
+    }
 }
 
 /// Workspace for sparse LDLᵀ such as [SparseLdlt] or [BlockSparseLdlt].

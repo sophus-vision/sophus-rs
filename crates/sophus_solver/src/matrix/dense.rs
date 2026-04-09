@@ -141,7 +141,8 @@ pub struct DenseSymmetricMatrix {
 }
 
 impl DenseSymmetricMatrix {
-    pub(crate) fn new(symmetric_mat: DMatrix<f64>, partitions: PartitionSet) -> Self {
+    /// Create a new dense symmetric matrix from a dense matrix and partition set.
+    pub fn new(symmetric_mat: DMatrix<f64>, partitions: PartitionSet) -> Self {
         DenseSymmetricMatrix {
             data: symmetric_mat,
             partitions,
@@ -170,6 +171,16 @@ impl DenseSymmetricMatrix {
     #[inline]
     pub fn scalar_dimension(&self) -> usize {
         self.data.nrows()
+    }
+
+    /// Subtract `nu` from every scalar diagonal entry `M[i,i]` in-place.
+    ///
+    /// The sparsity structure is unchanged.
+    pub fn subtract_scalar_diagonal(&mut self, nu: f64) {
+        let n = self.data.nrows();
+        for i in 0..n {
+            self.data[(i, i)] -= nu;
+        }
     }
 }
 

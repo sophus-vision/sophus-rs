@@ -2,5 +2,5 @@
 Cargo.lock
 .vscode/
 .claude/
-crates/sophus/dist/
 *.rlib
+crates/sophus/dist/

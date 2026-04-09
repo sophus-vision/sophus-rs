@@ -24,6 +24,8 @@ pub mod sparse;
 /// Direct-solve wrapper bundling a concrete matrix with its solver and cached symbolic factor.
 pub mod direct_solve;
 pub(crate) mod grid;
+/// Schur-complement wrapper for block-sparse symmetric matrices.
+pub mod schur;
 pub(crate) mod symmetric_matrix;
 
 pub use direct_solve::{
@@ -31,6 +33,7 @@ pub use direct_solve::{
     DirectSolveMatrix,
 };
 pub use grid::*;
+pub use schur::Schur;
 pub use symmetric_matrix::*;
 
 /// A set of partitions along one axis.

@@ -128,9 +128,9 @@ where
     }
 }
 
+#[cfg(test)]
 mod test {
 
-    #[allow(dead_code)]
     fn le_than<const N: usize>(
         c: &[char; N],
         lhs: [usize; N],

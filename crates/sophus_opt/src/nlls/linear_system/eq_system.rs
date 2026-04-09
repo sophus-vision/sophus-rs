@@ -63,6 +63,34 @@ impl EqSystem {
         Ok(())
     }
 
+    /// Build the combined dense constraint Jacobian G from all constraint sets.
+    pub(crate) fn dense_constraint_jacobian(
+        &self,
+        variables: &VarFamilies,
+    ) -> Option<nalgebra::DMatrix<f64>> {
+        if self.partitions.is_empty() {
+            return None;
+        }
+
+        let num_active = variables.num_active_scalars();
+        let total_rows: usize = self
+            .partitions
+            .iter()
+            .map(|p| p.block_dim * p.block_count)
+            .sum();
+        let mut g = nalgebra::DMatrix::zeros(total_rows, num_active);
+
+        let mut row_offset = 0usize;
+        for eq_set in &self.evaluated_eq_constraints {
+            let sub_g = eq_set.dense_constraint_jacobian(variables, num_active);
+            let sub_rows = sub_g.nrows();
+            g.view_mut((row_offset, 0), (sub_rows, num_active))
+                .copy_from(&sub_g);
+            row_offset += sub_rows;
+        }
+        Some(g)
+    }
+
     // update lambdas
     pub(crate) fn update_lambdas(
         &self,
@@ -72,7 +100,7 @@ impl EqSystem {
         let mut updated_lambdas = self.lambda.clone();
         let lambda_num_rows = updated_lambdas.scalar_vector().shape().0;
         *updated_lambdas.scalar_vector_mut() -=
-            delta.rows(variables.num_free_scalars(), lambda_num_rows);
+            delta.rows(variables.num_active_scalars(), lambda_num_rows);
         updated_lambdas
     }
 }
@@ -107,8 +135,7 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> IsEvalua
     ) {
         let num_args = self.family_names.len();
 
-        let num_families = variables.collection.len();
-        let region_idx = num_families + constraint_idx;
+        let region_idx = variables.total_active_partition_count() + constraint_idx;
 
         let mut scalar_start_indices_per_arg = alloc::vec::Vec::new();
         let mut block_start_indices_per_arg = alloc::vec::Vec::new();
@@ -116,28 +143,35 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> IsEvalua
         let mut dof_per_arg = alloc::vec::Vec::new();
         let mut arg_ids = alloc::vec::Vec::new();
         for name in self.family_names.iter() {
-            let family = variables.collection.get(name).unwrap();
+            let family = variables
+                .collection
+                .get(name)
+                .unwrap_or_else(|| panic!("constraint family '{name}' not in variables"));
             scalar_start_indices_per_arg.push(family.get_scalar_start_indices().clone());
             block_start_indices_per_arg.push(family.get_block_start_indices().clone());
             dof_per_arg.push(family.free_or_marg_dof());
-            arg_ids.push(variables.index(name).unwrap());
+            arg_ids.push(
+                variables
+                    .index(name)
+                    .unwrap_or_else(|| panic!("constraint family '{name}' not in variables")),
+            );
         }
 
         for constraint in self.evaluated_constraints.iter() {
             let idx = constraint.idx;
 
-            let region_block_idx = PartitionBlockIndex {
+            let lambda = lambda.get_block(PartitionBlockIndex {
+                partition: constraint_idx,
+                block: 0,
+            });
+
+            let idx_0 = PartitionBlockIndex {
                 partition: region_idx,
                 block: 0,
             };
-            let lambda_block_idx = PartitionBlockIndex {
-                partition: constraint_idx,
-                block: 0,
-            };
-            let lambda = lambda.get_block(lambda_block_idx);
 
             // -c
-            block_vec.add_block(region_block_idx, &((-constraint.residual).as_view()));
+            block_vec.add_block(idx_0, &((-constraint.residual).as_view()));
 
             for arg_id_alpha in 0..num_args {
                 let dof_alpha = dof_per_arg[arg_id_alpha];
@@ -162,18 +196,18 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> IsEvalua
                 let mat_g_times_lambda =
                     constraint.jacobian.block(arg_id_alpha).transpose() * lambda;
 
-                let alpha_block_idx = PartitionBlockIndex {
-                    partition: family_alpha,
+                let idx_alpha = PartitionBlockIndex {
+                    partition: variables.partition_idx_by_family[family_alpha],
                     block: block_start_idx_alpha,
                 };
 
                 // + G'lambda
-                block_vec.add_block(alpha_block_idx, &(mat_g_times_lambda.as_view()));
+                block_vec.add_block(idx_alpha, &(mat_g_times_lambda.as_view()));
 
                 // G
                 block_triplet.add_lower_block(
-                    region_block_idx,
-                    alpha_block_idx,
+                    idx_0,
+                    idx_alpha,
                     &constraint.jacobian.block(arg_id_alpha).as_view(),
                 );
 
@@ -190,5 +224,45 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> IsEvalua
             }
         }
         l1_norms
+    }
+
+    fn dense_constraint_jacobian(
+        &self,
+        variables: &VarFamilies,
+        num_active_scalars: usize,
+    ) -> nalgebra::DMatrix<f64> {
+        let num_rows = RESIDUAL_DIM * self.evaluated_constraints.len();
+        let mut g = nalgebra::DMatrix::zeros(num_rows, num_active_scalars);
+        let num_args = self.family_names.len();
+
+        let mut scalar_start_indices_per_arg = alloc::vec::Vec::new();
+        for name in self.family_names.iter() {
+            let family = variables
+                .collection
+                .get(name)
+                .unwrap_or_else(|| panic!("constraint family '{name}' not in variables"));
+            scalar_start_indices_per_arg.push(family.get_scalar_start_indices().clone());
+        }
+
+        for (c_idx, constraint) in self.evaluated_constraints.iter().enumerate() {
+            let row_start = c_idx * RESIDUAL_DIM;
+
+            for arg_id in 0..num_args {
+                let var_idx = constraint.idx[arg_id];
+                let scalar_start = scalar_start_indices_per_arg[arg_id][var_idx];
+                if scalar_start == -1 {
+                    continue; // conditioned variable
+                }
+                let col_start = scalar_start as usize;
+                let j_block = constraint.jacobian.block(arg_id);
+                let (brows, bcols) = j_block.shape();
+                for r in 0..brows {
+                    for c in 0..bcols {
+                        g[(row_start + r, col_start + c)] = j_block[(r, c)];
+                    }
+                }
+            }
+        }
+        g
     }
 }
