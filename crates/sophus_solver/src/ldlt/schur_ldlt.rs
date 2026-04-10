@@ -856,7 +856,15 @@ impl SchurFactor {
             let factor = LinearSolverEnum::BlockSparseLdlt(BlockSparseLdlt::default())
                 .factorize(&s_sym)
                 .expect("S re-factorization for min-norm failed");
-            self.s_min_norm = factor.into_invertible();
+            self.s_min_norm = factor.into_invertible().or_else(|| {
+                // Fallback to dense LDLᵀ if block-sparse inverse is unavailable.
+                use crate::IsLinearSolver;
+                let dense_sym = self.s_block.to_dense_symmetric();
+                let dense_factor = crate::ldlt::DenseLdlt::default()
+                    .factorize(&dense_sym)
+                    .expect("dense fallback factorization for S min-norm");
+                crate::FactorEnum::DenseLdlt(dense_factor).into_invertible()
+            });
         }
     }
 

@@ -8,6 +8,7 @@ pub(crate) mod multi_partition;
 pub(crate) mod scalar_pattern;
 pub(crate) mod single_partition;
 pub(crate) mod small;
+pub mod large_pose_graph;
 
 pub use medium::*;
 pub use multi_partition::*;

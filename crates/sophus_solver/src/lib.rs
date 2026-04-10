@@ -299,7 +299,7 @@ pub enum LinearSolverEnum {
     DenseLu(DenseLu),
     /// Sparse solver using LDLᵀ factorization.
     SparseLdlt(SparseLdlt),
-    /// Block-sparse solver using LDLᵀ factorization.
+    /// Block-sparse LDLᵀ solver with AMD fill-reducing ordering.
     BlockSparseLdlt(BlockSparseLdlt),
     /// Sparse solver using faer's QR factorization.
     FaerSparseQr(FaerSparseQr),
@@ -339,9 +339,7 @@ impl LinearSolverEnum {
             LinearSolverEnum::DenseLdlt(dense_ldlt) => dense_ldlt.set_parallelize(parallelize),
             LinearSolverEnum::DenseLu(dense_lu) => dense_lu.set_parallelize(parallelize),
             LinearSolverEnum::SparseLdlt(sparse_ldlt) => sparse_ldlt.set_parallelize(parallelize),
-            LinearSolverEnum::BlockSparseLdlt(block_sparse_ldlt) => {
-                block_sparse_ldlt.set_parallelize(parallelize)
-            }
+            LinearSolverEnum::BlockSparseLdlt(s) => s.set_parallelize(parallelize),
             LinearSolverEnum::FaerSparseQr(faer_sparse_qr) => {
                 faer_sparse_qr.set_parallelize(parallelize)
             }
@@ -491,12 +489,18 @@ impl LinearSolverEnum {
     /// Includes both non-Schur indefinite solvers and Schur variants.
     pub fn ba_eq_solvers() -> Vec<(LinearSolverEnum, &'static str, bool)> {
         vec![
-            // Non-Schur indefinite solvers (solve full KKT system).
+            // Schur variants (range-space KKT — fastest for BA structure).
             (
-                LinearSolverEnum::FaerSparseLu(FaerSparseLu {}),
-                "faer sparse LU",
-                false,
+                LinearSolverEnum::SchurBlockSparseLdlt(BlockSparseLdlt::default()),
+                "Schur+block-sparse LDLt",
+                true,
             ),
+            (
+                LinearSolverEnum::SchurFaerSparseLdlt(FaerSparseLdlt::default()),
+                "Schur+faer sparse LDLt",
+                true,
+            ),
+            // Non-Schur indefinite solvers (solve full KKT system).
             (
                 LinearSolverEnum::BlockSparseLdlt(BlockSparseLdlt::default()),
                 "block-sparse LDLt",
@@ -507,16 +511,10 @@ impl LinearSolverEnum {
                 "faer sparse LBLt",
                 false,
             ),
-            // Schur variants (range-space KKT on reduced system).
             (
-                LinearSolverEnum::SchurBlockSparseLdlt(BlockSparseLdlt::default()),
-                "Schur+block-sparse LDLt",
-                true,
-            ),
-            (
-                LinearSolverEnum::SchurFaerSparseLdlt(FaerSparseLdlt::default()),
-                "Schur+faer sparse LDLt",
-                true,
+                LinearSolverEnum::FaerSparseLu(FaerSparseLu {}),
+                "faer sparse LU",
+                false,
             ),
         ]
     }
@@ -532,9 +530,7 @@ impl LinearSolverEnum {
             LinearSolverEnum::FaerSparseLu(faer_sparse_lu) => faer_sparse_lu.zero(partitions),
             LinearSolverEnum::FaerSparseLdlt(faer_sparse_ldlt) => faer_sparse_ldlt.zero(partitions),
             LinearSolverEnum::FaerSparseLblt(s) => s.zero(partitions),
-            LinearSolverEnum::BlockSparseLdlt(block_sparse_ldlt) => {
-                block_sparse_ldlt.zero(partitions)
-            }
+            LinearSolverEnum::BlockSparseLdlt(s) => s.zero(partitions),
             LinearSolverEnum::SparseLdlt(sparse_ldlt) => sparse_ldlt.zero(partitions),
             // Schur variants always use BlockSparseLower for H (the Schur forward pass requires
             // block-sparse structure).
@@ -562,7 +558,7 @@ impl LinearSolverEnum {
             LinearSolverEnum::FaerSparseLdlt(faer_sparse_ldlt) => faer_sparse_ldlt.name(),
             LinearSolverEnum::FaerSparseLblt(s) => s.name(),
             LinearSolverEnum::SparseLdlt(sparse_ldlt) => sparse_ldlt.name(),
-            LinearSolverEnum::BlockSparseLdlt(block_sparse_ldlt) => block_sparse_ldlt.name(),
+            LinearSolverEnum::BlockSparseLdlt(s) => s.name(),
             LinearSolverEnum::SchurBlockSparseLdlt(s) => format!("Schur({})", s.name()),
             LinearSolverEnum::SchurSparseLdlt(s) => format!("Schur({})", s.name()),
             LinearSolverEnum::SchurFaerSparseLdlt(s) => format!("Schur({})", s.name()),
@@ -627,11 +623,9 @@ impl LinearSolverEnum {
                     sparse_ldlt.factorize_with_cached_symb(sparse, cached)?,
                 ))
             }
-            LinearSolverEnum::BlockSparseLdlt(block_sparse_ldlt) => {
-                Ok(FactorEnum::BlockSparseLdlt(
-                    block_sparse_ldlt.factorize(inner.as_block_sparse_lower().unwrap())?,
-                ))
-            }
+            LinearSolverEnum::BlockSparseLdlt(s) => Ok(FactorEnum::BlockSparseLdlt(
+                s.factorize(inner.as_block_sparse_lower().unwrap())?,
+            )),
             LinearSolverEnum::FaerSparseQr(faer_sparse_qr) => {
                 let owned;
                 let faer = if let DirectSolveMatrix::FaerSparse(s) = inner {
@@ -781,7 +775,7 @@ pub enum FactorEnum {
     DenseLu(DenseLuSystem),
     /// Sparse solver using LDLᵀ factorization.
     SparseLdlt(SparseLdltFactor),
-    /// Block-sparse solver using LDLᵀ factorization.
+    /// Block-sparse LDLᵀ factorization.
     BlockSparseLdlt(BlockSparseLdltFactor),
     /// Sparse solver using faer's QR factorization.
     FaerSparseQr(FaerSparseQrFactor),
@@ -923,9 +917,7 @@ impl IsFactor for FactorEnum {
             FactorEnum::DenseLdlt(dense_ldlt_system) => dense_ldlt_system.solve_inplace(b),
             FactorEnum::DenseLu(dense_lu_system) => dense_lu_system.solve_inplace(b),
             FactorEnum::SparseLdlt(sparse_ldlt_system) => sparse_ldlt_system.solve_inplace(b),
-            FactorEnum::BlockSparseLdlt(block_sparse_ldlt_system) => {
-                block_sparse_ldlt_system.solve_inplace(b)
-            }
+            FactorEnum::BlockSparseLdlt(f) => f.solve_inplace(b),
             FactorEnum::FaerSparseQr(faer_sparse_qr_system) => {
                 faer_sparse_qr_system.solve_inplace(b)
             }

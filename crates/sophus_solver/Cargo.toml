@@ -38,6 +38,9 @@ rustc_version.workspace = true
 bench = true
 name = "solver_bench"
 
+[[bin]]
+name = "pose_graph_bench"
+
 [features]
 default = ["std"]
 simd = [

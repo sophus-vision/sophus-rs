@@ -39,6 +39,9 @@ wasm-demo:
 solver-bench:
     cargo run --bin solver_bench --release
 
+pose-graph-bench:
+    cargo run --bin pose_graph_bench --release -p sophus_solver
+
 ba-bench:
     cargo run --bin ba_bench --release -p sophus_opt
 

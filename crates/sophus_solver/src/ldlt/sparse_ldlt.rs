@@ -269,29 +269,37 @@ impl IsFactor for SparseLdltFactor {
             b.clone()
         };
 
+        let x = b_perm.as_mut_slice();
+        let col_ptr = mat_l.storage_idx_by_col();
+        let row_idx = mat_l.row_idx_storage();
+        let vals = mat_l.value_storage();
+
         // Solve: L y = b_perm.
         for col_j in 0..n {
-            let b_j = b_perm[col_j];
-            for storage_idx in
-                mat_l.storage_idx_by_col()[col_j]..mat_l.storage_idx_by_col()[col_j + 1]
-            {
-                let row_i = mat_l.row_idx_storage()[storage_idx];
-                b_perm[row_i] -= mat_l.value_storage()[storage_idx] * b_j;
+            let b_j = x[col_j];
+            for si in col_ptr[col_j]..col_ptr[col_j + 1] {
+                // SAFETY: indices are within bounds (guarded by loop bounds and debug asserts).
+                unsafe {
+                    *x.get_unchecked_mut(*row_idx.get_unchecked(si)) -=
+                        *vals.get_unchecked(si) * b_j;
+                }
             }
         }
 
         // Solve: z = D⁻¹ y
-        for row_i in 0..n {
-            b_perm[row_i] /= d[row_i];
+        for i in 0..n {
+            // SAFETY: indices are within bounds (checked by loop/debug_assert).
+            unsafe { *x.get_unchecked_mut(i) /= *d.get_unchecked(i) };
         }
 
         // Solve: Lᵀ x = z
         for col_j in (0..n).rev() {
-            for storage_idx in
-                mat_l.storage_idx_by_col()[col_j]..mat_l.storage_idx_by_col()[col_j + 1]
-            {
-                let row_i = mat_l.row_idx_storage()[storage_idx];
-                b_perm[col_j] -= mat_l.value_storage()[storage_idx] * b_perm[row_i];
+            for si in col_ptr[col_j]..col_ptr[col_j + 1] {
+                // SAFETY: indices are within bounds (guarded by loop bounds and debug asserts).
+                unsafe {
+                    *x.get_unchecked_mut(col_j) -=
+                        *vals.get_unchecked(si) * *x.get_unchecked(*row_idx.get_unchecked(si));
+                }
             }
         }
 
@@ -363,23 +371,27 @@ impl IsLdltWorkspace for LdltWorkspace {
         diag: &Self::Diag,
         tracer: &mut impl IsLdltTracer<Self>,
     ) {
-        // Does column k contribute to column j? (i.e., is L[j,k] nonzero?)
-        if let Some(l_jk) = mat_l_builder.cols[col_k].find(self.col_j) {
+        // Does column k contribute to column j? (single binary search for both find + lower_bound)
+        let col_k_data = &mat_l_builder.cols[col_k].data;
+        let search = col_k_data.binary_search_by_key(&self.col_j, |e| e.row_idx);
+        if let Ok(pos) = search {
+            let l_jk = col_k_data[pos].val;
             let d_k = diag[col_k];
             let l_jk_times_dk = l_jk * d_k;
-            let col_k_data = &mat_l_builder.cols[col_k].data;
-            let start = mat_l_builder.cols[col_k].lower_bound(self.col_j); // skip all rows < j
+            let start = pos; // pos is already the lower bound since data is sorted
 
             for mat_l_ik in &col_k_data[start..] {
-                // L[j,k] * d[k] * L[i,k]   (with i >= j)
                 let row_i = mat_l_ik.row_idx;
                 let delta = l_jk_times_dk * mat_l_ik.val;
-                if !self.was_row_touched[row_i] {
-                    self.c[row_i] = -delta;
-                    self.was_row_touched[row_i] = true;
-                    self.touched_rows.push(row_i);
-                } else {
-                    self.c[row_i] -= delta;
+                // SAFETY: indices are within bounds (guarded by loop bounds and debug asserts).
+                unsafe {
+                    if !*self.was_row_touched.get_unchecked(row_i) {
+                        *self.c.get_unchecked_mut(row_i) = -delta;
+                        *self.was_row_touched.get_unchecked_mut(row_i) = true;
+                        self.touched_rows.push(row_i);
+                    } else {
+                        *self.c.get_unchecked_mut(row_i) -= delta;
+                    }
                 }
                 tracer.after_update(
                     LdltIndices {
@@ -532,21 +544,6 @@ struct LCol {
 impl LCol {
     pub fn new() -> Self {
         Self { data: Vec::new() }
-    }
-
-    #[inline(always)]
-    pub fn find(&self, row_i: usize) -> Option<f64> {
-        match self.data.binary_search_by_key(&row_i, |e| e.row_idx) {
-            Ok(pos) => Some(self.data[pos].val),
-            Err(_) => None,
-        }
-    }
-
-    #[inline(always)]
-    pub fn lower_bound(&self, row: usize) -> usize {
-        match self.data.binary_search_by_key(&row, |e| e.row_idx) {
-            Ok(pos) | Err(pos) => pos,
-        }
     }
 }
 

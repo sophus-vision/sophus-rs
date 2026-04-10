@@ -10,6 +10,8 @@ pub mod min_norm_ldlt;
 /// Schur-complement factorization.
 pub mod schur_ldlt;
 pub(crate) mod sparse_ldlt;
+/// Kernels for supernodal LDLᵀ factorization.
+pub(crate) mod supernodal_kernel;
 
 use std::marker::PhantomData;
 

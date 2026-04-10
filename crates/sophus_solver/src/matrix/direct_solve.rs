@@ -210,10 +210,30 @@ impl IsSymmetricMatrix for DirectSolve {
             .expect("factorize_inner failed in inverse_block");
         match factor.into_invertible() {
             Some(mut invertible) => Ok(invertible.pseudo_inverse_block(row_idx, col_idx)),
-            None => Err(UnsupportedForInverseBlockSnafu {
-                solver: format!("{:?}", effective_solver),
+            None => {
+                // Fallback: convert to dense and use DenseLdlt for pseudo-inverse.
+                use crate::IsLinearSolver;
+                let dense_mat = self.inner.to_dense();
+                let parts = self.inner.partitions();
+                let dense_sym =
+                    crate::matrix::dense::DenseSymmetricMatrix::new(dense_mat, parts.clone());
+                let dense_factor = crate::ldlt::DenseLdlt::default()
+                    .factorize(&dense_sym)
+                    .map_err(|_| {
+                        UnsupportedForInverseBlockSnafu {
+                            solver: format!("{:?}", effective_solver),
+                        }
+                        .build()
+                    })?;
+                let dense_enum = crate::FactorEnum::DenseLdlt(dense_factor);
+                match dense_enum.into_invertible() {
+                    Some(mut inv) => Ok(inv.pseudo_inverse_block(row_idx, col_idx)),
+                    None => Err(UnsupportedForInverseBlockSnafu {
+                        solver: format!("{:?}", effective_solver),
+                    }
+                    .build()),
+                }
             }
-            .build()),
         }
     }
 
