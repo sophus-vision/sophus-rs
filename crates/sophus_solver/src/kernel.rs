@@ -242,7 +242,7 @@ pub fn sub_mat_diag_mat_t_inplace(
     }
 }
 
-/// `y += A * diag(d) * Bᵀ``
+/// `y += A * diag(d) * Bᵀ`
 pub fn add_mat_diag_mat_t_inplace(
     y: &mut DMatrixViewMut<'_, f64>,
     mat_a: DMatrixView<'_, f64>,

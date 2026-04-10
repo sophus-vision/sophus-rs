@@ -286,10 +286,17 @@ impl IsFactor for SparseLdltFactor {
             }
         }
 
-        // Solve: z = D⁻¹ y
+        // Solve: z = D⁻¹ y (zero-pivot aware: if d[i] == 0, set x[i] = 0)
         for i in 0..n {
-            // SAFETY: indices are within bounds (checked by loop/debug_assert).
-            unsafe { *x.get_unchecked_mut(i) /= *d.get_unchecked(i) };
+            // SAFETY: i is in [0, n) and both x and d have length n.
+            unsafe {
+                let di = *d.get_unchecked(i);
+                *x.get_unchecked_mut(i) = if di == 0.0 {
+                    0.0
+                } else {
+                    *x.get_unchecked(i) / di
+                };
+            }
         }
 
         // Solve: Lᵀ x = z

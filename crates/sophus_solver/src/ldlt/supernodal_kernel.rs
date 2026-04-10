@@ -1,10 +1,13 @@
 //! Kernels for supernodal LDLᵀ factorization.
+//!
+//! These will be used by the upcoming supernodal block-sparse LDLᵀ rewrite.
 
 /// Gather rows from `src` into `dst` using an index map.
 ///
 /// `dst[li, c] = src[row_indices[li], c]` for all columns.
 /// Both matrices in column-major layout.
 #[inline]
+#[allow(dead_code)]
 pub fn gather_rows(
     dst: &mut [f64],
     src: &[f64],

@@ -87,7 +87,7 @@ pub fn create_large_pose_graph(solver: &LinearSolverEnum, num_poses: usize) -> L
     };
 
     // Chain edges: connect consecutive poses.
-    for i in 0..(num_poses - 1) {
+    for i in 0..num_poses.saturating_sub(1) {
         add_edge(&mut mat_a_builder, i, i + 1);
     }
 
