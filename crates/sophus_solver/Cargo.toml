@@ -19,6 +19,7 @@ approx.workspace = true
 enum-as-inner.workspace = true
 faer.workspace = true
 log.workspace = true
+matrixmultiply = "0.3"
 nalgebra.workspace = true
 nonmax.workspace = true
 rand.workspace = true

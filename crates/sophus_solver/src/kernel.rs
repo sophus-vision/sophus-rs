@@ -185,21 +185,60 @@ pub fn sub_mat_diag_mat_t_inplace(
     let n = y.ncols();
     let k = mat_a.ncols();
 
-    // Column-oriented with unchecked access.
-    for t in 0..k {
-        let d_t = d[t];
-        let col_a = mat_a.column(t);
-        let col_b = mat_b.column(t);
-        for j in 0..n {
-            // SAFETY: indices are within bounds (checked by loop/debug_assert).
-            let bj = unsafe { *col_b.get_unchecked(j) } * d_t;
-            for i in 0..m {
-                // SAFETY: indices are within bounds (guarded by loop bounds and debug asserts).
-                unsafe {
-                    *y.get_unchecked_mut((i, j)) -= *col_a.get_unchecked(i) * bj;
+    // Y -= A * diag(d) * B^T = (A * diag(d)) * B^T
+    // For small blocks (≤ ~8×8), the scalar loop is fastest (no call overhead).
+    // For larger blocks, use matrixmultiply::dgemm.
+    if m * n * k <= 512 {
+        // Fast path for small blocks: column-oriented with unchecked access.
+        for t in 0..k {
+            let d_t = d[t];
+            let col_a = mat_a.column(t);
+            let col_b = mat_b.column(t);
+            for j in 0..n {
+                // SAFETY: indices are within bounds (checked by loop/debug_assert).
+                let bj = unsafe { *col_b.get_unchecked(j) } * d_t;
+                for i in 0..m {
+                    // SAFETY: indices are within bounds (guarded by loop bounds and debug asserts).
+                    unsafe {
+                        *y.get_unchecked_mut((i, j)) -= *col_a.get_unchecked(i) * bj;
+                    }
                 }
             }
         }
+    } else {
+        // Build W = A * diag(d) in a temp buffer, then Y -= W * B^T via dgemm.
+        let mut w = vec![0.0f64; m * k];
+        for t in 0..k {
+            let d_t = d[t];
+            let col = mat_a.column(t);
+            let base = t * m;
+            for i in 0..m {
+                w[base + i] = col[i] * d_t;
+            }
+        }
+        // Y -= W * B^T using matrixmultiply on owned contiguous data.
+        let b_owned = mat_b.clone_owned();
+        let mut y_owned = y.clone_owned();
+        // SAFETY: workspace buffers are correctly sized, strides match col-major layout.
+        unsafe {
+            matrixmultiply::dgemm(
+                m,
+                k,
+                n,
+                -1.0,
+                w.as_ptr(),
+                1,
+                m as isize,
+                b_owned.as_slice().as_ptr(),
+                n as isize,
+                1,
+                1.0,
+                y_owned.as_mut_slice().as_mut_ptr(),
+                1,
+                m as isize,
+            );
+        }
+        y.copy_from(&y_owned);
     }
 }
 
@@ -351,9 +390,9 @@ mod tests {
         approx::assert_abs_diff_eq!(x_vec[2], 30.0 - 9.0, epsilon = 1e-10);
     }
 
-    /// Test sub_mat_diag_mat_t_inplace with large blocks.
+    /// Test sub_mat_diag_mat_t_inplace with large blocks (triggers dgemm path).
     #[test]
-    fn kernel_large_block() {
+    fn kernel_large_block_dgemm_path() {
         let n = 10;
         let k = 8;
         let mat_a = DMatrix::from_fn(n, k, |r, c| (r * k + c) as f64 * 0.1);
