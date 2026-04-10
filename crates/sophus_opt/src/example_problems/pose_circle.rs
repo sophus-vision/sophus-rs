@@ -143,6 +143,7 @@ impl PoseCircleProblem {
                 (),
                 self.obs_pose_m_from_pose_n_poses.clone(),
             )],
+            alloc::vec![],
             OptParams {
                 num_iterations: 16,
                 initial_lm_damping: 1.0,

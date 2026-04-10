@@ -44,7 +44,11 @@ use crate::{
     prelude::*,
 };
 
-/// Block sparse LDLᵀ.
+/// Block-sparse LDLᵀ solver with AMD fill-reducing ordering.
+///
+/// Handles positive-definite, positive semi-definite, and indefinite (KKT)
+/// systems. Each diagonal block is factored independently; indefinite blocks
+/// with poor pivot condition fall back to Bunch-Kaufman pivoting automatically.
 #[derive(Copy, Clone, Debug)]
 pub struct BlockSparseLdlt {
     tol_rel: f64,
@@ -189,6 +193,11 @@ impl IsFactor for BlockSparseLdltFactor {
 /// Run block-level AMD on the lower block-sparse matrix.
 ///
 /// Returns `(perm, perm_inv)` where `perm[new_block] = old_block`.
+///
+/// The permutation respects partition ordering: blocks from partition 0 are
+/// eliminated before partition 1, etc. Within each partition, AMD fill-reducing
+/// order is used. This is critical for KKT systems where constraint partitions
+/// (with small negative diagonal) must be eliminated LAST to avoid tiny pivots.
 fn block_amd_ordering(a_lower: &BlockSparseMatrix) -> (Vec<usize>, Vec<usize>) {
     let nb = a_lower.block_count();
     let upper = a_lower.build_pattern_upper();
@@ -204,7 +213,27 @@ fn block_amd_ordering(a_lower: &BlockSparseMatrix) -> (Vec<usize>, Vec<usize>) {
         )
     };
 
-    crate::ldlt::amd_order(symbolic.as_ref()).expect("AMD ordering allocation failed")
+    let (mut perm, _) =
+        crate::ldlt::amd_order(symbolic.as_ref()).expect("AMD ordering allocation failed");
+
+    // Partitions marked `eliminate_last` (e.g. constraint multipliers with -εI)
+    // must be eliminated after all other partitions to avoid tiny pivots.
+    // Stable-sort preserves AMD fill-reducing order within each group.
+    let specs = a_lower.subdivision.partitions().specs();
+    if specs.iter().any(|s| s.eliminate_last) {
+        perm.sort_by_key(|&old_block| {
+            let part = a_lower.subdivision.idx(old_block).partition;
+            u8::from(specs[part].eliminate_last)
+        });
+    }
+
+    // Rebuild perm_inv from perm.
+    let mut perm_inv = vec![0usize; nb];
+    for (new_pos, &old_pos) in perm.iter().enumerate() {
+        perm_inv[old_pos] = new_pos;
+    }
+
+    (perm, perm_inv)
 }
 
 /// Build a flat `BlockMatrixSubdivision` (one block per partition) for the
@@ -221,6 +250,7 @@ fn make_flat_subdivision(
         .map(|&old_k| {
             let old_part = orig.idx(old_k).partition;
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: orig.block_dim(old_part),
             }
@@ -801,6 +831,7 @@ impl IsLMatBuilder for BlockSparseLFactorBuilder {
 }
 
 impl BlockSparseLFactorBuilder {
+    /// Create an empty block-sparse factor L builder from a subdivision.
     /// Create a pre-allocated block-sparse factor L from symbolic analysis.
     ///
     /// Pre-reserves exact storage for all regions and columns based on the
@@ -900,5 +931,217 @@ impl BlockSparseLFactorBuilder {
             block_height,
             block_width,
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use nalgebra::DVector;
+
+    use crate::{
+        IsFactor,
+        IsLinearSolver,
+        ldlt::BlockSparseLdlt,
+        matrix::{
+            PartitionBlockIndex,
+            PartitionSet,
+            PartitionSpec,
+        },
+    };
+
+    /// Helper: build, solve with BlockSparseLdlt, verify against dense LU.
+    fn solve_and_verify(
+        bsm: &crate::matrix::block_sparse::BlockSparseSymmetricMatrix,
+        b: &DVector<f64>,
+        tol: f64,
+    ) {
+        let solver = BlockSparseLdlt::default();
+        let factor = solver.factorize(bsm).unwrap();
+        let mut x = b.clone();
+        factor.solve_inplace(&mut x).unwrap();
+
+        let dense = bsm.to_dense_symmetric();
+        let x_ref = dense.view().clone_owned().lu().solve(b).unwrap();
+        approx::assert_abs_diff_eq!(x, x_ref, epsilon = tol);
+    }
+
+    #[test]
+    fn block_sparse_ldlt_indefinite_kkt() {
+        // KKT system: [H Gᵀ; G -εI]
+        // H = [[4,1],[1,3]] (2×2 PD), G = [1,2] (1×2), ε = 0.01
+        let specs = vec![
+            PartitionSpec {
+                block_count: 1,
+                block_dim: 2,
+                eliminate_last: false,
+            },
+            PartitionSpec {
+                block_count: 1,
+                block_dim: 1,
+                eliminate_last: true,
+            },
+        ];
+        let solver = BlockSparseLdlt::default();
+        let mut builder = solver.zero(PartitionSet::new(specs));
+
+        let idx_h = PartitionBlockIndex {
+            partition: 0,
+            block: 0,
+        };
+        let idx_g = PartitionBlockIndex {
+            partition: 1,
+            block: 0,
+        };
+
+        builder.add_lower_block(
+            idx_h,
+            idx_h,
+            &nalgebra::DMatrix::from_row_slice(2, 2, &[4.0, 1.0, 1.0, 3.0]).as_view(),
+        );
+        builder.add_lower_block(
+            idx_g,
+            idx_h,
+            &nalgebra::DMatrix::from_row_slice(1, 2, &[1.0, 2.0]).as_view(),
+        );
+        builder.add_lower_block(
+            idx_g,
+            idx_g,
+            &nalgebra::DMatrix::from_row_slice(1, 1, &[-0.01]).as_view(),
+        );
+
+        let (built, _) = builder.build_with_pattern();
+        let bsm = built.into_block_sparse_lower().unwrap();
+        solve_and_verify(&bsm, &DVector::from_row_slice(&[1.0, 2.0, 0.5]), 1e-6);
+    }
+
+    #[test]
+    fn block_sparse_ldlt_indefinite_schur_update() {
+        // Indefinite block first in elimination order, coupled to later PD blocks.
+        // Block 0 (indefinite): [[1,3],[3,3]]
+        // Block 1 (PD): [[5,1],[1,4]], Block 2 (PD): [[6,1],[1,5]]
+        let specs = vec![PartitionSpec {
+            block_count: 3,
+            block_dim: 2,
+            eliminate_last: false,
+        }];
+        let solver = BlockSparseLdlt::default();
+        let mut builder = solver.zero(PartitionSet::new(specs));
+
+        let idx0 = PartitionBlockIndex {
+            partition: 0,
+            block: 0,
+        };
+        let idx1 = PartitionBlockIndex {
+            partition: 0,
+            block: 1,
+        };
+        let idx2 = PartitionBlockIndex {
+            partition: 0,
+            block: 2,
+        };
+
+        builder.add_lower_block(
+            idx0,
+            idx0,
+            &nalgebra::DMatrix::from_row_slice(2, 2, &[1.0, 3.0, 3.0, 3.0]).as_view(),
+        );
+        builder.add_lower_block(
+            idx1,
+            idx1,
+            &nalgebra::DMatrix::from_row_slice(2, 2, &[5.0, 1.0, 1.0, 4.0]).as_view(),
+        );
+        builder.add_lower_block(
+            idx2,
+            idx2,
+            &nalgebra::DMatrix::from_row_slice(2, 2, &[6.0, 1.0, 1.0, 5.0]).as_view(),
+        );
+        builder.add_lower_block(
+            idx1,
+            idx0,
+            &nalgebra::DMatrix::from_row_slice(2, 2, &[1.0, 2.0, 0.0, 1.0]).as_view(),
+        );
+        builder.add_lower_block(
+            idx2,
+            idx0,
+            &nalgebra::DMatrix::from_row_slice(2, 2, &[1.0, 0.0, 1.0, 1.0]).as_view(),
+        );
+        builder.add_lower_block(
+            idx2,
+            idx1,
+            &nalgebra::DMatrix::from_row_slice(2, 2, &[0.5, 0.0, 0.0, 0.5]).as_view(),
+        );
+
+        let (built, _) = builder.build_with_pattern();
+        let bsm = built.into_block_sparse_lower().unwrap();
+        solve_and_verify(
+            &bsm,
+            &DVector::from_row_slice(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
+            1e-6,
+        );
+    }
+
+    #[test]
+    fn block_sparse_ldlt_linear_eq_toy_kkt() {
+        // KKT from LinearEqToyProblem: 2 scalar vars + 1 eq constraint.
+        let nu = 1e-10_f64;
+        let eps = 1e-8_f64;
+
+        let specs = vec![
+            PartitionSpec {
+                block_count: 2,
+                block_dim: 1,
+                eliminate_last: false,
+            },
+            PartitionSpec {
+                block_count: 1,
+                block_dim: 1,
+                eliminate_last: true,
+            },
+        ];
+        let solver = BlockSparseLdlt::default();
+        let mut builder = solver.zero(PartitionSet::new(specs));
+
+        let idx_x0 = PartitionBlockIndex {
+            partition: 0,
+            block: 0,
+        };
+        let idx_x1 = PartitionBlockIndex {
+            partition: 0,
+            block: 1,
+        };
+        let idx_lam = PartitionBlockIndex {
+            partition: 1,
+            block: 0,
+        };
+
+        builder.add_lower_block(
+            idx_x0,
+            idx_x0,
+            &nalgebra::DMatrix::from_row_slice(1, 1, &[1.0 + nu]).as_view(),
+        );
+        builder.add_lower_block(
+            idx_x1,
+            idx_x1,
+            &nalgebra::DMatrix::from_row_slice(1, 1, &[1.0 + nu]).as_view(),
+        );
+        builder.add_lower_block(
+            idx_lam,
+            idx_x0,
+            &nalgebra::DMatrix::from_row_slice(1, 1, &[1.0]).as_view(),
+        );
+        builder.add_lower_block(
+            idx_lam,
+            idx_x1,
+            &nalgebra::DMatrix::from_row_slice(1, 1, &[1.0]).as_view(),
+        );
+        builder.add_lower_block(
+            idx_lam,
+            idx_lam,
+            &nalgebra::DMatrix::from_row_slice(1, 1, &[-eps]).as_view(),
+        );
+
+        let (built, _) = builder.build_with_pattern();
+        let bsm = built.into_block_sparse_lower().unwrap();
+        solve_and_verify(&bsm, &DVector::from_row_slice(&[2.0, 0.0, 2.0]), 1e-4);
     }
 }

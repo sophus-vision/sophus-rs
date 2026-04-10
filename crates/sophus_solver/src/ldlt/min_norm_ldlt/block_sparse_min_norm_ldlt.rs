@@ -289,10 +289,12 @@ mod tests {
         // Two partitions: [(1×2), (2×1)] => n=4, SPD H = AᵀA + μI
         let parts = PartitionSet::new(vec![
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 2,
             },
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 2,
                 block_dim: 1,
             },
@@ -328,10 +330,11 @@ mod tests {
     fn psd_pseudo_inverse_matches_svd() {
         // Single 3×3 partition, rank-2 PSD: H = BᵀB
         //
-        // BlockSparseLdlt rejects near-zero pivots as errors (it only supports SPD input), so
-        // this test exits early if factorization fails.  The PSD path is fully covered for the
-        // dense backend in dense_min_norm_ldlt::tests.
+        // BlockSparseLdlt handles PD, PSD, and indefinite matrices. This test
+        // exits early if factorization fails. The PSD path is fully covered for
+        // the dense backend in dense_min_norm_ldlt::tests.
         let parts = PartitionSet::new(vec![PartitionSpec {
+            eliminate_last: false,
             block_count: 1,
             block_dim: 3,
         }]);
@@ -359,10 +362,12 @@ mod tests {
         // Two partitions: [(1×2), (2×1)] => n=4
         let parts = PartitionSet::new(vec![
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 2,
             },
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 2,
                 block_dim: 1,
             },
@@ -400,6 +405,7 @@ mod tests {
     fn multi_block_spd_pseudo_inverse_blocks_match() {
         // Single partition, 4 blocks of dim 2 => n=8, SPD from L Lᵀ + μI
         let parts = PartitionSet::new(vec![PartitionSpec {
+            eliminate_last: false,
             block_count: 4,
             block_dim: 2,
         }]);
@@ -436,10 +442,12 @@ mod tests {
     fn covariance_blocks_are_symmetric() {
         let parts = PartitionSet::new(vec![
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 2,
             },
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 3,
             },
@@ -475,10 +483,12 @@ mod tests {
     fn off_diagonal_block_matches_dense_inverse() {
         let parts = PartitionSet::new(vec![
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 2,
             },
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 2,
                 block_dim: 1,
             },

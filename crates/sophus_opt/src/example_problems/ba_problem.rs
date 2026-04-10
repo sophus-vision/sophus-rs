@@ -427,6 +427,7 @@ impl BaProblem {
         optimize_nlls(
             self.build_variables(cams_kind, points_kind),
             alloc::vec![self.build_cost()],
+            alloc::vec![],
             OptParams {
                 num_iterations: 20,
                 initial_lm_damping: 1.0,

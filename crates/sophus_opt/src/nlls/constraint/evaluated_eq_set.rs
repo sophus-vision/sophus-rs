@@ -62,4 +62,7 @@ pub trait IsEvaluatedEqConstraintSet: Debug + DynClone {
         variables: &VarFamilies,
         num_active_scalars: usize,
     ) -> nalgebra::DMatrix<f64>;
+
+    /// Build the dense constraint residual vector c(x).
+    fn dense_constraint_residual(&self) -> nalgebra::DVector<f64>;
 }

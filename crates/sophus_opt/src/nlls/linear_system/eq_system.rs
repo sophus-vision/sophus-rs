@@ -32,10 +32,7 @@ impl EqSystem {
         }
         let mut partitions = vec![];
         for eq_constraint in eq_constraints_fns.iter_mut() {
-            partitions.push(PartitionSpec {
-                block_count: 1,
-                block_dim: eq_constraint.residual_dim(),
-            });
+            partitions.push(crate::constraint_partition(1, eq_constraint.residual_dim()));
         }
         let lambda = BlockVector::zero(&partitions);
 
@@ -73,22 +70,79 @@ impl EqSystem {
         }
 
         let num_active = variables.num_active_scalars();
-        let total_rows: usize = self
-            .partitions
+
+        // First pass: compute sub-Jacobians so we know the actual total row count.
+        // (Partition block_count is 1 per function, but a function may have multiple
+        //  constraint instances after sort/reduce, so we cannot use partitions here.)
+        let sub_gs: alloc::vec::Vec<nalgebra::DMatrix<f64>> = self
+            .evaluated_eq_constraints
             .iter()
-            .map(|p| p.block_dim * p.block_count)
-            .sum();
+            .map(|eq_set| eq_set.dense_constraint_jacobian(variables, num_active))
+            .collect();
+
+        let total_rows: usize = sub_gs.iter().map(|g| g.nrows()).sum();
         let mut g = nalgebra::DMatrix::zeros(total_rows, num_active);
 
         let mut row_offset = 0usize;
-        for eq_set in &self.evaluated_eq_constraints {
-            let sub_g = eq_set.dense_constraint_jacobian(variables, num_active);
+        for sub_g in &sub_gs {
             let sub_rows = sub_g.nrows();
             g.view_mut((row_offset, 0), (sub_rows, num_active))
-                .copy_from(&sub_g);
+                .copy_from(sub_g);
             row_offset += sub_rows;
         }
         Some(g)
+    }
+
+    /// Compute a constraint-projection correction: `δx = -Gᵀ(GGᵀ)⁻¹c(x)`.
+    ///
+    /// This is one Newton step toward satisfying c(x) = 0 while minimizing
+    /// ‖δx‖.  The eq constraints must have been evaluated (via `eval`) before
+    /// calling this method.
+    ///
+    /// Returns `Some(delta)` if projection is needed, `None` if already satisfied
+    /// or no eq constraints are present.
+    pub(crate) fn project_correction(
+        &self,
+        variables: &VarFamilies,
+    ) -> Option<nalgebra::DVector<f64>> {
+        if self.partitions.is_empty() {
+            return None;
+        }
+        let g = self.dense_constraint_jacobian(variables)?;
+        let mut c = nalgebra::DVector::zeros(g.nrows());
+        let mut row = 0usize;
+        for eq_set in &self.evaluated_eq_constraints {
+            let sub_c = eq_set.dense_constraint_residual();
+            for i in 0..sub_c.len() {
+                c[row + i] = sub_c[i];
+            }
+            row += sub_c.len();
+        }
+
+        let c_norm = c.norm();
+        if c_norm < 1e-14 {
+            return None; // already on the manifold
+        }
+
+        // δx = -Gᵀ (G Gᵀ)⁻¹ c
+        let g_gt = &g * g.transpose();
+        let g_gt_inv_c = g_gt.lu().solve(&c)?;
+        Some(-g.transpose() * g_gt_inv_c)
+    }
+
+    /// Compute equality constraint penalty: `½ ‖c(x)‖₂²`.
+    ///
+    /// Evaluates all constraint fns at `variables` (without derivatives) and
+    /// returns a quadratic penalty on the squared L2 norm of the residual.
+    pub(crate) fn calc_eq_penalty(&self, variables: &VarFamilies) -> f64 {
+        let mut sum_sq = 0.0_f64;
+        for eq_fn in self.eq_constraints_fns.iter() {
+            if let Ok(evaluated) = eq_fn.eval(variables, EvalMode::DontCalculateDerivatives) {
+                let c = evaluated.dense_constraint_residual();
+                sum_sq += c.dot(&c);
+            }
+        }
+        0.5 * sum_sq
     }
 
     // update lambdas
@@ -264,5 +318,17 @@ impl<const RESIDUAL_DIM: usize, const INPUT_DIM: usize, const N: usize> IsEvalua
             }
         }
         g
+    }
+
+    fn dense_constraint_residual(&self) -> nalgebra::DVector<f64> {
+        let num_rows = RESIDUAL_DIM * self.evaluated_constraints.len();
+        let mut c = nalgebra::DVector::zeros(num_rows);
+        for (c_idx, constraint) in self.evaluated_constraints.iter().enumerate() {
+            let row_start = c_idx * RESIDUAL_DIM;
+            for r in 0..RESIDUAL_DIM {
+                c[row_start + r] = constraint.residual[r];
+            }
+        }
+        c
     }
 }

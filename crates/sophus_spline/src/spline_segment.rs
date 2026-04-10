@@ -103,8 +103,10 @@ pub struct CubicBSplineSegment<
     const DM: usize,
     const DN: usize,
 > {
-    pub(crate) case: SegmentCase,
-    pub(crate) control_points: [S::SingleVector<DIMS>; 4],
+    /// Segment boundary case.
+    pub case: SegmentCase,
+    /// The four control points for this segment `[prev, 0, 1, 2]`.
+    pub control_points: [S::SingleVector<DIMS>; 4],
 }
 
 impl<S: IsSingleScalar<DM, DN>, const DIMS: usize, const DM: usize, const DN: usize>

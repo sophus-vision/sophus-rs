@@ -9,14 +9,7 @@ use sophus_opt::example_problems::{
     ba_problem::BaProblem,
     ba_scale_constraint::BaScaleConstraintProblem,
 };
-use sophus_solver::{
-    LinearSolverEnum,
-    ldlt::{
-        BlockSparseLdlt,
-        FaerSparseLdlt,
-    },
-    lu::FaerSparseLu,
-};
+use sophus_solver::LinearSolverEnum;
 
 fn time_ms<T>(f: impl FnOnce() -> T) -> (f64, T) {
     let t = std::time::Instant::now();
@@ -225,56 +218,27 @@ fn main() {
     let ba_cases: &[(&'static str, &BaProblem)] = &[("10c/500pts", &ba)];
     let scale_cases: &[(&'static str, &BaScaleConstraintProblem)] = &[("10c/500pts", &scale)];
 
-    // Standard solvers; .to_schur() derives the Schur-complement variant automatically.
-    let ba_solvers: &[(LinearSolverEnum, &'static str)] = &[
-        (
-            LinearSolverEnum::BlockSparseLdlt(BlockSparseLdlt::default()),
-            "block-sparse LDLᵀ",
-        ),
-        (
-            LinearSolverEnum::FaerSparseLdlt(FaerSparseLdlt::default()),
-            "faer sparse LDLᵀ",
-        ),
-    ];
-
-    // Schur path uses block-sparse or faer-sparse LDLᵀ on the reduced S_ff.
-    let schur_solvers: &[(LinearSolverEnum, &'static str)] = &[
-        (
-            LinearSolverEnum::SchurBlockSparseLdlt(BlockSparseLdlt::default()),
-            "Schur+block-sparse LDLᵀ",
-        ),
-        (
-            LinearSolverEnum::SchurFaerSparseLdlt(FaerSparseLdlt::default()),
-            "Schur+faer sparse LDLᵀ",
-        ),
-    ];
+    let ba_solvers = LinearSolverEnum::ba_solvers();
+    let ba_eq_solvers = LinearSolverEnum::ba_eq_solvers();
 
     for (label, parallelize) in [("sequential", false), ("parallel", true)] {
         // ── Standard BA ──────────────────────────────────────────────────────
         eprintln!("benchmarking BA ({label})...");
         let mut rows: Vec<Row> = Vec::new();
         for const_cams in [false, true] {
-            for &(solver, name) in ba_solvers {
-                bench_solver(solver, name, ba_cases, const_cams, parallelize, &mut rows);
+            for (solver, name) in &ba_solvers {
+                bench_solver(*solver, name, ba_cases, const_cams, parallelize, &mut rows);
             }
         }
 
         // ── Scale-constraint BA ───────────────────────────────────────────────
         eprintln!("benchmarking BA+scale ({label})...");
         let mut scale_rows: Vec<ScaleRow> = Vec::new();
-        bench_scale(
-            LinearSolverEnum::FaerSparseLu(FaerSparseLu {}),
-            "FaerSparseLu",
-            false,
-            scale_cases,
-            parallelize,
-            &mut scale_rows,
-        );
-        for &(schur_solver, schur_name) in schur_solvers {
+        for (solver, name, schur) in &ba_eq_solvers {
             bench_scale(
-                schur_solver,
-                schur_name,
-                true,
+                *solver,
+                name,
+                *schur,
                 scale_cases,
                 parallelize,
                 &mut scale_rows,

@@ -285,11 +285,13 @@ mod tests {
             PartitionSpec {
                 block_count: 1,
                 block_dim: 2,
-            },
+            eliminate_last: false,
+                },
             PartitionSpec {
                 block_count: 2,
                 block_dim: 1,
-            },
+            eliminate_last: false,
+                },
         ]);
         let n = 4;
 

@@ -247,10 +247,12 @@ mod tests {
         // partitions: [(1×2), (2×1)] => n=4
         let parts = PartitionSet::new(vec![
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 2,
             },
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 2,
                 block_dim: 1,
             },
@@ -312,6 +314,7 @@ mod tests {
     fn psd_precision_and_covariance_blocks_match_pseudoinverse() {
         // single 3×3 block, rank-2 PSD: H = B^T B
         let parts = PartitionSet::new(vec![PartitionSpec {
+            eliminate_last: false,
             block_count: 1,
             block_dim: 3,
         }]);
@@ -341,10 +344,12 @@ mod tests {
         // two regions: [(1×1), (1×2)] ; n=3 ; rank-2 PSD
         let parts = PartitionSet::new(vec![
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 1,
             },
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 2,
             },
@@ -379,10 +384,12 @@ mod tests {
         // random SPD system, check S_ij == S_ji^T
         let parts = PartitionSet::new(vec![
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 2,
             },
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 3,
             },
@@ -420,10 +427,12 @@ mod tests {
         // partitions: [(1×2), (2×1)] => n=4
         let parts = PartitionSet::new(vec![
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 2,
             },
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 2,
                 block_dim: 1,
             },
@@ -472,6 +481,7 @@ mod tests {
     fn full_inverse_matches_pseudoinverse_psd() {
         // single 3×3 block, rank-2 PSD: H = Bᵀ B
         let parts = PartitionSet::new(vec![PartitionSpec {
+            eliminate_last: false,
             block_count: 1,
             block_dim: 3,
         }]);
@@ -504,6 +514,7 @@ mod tests {
     fn rank_zero_returns_zero_matrix() {
         // All-zero 2x2 matrix → rank 0 → pseudo-inverse is zero
         let parts = PartitionSet::new(vec![PartitionSpec {
+            eliminate_last: false,
             block_count: 1,
             block_dim: 2,
         }]);
@@ -533,6 +544,7 @@ mod tests {
     #[test]
     fn scalar_1x1_spd() {
         let parts = PartitionSet::new(vec![PartitionSpec {
+            eliminate_last: false,
             block_count: 1,
             block_dim: 1,
         }]);
@@ -553,6 +565,7 @@ mod tests {
     #[test]
     fn scalar_1x1_psd_zero() {
         let parts = PartitionSet::new(vec![PartitionSpec {
+            eliminate_last: false,
             block_count: 1,
             block_dim: 1,
         }]);

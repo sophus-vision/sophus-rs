@@ -15,6 +15,7 @@ use crate::{
 /// A small, single partition, `6 x 6` linear system.
 pub fn create_small_linear_system(solver: &LinearSolverEnum) -> LinearSystem {
     let partitions = vec![PartitionSpec {
+        eliminate_last: false,
         block_count: 2,
         block_dim: 3,
     }];

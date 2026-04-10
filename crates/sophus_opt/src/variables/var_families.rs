@@ -4,6 +4,7 @@ use std::any::type_name;
 use as_any::Downcast;
 use snafu::Snafu;
 use sophus_autodiff::manifold::IsVariable;
+use sophus_solver::matrix::PartitionSpec;
 
 use super::{
     VarKind,
@@ -226,6 +227,31 @@ impl VarFamilies {
                 requested_type: type_name::<T>().to_owned(),
                 actual_type: family.concrete_type_name().to_owned(),
             })
+    }
+
+    /// Build the list of partition specs for use in the linear system.
+    ///
+    /// Free families are listed first (in BTreeMap iteration order), then Marginalized.
+    /// This ordering matches `partition_idx_by_family`.
+    pub fn build_partition_specs(&self) -> alloc::vec::Vec<PartitionSpec> {
+        let mut specs = alloc::vec![];
+        for (_name, family) in self.collection.iter() {
+            if family.get_var_kind() == VarKind::Free {
+                specs.push(crate::variable_partition(
+                    family.num_active_vars(),
+                    family.free_or_marg_dof(),
+                ));
+            }
+        }
+        for (_name, family) in self.collection.iter() {
+            if family.get_var_kind() == VarKind::Marginalized {
+                specs.push(crate::variable_partition(
+                    family.num_active_vars(),
+                    family.free_or_marg_dof(),
+                ));
+            }
+        }
+        specs
     }
 
     /// retrieve family members by family name

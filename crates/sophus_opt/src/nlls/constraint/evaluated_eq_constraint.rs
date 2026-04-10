@@ -154,7 +154,52 @@ where
             jacobian.set_block::<C1>(1, self.1());
         }
         if var_kinds[2] != VarKind::Conditioned {
-            jacobian.set_block::<C2>(1, self.2());
+            jacobian.set_block::<C2>(2, self.2());
+        }
+        EvaluatedEqConstraint {
+            residual,
+            jacobian,
+            idx,
+        }
+    }
+}
+
+impl<
+    F0,
+    F1,
+    F2,
+    F3,
+    const RESIDUAL_DIM: usize,
+    const C0: usize,
+    const C1: usize,
+    const C2: usize,
+    const C3: usize,
+    const INPUT_DIM: usize,
+> MakeEvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, 4> for (F0, F1, F2, F3)
+where
+    F0: FnOnce() -> MatF64<RESIDUAL_DIM, C0>,
+    F1: FnOnce() -> MatF64<RESIDUAL_DIM, C1>,
+    F2: FnOnce() -> MatF64<RESIDUAL_DIM, C2>,
+    F3: FnOnce() -> MatF64<RESIDUAL_DIM, C3>,
+{
+    fn make_eq(
+        self,
+        idx: [usize; 4],
+        var_kinds: [VarKind; 4],
+        residual: VecF64<RESIDUAL_DIM>,
+    ) -> EvaluatedEqConstraint<RESIDUAL_DIM, INPUT_DIM, 4> {
+        let mut jacobian = BlockJacobian::new(&[C0, C1, C2, C3]);
+        if var_kinds[0] != VarKind::Conditioned {
+            jacobian.set_block::<C0>(0, self.0());
+        }
+        if var_kinds[1] != VarKind::Conditioned {
+            jacobian.set_block::<C1>(1, self.1());
+        }
+        if var_kinds[2] != VarKind::Conditioned {
+            jacobian.set_block::<C2>(2, self.2());
+        }
+        if var_kinds[3] != VarKind::Conditioned {
+            jacobian.set_block::<C3>(3, self.3());
         }
         EvaluatedEqConstraint {
             residual,

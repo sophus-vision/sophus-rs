@@ -194,6 +194,7 @@ impl CamCalibProblem {
                     crate::robust_kernel::RobustKernel::Huber(HuberKernel::new(1.0)),
                 ),
             ],
+            alloc::vec![],
             OptParams {
                 num_iterations: 25,
                 initial_lm_damping: 1.0,
@@ -255,6 +256,7 @@ impl CamCalibProblem {
                 reproj_obs.clone(),
                 crate::robust_kernel::RobustKernel::Huber(HuberKernel::new(1.0)),
             ),],
+            alloc::vec![],
             OptParams {
                 num_iterations: 25,
                 initial_lm_damping: 1.0,
@@ -319,6 +321,7 @@ impl CamCalibProblem {
                 CostFn::new_boxed((), priors.clone()),
                 CostFn::new_boxed((), reproj_obs.clone()),
             ],
+            alloc::vec![],
             OptParams {
                 num_iterations: 10,
                 initial_lm_damping: 1.0,

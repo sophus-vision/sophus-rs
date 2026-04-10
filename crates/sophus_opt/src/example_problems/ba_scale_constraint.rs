@@ -30,7 +30,7 @@ use crate::{
         EqConstraints,
         EvaluatedEqConstraint,
         OptParams,
-        optimize_nlls_with_eq_constraints,
+        optimize_nlls,
     },
     prelude::*,
     variables::{
@@ -174,7 +174,7 @@ impl BaScaleConstraintProblem {
         solver: LinearSolverEnum,
         parallelize: bool,
     ) -> VarFamilies {
-        optimize_nlls_with_eq_constraints(
+        optimize_nlls(
             self.build_variables(points_kind),
             alloc::vec![self.ba.build_cost()],
             alloc::vec![self.build_eq_constraint_fn()],
@@ -238,21 +238,22 @@ mod tests {
     fn standard_solvers_converge() {
         let prob = BaScaleConstraintProblem::new(4, 20);
 
-        let solver = LinearSolverEnum::FaerSparseLu(FaerSparseLu {});
-        let vars = prob.optimize_all_free(solver, false);
-        let (pose_rms, pt_rms) = prob.gt_errors(&vars);
-        assert!(
-            pose_rms < POSE_TOL,
-            "solver={solver:?} pose_rms={pose_rms:.4} >= {POSE_TOL}",
-        );
-        assert!(
-            pt_rms < POINT_TOL,
-            "solver={solver:?} pt_rms={pt_rms:.4} >= {POINT_TOL}",
-        );
-        assert!(
-            prob.constraint_satisfied(&vars),
-            "solver={solver:?} scale constraint not satisfied",
-        );
+        for solver in [LinearSolverEnum::FaerSparseLu(FaerSparseLu {})] {
+            let vars = prob.optimize_all_free(solver, false);
+            let (pose_rms, pt_rms) = prob.gt_errors(&vars);
+            assert!(
+                pose_rms < POSE_TOL,
+                "solver={solver:?} pose_rms={pose_rms:.4} >= {POSE_TOL}",
+            );
+            assert!(
+                pt_rms < POINT_TOL,
+                "solver={solver:?} pt_rms={pt_rms:.4} >= {POINT_TOL}",
+            );
+            assert!(
+                prob.constraint_satisfied(&vars),
+                "solver={solver:?} scale constraint not satisfied",
+            );
+        }
     }
 
     /// Schur solvers must converge and satisfy the scale constraint with points marginalized.

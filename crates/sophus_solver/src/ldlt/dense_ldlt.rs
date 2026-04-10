@@ -8,8 +8,10 @@ use nalgebra::{
 use snafu::prelude::*;
 
 use crate::{
+    Definiteness,
     DenseLdltSnafu,
     LdltDecompositionError,
+    LdltResult,
     LinearSolverEnum,
     LinearSolverError,
     kernel::{
@@ -35,7 +37,11 @@ use crate::{
     prelude::*,
 };
 
-/// Dense solver using LDLᵀ decomposition.
+/// Dense LDLᵀ solver for symmetric systems.
+///
+/// Handles positive-definite, positive semi-definite (rank-deficient), and
+/// indefinite (KKT) matrices. For indefinite blocks with poor pivot condition
+/// (< 1e-10), automatically falls back to Bunch-Kaufman pivoting.
 #[derive(Copy, Clone, Debug)]
 pub struct DenseLdlt {
     /// relative tolerance
@@ -48,19 +54,27 @@ impl Default for DenseLdlt {
     }
 }
 
+/// Threshold for pivot condition below which BK fallback activates on indefinite matrices.
+const BK_FALLBACK_THRESHOLD: f64 = 1e-10;
+
 /// Dense LDLᵀ factors: unit-lower `L` in the lower triangle of `mat_l`, diagonal in `diag_d`.
+///
+/// If the matrix is indefinite with poor pivot condition, a Bunch-Kaufman fallback is stored
+/// and used for solves instead.
 #[derive(Clone, Debug)]
 pub struct DenseLdltFactor {
     pub(crate) mat_l: DenseSymmetricMatrix,
     pub(crate) diag_d: DVector<f64>,
-    pub(crate) rank: usize,
+    pub(crate) ldlt_result: LdltResult,
     pub(crate) tol_rel: f64,
+    /// BK fallback factor (used when standard LDLᵀ has poor pivot condition on indefinite input).
+    bk_factor: Option<super::dense_bunch_kaufman::BunchKaufmanFactor>,
 }
 
 impl DenseLdltFactor {
     /// Return rank of matrix A.
     pub fn rank(&self) -> usize {
-        self.rank
+        self.ldlt_result.rank
     }
 }
 
@@ -71,12 +85,15 @@ impl IsFactor for DenseLdltFactor {
         &self,
         b_in_x_out: &mut nalgebra::DVector<f64>,
     ) -> Result<(), LinearSolverError> {
-        ldlt_solve_inplace(
-            self.mat_l.view(),
-            self.diag_d.as_view(),
-            b_in_x_out.as_view_mut(),
-        );
-
+        if let Some(ref bk) = self.bk_factor {
+            bk.solve_slice_inplace(b_in_x_out.as_mut_slice());
+        } else {
+            ldlt_solve_inplace(
+                self.mat_l.view(),
+                self.diag_d.as_view(),
+                b_in_x_out.as_view_mut(),
+            );
+        }
         Ok(())
     }
 }
@@ -99,14 +116,35 @@ impl IsLinearSolver for DenseLdlt {
         let mut diag_d = DVector::<f64>::zeros(mat_a.scalar_dimension());
 
         let mut mat_l = mat_a.clone();
-        let rank = ldlt_decompose_inplace(mat_l.view_mut(), diag_d.as_view_mut(), self.tol_rel)
-            .context(DenseLdltSnafu)?;
+        let mut ldlt_result =
+            ldlt_decompose_inplace(mat_l.view_mut(), diag_d.as_view_mut(), self.tol_rel)
+                .context(DenseLdltSnafu)?;
+
+        // BK fallback for ill-conditioned indefinite matrices.
+        let bk_factor = if ldlt_result.definiteness == Definiteness::Indefinite
+            && ldlt_result.pivot_condition < BK_FALLBACK_THRESHOLD
+        {
+            let a_dense = mat_a.view().clone_owned();
+            let bk = super::dense_bunch_kaufman::factorize(&a_dense).map_err(|_| {
+                LinearSolverError::DenseLdltError {
+                    source: LdltDecompositionError::NonFinitePivot {
+                        j: 0,
+                        d_jj: ldlt_result.pivot_condition,
+                    },
+                }
+            })?;
+            ldlt_result.used_bk_fallback = true;
+            Some(bk)
+        } else {
+            None
+        };
 
         Ok(DenseLdltFactor {
             mat_l,
             diag_d,
-            rank,
+            ldlt_result,
             tol_rel: self.tol_rel,
+            bk_factor,
         })
     }
 
@@ -127,15 +165,18 @@ pub fn ldlt_decompose_inplace(
     mut mat_a_lower: DMatrixViewMut<'_, f64>,
     mut mat_d: DVectorViewMut<'_, f64>,
     rel_tol: f64,
-) -> Result<usize, LdltDecompositionError> {
+) -> Result<LdltResult, LdltDecompositionError> {
     let n = mat_a_lower.nrows();
 
     assert_eq!(n, mat_a_lower.ncols());
     assert_eq!(n, mat_d.len());
 
-    // Tracks largest positive pivot to set a relative zero threshold.
+    // Tracks largest pivot (absolute) to set a relative zero threshold.
     let mut max_abs_pivot: f64 = 1.0;
+    let mut min_abs_pivot: f64 = f64::MAX;
     let mut rank: usize = 0;
+    let mut has_zero_pivot = false;
+    let mut has_negative_pivot = false;
 
     for j in 0..n {
         // Compute column j below the diagonal
@@ -169,13 +210,18 @@ pub fn ldlt_decompose_inplace(
 
         let zero_tol = max_abs_pivot.max(1.0) * rel_tol;
         if djj.abs() <= zero_tol {
-            // PSD zero pivot
+            // PSD zero pivot — rank-deficient
             mat_d[j] = 0.0;
-        } else if djj < 0.0 {
-            return Err(LdltDecompositionError::NegativeFinitePivot { j, d_jj: djj });
+            has_zero_pivot = true;
         } else {
+            // PD (djj > 0) or indefinite (djj < 0) — both are valid pivots.
+            if djj < 0.0 {
+                has_negative_pivot = true;
+            }
             mat_d[j] = djj;
-            max_abs_pivot = max_abs_pivot.max(djj.abs());
+            let abs_djj = djj.abs();
+            max_abs_pivot = max_abs_pivot.max(abs_djj);
+            min_abs_pivot = min_abs_pivot.min(abs_djj);
             rank += 1;
         }
 
@@ -189,7 +235,24 @@ pub fn ldlt_decompose_inplace(
             mat_a_lower[(r, c)] = 0.0;
         }
     }
-    Ok(rank)
+    let definiteness = if has_negative_pivot {
+        Definiteness::Indefinite
+    } else if has_zero_pivot {
+        Definiteness::PositiveSemiDefinite
+    } else {
+        Definiteness::PositiveDefinite
+    };
+    let pivot_condition = if rank == 0 {
+        0.0
+    } else {
+        min_abs_pivot / max_abs_pivot
+    };
+    Ok(LdltResult {
+        rank,
+        definiteness,
+        pivot_condition,
+        used_bk_fallback: false,
+    })
 }
 
 /// Solve A x = b using A = L D Lᵀ decomposition (in place on `x`).
@@ -286,8 +349,15 @@ mod tests {
 
         let mut a_fact = a_spd.clone();
         let mut d = DVector::<f64>::zeros(3);
-        let rank = ldlt_decompose_inplace(a_fact.as_view_mut(), d.as_view_mut(), LDLT_TOL).unwrap();
-        assert_eq!(rank, 3);
+        let result =
+            ldlt_decompose_inplace(a_fact.as_view_mut(), d.as_view_mut(), LDLT_TOL).unwrap();
+        assert_eq!(result.rank, 3);
+        assert_eq!(result.definiteness, Definiteness::PositiveDefinite);
+        assert!(
+            result.pivot_condition > 0.01,
+            "pivot_condition={}",
+            result.pivot_condition
+        );
 
         let a_rec = reconstruct_from_ldlt(&a_fact, &d);
         let err = (&a_rec - &a_spd).norm();
@@ -303,8 +373,10 @@ mod tests {
 
         let mut mat_l = mat_a.clone();
         let mut d = DVector::<f64>::zeros(3);
-        let rank = ldlt_decompose_inplace(mat_l.as_view_mut(), d.as_view_mut(), LDLT_TOL).unwrap();
-        assert_eq!(rank, 2);
+        let result =
+            ldlt_decompose_inplace(mat_l.as_view_mut(), d.as_view_mut(), LDLT_TOL).unwrap();
+        assert_eq!(result.rank, 2);
+        assert_eq!(result.definiteness, Definiteness::PositiveSemiDefinite);
 
         let a_rec = reconstruct_from_ldlt(&mat_l, &d);
         let err = (&a_rec - &mat_a).norm();
@@ -316,17 +388,34 @@ mod tests {
     }
 
     #[test]
-    fn indefinite_matrix_errors_on_negative_pivot() {
-        // Symmetric indefinite (eigs: 3, -1) — not PSD.
+    fn indefinite_matrix_solves_correctly() {
+        // Symmetric indefinite (eigs: 3, -1) — not PSD but LDLᵀ handles it.
         let mat_a = DMatrix::<f64>::from_row_slice(2, 2, &[1.0, 2.0, 2.0, 1.0]);
         let mut mat_l = mat_a.clone();
         let mut d = DVector::<f64>::zeros(2);
 
-        let res = ldlt_decompose_inplace(mat_l.as_view_mut(), d.as_view_mut(), LDLT_TOL);
+        let result =
+            ldlt_decompose_inplace(mat_l.as_view_mut(), d.as_view_mut(), LDLT_TOL).unwrap();
+        assert_eq!(result.rank, 2);
+        assert_eq!(result.definiteness, Definiteness::Indefinite);
         assert!(
-            res.is_err(),
-            "expected failure on negative pivot (indefinite)"
+            result.pivot_condition > 0.1,
+            "pivot_condition={}",
+            result.pivot_condition
         );
+
+        // d should have one positive and one negative pivot.
+        assert!(d[0] > 0.0);
+        assert!(d[1] < 0.0);
+
+        // Verify solve via L D Lᵀ: A x = b.
+        let b = DVector::from_row_slice(&[1.0, 2.0]);
+        let mut x = b.clone();
+        let n = x.len();
+        ldlt_solve_inplace(mat_l.as_view(), d.as_view(), x.rows_mut(0, n));
+
+        let x_ref = mat_a.clone().lu().solve(&b).unwrap();
+        approx::assert_abs_diff_eq!(x, x_ref, epsilon = 1e-10);
     }
 
     #[test]
@@ -338,8 +427,9 @@ mod tests {
         // Factor
         let mut mat_l = mat_a.clone();
         let mut d = DVector::zeros(3);
-        let rank = ldlt_decompose_inplace(mat_l.as_view_mut(), d.as_view_mut(), LDLT_TOL).unwrap();
-        assert_eq!(rank, 2);
+        let result =
+            ldlt_decompose_inplace(mat_l.as_view_mut(), d.as_view_mut(), LDLT_TOL).unwrap();
+        assert_eq!(result.rank, 2);
 
         // Choose b in Range(A): b = A * u
         let u = DVector::from_row_slice(&[0.7, -0.4, 0.3]);
@@ -389,5 +479,71 @@ mod tests {
         let right = right_t.transpose();
 
         assert!((&left - &right).norm() < 1e-12);
+    }
+
+    #[test]
+    fn dense_ldlt_bk_fallback_produces_correct_result() {
+        use crate::{
+            IsFactor,
+            IsLinearSolver,
+            matrix::dense::DenseSymmetricMatrix,
+        };
+
+        // Ill-conditioned indefinite matrix where standard LDLᵀ loses precision
+        // but BK fallback recovers the correct answer.
+        //
+        // A = [[ε, 1], [1, -ε]] with ε = 1e-12.
+        // Standard LDLᵀ: d[0] = ε (tiny), L[1,0] = 1/ε (huge), d[1] ≈ -1/ε (huge).
+        // Pivot condition ≈ ε² ≈ 1e-24 → catastrophic loss of precision.
+        //
+        // BK pivoting rearranges to avoid the tiny pivot, giving a stable result.
+        let eps = 1e-12;
+        let raw = DMatrix::from_row_slice(2, 2, &[eps, 1.0, 1.0, -eps]);
+        let mat_a = DenseSymmetricMatrix::new(
+            raw.clone(),
+            crate::matrix::PartitionSet::new(vec![crate::matrix::PartitionSpec {
+                eliminate_last: false,
+                block_count: 1,
+                block_dim: 2,
+            }]),
+        );
+        let b = DVector::from_row_slice(&[1.0, 2.0]);
+
+        // Reference solution via LU (numerically stable).
+        let x_ref = raw.clone().lu().solve(&b).unwrap();
+
+        // Solve with DenseLdlt (which should trigger BK fallback).
+        let solver = DenseLdlt { tol_rel: 1e-15 };
+        let factor = solver.factorize(&mat_a).unwrap();
+
+        assert!(
+            factor.ldlt_result.used_bk_fallback,
+            "expected BK fallback for ill-conditioned indefinite matrix, \
+             pivot_condition={}",
+            factor.ldlt_result.pivot_condition,
+        );
+
+        let mut x = b.clone();
+        factor.solve_inplace(&mut x).unwrap();
+
+        // BK fallback should match LU to high precision.
+        approx::assert_abs_diff_eq!(x, x_ref, epsilon = 1e-6);
+
+        // Verify that WITHOUT BK fallback, the result would be poor.
+        // (Use raw LDLᵀ solve with the stored L and d.)
+        let mut x_no_bk = b.clone();
+        ldlt_solve_inplace(
+            factor.mat_l.view(),
+            factor.diag_d.as_view(),
+            x_no_bk.as_view_mut(),
+        );
+        let error_no_bk = (&x_no_bk - &x_ref).norm();
+        let error_with_bk = (&x - &x_ref).norm();
+        assert!(
+            error_with_bk < error_no_bk * 0.01,
+            "BK should be much more accurate: bk_err={:.2e}, ldlt_err={:.2e}",
+            error_with_bk,
+            error_no_bk,
+        );
     }
 }

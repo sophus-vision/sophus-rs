@@ -31,7 +31,6 @@ mod tests {
             EvaluatedEqConstraint,
             OptParams,
             optimize_nlls,
-            optimize_nlls_with_eq_constraints,
         },
         prelude::*,
         robust_kernel,
@@ -190,9 +189,10 @@ mod tests {
             LinearSolverEnum::FaerSparseQr(FaerSparseQr {}),
             LinearSolverEnum::FaerSparseLdlt(FaerSparseLdlt::default()),
             LinearSolverEnum::BlockSparseLdlt(BlockSparseLdlt::default()),
+            LinearSolverEnum::BlockSparseLdlt(BlockSparseLdlt::default()),
         ] {
             let (vars, costs) = build_two_family_problem(3, 4, VarKind::Free, VarKind::Free, 5.0);
-            let solution = optimize_nlls(vars, costs, default_params(solver))
+            let solution = optimize_nlls(vars, costs, alloc::vec![], default_params(solver))
                 .unwrap_or_else(|e| panic!("solver {solver:?} failed: {e}"));
             assert!(
                 solution.final_cost < 1e-4,
@@ -210,7 +210,7 @@ mod tests {
         ] {
             let (vars, costs) =
                 build_two_family_problem(3, 4, VarKind::Free, VarKind::Marginalized, 5.0);
-            let solution = optimize_nlls(vars, costs, default_params(solver))
+            let solution = optimize_nlls(vars, costs, alloc::vec![], default_params(solver))
                 .unwrap_or_else(|e| panic!("solver {solver:?} failed: {e}"));
             assert!(
                 solution.final_cost < 1e-4,
@@ -225,7 +225,7 @@ mod tests {
         let solver = LinearSolverEnum::FaerSparseLu(FaerSparseLu {});
         let (vars, costs) =
             build_two_family_problem(3, 4, VarKind::Free, VarKind::Marginalized, 5.0);
-        let solution = optimize_nlls(vars, costs, default_params(solver)).unwrap();
+        let solution = optimize_nlls(vars, costs, alloc::vec![], default_params(solver)).unwrap();
         assert!(solution.final_cost < 1e-4);
     }
 
@@ -236,6 +236,7 @@ mod tests {
         for solver in [
             LinearSolverEnum::FaerSparseLu(FaerSparseLu {}),
             LinearSolverEnum::FaerSparseQr(FaerSparseQr {}),
+            LinearSolverEnum::BlockSparseLdlt(BlockSparseLdlt::default()),
         ] {
             let (vars, costs) = build_two_family_problem(3, 4, VarKind::Free, VarKind::Free, 5.0);
             let eq = EqConstraintFn::new_boxed(
@@ -248,13 +249,8 @@ mod tests {
                     }],
                 ),
             );
-            let solution = optimize_nlls_with_eq_constraints(
-                vars,
-                costs,
-                alloc::vec![eq],
-                default_params(solver),
-            )
-            .unwrap_or_else(|e| panic!("solver {solver:?} failed: {e}"));
+            let solution = optimize_nlls(vars, costs, alloc::vec![eq], default_params(solver))
+                .unwrap_or_else(|e| panic!("solver {solver:?} failed: {e}"));
             let poses = solution.variables.get_members::<VecF64<1>>("poses");
             assert!(
                 (poses[1][0] - 3.0).abs() < 1e-3,
@@ -282,13 +278,8 @@ mod tests {
                     }],
                 ),
             );
-            let solution = optimize_nlls_with_eq_constraints(
-                vars,
-                costs,
-                alloc::vec![eq],
-                default_params(solver),
-            )
-            .unwrap_or_else(|e| panic!("solver {solver:?} failed: {e}"));
+            let solution = optimize_nlls(vars, costs, alloc::vec![eq], default_params(solver))
+                .unwrap_or_else(|e| panic!("solver {solver:?} failed: {e}"));
             let poses = solution.variables.get_members::<VecF64<1>>("poses");
             assert!(
                 (poses[1][0] - 3.0).abs() < 1e-3,
@@ -304,7 +295,7 @@ mod tests {
     fn death_schur_no_marg() {
         let solver = LinearSolverEnum::SchurBlockSparseLdlt(BlockSparseLdlt::default());
         let (vars, costs) = build_two_family_problem(3, 4, VarKind::Free, VarKind::Free, 5.0);
-        let err = optimize_nlls(vars, costs, default_params(solver))
+        let err = optimize_nlls(vars, costs, alloc::vec![], default_params(solver))
             .err()
             .expect("should fail: Schur without marg");
         assert!(format!("{err}").contains("marginalized"), "error: {err}");
@@ -315,7 +306,7 @@ mod tests {
         let solver = LinearSolverEnum::SchurBlockSparseLdlt(BlockSparseLdlt::default());
         let (vars, costs) =
             build_two_family_problem(3, 4, VarKind::Conditioned, VarKind::Marginalized, 5.0);
-        let err = optimize_nlls(vars, costs, default_params(solver))
+        let err = optimize_nlls(vars, costs, alloc::vec![], default_params(solver))
             .err()
             .expect("should fail: Schur without free");
         let msg = format!("{err}");
@@ -340,15 +331,15 @@ mod tests {
                 }],
             ),
         );
-        let err =
-            optimize_nlls_with_eq_constraints(vars, costs, alloc::vec![eq], default_params(solver))
-                .err()
-                .expect("should fail: constraint on marginalized");
+        let err = optimize_nlls(vars, costs, alloc::vec![eq], default_params(solver))
+            .err()
+            .expect("should fail: constraint on marginalized");
         assert!(format!("{err}").contains("marginalized"), "error: {err}");
     }
 
     #[test]
-    fn death_ldlt_with_eq() {
+    fn death_faer_ldlt_with_eq() {
+        // FaerSparseLdlt wraps faer which assumes PD — it should reject eq constraints.
         let solver = LinearSolverEnum::FaerSparseLdlt(FaerSparseLdlt::default());
         let (vars, costs) = build_two_family_problem(3, 4, VarKind::Free, VarKind::Free, 5.0);
         let eq = EqConstraintFn::new_boxed(
@@ -361,10 +352,9 @@ mod tests {
                 }],
             ),
         );
-        let err =
-            optimize_nlls_with_eq_constraints(vars, costs, alloc::vec![eq], default_params(solver))
-                .err()
-                .expect("should fail: LDLt doesn't support eq constraints");
+        let err = optimize_nlls(vars, costs, alloc::vec![eq], default_params(solver))
+            .err()
+            .expect("should fail: faer LDLt doesn't support eq constraints");
         assert!(
             format!("{err}").contains("does not support equality"),
             "error: {err}"
@@ -413,6 +403,7 @@ mod tests {
         let err = optimize_nlls(
             vars,
             alloc::vec![bad_cost, pose_prior],
+            alloc::vec![],
             default_params(solver),
         )
         .err()

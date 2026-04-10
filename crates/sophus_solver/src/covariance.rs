@@ -225,10 +225,12 @@ mod tests {
         let h_inv_expected = h.clone().try_inverse().unwrap();
         let specs = vec![
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 2,
             },
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 2,
             },
@@ -257,6 +259,7 @@ mod tests {
         let v2 = DMatrix::from_row_slice(3, 1, &[0.0, 1.0, -1.0]);
         let h = &v1 * v1.transpose() + &v2 * v2.transpose();
         let specs = vec![PartitionSpec {
+            eliminate_last: false,
             block_count: 1,
             block_dim: 3,
         }];
@@ -283,10 +286,12 @@ mod tests {
         let h = DMatrix::from_diagonal(&nalgebra::DVector::from_vec(vec![2.0, 3.0]));
         let specs = vec![
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 1,
             },
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 1,
             },
@@ -331,10 +336,12 @@ mod tests {
         );
         let specs = vec![
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 2,
             },
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 2,
             },
@@ -376,14 +383,17 @@ mod tests {
         // Block-wise via Hessian
         let specs = vec![
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 1,
             },
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 1,
             },
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 1,
             },
@@ -412,6 +422,7 @@ mod tests {
         let h = 2.0 * &v1 * v1.transpose() + 3.0 * &v2 * v2.transpose();
 
         let specs = vec![PartitionSpec {
+            eliminate_last: false,
             block_count: 1,
             block_dim: 3,
         }];
@@ -470,10 +481,12 @@ mod tests {
 
         let specs = vec![
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 2,
                 block_dim: 1,
             }, // "points" (2 vars)
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 3,
                 block_dim: 1,
             }, // "poses" (3 vars)
@@ -523,19 +536,23 @@ mod tests {
             PartitionSpec {
                 block_count: 1,
                 block_dim: 1,
-            },
+            eliminate_last: false,
+                },
             PartitionSpec {
                 block_count: 1,
                 block_dim: 1,
-            },
+            eliminate_last: false,
+                },
             PartitionSpec {
                 block_count: 1,
                 block_dim: 1,
-            },
+            eliminate_last: false,
+                },
             PartitionSpec {
                 block_count: 1,
                 block_dim: 1,
-            },
+            eliminate_last: false,
+                },
         ];
         let partitions = PartitionSet::new(specs.clone());
         let h_inv_mat = invertible_from_dense(&h, specs);

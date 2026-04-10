@@ -75,6 +75,7 @@ impl SimpleIso2PriorProblem {
         let solution = optimize_nlls(
             variables,
             alloc::vec![CostFn::new_boxed((), obs_pose_a_from_pose_b_poses.clone(),)],
+            alloc::vec![],
             OptParams {
                 num_iterations: 1,
                 initial_lm_damping: EPS_F64, // if lm prior param is tiny
@@ -142,6 +143,7 @@ impl SimpleIso3PriorProblem {
         let solution = optimize_nlls(
             variables,
             alloc::vec![CostFn::new_boxed((), obs_pose_a_from_pose_b_poses.clone(),)],
+            alloc::vec![],
             OptParams {
                 num_iterations: 1,
                 initial_lm_damping: EPS_F64, // if lm prior param is tiny

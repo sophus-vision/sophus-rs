@@ -6,7 +6,6 @@ use sophus_solver::{
     Schur,
     matrix::{
         PartitionSet,
-        PartitionSpec,
         SymmetricMatrixBuilderEnum,
         SymmetricMatrixEnum,
         block::BlockVector,
@@ -94,23 +93,7 @@ impl LinearSystem {
         eq_system: &EqSystem,
     ) -> BlockSparseSymmetricMatrixPattern {
         // Mirror the partition layout from `from_families_costs_and_constraints`.
-        let mut partition_specs = vec![];
-        for (_name, family) in variables.collection.iter() {
-            if family.get_var_kind() == VarKind::Free {
-                partition_specs.push(PartitionSpec {
-                    block_count: family.num_active_vars(),
-                    block_dim: family.free_or_marg_dof(),
-                });
-            }
-        }
-        for (_name, family) in variables.collection.iter() {
-            if family.get_var_kind() == VarKind::Marginalized {
-                partition_specs.push(PartitionSpec {
-                    block_count: family.num_active_vars(),
-                    block_dim: family.free_or_marg_dof(),
-                });
-            }
-        }
+        let mut partition_specs = variables.build_partition_specs();
         partition_specs.extend(eq_system.partitions.clone());
         let partitions = PartitionSet::new(partition_specs);
 
@@ -141,24 +124,7 @@ impl LinearSystem {
 
         // Build partition specs: Free families first (BTreeMap order), then Marginalized.
         // This ordering must match the partition_idx_by_family mapping in VarFamilies.
-        let mut partition_specs = vec![];
-        for (_name, family) in variables.collection.iter() {
-            if family.get_var_kind() == VarKind::Free {
-                partition_specs.push(PartitionSpec {
-                    block_count: family.num_active_vars(),
-                    block_dim: family.free_or_marg_dof(),
-                });
-            }
-        }
-        for (_name, family) in variables.collection.iter() {
-            if family.get_var_kind() == VarKind::Marginalized {
-                partition_specs.push(PartitionSpec {
-                    block_count: family.num_active_vars(),
-                    block_dim: family.free_or_marg_dof(),
-                });
-            }
-        }
-
+        let mut partition_specs = variables.build_partition_specs();
         partition_specs.extend(eq_system.partitions.clone());
 
         let partitions = PartitionSet::new(partition_specs);
@@ -189,6 +155,25 @@ impl LinearSystem {
                 &mut block_triplets,
                 &mut neg_grad,
             );
+        }
+
+        // Augmented Lagrangian regularization: add -μI to the (λ,λ) diagonal
+        // block of the KKT matrix to prevent singularity.
+        // Uses the LM damping ν as the regularization parameter.
+        if !eq_system.partitions.is_empty() {
+            let num_var_partitions = variables.total_active_partition_count();
+            for (ci, spec) in eq_system.partitions.iter().enumerate() {
+                let partition = num_var_partitions + ci;
+                for block in 0..spec.block_count {
+                    let idx = sophus_solver::matrix::PartitionBlockIndex { partition, block };
+                    let dim = spec.block_dim;
+                    let mut reg = nalgebra::DMatrix::zeros(dim, dim);
+                    for k in 0..dim {
+                        reg[(k, k)] = -nu;
+                    }
+                    block_triplets.add_lower_block(idx, idx, &reg.as_view());
+                }
+            }
         }
 
         let (built_hessian, next_pattern) = block_triplets.build_with_pattern();

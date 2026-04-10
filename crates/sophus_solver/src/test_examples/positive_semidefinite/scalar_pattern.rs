@@ -16,6 +16,7 @@ use crate::{
 pub fn create_scalar_pattern_linear_system(solver: &LinearSolverEnum) -> LinearSystem {
     use nalgebra as na;
     let partitions = vec![PartitionSpec {
+        eliminate_last: false,
         block_dim: 1,
         block_count: 8,
     }];

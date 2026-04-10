@@ -752,14 +752,14 @@ mod tests {
         // Convert raw (count,dim) into PartitionSpec
         let row_partitions = row_partitions
             .iter()
-            .map(|&(block_count, block_dimension)| PartitionSpec {
+            .map(|&(block_count, block_dimension)| PartitionSpec { eliminate_last: false,
                 block_count,
                 block_dimension,
             })
             .collect();
         let col_partitions = col_partitions
             .iter()
-            .map(|&(bc, dim)| PartitionSpec {
+            .map(|&(bc, dim)| PartitionSpec { eliminate_last: false,
                 block_count: bc,
                 block_dimension: dim,
             })

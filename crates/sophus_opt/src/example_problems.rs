@@ -4,6 +4,12 @@ pub mod ba_problem;
 pub mod ba_scale_constraint;
 /// Camera calibration example problem
 pub mod cam_calib;
+/// Circle + obstacle: combined equality and inequality constraint example
+pub mod circle_obstacle;
+/// 2D constrained point — simplest inequality constraint example
+pub mod constrained_point2d;
+/// Corridor navigation via half-plane inequality constraints
+pub mod corridor_navigation;
 /// Inverse depth point estimation example problem
 pub mod inverse_depth_estimation;
 /// linear equality constraint toy example
@@ -16,3 +22,5 @@ pub mod pose_circle;
 pub mod simple_prior;
 /// Solver validation tests (death tests + canonical cases)
 pub mod solver_validation;
+/// Spline-based 2D trajectory optimization with obstacle avoidance
+pub mod spline_trajectory;

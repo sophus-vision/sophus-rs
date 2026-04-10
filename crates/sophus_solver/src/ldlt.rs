@@ -1,7 +1,9 @@
 pub(crate) mod block_diag_ldlt;
 pub(crate) mod block_sparse_ldlt;
+pub(crate) mod dense_bunch_kaufman;
 pub(crate) mod dense_ldlt;
 pub(crate) mod elimination_tree;
+pub(crate) mod faer_sparse_lblt;
 pub(crate) mod faer_sparse_ldlt;
 /// Min-norm LDLt pseudo-inverse solver.
 pub mod min_norm_ldlt;
@@ -25,6 +27,7 @@ use faer::{
         linalg::amd,
     },
 };
+pub use faer_sparse_lblt::*;
 pub use faer_sparse_ldlt::*;
 pub use schur_ldlt::SchurFactor;
 pub use sparse_ldlt::*;
