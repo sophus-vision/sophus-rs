@@ -5,6 +5,7 @@
 
 use std::f64::consts::PI;
 
+use crossbeam_channel::Sender;
 use eframe::egui;
 use sophus_autodiff::linalg::VecF64;
 use sophus_image::{
@@ -39,7 +40,6 @@ use sophus_viewer::packets::{
     PlotViewPacket,
     ScalarCurveStyle,
 };
-use crossbeam_channel::Sender;
 
 use super::opt_widget::{
     IneqMethodSelector as Method,

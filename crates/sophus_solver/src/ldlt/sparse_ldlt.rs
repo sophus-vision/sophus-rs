@@ -755,4 +755,78 @@ mod tests {
             error,
         );
     }
+
+    /// SparseLdlt must handle rank-deficient (PSD) matrices where d[i] == 0.
+    /// Without the zero-pivot guard in solve_inplace, this would produce NaN.
+    #[test]
+    fn sparse_ldlt_rank_deficient_zero_pivot() {
+        use crate::ldlt::BlockSparseLdlt;
+
+        // Build a 4x4 matrix with rank 2:
+        // [[1, 0, 1, 0],
+        //  [0, 2, 0, 0],
+        //  [1, 0, 1, 0],   ← row 2 = row 0, so rank-deficient
+        //  [0, 0, 0, 0]]   ← zero row
+        let specs = vec![PartitionSpec {
+            eliminate_last: false,
+            block_count: 2,
+            block_dim: 2,
+        }];
+        let partitions = PartitionSet::new(specs);
+        let bs_solver = BlockSparseLdlt::default();
+        let mut builder = bs_solver.zero(partitions);
+
+        let idx0 = PartitionBlockIndex {
+            partition: 0,
+            block: 0,
+        };
+        let idx1 = PartitionBlockIndex {
+            partition: 0,
+            block: 1,
+        };
+
+        // Block (0,0) = [[1, 0], [0, 2]]
+        builder.add_lower_block(
+            idx0,
+            idx0,
+            &nalgebra::DMatrix::from_row_slice(2, 2, &[1.0, 0.0, 0.0, 2.0]).as_view(),
+        );
+        // Block (1,1) = [[1, 0], [0, 0]]
+        builder.add_lower_block(
+            idx1,
+            idx1,
+            &nalgebra::DMatrix::from_row_slice(2, 2, &[1.0, 0.0, 0.0, 0.0]).as_view(),
+        );
+        // Block (1,0) = [[1, 0], [0, 0]]
+        builder.add_lower_block(
+            idx1,
+            idx0,
+            &nalgebra::DMatrix::from_row_slice(2, 2, &[1.0, 0.0, 0.0, 0.0]).as_view(),
+        );
+
+        let (built, _) = builder.build_with_pattern();
+        let bsm: super::super::super::matrix::block_sparse::BlockSparseSymmetricMatrix =
+            built.into_block_sparse_lower().unwrap();
+        let sparse = bsm.to_sparse_symmetric();
+
+        let solver = SparseLdlt::default();
+        let factor = solver.factorize(&sparse).unwrap();
+
+        // b is in the column space of A, so a solution exists.
+        let b = DVector::from_row_slice(&[1.0, 2.0, 1.0, 0.0]);
+        let mut x = b.clone();
+        factor.solve_inplace(&mut x).unwrap();
+
+        // x must be finite (no NaN/Inf from zero pivot).
+        assert!(
+            x.iter().all(|v| v.is_finite()),
+            "solve produced non-finite values: {:?}",
+            x.as_slice()
+        );
+
+        // Verify A * x ≈ b (minimum-norm solution for the consistent system).
+        let a_dense = sparse.lower().triangular_to_dense_symmetric();
+        let residual = (&a_dense * &x - &b).norm();
+        assert!(residual < 1e-10, "residual too large: {:.2e}", residual,);
+    }
 }

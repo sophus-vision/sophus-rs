@@ -10,6 +10,7 @@
 
 use std::f64::consts::PI;
 
+use crossbeam_channel::Sender;
 use eframe::egui;
 use sophus_image::{
     ArcImage4U8,
@@ -56,7 +57,6 @@ use sophus_viewer::packets::{
     ScalarCurveStyle,
     VerticalLine,
 };
-use crossbeam_channel::Sender;
 
 use super::opt_widget::{
     IneqMethodSelector as Method,

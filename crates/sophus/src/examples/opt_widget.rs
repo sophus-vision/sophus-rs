@@ -4,6 +4,7 @@
 //! Each demo widget owns an `OptWidgetState` and delegates step/button/status
 //! logic to it, providing problem-specific visualization via callbacks.
 
+use crossbeam_channel::Sender;
 use eframe::egui;
 use sophus_opt::nlls::{
     Optimizer,
@@ -19,7 +20,6 @@ use sophus_viewer::packets::{
     PlotViewPacket,
     ScalarCurveStyle,
 };
-use crossbeam_channel::Sender;
 
 /// Inequality constraint method selector for demo widgets.
 #[derive(PartialEq, Clone, Copy, Debug)]

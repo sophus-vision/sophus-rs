@@ -1102,18 +1102,18 @@ mod tests {
             PartitionSpec {
                 block_count: 1,
                 block_dim: 2,
-            eliminate_last: false,
-                },
+                eliminate_last: false,
+            },
             PartitionSpec {
                 block_count: 1,
                 block_dim: 2,
-            eliminate_last: false,
-                },
+                eliminate_last: false,
+            },
             PartitionSpec {
                 block_count: 3,
                 block_dim: 2,
-            eliminate_last: false,
-                },
+                eliminate_last: false,
+            },
         ]);
 
         let g_all = DVector::<f64>::from_fn(n, |i, _| (i as f64 + 1.0) * 0.3);
@@ -1169,23 +1169,23 @@ mod tests {
             PartitionSpec {
                 block_count: 1,
                 block_dim: 2,
-            eliminate_last: false,
-                },
+                eliminate_last: false,
+            },
             PartitionSpec {
                 block_count: 1,
                 block_dim: 2,
-            eliminate_last: false,
-                },
+                eliminate_last: false,
+            },
             PartitionSpec {
                 block_count: 2,
                 block_dim: 2,
-            eliminate_last: false,
-                },
+                eliminate_last: false,
+            },
             PartitionSpec {
                 block_count: 1,
                 block_dim: 1,
-            eliminate_last: false,
-                },
+                eliminate_last: false,
+            },
         ]);
 
         let g_all = DVector::<f64>::from_fn(n_total, |i, _| (i as f64 + 1.0) * 0.2);
@@ -1232,18 +1232,18 @@ mod tests {
             PartitionSpec {
                 block_count: 1,
                 block_dim: 2,
-            eliminate_last: false,
-                },
+                eliminate_last: false,
+            },
             PartitionSpec {
                 block_count: 1,
                 block_dim: 2,
-            eliminate_last: false,
-                },
+                eliminate_last: false,
+            },
             PartitionSpec {
                 block_count: 3,
                 block_dim: 2,
-            eliminate_last: false,
-                },
+                eliminate_last: false,
+            },
         ]);
 
         let g_all = DVector::<f64>::from_fn(n, |i, _| (i as f64 + 1.0) * 0.3);

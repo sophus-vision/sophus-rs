@@ -536,23 +536,23 @@ mod tests {
             PartitionSpec {
                 block_count: 1,
                 block_dim: 1,
-            eliminate_last: false,
-                },
+                eliminate_last: false,
+            },
             PartitionSpec {
                 block_count: 1,
                 block_dim: 1,
-            eliminate_last: false,
-                },
+                eliminate_last: false,
+            },
             PartitionSpec {
                 block_count: 1,
                 block_dim: 1,
-            eliminate_last: false,
-                },
+                eliminate_last: false,
+            },
             PartitionSpec {
                 block_count: 1,
                 block_dim: 1,
-            eliminate_last: false,
-                },
+                eliminate_last: false,
+            },
         ];
         let partitions = PartitionSet::new(specs.clone());
         let h_inv_mat = invertible_from_dense(&h, specs);

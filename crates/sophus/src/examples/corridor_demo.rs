@@ -7,6 +7,7 @@
 //!
 //! Two methods: IPM (Ch.19) and SQP (Ch.18).
 
+use crossbeam_channel::Sender;
 use eframe::egui;
 use sophus_autodiff::linalg::VecF64;
 use sophus_image::ImageSize;
@@ -49,7 +50,6 @@ use sophus_viewer::packets::{
     create_scene_packet,
     delete_scene_packet,
 };
-use crossbeam_channel::Sender;
 
 use super::opt_widget::OptWidgetState;
 
