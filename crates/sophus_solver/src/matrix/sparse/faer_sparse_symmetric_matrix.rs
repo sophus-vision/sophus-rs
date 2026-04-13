@@ -81,6 +81,29 @@ impl FaerSparseSymmetricMatrix {
     }
 }
 
+impl FaerSparseSymmetricMatrix {
+    /// Subtract `nu` from every scalar diagonal entry `M[i,i]` in-place.
+    ///
+    /// In upper-triangular CSC storage, the diagonal entry for column `j` is the
+    /// entry where `row_idx == j`. The sparsity structure is unchanged.
+    pub fn subtract_scalar_diagonal(&mut self, nu: f64) {
+        let n = self.upper.nrows();
+        let col_ptrs = self.upper.col_ptr().to_vec();
+        let row_ind = self.upper.row_idx().to_vec();
+        let vals = self.upper.val_mut();
+        for j in 0..n {
+            let start = col_ptrs[j];
+            let end = col_ptrs[j + 1];
+            let rows = &row_ind[start..end];
+            // In upper-triangular storage, row_idx <= col, so the diagonal entry
+            // (row == j) is the last entry if present.
+            if let Ok(pos) = rows.binary_search(&j) {
+                vals[start + pos] -= nu;
+            }
+        }
+    }
+}
+
 impl IsSymmetricMatrix for FaerSparseSymmetricMatrix {
     fn has_block(
         &self,

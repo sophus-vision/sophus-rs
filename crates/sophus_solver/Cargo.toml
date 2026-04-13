@@ -23,6 +23,7 @@ nalgebra.workspace = true
 nonmax.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
+rayon.workspace = true
 snafu.workspace = true
 
 # native:

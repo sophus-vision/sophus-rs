@@ -49,6 +49,8 @@ mod camera;
 mod camera_enum;
 mod distortion_table;
 mod dyn_camera;
+/// 1D pinhole camera model for planar (SE(2)) bundle adjustment.
+pub mod pinhole_1d;
 
 pub use crate::{
     camera::*,
@@ -60,4 +62,5 @@ pub use crate::{
     },
     distortion_table::*,
     dyn_camera::*,
+    pinhole_1d::*,
 };

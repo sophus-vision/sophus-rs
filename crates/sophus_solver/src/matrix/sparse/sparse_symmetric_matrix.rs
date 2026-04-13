@@ -22,6 +22,28 @@ impl SparseSymmetricMatrix {
     pub fn lower(&self) -> &SparseMatrix {
         &self.lower
     }
+
+    /// Subtract `nu` from every scalar diagonal entry `M[i,i]` in-place.
+    ///
+    /// In lower-triangular CSC storage, the diagonal entry for column `j` is the
+    /// entry where `row_idx == j`. The sparsity structure is unchanged.
+    pub fn subtract_scalar_diagonal(&mut self, nu: f64) {
+        let n = self.lower.scalar_dim();
+        // Collect storage positions of diagonal entries first to avoid borrow conflicts.
+        let mut diag_positions = Vec::with_capacity(n);
+        for j in 0..n {
+            let start = self.lower.storage_idx_by_col()[j];
+            let end = self.lower.storage_idx_by_col()[j + 1];
+            let rows = &self.lower.row_idx_storage()[start..end];
+            if let Ok(pos) = rows.binary_search(&j) {
+                diag_positions.push(start + pos);
+            }
+        }
+        let vals = self.lower.value_storage_mut();
+        for storage_idx in diag_positions {
+            vals[storage_idx] -= nu;
+        }
+    }
 }
 
 impl IsSymmetricMatrix for SparseSymmetricMatrix {

@@ -49,7 +49,7 @@ sophus_viewer = {path = "crates/sophus_viewer", version = "0.16.0"}
 approx = "0.5"
 as-any = "0.3"
 async-trait = "0.1"
-bytemuck = {version = "1.23", features = ["derive"]}
+bytemuck = {version = "1.25", features = ["derive"]}
 dyn-clone = "1.0"
 eframe = {version = "0.33.3", default-features = false, features = [
   "default_fonts",

@@ -54,7 +54,7 @@ pub struct DenseLdltFactor {
     pub(crate) mat_l: DenseSymmetricMatrix,
     pub(crate) diag_d: DVector<f64>,
     pub(crate) rank: usize,
-    pub(crate) _tol_rel: f64,
+    pub(crate) tol_rel: f64,
 }
 
 impl DenseLdltFactor {
@@ -106,7 +106,7 @@ impl IsLinearSolver for DenseLdlt {
             mat_l,
             diag_d,
             rank,
-            _tol_rel: self.tol_rel,
+            tol_rel: self.tol_rel,
         })
     }
 

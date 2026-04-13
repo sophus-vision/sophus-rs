@@ -1,4 +1,4 @@
-//! Demo application with optics simulation and 3D viewer examples.
+//! Demo application with optics simulation, bundle adjustment, and 3D viewer examples.
 
 use crossbeam_channel::{
     Sender,
@@ -14,22 +14,28 @@ use sophus_viewer::{
 };
 
 use crate::examples::{
+    bundle_adjustment::BundleAdjustmentWidget,
+    inverse_depth::InverseDepthWidget,
     optics_sim::OpticsSimWidget,
     viewer_example::ViewerExampleWidget,
 };
 
 #[derive(PartialEq)]
 enum Demo {
+    BundleAdjustment,
+    InverseDepth,
     OpticsSim,
     Viewer,
 }
 
 enum ViewerEnum {
-    Optics(OpticsSimWidget),
-    Viewer(ViewerExampleWidget),
+    BundleAdjustment(Box<BundleAdjustmentWidget>),
+    InverseDepth(Box<InverseDepthWidget>),
+    Optics(Box<OpticsSimWidget>),
+    Viewer(Box<ViewerExampleWidget>),
 }
 
-/// Interactive demo app with optics simulation and 3D viewer.
+/// Interactive demo app with optics simulation, bundle adjustment, and 3D viewer.
 pub struct DemoApp {
     base: ViewerBase,
     message_send: Sender<Vec<Packet>>,
@@ -45,26 +51,48 @@ impl eframe::App for DemoApp {
             ui.horizontal_wrapped(|ui| {
                 ui.heading("sophus-rs demo");
 
-                let examples = [(Demo::OpticsSim, "optics sim"), (Demo::Viewer, "viewer")];
+                let examples = [
+                    (Demo::BundleAdjustment, "bundle adjustment"),
+                    (Demo::InverseDepth, "inverse depth"),
+                    (Demo::OpticsSim, "optics sim"),
+                    (Demo::Viewer, "viewer"),
+                ];
 
                 for (example, label) in examples {
                     ui.selectable_value(&mut self.selected_example, example, label);
                 }
 
                 match self.selected_example {
+                    Demo::BundleAdjustment => match &self.content {
+                        ViewerEnum::BundleAdjustment(_) => {}
+                        _ => {
+                            self.content = ViewerEnum::BundleAdjustment(Box::new(
+                                BundleAdjustmentWidget::new(self.message_send.clone()),
+                            ));
+                        }
+                    },
+                    Demo::InverseDepth => match &self.content {
+                        ViewerEnum::InverseDepth(_) => {}
+                        _ => {
+                            self.content = ViewerEnum::InverseDepth(Box::new(
+                                InverseDepthWidget::new(self.message_send.clone()),
+                            ));
+                        }
+                    },
                     Demo::OpticsSim => match &self.content {
                         ViewerEnum::Optics(_) => {}
                         _ => {
-                            self.content =
-                                ViewerEnum::Optics(OpticsSimWidget::new(self.message_send.clone()));
+                            self.content = ViewerEnum::Optics(Box::new(OpticsSimWidget::new(
+                                self.message_send.clone(),
+                            )));
                         }
                     },
                     Demo::Viewer => match &self.content {
                         ViewerEnum::Viewer(_) => {}
                         _ => {
-                            self.content = ViewerEnum::Viewer(ViewerExampleWidget::new(
+                            self.content = ViewerEnum::Viewer(Box::new(ViewerExampleWidget::new(
                                 self.message_send.clone(),
-                            ));
+                            )));
                         }
                     },
                 };
@@ -77,6 +105,14 @@ impl eframe::App for DemoApp {
 
         egui::SidePanel::left("left").show(ctx, |ui| {
             self.base.update_left_panel(ui, ctx);
+
+            if let ViewerEnum::BundleAdjustment(widget) = &mut self.content {
+                widget.update_left_panel(ui);
+            }
+
+            if let ViewerEnum::InverseDepth(widget) = &mut self.content {
+                widget.update_left_panel(ui);
+            }
 
             if let ViewerEnum::Optics(optics_viewer_content) = &mut self.content {
                 ui.add(
@@ -129,6 +165,12 @@ impl eframe::App for DemoApp {
             }
         });
         match &mut self.content {
+            ViewerEnum::BundleAdjustment(widget) => {
+                widget.update();
+            }
+            ViewerEnum::InverseDepth(widget) => {
+                widget.update();
+            }
             ViewerEnum::Optics(optics_viewer_content) => {
                 optics_viewer_content.send_update();
             }
@@ -160,7 +202,7 @@ impl DemoApp {
             base: ViewerBase::new(render_state, ViewerBaseConfig { message_recv }),
             message_send: message_send.clone(),
             selected_example: Demo::OpticsSim,
-            content: ViewerEnum::Optics(OpticsSimWidget::new(message_send)),
+            content: ViewerEnum::Optics(Box::new(OpticsSimWidget::new(message_send))),
         })
     }
 }

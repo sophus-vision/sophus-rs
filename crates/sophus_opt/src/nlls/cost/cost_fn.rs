@@ -5,6 +5,7 @@ use core::{
 use std::fmt::Debug;
 
 use snafu::Snafu;
+use sophus_solver::matrix::block_sparse::BlockSparseSymmetricSymbolicBuilder;
 
 use super::{
     cost_term::{
@@ -52,6 +53,27 @@ pub trait IsCostFn {
 
     /// Get the robust kernel function.
     fn robust_kernel(&self) -> Option<RobustKernel>;
+
+    /// Names of the variable families this cost function touches.
+    fn cost_family_names(&self) -> alloc::vec::Vec<String>;
+
+    /// Compute the total squared cost without building the full EvaluatedCost structure.
+    ///
+    /// Used by merit evaluation in the LM loop: all variables are treated as conditioned
+    /// (no Jacobians needed), so this is much cheaper than `eval`.
+    fn calc_total_cost(&self, var_pool: &VarFamilies, parallelize: bool) -> Result<f64, CostError>;
+
+    /// Record only the sparsity structure into a symbolic builder — no matrix values computed.
+    ///
+    /// Iterates over the RAW (pre-reduction) cost terms and records which (row, col) block
+    /// positions will be written during a numeric pass.  Used to pre-build the
+    /// `BlockSparseSymmetricMatrixPattern` before the first optimizer iteration so that
+    /// iteration 0 uses the same fast parallel path as all subsequent ones.
+    fn populate_symbolic(
+        &self,
+        variables: &VarFamilies,
+        sym_builder: &mut BlockSparseSymmetricSymbolicBuilder,
+    );
 }
 
 /// Generic cost function of the non-linear least squares problem.
@@ -370,7 +392,128 @@ impl<
         self.cost_terms.reduction_ranges = Some(reduction_ranges);
     }
 
+    fn cost_family_names(&self) -> alloc::vec::Vec<String> {
+        self.cost_terms.family_names.to_vec()
+    }
+
     fn robust_kernel(&self) -> Option<RobustKernel> {
         self.robust_kernel
+    }
+
+    fn calc_total_cost(
+        &self,
+        variables: &VarFamilies,
+        parallelize: bool,
+    ) -> Result<f64, CostError> {
+        let var_family_tuple =
+            Args::ref_var_family_tuple(variables, self.cost_terms.family_names.clone())
+                .map_err(|e| CostError::VariableFamilyError { source: e })?;
+
+        // Treat all variables as conditioned — no Jacobians computed.
+        let var_kind_array: [VarKind; N] = core::array::from_fn(|_| VarKind::Conditioned);
+
+        let eval_cost = |term: &ResidualFn| -> f64 {
+            term.eval(
+                &self.global_constants,
+                *term.idx_ref(),
+                Args::extract(&var_family_tuple, *term.idx_ref()),
+                var_kind_array,
+                self.robust_kernel,
+            )
+            .cost
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if parallelize {
+            use rayon::prelude::*;
+            return Ok(self.cost_terms.collection.par_iter().map(eval_cost).sum());
+        }
+
+        Ok(self.cost_terms.collection.iter().map(eval_cost).sum())
+    }
+
+    fn populate_symbolic(
+        &self,
+        variables: &VarFamilies,
+        sym_builder: &mut BlockSparseSymmetricSymbolicBuilder,
+    ) {
+        let family_names = &self.cost_terms.family_names;
+        let num_args = family_names.len();
+        let mut scalar_start_indices_per_arg = alloc::vec::Vec::new();
+        let mut block_start_indices_per_arg = alloc::vec::Vec::new();
+        let mut dof_per_arg = alloc::vec::Vec::new();
+        let mut arg_ids = alloc::vec::Vec::new();
+        for name in family_names.iter() {
+            let family = variables
+                .collection
+                .get(name)
+                .unwrap_or_else(|| panic!("cost family '{name}' not in variables"));
+            scalar_start_indices_per_arg.push(family.get_scalar_start_indices().clone());
+            block_start_indices_per_arg.push(family.get_block_start_indices().clone());
+            dof_per_arg.push(family.free_or_marg_dof());
+            arg_ids.push(
+                variables
+                    .index(name)
+                    .unwrap_or_else(|| panic!("cost family '{name}' not in variables")),
+            );
+        }
+
+        // Iterate over RAW (pre-reduction) terms to capture all variable index combinations.
+        for term in self.cost_terms.collection.iter() {
+            let idx = term.idx_ref();
+            for arg_id_alpha in 0..num_args {
+                let dof_alpha = dof_per_arg[arg_id_alpha];
+                let family_alpha = arg_ids[arg_id_alpha];
+                if dof_alpha == 0 {
+                    continue;
+                }
+                let var_idx_alpha = idx[arg_id_alpha];
+                let scalar_start_idx_alpha =
+                    scalar_start_indices_per_arg[arg_id_alpha][var_idx_alpha];
+                let block_start_idx_alpha =
+                    block_start_indices_per_arg[arg_id_alpha][var_idx_alpha];
+                if scalar_start_idx_alpha == -1 {
+                    continue;
+                }
+                let block_start_idx_alpha = block_start_idx_alpha as usize;
+                let idx_alpha = sophus_solver::matrix::PartitionBlockIndex {
+                    partition: variables.partition_idx_by_family[family_alpha],
+                    block: block_start_idx_alpha,
+                };
+
+                // diagonal block
+                sym_builder.add_lower_block(idx_alpha, idx_alpha);
+
+                // off-diagonal blocks
+                for arg_id_beta in 0..num_args {
+                    let family_beta = arg_ids[arg_id_beta];
+                    if arg_id_alpha == arg_id_beta {
+                        continue;
+                    }
+                    let dof_beta = dof_per_arg[arg_id_beta];
+                    if dof_beta == 0 {
+                        continue;
+                    }
+                    let var_idx_beta = idx[arg_id_beta];
+                    let scalar_start_idx_beta =
+                        scalar_start_indices_per_arg[arg_id_beta][var_idx_beta];
+                    if scalar_start_idx_beta == -1 {
+                        continue;
+                    }
+                    let scalar_start_idx_alpha_usize = scalar_start_idx_alpha as usize;
+                    let scalar_start_idx_beta = scalar_start_idx_beta as usize;
+                    if scalar_start_idx_beta > scalar_start_idx_alpha_usize {
+                        continue;
+                    }
+                    let block_start_idx_beta =
+                        block_start_indices_per_arg[arg_id_beta][var_idx_beta] as usize;
+                    let idx_beta = sophus_solver::matrix::PartitionBlockIndex {
+                        partition: variables.partition_idx_by_family[family_beta],
+                        block: block_start_idx_beta,
+                    };
+                    sym_builder.add_lower_block(idx_alpha, idx_beta);
+                }
+            }
+        }
     }
 }

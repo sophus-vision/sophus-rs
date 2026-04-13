@@ -27,10 +27,6 @@ use crate::{
     prelude::*,
 };
 
-// ---------------------------------------------------------------------------
-// Block-level AMD helpers
-// ---------------------------------------------------------------------------
-
 /// Build a block-level upper CSC pattern from the scalar lower CSC + partition info.
 ///
 /// For each scalar off-diagonal lower entry `(row_i, col_j)` with `row_i > col_j`,
@@ -116,7 +112,7 @@ fn block_amd_from_scalar(
         )
     };
 
-    crate::ldlt::amd_order(symbolic.as_ref())
+    crate::ldlt::amd_order(symbolic.as_ref()).expect("AMD ordering allocation failed")
 }
 
 /// Build scalar permutation from a block-level AMD permutation.

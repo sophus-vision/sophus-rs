@@ -97,6 +97,8 @@ pub fn refine_chief_ray_angle(
             initial_lm_damping: 1.0,
             parallelize: true,
             solver: Default::default(),
+            skip_final_hessian: false,
+            ..Default::default()
         },
     )
     .unwrap();

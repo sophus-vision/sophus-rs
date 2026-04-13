@@ -53,6 +53,9 @@ pub trait IsEqConstraintsFn {
 
     /// Dimension of the constraint residual.
     fn residual_dim(&self) -> usize;
+
+    /// Names of the variable families this constraint touches.
+    fn constraint_family_names(&self) -> alloc::vec::Vec<String>;
 }
 
 /// Generic equality constraint function.
@@ -242,5 +245,9 @@ impl<
 
     fn residual_dim(&self) -> usize {
         RESIDUAL_DIM
+    }
+
+    fn constraint_family_names(&self) -> alloc::vec::Vec<String> {
+        self.constraints.family_names.to_vec()
     }
 }

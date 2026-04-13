@@ -3,23 +3,34 @@ pub(crate) mod eq_system;
 
 use sophus_solver::{
     LinearSolverEnum,
+    Schur,
     matrix::{
         PartitionSet,
         PartitionSpec,
         SymmetricMatrixBuilderEnum,
         SymmetricMatrixEnum,
         block::BlockVector,
+        block_sparse::{
+            BlockSparseSymmetricMatrixPattern,
+            BlockSparseSymmetricSymbolicBuilder,
+        },
     },
 };
 
 use super::{
-    CostSystem,
     EqSystem,
     NllsError,
 };
-use crate::variables::{
-    VarFamilies,
-    VarKind,
+use crate::{
+    nlls::{
+        CostError,
+        IsEvaluatedCost,
+        damped_hessian::DampedHessian,
+    },
+    variables::{
+        VarFamilies,
+        VarKind,
+    },
 };
 
 extern crate alloc;
@@ -35,9 +46,9 @@ pub enum EvalMode {
 
 /// Linear system of the non-linear least squares problem with equality constraints
 pub struct LinearSystem {
-    pub(crate) sparse_hessian_plus_damping: SymmetricMatrixEnum,
     pub(crate) neg_gradient: BlockVector,
-    pub(crate) solver: LinearSolverEnum,
+    /// The Hessian plus LM damping: `H + νI`, bundled with its solve state.
+    damped_hessian: DampedHessian,
 }
 
 impl LinearSystem {
@@ -71,42 +82,100 @@ impl LinearSystem {
     /// |    G           0      | -d lambda       |  -c              |
     /// --------------------------------------------------------------
     /// ```
+    /// Build the Hessian sparsity pattern from the raw (pre-reduction) cost function terms.
+    ///
+    /// Iterates over every raw cost term's variable index without computing any matrix values.
+    /// Call this once after `CostSystem::new` to obtain a pre-built
+    /// `BlockSparseSymmetricMatrixPattern` that can be passed as `pattern` to the very first
+    /// optimizer iteration, avoiding the slow sequential `BlockSparseLower` bootstrap.
+    pub fn build_initial_pattern(
+        variables: &VarFamilies,
+        cost_fns: &[alloc::boxed::Box<dyn crate::nlls::IsCostFn>],
+        eq_system: &EqSystem,
+    ) -> BlockSparseSymmetricMatrixPattern {
+        // Mirror the partition layout from `from_families_costs_and_constraints`.
+        let mut partition_specs = vec![];
+        for (_name, family) in variables.collection.iter() {
+            if family.get_var_kind() == VarKind::Free {
+                partition_specs.push(PartitionSpec {
+                    block_count: family.num_active_vars(),
+                    block_dim: family.free_or_marg_dof(),
+                });
+            }
+        }
+        for (_name, family) in variables.collection.iter() {
+            if family.get_var_kind() == VarKind::Marginalized {
+                partition_specs.push(PartitionSpec {
+                    block_count: family.num_active_vars(),
+                    block_dim: family.free_or_marg_dof(),
+                });
+            }
+        }
+        partition_specs.extend(eq_system.partitions.clone());
+        let partitions = PartitionSet::new(partition_specs);
+
+        let mut sym_builder = BlockSparseSymmetricSymbolicBuilder::new(partitions);
+        for cost_fn in cost_fns.iter() {
+            cost_fn.populate_symbolic(variables, &mut sym_builder);
+        }
+        sym_builder.into_pattern()
+    }
+
+    /// Build the linear system from variable families, evaluated costs, and equality constraints.
+    ///
+    /// Returns `(LinearSystem, Option<BlockSparseSymmetricMatrixPattern>)`.  The pattern is `Some`
+    /// when the builder was block-sparse (all cases without equality constraints); pass it back as
+    /// `pattern` on the next iteration to skip the O(K log K) symbolic rebuild.
     pub fn from_families_costs_and_constraints(
         variables: &VarFamilies,
-        cost_system: &CostSystem,
+        evaluated_costs: &[alloc::boxed::Box<dyn IsEvaluatedCost>],
+        nu: f64,
         eq_system: &EqSystem,
-        solver: LinearSolverEnum,
-        _parallelize: bool,
-    ) -> LinearSystem {
-        assert!(variables.num_of_kind(VarKind::Marginalized) == 0);
+        mut solver: LinearSolverEnum,
+        parallelize: bool,
+        pattern: Option<BlockSparseSymmetricMatrixPattern>,
+    ) -> Result<(LinearSystem, Option<BlockSparseSymmetricMatrixPattern>), CostError> {
         assert!(variables.num_of_kind(VarKind::Free) >= 1);
 
-        // Note let's first focus on these special cases, before attempting a
-        // general version covering all cases holistically. Also, it might not be trivial
-        // to implement VarKind::Marginalized > 1.
-        //  - Example, the the arrow-head sparsity uses a recursive application of the
-        //    Schur-Complement.
+        solver.set_parallelize(parallelize);
 
+        // Build partition specs: Free families first (BTreeMap order), then Marginalized.
+        // This ordering must match the partition_idx_by_family mapping in VarFamilies.
         let mut partition_specs = vec![];
-        for i in 0..variables.collection.len() {
-            partition_specs.push(PartitionSpec {
-                block_count: variables.free_vars()[i],
-                block_dim: variables.dims()[i],
-            });
+        for (_name, family) in variables.collection.iter() {
+            if family.get_var_kind() == VarKind::Free {
+                partition_specs.push(PartitionSpec {
+                    block_count: family.num_active_vars(),
+                    block_dim: family.free_or_marg_dof(),
+                });
+            }
+        }
+        for (_name, family) in variables.collection.iter() {
+            if family.get_var_kind() == VarKind::Marginalized {
+                partition_specs.push(PartitionSpec {
+                    block_count: family.num_active_vars(),
+                    block_dim: family.free_or_marg_dof(),
+                });
+            }
         }
 
         partition_specs.extend(eq_system.partitions.clone());
 
-        let partitions = PartitionSet::new(partition_specs.clone());
-        let mut block_triplets = SymmetricMatrixBuilderEnum::zero(solver, partitions);
-        let mut neg_grad = BlockVector::zero(&partition_specs);
+        let partitions = PartitionSet::new(partition_specs);
+        let mut neg_grad = BlockVector::zero(partitions.specs());
+        let mut block_triplets = if let Some(pat) = pattern {
+            SymmetricMatrixBuilderEnum::from_block_sparse_pattern(pat, solver)
+        } else {
+            SymmetricMatrixBuilderEnum::zero(solver, partitions)
+        };
 
-        for cost in cost_system.evaluated_costs.iter() {
-            cost.populate_upper_triangulatr_normal_equation(
+        for evaluated_cost in evaluated_costs.iter() {
+            evaluated_cost.populate_upper_triangular_normal_equation(
                 variables,
-                cost_system.lm_damping,
+                nu,
                 &mut block_triplets,
                 &mut neg_grad,
+                parallelize,
             );
         }
 
@@ -122,19 +191,61 @@ impl LinearSystem {
             );
         }
 
-        Self {
-            sparse_hessian_plus_damping: block_triplets.build(),
-            neg_gradient: neg_grad,
-            solver,
-        }
+        let (built_hessian, next_pattern) = block_triplets.build_with_pattern();
+
+        let num_marg_scalars = variables.num_marg_scalars();
+        let free_partition_count = variables.free_partition_count;
+
+        // If a Schur solver was requested and there are marginalized variables,
+        // wrap the block-sparse matrix in a Schur complement structure.
+        let matrix = if solver.is_schur() && num_marg_scalars > 0 {
+            let inner = built_hessian
+                .into_block_sparse_lower()
+                .expect("Schur solver requires BlockSparseLower matrix");
+            SymmetricMatrixEnum::Schur(Schur::new(
+                inner,
+                free_partition_count,
+                variables.total_active_partition_count(),
+                solver.schur_inner_solver(),
+                parallelize,
+            ))
+        } else {
+            built_hessian
+        };
+
+        let damped_hessian =
+            DampedHessian::new(matrix, nu, variables.total_active_partition_count(), solver);
+
+        Ok((
+            Self {
+                damped_hessian,
+                neg_gradient: neg_grad,
+            },
+            next_pattern,
+        ))
+    }
+
+    /// The Hessian with LM damping applied: `H + νI`.
+    ///
+    /// Call `get_block`, `inverse_block`, or `matrix.as_schur()` directly on the returned value.
+    pub fn damped_hessian(&self) -> &DampedHessian {
+        &self.damped_hessian
+    }
+
+    /// Mutable access to `H + νI` — needed to call `inverse_block` (which caches state).
+    pub fn damped_hessian_mut(&mut self) -> &mut DampedHessian {
+        &mut self.damped_hessian
+    }
+
+    /// Consume the linear system, returning `(neg_gradient, damped_hessian)`.
+    pub(crate) fn into_gradient_and_hessian(self) -> (BlockVector, DampedHessian) {
+        (self.neg_gradient, self.damped_hessian)
     }
 
     pub(crate) fn solve(&mut self) -> Result<nalgebra::DVector<f64>, NllsError> {
-        self.solver
-            .solve(
-                &self.sparse_hessian_plus_damping,
-                self.neg_gradient.scalar_vector(),
-            )
+        let g = self.neg_gradient.scalar_vector().clone();
+        self.damped_hessian
+            .solve(&g)
             .map_err(|e| NllsError::LinearSolver { source: e })
     }
 }

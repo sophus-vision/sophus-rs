@@ -21,7 +21,12 @@ macro_rules! profile_scope {
 #[cfg(doctest)]
 pub struct ReadmeDoctests;
 
+use std::fmt::Debug;
+
 pub use error::*;
+pub use ldlt::schur_ldlt::SchurFactor;
+pub use matrix::schur::Schur;
+use nalgebra::DMatrix;
 
 use crate::{
     ldlt::{
@@ -34,6 +39,11 @@ use crate::{
         SparseLdlt,
         SparseLdltFactor,
         faer_sparse_ldlt::FaerSparseLdltSymbolic,
+        min_norm_ldlt::{
+            block_sparse_min_norm_ldlt::BlockSparseMinNormPsd,
+            dense_min_norm_ldlt::DenseMinNormFactor,
+            sparse_min_norm_ldlt::SparseMinNormPsd,
+        },
         sparse_ldlt::SparseLdltSymbolic,
     },
     lu::{
@@ -45,9 +55,11 @@ use crate::{
     matrix::{
         IsSymmetricMatrix,
         IsSymmetricMatrixBuilder,
+        PartitionBlockIndex,
         PartitionSet,
         SymmetricMatrixBuilderEnum,
         SymmetricMatrixEnum,
+        block_sparse::block_sparse_symmetric_matrix_builder::BlockSparseSymmetricMatrixPattern,
         direct_solve::DirectSolveMatrix,
     },
     qr::{
@@ -56,6 +68,8 @@ use crate::{
     },
 };
 
+/// Covariance computation from factorized Hessians with optional equality constraints.
+pub mod covariance;
 /// Solver error handling.
 pub mod error;
 /// Matrix operation kernels.
@@ -288,6 +302,12 @@ pub enum LinearSolverEnum {
     FaerSparseLu(FaerSparseLu),
     /// Sparse solver using faer's LDLᵀ factorization.
     FaerSparseLdlt(FaerSparseLdlt),
+    /// Schur-complement solve: block-sparse LDLᵀ for the reduced S system.
+    SchurBlockSparseLdlt(BlockSparseLdlt),
+    /// Schur-complement solve: sparse LDLᵀ for the reduced S system.
+    SchurSparseLdlt(SparseLdlt),
+    /// Schur-complement solve: faer sparse LDLᵀ for the reduced S system.
+    SchurFaerSparseLdlt(FaerSparseLdlt),
 }
 
 impl Default for LinearSolverEnum {
@@ -324,6 +344,9 @@ impl LinearSolverEnum {
             LinearSolverEnum::FaerSparseLdlt(faer_sparse_ldlt) => {
                 faer_sparse_ldlt.set_parallelize(parallelize)
             }
+            LinearSolverEnum::SchurBlockSparseLdlt(s) => s.set_parallelize(parallelize),
+            LinearSolverEnum::SchurSparseLdlt(s) => s.set_parallelize(parallelize),
+            LinearSolverEnum::SchurFaerSparseLdlt(s) => s.set_parallelize(parallelize),
         }
     }
 
@@ -346,14 +369,71 @@ impl LinearSolverEnum {
         ]
     }
 
+    /// Get list of all Schur-complement sparse solvers.
+    ///
+    /// These solvers require the hessian to be wrapped in a [`crate::matrix::schur::Schur`]
+    /// structure; they cannot be used directly with [`LinearSolverEnum::factorize`].
+    pub fn schur_sparse_solvers() -> Vec<LinearSolverEnum> {
+        vec![
+            LinearSolverEnum::SchurBlockSparseLdlt(BlockSparseLdlt::default()),
+            LinearSolverEnum::SchurSparseLdlt(SparseLdlt::default()),
+            LinearSolverEnum::SchurFaerSparseLdlt(FaerSparseLdlt::default()),
+        ]
+    }
+
+    /// Returns true if this solver supports equality constraints (KKT systems).
+    ///
+    /// Supported solvers:
+    /// - Indefinite solvers (`DenseLu`, `FaerSparseLu`, `FaerSparseQr`): solve the full KKT system
+    ///   directly.
+    /// - Schur + LDLᵀ (`SchurBlockSparseLdlt`, `SchurFaerSparseLdlt`): range-space KKT method
+    ///   (constraints must only touch free variables, not marginalized).
+    ///
+    /// Not supported: plain LDLᵀ solvers which assume positive (semi-)definite systems.
+    pub fn supports_eq_constraints(&self) -> bool {
+        matches!(
+            self,
+            LinearSolverEnum::DenseLu(_)
+                | LinearSolverEnum::FaerSparseLu(_)
+                | LinearSolverEnum::FaerSparseQr(_)
+                | LinearSolverEnum::SchurBlockSparseLdlt(_)
+                | LinearSolverEnum::SchurFaerSparseLdlt(_)
+        )
+    }
+
     /// Returns true if this is a Schur-complement variant.
     pub fn is_schur(&self) -> bool {
-        false
+        matches!(
+            self,
+            LinearSolverEnum::SchurBlockSparseLdlt(_)
+                | LinearSolverEnum::SchurSparseLdlt(_)
+                | LinearSolverEnum::SchurFaerSparseLdlt(_)
+        )
     }
 
     /// For Schur variants, returns the inner solver used for S; panics for non-Schur variants.
     pub fn schur_inner_solver(&self) -> LinearSolverEnum {
-        panic!("not a Schur variant")
+        match self {
+            LinearSolverEnum::SchurBlockSparseLdlt(s) => LinearSolverEnum::BlockSparseLdlt(*s),
+            LinearSolverEnum::SchurSparseLdlt(s) => LinearSolverEnum::SparseLdlt(*s),
+            LinearSolverEnum::SchurFaerSparseLdlt(s) => LinearSolverEnum::FaerSparseLdlt(*s),
+            _ => panic!("not a Schur variant"),
+        }
+    }
+
+    /// Convert this solver to its Schur-complement variant, if one exists.
+    ///
+    /// Returns `Some(SchurXxx(...))` for `BlockSparseLdlt`, `SparseLdlt`, and `FaerSparseLdlt`.
+    /// Returns `None` for solvers that have no Schur variant (dense, LU, QR, already-Schur).
+    pub fn to_schur(&self) -> Option<LinearSolverEnum> {
+        match self {
+            LinearSolverEnum::BlockSparseLdlt(s) => {
+                Some(LinearSolverEnum::SchurBlockSparseLdlt(*s))
+            }
+            LinearSolverEnum::SparseLdlt(s) => Some(LinearSolverEnum::SchurSparseLdlt(*s)),
+            LinearSolverEnum::FaerSparseLdlt(s) => Some(LinearSolverEnum::SchurFaerSparseLdlt(*s)),
+            _ => None,
+        }
     }
 
     /// Get solvers which can be used for indefinite linear systems.
@@ -379,6 +459,19 @@ impl LinearSolverEnum {
                 block_sparse_ldlt.zero(partitions)
             }
             LinearSolverEnum::SparseLdlt(sparse_ldlt) => sparse_ldlt.zero(partitions),
+            // Schur variants always use BlockSparseLower for H (the Schur forward pass requires
+            // block-sparse structure).
+            LinearSolverEnum::SchurBlockSparseLdlt(_)
+            | LinearSolverEnum::SchurSparseLdlt(_)
+            | LinearSolverEnum::SchurFaerSparseLdlt(_) => {
+                use crate::matrix::IsSymmetricMatrixBuilder;
+                SymmetricMatrixBuilderEnum::BlockSparseLower(
+                    crate::matrix::block_sparse::BlockSparseSymmetricMatrixBuilder::zero(
+                        partitions,
+                    ),
+                    *self,
+                )
+            }
         }
     }
 
@@ -392,6 +485,9 @@ impl LinearSolverEnum {
             LinearSolverEnum::FaerSparseLdlt(faer_sparse_ldlt) => faer_sparse_ldlt.name(),
             LinearSolverEnum::SparseLdlt(sparse_ldlt) => sparse_ldlt.name(),
             LinearSolverEnum::BlockSparseLdlt(block_sparse_ldlt) => block_sparse_ldlt.name(),
+            LinearSolverEnum::SchurBlockSparseLdlt(s) => format!("Schur({})", s.name()),
+            LinearSolverEnum::SchurSparseLdlt(s) => format!("Schur({})", s.name()),
+            LinearSolverEnum::SchurFaerSparseLdlt(s) => format!("Schur({})", s.name()),
         }
     }
 
@@ -431,6 +527,8 @@ impl LinearSolverEnum {
                 Ok(FactorEnum::DenseLu(dense_lu.factorize(dense)?))
             }
             LinearSolverEnum::SparseLdlt(sparse_ldlt) => {
+                // Accept BlockSparseLower (produced by the fast BlockSparsePattern populate path)
+                // in addition to SparseLower.
                 let cached = cached_symb.and_then(|c| {
                     if let CachedSymbolicFactorInner::SparseLdlt(s) = c.0 {
                         Some(s)
@@ -488,10 +586,18 @@ impl LinearSolverEnum {
                         None
                     }
                 });
+                // Accept BlockSparseLower in addition to FaerSparseUpper.
                 let owned;
                 let faer = if let DirectSolveMatrix::FaerSparseUpper(s) = inner {
                     s
                 } else if let DirectSolveMatrix::BlockSparseLower(b) = inner {
+                    // Always use the structural conversion (includes ALL scalar positions
+                    // within existing blocks, even zeros). This ensures consistent sparsity
+                    // across all iterations so the symbolic factor computed on iteration 1
+                    // remains valid for iterations 2..N. If value-filtered conversion were
+                    // used (which skips zeros), the sparsity could shrink between iterations,
+                    // making the cached symbolic invalid and causing out-of-bounds panics in
+                    // faer's numeric factorization.
                     owned = b.to_faer_sparse_symmetric_structural();
                     &owned
                 } else {
@@ -500,6 +606,13 @@ impl LinearSolverEnum {
                 Ok(FactorEnum::FaerSparseLdlt(
                     faer_sparse_ldlt.factorize_with_cached_symb(faer, cached)?,
                 ))
+            }
+            LinearSolverEnum::SchurBlockSparseLdlt(_)
+            | LinearSolverEnum::SchurSparseLdlt(_)
+            | LinearSolverEnum::SchurFaerSparseLdlt(_) => {
+                panic!(
+                    "use Schur<M>::solve() instead of LinearSolverEnum::factorize_inner for Schur variants"
+                )
             }
         }
     }
@@ -511,6 +624,11 @@ impl LinearSolverEnum {
     pub fn factorize(&self, mat_a: &SymmetricMatrixEnum) -> Result<FactorEnum, LinearSolverError> {
         match mat_a {
             SymmetricMatrixEnum::Direct(ds) => self.factorize_inner(&ds.inner, None),
+            SymmetricMatrixEnum::Schur(_) => {
+                panic!(
+                    "use Schur<M>::solve() instead of LinearSolverEnum::factorize for Schur variants"
+                )
+            }
         }
     }
 
@@ -571,12 +689,15 @@ pub enum FactorEnum {
     FaerSparseLu(FaerSparseLuSystem),
     /// Sparse solver using faer's LDLᵀ factorization.
     FaerSparseLdlt(FaerSparseLdltSystem),
+    /// Schur-complement factorization.
+    Schur(Box<SchurFactor>),
 }
 
 #[derive(Clone, Debug)]
 enum CachedSymbolicFactorInner {
     SparseLdlt(SparseLdltSymbolic),
     FaerSparseLdlt(FaerSparseLdltSymbolic),
+    SchurPattern(BlockSparseSymmetricMatrixPattern),
 }
 
 /// Cached symbolic factor (AMD ordering + sparsity analysis) for reuse across iterations.
@@ -585,6 +706,22 @@ enum CachedSymbolicFactorInner {
 /// expensive AMD ordering and symbolic factorization can be computed once and reused.
 #[derive(Clone, Debug)]
 pub struct CachedSymbolicFactor(CachedSymbolicFactorInner);
+
+impl CachedSymbolicFactor {
+    /// Create a `CachedSymbolicFactor` from a Schur S sparsity pattern.
+    pub(crate) fn from_schur_pattern(p: BlockSparseSymmetricMatrixPattern) -> Self {
+        CachedSymbolicFactor(CachedSymbolicFactorInner::SchurPattern(p))
+    }
+
+    /// Extract the Schur S sparsity pattern, or `None` if this is not a `SchurPattern`.
+    pub(crate) fn into_schur_pattern(self) -> Option<BlockSparseSymmetricMatrixPattern> {
+        if let CachedSymbolicFactorInner::SchurPattern(p) = self.0 {
+            Some(p)
+        } else {
+            None
+        }
+    }
+}
 
 impl FactorEnum {
     /// Extract the cached symbolic factor for reuse in the next iteration.
@@ -596,7 +733,37 @@ impl FactorEnum {
             FactorEnum::FaerSparseLdlt(f) => Some(CachedSymbolicFactor(
                 CachedSymbolicFactorInner::FaerSparseLdlt(f.into_symbolic()),
             )),
+            // S pattern is extracted from SchurFactor before wrapping; nothing to pull out here.
+            FactorEnum::Schur(_) => None,
             _ => None,
+        }
+    }
+}
+
+impl FactorEnum {
+    /// Return matrix factorization to compute the (pseudo) inverse of `A`.
+    pub fn into_invertible(self) -> Option<InvertibleMatrix> {
+        match self {
+            FactorEnum::DenseLdlt(factor) => {
+                Some(InvertibleMatrix::Dense(DenseMinNormFactor::new(factor)))
+            }
+            FactorEnum::BlockSparseLdlt(factor) => Some(InvertibleMatrix::BlockSparse(
+                BlockSparseMinNormPsd::new(factor),
+            )),
+            FactorEnum::SparseLdlt(factor) => {
+                Some(InvertibleMatrix::Sparse(SparseMinNormPsd::new(factor)))
+            }
+            FactorEnum::Schur(sf) => Some(InvertibleMatrix::Schur(sf)),
+            _ => None,
+        }
+    }
+
+    /// Return a mutable reference to the inner `SchurFactor`, if this is a `Schur` variant.
+    pub(crate) fn as_schur_mut(&mut self) -> Option<&mut SchurFactor> {
+        if let FactorEnum::Schur(sf) = self {
+            Some(sf.as_mut())
+        } else {
+            None
         }
     }
 }
@@ -621,13 +788,103 @@ impl IsFactor for FactorEnum {
             FactorEnum::FaerSparseLdlt(faer_sparse_ldlt_system) => {
                 faer_sparse_ldlt_system.solve_inplace(b)
             }
+            FactorEnum::Schur(sf) => {
+                let dx = sf.solve()?;
+                b.copy_from(&dx);
+                Ok(())
+            }
+        }
+    }
+}
+/// Matrix factorization to compute invertible solutions, i.e. the (pseudo) inverse of `A`.
+pub trait IsInvertible {
+    /// Return the (Moore–Penrose) pseudo-inverse.
+    fn pseudo_inverse(&mut self) -> DMatrix<f64>;
+
+    /// Get block at index `(row_idx, col_idx)` of the (Moore–Penrose) pseudo-inverse.
+    fn pseudo_inverse_block(
+        &mut self,
+        row_idx: PartitionBlockIndex,
+        col_idx: PartitionBlockIndex,
+    ) -> nalgebra::DMatrix<f64>;
+}
+
+#[derive(Clone, Debug)]
+/// Matrix factorization to compute invertible solutions, i.e. the (pseudo) inverse of `A`.
+pub enum InvertibleMatrix {
+    /// Dense min-norm factorization, based on LDLᵀ.
+    Dense(DenseMinNormFactor),
+    /// Sparse min-norm factorization, based on LDLᵀ
+    Sparse(SparseMinNormPsd),
+    /// Block-sparse min-norm factorization, based on LDLᵀ
+    BlockSparse(BlockSparseMinNormPsd),
+    /// Schur-complement factorization.
+    Schur(Box<SchurFactor>),
+}
+
+impl IsInvertible for InvertibleMatrix {
+    fn pseudo_inverse(&mut self) -> DMatrix<f64> {
+        match self {
+            InvertibleMatrix::Dense(dense_gram_schmidt) => dense_gram_schmidt.pseudo_inverse(),
+            InvertibleMatrix::Sparse(min_norm_psd) => min_norm_psd.pseudo_inverse(),
+            InvertibleMatrix::BlockSparse(min_norm_psd) => min_norm_psd.pseudo_inverse(),
+            InvertibleMatrix::Schur(sf) => {
+                let partitions = sf.full_partitions.clone();
+                let n = partitions.scalar_dim();
+                let mut result = DMatrix::<f64>::zeros(n, n);
+                for row_p in 0..partitions.len() {
+                    for row_b in 0..partitions.specs()[row_p].block_count {
+                        let row_idx = PartitionBlockIndex {
+                            partition: row_p,
+                            block: row_b,
+                        };
+                        let row_range = partitions.block_range(row_idx);
+                        for col_p in 0..partitions.len() {
+                            for col_b in 0..partitions.specs()[col_p].block_count {
+                                let col_idx = PartitionBlockIndex {
+                                    partition: col_p,
+                                    block: col_b,
+                                };
+                                let col_range = partitions.block_range(col_idx);
+                                let block = sf.inverse_block(row_idx, col_idx);
+                                result
+                                    .view_mut(
+                                        (row_range.start_idx, col_range.start_idx),
+                                        (row_range.block_dim, col_range.block_dim),
+                                    )
+                                    .copy_from(&block);
+                            }
+                        }
+                    }
+                }
+                result
+            }
+        }
+    }
+
+    fn pseudo_inverse_block(
+        &mut self,
+        row_idx: PartitionBlockIndex,
+        col_idx: PartitionBlockIndex,
+    ) -> nalgebra::DMatrix<f64> {
+        match self {
+            InvertibleMatrix::Dense(dense_gram_schmidt) => {
+                dense_gram_schmidt.pseudo_inverse_block(row_idx, col_idx)
+            }
+            InvertibleMatrix::Sparse(min_norm_psd) => {
+                min_norm_psd.pseudo_inverse_block(row_idx, col_idx)
+            }
+            InvertibleMatrix::BlockSparse(min_norm_psd) => {
+                min_norm_psd.pseudo_inverse_block(row_idx, col_idx)
+            }
+            InvertibleMatrix::Schur(sf) => sf.inverse_block(row_idx, col_idx),
         }
     }
 }
 
 /// sophus_solver prelude.
 ///
-/// It is recommended to import this prelude when working with `sophus_solver types:
+/// It is recommended to import this prelude when working with `sophus_solver` types:
 ///
 /// ```
 /// use sophus_solver::prelude::*;

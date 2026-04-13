@@ -114,6 +114,12 @@ impl SparseMatrix {
         &self.value_storage
     }
 
+    /// Get mutable values.
+    #[inline]
+    pub fn value_storage_mut(&mut self) -> &mut [f64] {
+        &mut self.value_storage
+    }
+
     /// Number of rows (or columns) `N`.
     #[inline]
     pub fn scalar_dim(&self) -> usize {

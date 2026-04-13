@@ -1,5 +1,5 @@
 clippy:
-    cargo clippy
+    cargo clippy --tests --features std
 
 build:
     cargo build --release --all-targets
@@ -36,5 +36,11 @@ demo:
 wasm-demo:
     trunk serve crates/sophus/index.html --release
 
-bench:
+solver-bench:
     cargo run --bin solver_bench --release
+
+ba-bench:
+    cargo run --bin ba_bench --release -p sophus_opt
+
+kb-projection-bench:
+    cargo +nightly run --bin kb_projection_bench --release -p sophus_opt --features simd

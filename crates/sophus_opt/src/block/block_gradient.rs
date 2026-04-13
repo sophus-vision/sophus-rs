@@ -1,7 +1,6 @@
 use nalgebra::Const;
 use sophus_autodiff::linalg::VecF64;
-
-use super::BlockRange;
+use sophus_solver::matrix::BlockRange;
 
 /// Block gradient vector
 ///
@@ -47,8 +46,8 @@ impl<const INPUT_DIM: usize, const N: usize> BlockGradient<INPUT_DIM, N> {
         for i in 0..num_blocks {
             let dim = dims[i];
             ranges[i] = BlockRange {
-                index: num_rows as i64,
-                dim,
+                start_idx: num_rows,
+                block_dim: dim,
             };
             num_rows += dim;
         }
@@ -66,7 +65,7 @@ impl<const INPUT_DIM: usize, const N: usize> BlockGradient<INPUT_DIM, N> {
     /// set the ith block
     pub fn set_block<const R: usize>(&mut self, ith: usize, v: VecF64<R>) {
         debug_assert!(ith < self.num_blocks());
-        debug_assert_eq!(R, self.ranges[ith].dim);
+        debug_assert_eq!(R, self.ranges[ith].block_dim);
         self.mut_block::<R>(ith).copy_from(&v);
     }
 
@@ -87,8 +86,8 @@ impl<const INPUT_DIM: usize, const N: usize> BlockGradient<INPUT_DIM, N> {
             Const<INPUT_DIM>,
         >,
     > {
-        let idx = self.ranges[ith].index as usize;
-        self.vec.rows(idx, self.ranges[ith].dim)
+        let idx = self.ranges[ith].start_idx;
+        self.vec.rows(idx, self.ranges[ith].block_dim)
     }
 
     /// mutable reference to the ith block
@@ -108,7 +107,7 @@ impl<const INPUT_DIM: usize, const N: usize> BlockGradient<INPUT_DIM, N> {
             Const<INPUT_DIM>,
         >,
     > {
-        let idx = self.ranges[ith].index as usize;
+        let idx = self.ranges[ith].start_idx;
         self.vec.fixed_rows_mut::<ROWS>(idx)
     }
 }

@@ -229,6 +229,38 @@ impl BlockSparseSymmetricMatrix {
     }
 }
 
+impl BlockSparseSymmetricMatrix {
+    /// Subtract `nu` from every scalar diagonal entry `M[i,i]` in-place.
+    ///
+    /// Only diagonal blocks (where block_row == block_col) are touched.
+    /// The sparsity structure is unchanged.
+    pub fn subtract_scalar_diagonal(&mut self, nu: f64) {
+        let block_count = self.lower.block_count();
+        for global_col in 0..block_count {
+            let col_slice = self.lower.non_zero_block(global_col);
+            // Find the diagonal entry (block_row_idx == global_col).
+            let diag_pos =
+                col_slice.binary_search_by(|e| (e.block_row_idx as usize).cmp(&global_col));
+            if let Ok(pos) = diag_pos {
+                let entry = col_slice[pos];
+                let idx = self.lower.subdivision.idx(global_col);
+                let block_dim = self.lower.subdivision.block_dim(idx.partition);
+                let base = entry.storage_base as usize;
+                let storage = &mut self
+                    .lower
+                    .regions
+                    .get_mut(&[idx.partition, idx.partition])
+                    .storage;
+                // Subtract nu from each scalar diagonal within this block.
+                // Block is stored column-major with dimensions block_dim x block_dim.
+                for k in 0..block_dim {
+                    storage[base + k * block_dim + k] -= nu;
+                }
+            }
+        }
+    }
+}
+
 impl IsSymmetricMatrix for BlockSparseSymmetricMatrix {
     fn has_block(
         &self,
