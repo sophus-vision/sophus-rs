@@ -6,3 +6,5 @@ pub mod eq_constraint_fn;
 pub mod evaluated_eq_constraint;
 /// Equality constraint set
 pub mod evaluated_eq_set;
+/// Inequality constraint
+pub mod ineq_constraint;

@@ -330,7 +330,7 @@ impl IsLdltWorkspace for LdltWorkspace {
     type Diag = Vec<f64>;
 
     type MatrixEntry = f64;
-    type DiagnalEntry = f64;
+    type DiagonalEntry = f64;
 
     fn calc_etree(a_lower: &Self::Matrix) -> EliminationTree {
         EliminationTree::new(a_lower.pattern().transpose())
@@ -413,25 +413,27 @@ impl IsLdltWorkspace for LdltWorkspace {
             }
             max_abs_pivot = max_abs_pivot.max(d_jj.abs());
             let tau = max_abs_pivot.max(1.0) * l_mat_builder.tol_rel;
-            if d_jj <= tau {
-                return Err(LdltDecompositionError::NegativeFinitePivot {
-                    j: self.col_j,
-                    d_jj,
-                });
+            if d_jj.abs() <= tau {
+                // PSD zero pivot — rank-deficient; store 0 to avoid division.
+                0.0
+            } else {
+                // PD (d_jj > 0) or indefinite (d_jj < 0).
+                d_jj
             }
-            d_jj
         };
         diag[self.col_j] = d_jj;
 
         let column = &mut l_mat_builder.cols[self.col_j];
-        for &row_i in self.touched_rows.iter() {
-            if row_i > self.col_j {
-                let mat_l_ij = self.c[row_i] / d_jj;
-                if mat_l_ij != 0.0 {
-                    column.data.push(Entry {
-                        row_idx: row_i,
-                        val: mat_l_ij,
-                    });
+        if d_jj != 0.0 {
+            for &row_i in self.touched_rows.iter() {
+                if row_i > self.col_j {
+                    let mat_l_ij = self.c[row_i] / d_jj;
+                    if mat_l_ij != 0.0 {
+                        column.data.push(Entry {
+                            row_idx: row_i,
+                            val: mat_l_ij,
+                        });
+                    }
                 }
             }
         }
@@ -665,5 +667,88 @@ impl SparseLdltFactor {
             }),
             _ => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use nalgebra::DVector;
+
+    use crate::{
+        IsFactor,
+        IsLinearSolver,
+        ldlt::SparseLdlt,
+        matrix::{
+            PartitionBlockIndex,
+            PartitionSet,
+            PartitionSpec,
+            block_sparse::BlockSparseSymmetricMatrix,
+        },
+    };
+
+    /// Build a block-sparse KKT matrix and convert to sparse for SparseLdlt.
+    fn build_ill_conditioned_kkt() -> (super::SparseSymmetricMatrix, DVector<f64>) {
+        use crate::ldlt::BlockSparseLdlt;
+
+        // [[ε, 1], [1, -ε]] with ε = 1e-12 — ill-conditioned indefinite.
+        let eps = 1e-12;
+        let specs = vec![PartitionSpec {
+            eliminate_last: false,
+            block_count: 1,
+            block_dim: 2,
+        }];
+        let partitions = PartitionSet::new(specs);
+        let bs_solver = BlockSparseLdlt::default();
+        let mut builder = bs_solver.zero(partitions);
+
+        let idx = PartitionBlockIndex {
+            partition: 0,
+            block: 0,
+        };
+        builder.add_lower_block(
+            idx,
+            idx,
+            &nalgebra::DMatrix::from_row_slice(2, 2, &[eps, 1.0, 1.0, -eps]).as_view(),
+        );
+
+        let (built, _) = builder.build_with_pattern();
+        let bsm: BlockSparseSymmetricMatrix = built.into_block_sparse_lower().unwrap();
+        let sparse = bsm.to_sparse_symmetric();
+        let b = DVector::from_row_slice(&[1.0, 2.0]);
+        (sparse, b)
+    }
+
+    #[test]
+    fn sparse_ldlt_ill_conditioned_indefinite_poor_accuracy() {
+        // SparseLdlt has no BK fallback — on ill-conditioned indefinite matrices
+        // it produces results with significant error compared to LU.
+        let (sparse, b) = build_ill_conditioned_kkt();
+
+        let solver = SparseLdlt::default();
+        let factor = solver.factorize(&sparse).unwrap();
+        let mut x = b.clone();
+        factor.solve_inplace(&mut x).unwrap();
+
+        // Reference via dense LU.
+        let dense = nalgebra::DMatrix::from_row_slice(2, 2, &[1e-12, 1.0, 1.0, -1e-12]);
+        let x_ref = dense.lu().solve(&b).unwrap();
+
+        let error = (&x - &x_ref).norm();
+        // SparseLdlt should have noticeably worse accuracy than LU on this problem.
+        // We don't assert failure — just document that it's less accurate.
+        // The error is large because d[0] = ε = 1e-12 causes element growth.
+        eprintln!(
+            "SparseLdlt error on ill-conditioned indefinite: {:.2e} (x={:?}, ref={:?})",
+            error,
+            x.as_slice(),
+            x_ref.as_slice()
+        );
+        // With ε = 1e-12, the pivot condition is ~1e-24 and we expect
+        // significant loss of precision (error >> 1e-6).
+        assert!(
+            error > 1e-6,
+            "expected poor accuracy without BK fallback, but error={:.2e}",
+            error,
+        );
     }
 }

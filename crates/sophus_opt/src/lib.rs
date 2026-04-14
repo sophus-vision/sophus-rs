@@ -9,6 +9,30 @@
 #[cfg(doctest)]
 pub struct ReadmeDoctests;
 
+use sophus_solver::matrix::PartitionSpec;
+
+/// Create a variable partition spec (default elimination order).
+pub fn variable_partition(block_count: usize, block_dim: usize) -> PartitionSpec {
+    PartitionSpec {
+        block_count,
+        block_dim,
+        eliminate_last: false,
+    }
+}
+
+/// Create a constraint partition spec (eliminated last in LDLᵀ ordering).
+///
+/// Use for equality-constraint multiplier partitions in KKT systems.
+/// Constraint partitions have negative-definite diagonal (`-εI`) and must be
+/// eliminated after variable partitions to avoid tiny pivots.
+pub fn constraint_partition(block_count: usize, block_dim: usize) -> PartitionSpec {
+    PartitionSpec {
+        block_count,
+        block_dim,
+        eliminate_last: true,
+    }
+}
+
 /// Block derivatives
 pub mod block;
 /// Example problems
@@ -45,12 +69,14 @@ pub mod prelude {
     pub use crate::{
         nlls::{
             HasEqConstraintResidualFn,
+            HasIneqConstraintFn,
             HasResidualFn,
             IsCostFn,
             IsEqConstraintsFn,
             IsEvaluatedCost,
             MakeEvaluatedCostTerm,
             MakeEvaluatedEqConstraint,
+            MakeEvaluatedIneqConstraint,
         },
         robust_kernel::IsRobustKernel,
     };

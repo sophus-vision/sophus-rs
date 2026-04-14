@@ -1,7 +1,9 @@
 pub(crate) mod block_diag_ldlt;
 pub(crate) mod block_sparse_ldlt;
+pub(crate) mod dense_bunch_kaufman;
 pub(crate) mod dense_ldlt;
 pub(crate) mod elimination_tree;
+pub(crate) mod faer_sparse_lblt;
 pub(crate) mod faer_sparse_ldlt;
 /// Min-norm LDLt pseudo-inverse solver.
 pub mod min_norm_ldlt;
@@ -25,6 +27,7 @@ use faer::{
         linalg::amd,
     },
 };
+pub use faer_sparse_lblt::*;
 pub use faer_sparse_ldlt::*;
 pub use schur_ldlt::SchurFactor;
 pub use sparse_ldlt::*;
@@ -34,6 +37,11 @@ use crate::{
     IsFactor,
     LinearSolverError,
 };
+
+/// Threshold for pivot condition below which Bunch-Kaufman fallback activates on indefinite
+/// matrices. A ratio of 1e-10 means ~10 digits of precision lost — BK pivoting can recover
+/// stability.
+pub(crate) const BK_FALLBACK_THRESHOLD: f64 = 1e-10;
 
 /// Run AMD fill-reducing ordering on a symbolic upper-triangular sparse matrix.
 ///
@@ -84,7 +92,7 @@ pub trait IsLdltWorkspace: Sized {
     /// Type of a matrix `L[i,k]`.
     type MatrixEntry;
     /// Type of diagonal entry `d[k]`.
-    type DiagnalEntry;
+    type DiagonalEntry;
 
     /// Calculate symbolic elimination tree from matrix A.
     fn calc_etree(a_lower: &Self::Matrix) -> EliminationTree;
@@ -149,7 +157,7 @@ pub trait IsLdltTracer<Workspace: IsLdltWorkspace> {
     fn after_update(
         &mut self,
         _indices: LdltIndices,
-        _d: Workspace::DiagnalEntry,
+        _d: Workspace::DiagonalEntry,
         _l_ik: Workspace::MatrixEntry,
         _l_jk: Workspace::MatrixEntry,
         _c: Workspace::MatrixEntry,

@@ -227,10 +227,11 @@ mod tests {
     fn psd_pseudo_inverse_matches_svd() {
         // Single 3×3 partition, rank-2 PSD: H = BᵀB
         //
-        // SparseLdlt rejects near-zero pivots as errors (it only supports SPD input), so this
-        // test exits early if factorization fails.  The PSD path is fully covered for the dense
-        // backend in dense_min_norm_ldlt::tests.
+        // SparseLdlt handles PD, PSD, and indefinite matrices. This test exits
+        // early if factorization fails. The PSD path is fully covered for the
+        // dense backend in dense_min_norm_ldlt::tests.
         let parts = PartitionSet::new(vec![PartitionSpec {
+            eliminate_last: false,
             block_count: 1,
             block_dim: 3,
         }]);
@@ -258,10 +259,12 @@ mod tests {
         // Two partitions: [(1×2), (2×1)] => n=4, SPD H = AᵀA + μI
         let parts = PartitionSet::new(vec![
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 2,
             },
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 2,
                 block_dim: 1,
             },
@@ -293,19 +296,20 @@ mod tests {
         );
     }
 
-    // Note: SparseLdlt rejects zero/negative pivots as errors, so it only supports SPD matrices.
-    // PSD (rank-deficient) pseudo-inverse via the sparse backend is tested indirectly through
-    // DenseLdlt in dense_min_norm_ldlt::tests.
+    // Note: SparseLdlt PSD pseudo-inverse is tested indirectly through DenseLdlt in
+    // dense_min_norm_ldlt::tests.
 
     #[test]
     fn spd_pseudo_inverse_block_matches_dense_inverse() {
         // Two partitions: [(1×2), (2×1)] => n=4
         let parts = PartitionSet::new(vec![
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 2,
             },
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 2,
                 block_dim: 1,
             },
@@ -343,10 +347,12 @@ mod tests {
     fn covariance_blocks_are_symmetric() {
         let parts = PartitionSet::new(vec![
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 2,
             },
             PartitionSpec {
+                eliminate_last: false,
                 block_count: 1,
                 block_dim: 3,
             },

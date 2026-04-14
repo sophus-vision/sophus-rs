@@ -23,8 +23,9 @@ use sophus_opt::{
     },
     nlls::{
         OptParams,
+        OptProblem,
         Optimizer,
-        optimize_nlls_with_eq_constraints,
+        optimize_nlls,
     },
     variables::VarKind,
 };
@@ -43,16 +44,7 @@ use sophus_renderer::{
     },
 };
 use sophus_sensor::EnhancedUnifiedCameraF64;
-use sophus_solver::{
-    LinearSolverEnum,
-    ldlt::{
-        BlockSparseLdlt,
-        FaerSparseLdlt,
-        SparseLdlt,
-    },
-    lu::FaerSparseLu,
-    matrix::PartitionBlockIndex,
-};
+use sophus_solver::matrix::PartitionBlockIndex;
 use sophus_viewer::packets::{
     ClearCondition,
     ImageViewPacket,
@@ -66,7 +58,10 @@ use sophus_viewer::packets::{
 };
 
 use super::opt_widget::{
+    ALL_SOLVER_OPTIONS,
+    EQ_SOLVER_OPTIONS,
     OptWidgetState,
+    SolverSelector,
     StepRequest,
 };
 
@@ -77,84 +72,6 @@ const FOCAL_PLOT_LABEL: &str = "bundle-adj - focal";
 const CONSTRAINT_PLOT_LABEL: &str = "bundle-adj - constraint";
 const DAMPING_PLOT_LABEL: &str = "bundle-adj - damping";
 const MAX_ITERATIONS: usize = 500;
-
-// ── Solver choices ───────────────────────────────────────────────────────
-
-/// Solver for standard BA (no equality constraints).
-#[derive(Copy, Clone, Debug, PartialEq)]
-enum BaSolver {
-    BlockSparse,
-    Sparse,
-    FaerSparse,
-}
-
-impl BaSolver {
-    fn label(self) -> &'static str {
-        match self {
-            BaSolver::BlockSparse => "block-sparse LDLᵀ",
-            BaSolver::Sparse => "sparse LDLᵀ",
-            BaSolver::FaerSparse => "faer sparse LDLᵀ",
-        }
-    }
-
-    fn to_linear_solver(self) -> LinearSolverEnum {
-        match self {
-            BaSolver::BlockSparse => LinearSolverEnum::BlockSparseLdlt(BlockSparseLdlt::default()),
-            BaSolver::Sparse => LinearSolverEnum::SparseLdlt(SparseLdlt::default()),
-            BaSolver::FaerSparse => LinearSolverEnum::FaerSparseLdlt(FaerSparseLdlt::default()),
-        }
-    }
-
-    fn all() -> [BaSolver; 3] {
-        [
-            BaSolver::BlockSparse,
-            BaSolver::Sparse,
-            BaSolver::FaerSparse,
-        ]
-    }
-}
-
-/// Solver for BA with scale constraint (equality constraint → needs LU or Schur).
-#[derive(Copy, Clone, Debug, PartialEq)]
-enum ScaleSolver {
-    FaerSparseLu,
-    SchurBlockSparseLdlt,
-    SchurFaerSparseLdlt,
-}
-
-impl ScaleSolver {
-    fn label(self) -> &'static str {
-        match self {
-            ScaleSolver::FaerSparseLu => "faer sparse LU (standard)",
-            ScaleSolver::SchurBlockSparseLdlt => "Schur + block-sparse LDLᵀ",
-            ScaleSolver::SchurFaerSparseLdlt => "Schur + faer sparse LDLᵀ",
-        }
-    }
-
-    fn uses_schur(self) -> bool {
-        !matches!(self, ScaleSolver::FaerSparseLu)
-    }
-
-    fn to_linear_solver(self) -> LinearSolverEnum {
-        match self {
-            ScaleSolver::FaerSparseLu => LinearSolverEnum::FaerSparseLu(FaerSparseLu {}),
-            ScaleSolver::SchurBlockSparseLdlt => {
-                LinearSolverEnum::SchurBlockSparseLdlt(BlockSparseLdlt::default())
-            }
-            ScaleSolver::SchurFaerSparseLdlt => {
-                LinearSolverEnum::SchurFaerSparseLdlt(FaerSparseLdlt::default())
-            }
-        }
-    }
-
-    fn all() -> [ScaleSolver; 3] {
-        [
-            ScaleSolver::FaerSparseLu,
-            ScaleSolver::SchurBlockSparseLdlt,
-            ScaleSolver::SchurFaerSparseLdlt,
-        ]
-    }
-}
 
 // ── Widget ───────────────────────────────────────────────────────────────
 
@@ -174,14 +91,13 @@ pub struct BundleAdjustmentWidget {
     /// Whether to use the scale constraint.
     use_scale_constraint: bool,
 
-    // Standard BA state
+    // Problems
     ba_problem: BaProblem,
-    ba_solver: BaSolver,
-    use_schur: bool,
-
-    // Scale-constraint BA state
     scale_problem: BaScaleConstraintProblem,
-    scale_solver: ScaleSolver,
+
+    // Solver selection (shared across modes)
+    solver: SolverSelector,
+    use_schur: bool,
 
     // Shared optimizer state
     opt: OptWidgetState,
@@ -218,17 +134,19 @@ impl Drop for BundleAdjustmentWidget {
 
 impl BundleAdjustmentWidget {
     /// Create the widget.
-    pub fn new(message_send: Sender<Vec<Packet>>) -> Self {
+    pub fn new(message_send: Sender<Vec<Packet>>, use_scale_constraint: bool) -> Self {
         let num_points = 500;
-        let num_cams = 50;
+        let num_cams = if use_scale_constraint { 10 } else { 50 };
         let ba_problem = BaProblem::new(num_cams, num_points);
         let scale_problem = BaScaleConstraintProblem::new(10, num_points);
-        let ba_solver = BaSolver::BlockSparse;
-        let scale_solver = ScaleSolver::SchurBlockSparseLdlt;
+        let solver = SolverSelector::BlockSparseLdlt;
         let use_schur = false;
-        let use_scale_constraint = false;
 
-        let optimizer = Self::build_ba_optimizer(&ba_problem, use_schur, ba_solver);
+        let optimizer = if use_scale_constraint {
+            Self::build_scale_optimizer(&scale_problem, solver, use_schur)
+        } else {
+            Self::build_ba_optimizer(&ba_problem, solver, use_schur)
+        };
         let opt = OptWidgetState::new(optimizer, MAX_ITERATIONS, PLOT_LABEL, DAMPING_PLOT_LABEL);
 
         let widget = BundleAdjustmentWidget {
@@ -237,10 +155,9 @@ impl BundleAdjustmentWidget {
             num_cams,
             use_scale_constraint,
             ba_problem,
-            ba_solver,
-            use_schur,
             scale_problem,
-            scale_solver,
+            solver,
+            use_schur,
             opt,
             latest_rms_px: None,
             latest_focal: None,
@@ -250,16 +167,20 @@ impl BundleAdjustmentWidget {
         widget
     }
 
-    fn build_ba_optimizer(problem: &BaProblem, use_schur: bool, solver: BaSolver) -> Optimizer {
+    fn build_ba_optimizer(
+        problem: &BaProblem,
+        solver: SolverSelector,
+        use_schur: bool,
+    ) -> Optimizer {
         let vars = problem.build_initial_variables(use_schur);
         Optimizer::new(
             vars,
-            vec![problem.build_cost()],
+            OptProblem::costs_only(vec![problem.build_cost()]),
             OptParams {
                 num_iterations: 10000,
                 initial_lm_damping: 1.0,
                 parallelize: true,
-                solver: solver.to_linear_solver(),
+                solver: solver.to_linear_solver(use_schur),
                 skip_final_hessian: false,
                 ..Default::default()
             },
@@ -267,22 +188,29 @@ impl BundleAdjustmentWidget {
         .expect("failed to build BA optimizer")
     }
 
-    fn build_scale_optimizer(problem: &BaScaleConstraintProblem, solver: ScaleSolver) -> Optimizer {
-        let points_kind = if solver.uses_schur() {
+    fn build_scale_optimizer(
+        problem: &BaScaleConstraintProblem,
+        solver: SolverSelector,
+        use_schur: bool,
+    ) -> Optimizer {
+        let points_kind = if use_schur {
             VarKind::Marginalized
         } else {
             VarKind::Free
         };
         let vars = problem.build_variables(points_kind);
-        Optimizer::new_with_eq(
+        Optimizer::new(
             vars,
-            vec![problem.ba.build_cost()],
-            vec![problem.build_eq_constraint_fn()],
+            OptProblem {
+                costs: vec![problem.ba.build_cost()],
+                eq_constraints: vec![problem.build_eq_constraint_fn()],
+                ineq_constraints: vec![],
+            },
             OptParams {
                 num_iterations: 10000,
                 initial_lm_damping: 1.0,
                 parallelize: true,
-                solver: solver.to_linear_solver(),
+                solver: solver.to_linear_solver(use_schur),
                 skip_final_hessian: false,
                 ..Default::default()
             },
@@ -302,16 +230,10 @@ impl BundleAdjustmentWidget {
     pub fn update_left_panel(&mut self, ui: &mut egui::Ui) {
         ui.separator();
         ui.label("Bundle Adjustment");
-
-        // Mode toggle
-        let prev = self.use_scale_constraint;
-        ui.checkbox(&mut self.use_scale_constraint, "scale constraint");
-        if self.use_scale_constraint != prev {
-            self.regenerate();
-        }
-
         if self.use_scale_constraint {
-            ui.label("Pose 0 fixed. |t(pose 1)| = r constrained.");
+            ui.label("Cost: reprojection. Eq: |t1|=r. Pose 0 fixed.");
+        } else {
+            ui.label("Cost: reprojection. Poses 0,1 fixed (gauge).");
         }
 
         // Points slider
@@ -327,46 +249,34 @@ impl BundleAdjustmentWidget {
         // Solver selection
         let is_running = self.opt.step_request == StepRequest::Run;
         ui.add_enabled_ui(!is_running, |ui| {
-            if self.use_scale_constraint {
-                egui::ComboBox::from_label("solver")
-                    .selected_text(self.scale_solver.label())
-                    .show_ui(ui, |ui| {
-                        for choice in ScaleSolver::all() {
-                            if ui
-                                .selectable_label(self.scale_solver == choice, choice.label())
-                                .clicked()
-                            {
-                                self.scale_solver = choice;
-                            }
-                        }
-                    });
+            let solver_options = if self.use_scale_constraint {
+                EQ_SOLVER_OPTIONS
             } else {
-                egui::ComboBox::from_label("solver")
-                    .selected_text(self.ba_solver.label())
-                    .show_ui(ui, |ui| {
-                        for choice in BaSolver::all() {
-                            if ui
-                                .selectable_label(self.ba_solver == choice, choice.label())
-                                .clicked()
-                            {
-                                self.ba_solver = choice;
-                            }
-                        }
-                    });
+                ALL_SOLVER_OPTIONS
+            };
 
-                let mut use_schur = self.use_schur;
-                if ui.checkbox(&mut use_schur, "Schur complement").changed() {
-                    self.use_schur = use_schur;
-                    // Only rebuild optimizer and sparsity, not the full scene.
-                    let optimizer =
-                        Self::build_ba_optimizer(&self.ba_problem, self.use_schur, self.ba_solver);
-                    self.opt.reset();
-                    self.opt.optimizer = Some(optimizer);
-                    self.latest_rms_px = None;
-                    self.latest_focal = None;
-                    // Update sparsity image in-place (no delete/recreate).
-                    self.send_sparsity_image(self.active_ba());
-                }
+            let prev_solver = self.solver;
+            egui::ComboBox::from_label("Solver")
+                .selected_text(self.solver.label())
+                .show_ui(ui, |ui| {
+                    for &s in solver_options {
+                        ui.selectable_value(&mut self.solver, s, s.label());
+                    }
+                });
+            if self.solver != prev_solver {
+                self.reset();
+            }
+
+            // Schur checkbox (only enabled when solver supports it).
+            let can_schur = self.solver.has_schur();
+            let mut use_schur = self.use_schur && can_schur;
+            ui.add_enabled(
+                can_schur,
+                egui::Checkbox::new(&mut use_schur, "Schur complement"),
+            );
+            if use_schur != self.use_schur {
+                self.use_schur = use_schur;
+                self.reset();
             }
         });
 
@@ -455,9 +365,9 @@ impl BundleAdjustmentWidget {
 
     fn reset(&mut self) {
         let optimizer = if self.use_scale_constraint {
-            Self::build_scale_optimizer(&self.scale_problem, self.scale_solver)
+            Self::build_scale_optimizer(&self.scale_problem, self.solver, self.use_schur)
         } else {
-            Self::build_ba_optimizer(&self.ba_problem, self.use_schur, self.ba_solver)
+            Self::build_ba_optimizer(&self.ba_problem, self.solver, self.use_schur)
         };
         self.opt.reset();
         self.opt.optimizer = Some(optimizer);
@@ -590,7 +500,7 @@ impl BundleAdjustmentWidget {
         let variables = ba.build_initial_variables(self.use_schur);
         let num_free_parts = variables.num_of_kind(VarKind::Free);
 
-        let result = optimize_nlls_with_eq_constraints(
+        let result = optimize_nlls(
             variables,
             vec![ba.build_cost()],
             vec![],

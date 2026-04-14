@@ -205,9 +205,7 @@ impl IsSymmetricMatrix for DirectSolve {
         } else {
             self.solver
         };
-        let factor = effective_solver
-            .factorize_inner(&self.inner, None)
-            .expect("factorize_inner failed in inverse_block");
+        let factor = effective_solver.factorize_inner(&self.inner, None)?;
         match factor.into_invertible() {
             Some(mut invertible) => Ok(invertible.pseudo_inverse_block(row_idx, col_idx)),
             None => Err(UnsupportedForInverseBlockSnafu {

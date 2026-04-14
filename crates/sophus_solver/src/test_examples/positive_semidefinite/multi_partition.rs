@@ -17,14 +17,17 @@ pub fn create_multi_partition_linear_system(solver: &LinearSolverEnum) -> Linear
     use nalgebra as na;
     let partitions = vec![
         PartitionSpec {
+            eliminate_last: false,
             block_dim: 3,
             block_count: 2,
         },
         PartitionSpec {
+            eliminate_last: false,
             block_dim: 1,
             block_count: 3,
         },
         PartitionSpec {
+            eliminate_last: false,
             block_dim: 2,
             block_count: 1,
         },

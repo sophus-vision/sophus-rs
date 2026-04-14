@@ -13,7 +13,11 @@ pub struct ReadmeDoctests;
 #[cfg(feature = "std")]
 extern crate std;
 
-mod spline_segment;
+/// Cubic B-spline on Lie groups (product-of-exponentials formulation).
+#[allow(clippy::op_ref)]
+pub mod lie_group_spline;
+/// Cubic B-spline segment and basis functions.
+pub mod spline_segment;
 
 /// sophus_spline prelude.
 ///

@@ -52,7 +52,9 @@ impl<M: Clone> Clone for Schur<M> {
             solver: self.solver,
             parallelize: self.parallelize,
             cached_symbolic: self.cached_symbolic.clone(),
-            cached_factor: self.cached_factor.clone(),
+            // Drop cached_factor: it is lazily rebuilt on next solve(), and
+            // FactorEnum::FaerSparseLblt is not Clone (faer SymbolicCholesky).
+            cached_factor: None,
         }
     }
 }

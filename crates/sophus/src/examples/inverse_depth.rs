@@ -20,6 +20,7 @@ use sophus_opt::{
     },
     nlls::{
         OptParams,
+        OptProblem,
         OptimizationSolution,
         Optimizer,
     },
@@ -194,10 +195,13 @@ impl InverseDepthWidget {
         } else {
             problem.build_variables()
         };
-        Optimizer::new_with_eq(
+        Optimizer::new(
             vars,
-            vec![problem.build_cost()],
-            vec![problem.build_eq_constraint()],
+            OptProblem {
+                costs: vec![problem.build_cost()],
+                eq_constraints: vec![problem.build_eq_constraint()],
+                ineq_constraints: vec![],
+            },
             OptParams {
                 num_iterations: 10000,
                 initial_lm_damping: 1.0,
@@ -214,7 +218,7 @@ impl InverseDepthWidget {
     pub fn update_left_panel(&mut self, ui: &mut egui::Ui) {
         ui.separator();
         ui.label("Inverse Depth BA (2D)");
-        ui.label("SE(2) poses + inv-depth points.");
+        ui.label("Cost: reprojection error. SE(2) poses + inv-depth points.");
 
         ui.checkbox(&mut self.show_covariance, "show covariance");
         ui.add(egui::Slider::new(&mut self.cov_sigma, 1.0..=5.0).text("σ"));

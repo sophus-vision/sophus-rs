@@ -229,6 +229,7 @@ let variables = VarBuilder::new()
 let solution = optimize_nlls(
     variables,
     vec![CostFn::new_boxed((), obs_pose_a_from_pose_b_poses.clone(),)],
+    vec![],
     OptParams::default(),
 )
 .unwrap();

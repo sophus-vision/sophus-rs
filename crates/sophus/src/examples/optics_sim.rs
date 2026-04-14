@@ -92,6 +92,7 @@ pub fn refine_chief_ray_angle(
     let solution = optimize_nlls(
         variables,
         vec![CostFn::new_boxed(lens, chief_ray_cost)],
+        vec![],
         OptParams {
             num_iterations: 100,
             initial_lm_damping: 1.0,

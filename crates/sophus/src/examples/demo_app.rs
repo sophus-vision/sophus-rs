@@ -15,22 +15,45 @@ use sophus_viewer::{
 
 use crate::examples::{
     bundle_adjustment::BundleAdjustmentWidget,
+    circle_obstacle_demo::CircleObstacleWidget,
+    corridor_demo::CorridorNavigationWidget,
     inverse_depth::InverseDepthWidget,
     optics_sim::OpticsSimWidget,
+    point2d_demo::Point2dWidget,
+    spline_traj_demo::SplineTrajWidget,
     viewer_example::ViewerExampleWidget,
 };
 
 #[derive(PartialEq)]
 enum Demo {
     BundleAdjustment,
-    InverseDepth,
+    ConstrainedOpt,
     OpticsSim,
     Viewer,
+}
+
+#[derive(PartialEq, Clone, Copy)]
+enum BundleAdjustmentSub {
+    VarIntrinsics,
+    ScaleEqConstraint,
+    InverseDepthCovariance,
+}
+
+#[derive(PartialEq, Clone, Copy)]
+enum ConstrainedOptSub {
+    ToyInequality,
+    ToyEqIneq,
+    CorridorIneq,
+    SplineTraj,
 }
 
 enum ViewerEnum {
     BundleAdjustment(Box<BundleAdjustmentWidget>),
     InverseDepth(Box<InverseDepthWidget>),
+    Point2d(Box<Point2dWidget>),
+    CircleObstacle(Box<CircleObstacleWidget>),
+    Corridor(Box<CorridorNavigationWidget>),
+    SplineTraj(Box<SplineTrajWidget>),
     Optics(Box<OpticsSimWidget>),
     Viewer(Box<ViewerExampleWidget>),
 }
@@ -40,7 +63,52 @@ pub struct DemoApp {
     base: ViewerBase,
     message_send: Sender<Vec<Packet>>,
     selected_example: Demo,
-    content: ViewerEnum,
+    ba_sub: BundleAdjustmentSub,
+    constrained_sub: ConstrainedOptSub,
+    /// `Option` so we can drop-then-create when switching sub-tabs that share
+    /// the same `ViewerEnum` variant (avoids delete-after-create packet races).
+    content: Option<ViewerEnum>,
+}
+
+impl DemoApp {
+    /// Create the content widget for the current BA sub-tab.
+    fn make_ba_content(ba_sub: BundleAdjustmentSub, send: &Sender<Vec<Packet>>) -> ViewerEnum {
+        match ba_sub {
+            BundleAdjustmentSub::VarIntrinsics => ViewerEnum::BundleAdjustment(Box::new(
+                BundleAdjustmentWidget::new(send.clone(), false),
+            )),
+            BundleAdjustmentSub::ScaleEqConstraint => ViewerEnum::BundleAdjustment(Box::new(
+                BundleAdjustmentWidget::new(send.clone(), true),
+            )),
+            BundleAdjustmentSub::InverseDepthCovariance => {
+                ViewerEnum::InverseDepth(Box::new(InverseDepthWidget::new(send.clone())))
+            }
+        }
+    }
+
+    /// Create the content widget for the current constrained-opt sub-tab.
+    fn make_constrained_content(sub: ConstrainedOptSub, send: &Sender<Vec<Packet>>) -> ViewerEnum {
+        match sub {
+            ConstrainedOptSub::ToyInequality => {
+                ViewerEnum::Point2d(Box::new(Point2dWidget::new(send.clone())))
+            }
+            ConstrainedOptSub::ToyEqIneq => {
+                ViewerEnum::CircleObstacle(Box::new(CircleObstacleWidget::new(send.clone())))
+            }
+            ConstrainedOptSub::CorridorIneq => {
+                ViewerEnum::Corridor(Box::new(CorridorNavigationWidget::new(send.clone())))
+            }
+            ConstrainedOptSub::SplineTraj => {
+                ViewerEnum::SplineTraj(Box::new(SplineTrajWidget::new(send.clone())))
+            }
+        }
+    }
+
+    /// Drop old content (sends deletes), then create new content (sends creates).
+    fn switch_content(&mut self, make_new: impl FnOnce(&Sender<Vec<Packet>>) -> ViewerEnum) {
+        self.content = None; // drop old → sends delete packets
+        self.content = Some(make_new(&self.message_send)); // create new → sends create packets
+    }
 }
 
 impl eframe::App for DemoApp {
@@ -53,7 +121,7 @@ impl eframe::App for DemoApp {
 
                 let examples = [
                     (Demo::BundleAdjustment, "bundle adjustment"),
-                    (Demo::InverseDepth, "inverse depth"),
+                    (Demo::ConstrainedOpt, "constrained opt"),
                     (Demo::OpticsSim, "optics sim"),
                     (Demo::Viewer, "viewer"),
                 ];
@@ -61,121 +129,193 @@ impl eframe::App for DemoApp {
                 for (example, label) in examples {
                     ui.selectable_value(&mut self.selected_example, example, label);
                 }
-
-                match self.selected_example {
-                    Demo::BundleAdjustment => match &self.content {
-                        ViewerEnum::BundleAdjustment(_) => {}
-                        _ => {
-                            self.content = ViewerEnum::BundleAdjustment(Box::new(
-                                BundleAdjustmentWidget::new(self.message_send.clone()),
-                            ));
-                        }
-                    },
-                    Demo::InverseDepth => match &self.content {
-                        ViewerEnum::InverseDepth(_) => {}
-                        _ => {
-                            self.content = ViewerEnum::InverseDepth(Box::new(
-                                InverseDepthWidget::new(self.message_send.clone()),
-                            ));
-                        }
-                    },
-                    Demo::OpticsSim => match &self.content {
-                        ViewerEnum::Optics(_) => {}
-                        _ => {
-                            self.content = ViewerEnum::Optics(Box::new(OpticsSimWidget::new(
-                                self.message_send.clone(),
-                            )));
-                        }
-                    },
-                    Demo::Viewer => match &self.content {
-                        ViewerEnum::Viewer(_) => {}
-                        _ => {
-                            self.content = ViewerEnum::Viewer(Box::new(ViewerExampleWidget::new(
-                                self.message_send.clone(),
-                            )));
-                        }
-                    },
-                };
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                     ui.hyperlink("https://github.com/sophus-vision/sophus-rs/");
                 });
             });
+
+            // Sub-tabs for bundle adjustment.
+            let mut sub_tab_switched = false;
+            if self.selected_example == Demo::BundleAdjustment {
+                ui.horizontal_wrapped(|ui| {
+                    let prev = self.ba_sub;
+                    ui.selectable_value(
+                        &mut self.ba_sub,
+                        BundleAdjustmentSub::VarIntrinsics,
+                        "var intrinsics",
+                    );
+                    ui.selectable_value(
+                        &mut self.ba_sub,
+                        BundleAdjustmentSub::ScaleEqConstraint,
+                        "scale eq constraint",
+                    );
+                    ui.selectable_value(
+                        &mut self.ba_sub,
+                        BundleAdjustmentSub::InverseDepthCovariance,
+                        "inverse depth covariance",
+                    );
+                    if self.ba_sub != prev {
+                        sub_tab_switched = true;
+                        let ba_sub = self.ba_sub;
+                        self.switch_content(|s| Self::make_ba_content(ba_sub, s));
+                    }
+                });
+            }
+
+            // Sub-tabs for constrained optimization.
+            if self.selected_example == Demo::ConstrainedOpt {
+                ui.horizontal_wrapped(|ui| {
+                    let prev = self.constrained_sub;
+                    ui.selectable_value(
+                        &mut self.constrained_sub,
+                        ConstrainedOptSub::ToyInequality,
+                        "toy inequality",
+                    );
+                    ui.selectable_value(
+                        &mut self.constrained_sub,
+                        ConstrainedOptSub::ToyEqIneq,
+                        "toy eq + ineq",
+                    );
+                    ui.selectable_value(
+                        &mut self.constrained_sub,
+                        ConstrainedOptSub::CorridorIneq,
+                        "corridor ineq",
+                    );
+                    ui.selectable_value(
+                        &mut self.constrained_sub,
+                        ConstrainedOptSub::SplineTraj,
+                        "spline trajectory",
+                    );
+                    if self.constrained_sub != prev {
+                        sub_tab_switched = true;
+                        let csub = self.constrained_sub;
+                        self.switch_content(|s| Self::make_constrained_content(csub, s));
+                    }
+                });
+            }
+
+            // Initial content creation when switching top-level tabs.
+            if !sub_tab_switched {
+                let needs_switch = match (&self.selected_example, &self.content) {
+                    (Demo::BundleAdjustment, Some(ViewerEnum::BundleAdjustment(_)))
+                        if matches!(
+                            self.ba_sub,
+                            BundleAdjustmentSub::VarIntrinsics
+                                | BundleAdjustmentSub::ScaleEqConstraint
+                        ) =>
+                    {
+                        false
+                    }
+                    (Demo::BundleAdjustment, Some(ViewerEnum::InverseDepth(_)))
+                        if self.ba_sub == BundleAdjustmentSub::InverseDepthCovariance =>
+                    {
+                        false
+                    }
+                    (Demo::ConstrainedOpt, Some(ViewerEnum::Point2d(_)))
+                        if self.constrained_sub == ConstrainedOptSub::ToyInequality =>
+                    {
+                        false
+                    }
+                    (Demo::ConstrainedOpt, Some(ViewerEnum::CircleObstacle(_)))
+                        if self.constrained_sub == ConstrainedOptSub::ToyEqIneq =>
+                    {
+                        false
+                    }
+                    (Demo::ConstrainedOpt, Some(ViewerEnum::Corridor(_)))
+                        if self.constrained_sub == ConstrainedOptSub::CorridorIneq =>
+                    {
+                        false
+                    }
+                    (Demo::ConstrainedOpt, Some(ViewerEnum::SplineTraj(_)))
+                        if self.constrained_sub == ConstrainedOptSub::SplineTraj =>
+                    {
+                        false
+                    }
+                    (Demo::OpticsSim, Some(ViewerEnum::Optics(_))) => false,
+                    (Demo::Viewer, Some(ViewerEnum::Viewer(_))) => false,
+                    _ => true,
+                };
+                if needs_switch {
+                    let ba_sub = self.ba_sub;
+                    let csub = self.constrained_sub;
+                    let sel = &self.selected_example;
+                    match sel {
+                        Demo::BundleAdjustment => {
+                            self.switch_content(|s| Self::make_ba_content(ba_sub, s))
+                        }
+                        Demo::ConstrainedOpt => {
+                            self.switch_content(|s| Self::make_constrained_content(csub, s))
+                        }
+                        Demo::OpticsSim => self.switch_content(|s| {
+                            ViewerEnum::Optics(Box::new(OpticsSimWidget::new(s.clone())))
+                        }),
+                        Demo::Viewer => self.switch_content(|s| {
+                            ViewerEnum::Viewer(Box::new(ViewerExampleWidget::new(s.clone())))
+                        }),
+                    }
+                }
+            }
+
             self.base.update_top_bar(ui, ctx);
         });
 
         egui::SidePanel::left("left").show(ctx, |ui| {
             self.base.update_left_panel(ui, ctx);
 
-            if let ViewerEnum::BundleAdjustment(widget) = &mut self.content {
-                widget.update_left_panel(ui);
-            }
-
-            if let ViewerEnum::InverseDepth(widget) = &mut self.content {
-                widget.update_left_panel(ui);
-            }
-
-            if let ViewerEnum::Optics(optics_viewer_content) = &mut self.content {
-                ui.add(
-                    Slider::new(
-                        &mut optics_viewer_content.elements.scene_points.p[0][0],
-                        -3.000..=0.000,
-                    )
-                    .text("p0.x"),
-                );
-                ui.add(
-                    Slider::new(
-                        &mut optics_viewer_content.elements.scene_points.p[0][1],
-                        -1.000..=1.000,
-                    )
-                    .orientation(egui::SliderOrientation::Vertical)
-                    .text("p0.y"),
-                );
-                ui.separator();
-                ui.add(
-                    Slider::new(
-                        &mut optics_viewer_content.elements.scene_points.p[1][0],
-                        -3.000..=0.000,
-                    )
-                    .text("p1.x"),
-                );
-                ui.add(
-                    Slider::new(
-                        &mut optics_viewer_content.elements.scene_points.p[1][1],
-                        -1.000..=1.000,
-                    )
-                    .orientation(egui::SliderOrientation::Vertical)
-                    .text("p1.y"),
-                );
-                ui.separator();
-                ui.add(
-                    Slider::new(
-                        &mut optics_viewer_content.elements.detector.x,
-                        0.100..=2.000,
-                    )
-                    .text("detector.x"),
-                );
-                ui.separator();
-                ui.add(
-                    Slider::new(
-                        &mut optics_viewer_content.elements.aperture.radius,
-                        0.001..=0.25,
-                    )
-                    .text("aperture radius"),
-                );
+            if let Some(content) = &mut self.content {
+                match content {
+                    ViewerEnum::BundleAdjustment(w) => w.update_left_panel(ui),
+                    ViewerEnum::InverseDepth(w) => w.update_left_panel(ui),
+                    ViewerEnum::Point2d(w) => w.update_left_panel(ui),
+                    ViewerEnum::CircleObstacle(w) => w.update_left_panel(ui),
+                    ViewerEnum::Corridor(w) => w.update_left_panel(ui),
+                    ViewerEnum::SplineTraj(w) => w.update_left_panel(ui),
+                    ViewerEnum::Optics(w) => {
+                        ui.add(
+                            Slider::new(&mut w.elements.scene_points.p[0][0], -3.000..=0.000)
+                                .text("p0.x"),
+                        );
+                        ui.add(
+                            Slider::new(&mut w.elements.scene_points.p[0][1], -1.000..=1.000)
+                                .orientation(egui::SliderOrientation::Vertical)
+                                .text("p0.y"),
+                        );
+                        ui.separator();
+                        ui.add(
+                            Slider::new(&mut w.elements.scene_points.p[1][0], -3.000..=0.000)
+                                .text("p1.x"),
+                        );
+                        ui.add(
+                            Slider::new(&mut w.elements.scene_points.p[1][1], -1.000..=1.000)
+                                .orientation(egui::SliderOrientation::Vertical)
+                                .text("p1.y"),
+                        );
+                        ui.separator();
+                        ui.add(
+                            Slider::new(&mut w.elements.detector.x, 0.100..=2.000)
+                                .text("detector.x"),
+                        );
+                        ui.separator();
+                        ui.add(
+                            Slider::new(&mut w.elements.aperture.radius, 0.001..=0.25)
+                                .text("aperture radius"),
+                        );
+                    }
+                    ViewerEnum::Viewer(_) => {}
+                }
             }
         });
-        match &mut self.content {
-            ViewerEnum::BundleAdjustment(widget) => {
-                widget.update();
-            }
-            ViewerEnum::InverseDepth(widget) => {
-                widget.update();
-            }
-            ViewerEnum::Optics(optics_viewer_content) => {
-                optics_viewer_content.send_update();
-            }
-            ViewerEnum::Viewer(viewer) => {
-                viewer.update();
+
+        if let Some(content) = &mut self.content {
+            match content {
+                ViewerEnum::BundleAdjustment(w) => w.update(),
+                ViewerEnum::InverseDepth(w) => w.update(),
+                ViewerEnum::Point2d(w) => w.update(),
+                ViewerEnum::CircleObstacle(w) => w.update(),
+                ViewerEnum::Corridor(w) => w.update(),
+                ViewerEnum::SplineTraj(w) => w.update(),
+                ViewerEnum::Optics(w) => w.send_update(),
+                ViewerEnum::Viewer(w) => w.update(),
             }
         }
 
@@ -202,7 +342,11 @@ impl DemoApp {
             base: ViewerBase::new(render_state, ViewerBaseConfig { message_recv }),
             message_send: message_send.clone(),
             selected_example: Demo::OpticsSim,
-            content: ViewerEnum::Optics(Box::new(OpticsSimWidget::new(message_send))),
+            ba_sub: BundleAdjustmentSub::VarIntrinsics,
+            constrained_sub: ConstrainedOptSub::ToyInequality,
+            content: Some(ViewerEnum::Optics(Box::new(OpticsSimWidget::new(
+                message_send,
+            )))),
         })
     }
 }

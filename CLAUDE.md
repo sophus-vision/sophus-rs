@@ -59,7 +59,7 @@ cargo run --release --features std --bin demo
 - `sophus_spline` — Cubic B-splines
 - `sophus_timeseries` — Temporal data structures
 - `sophus_solver` — Block-sparse matrices, LDLᵀ factorization, LU, QR, SVD solvers, DirectSolve dispatch
-- `sophus_opt` — Unified Optimizer (NLLS), StepInfo, TerminationReason, robust kernels, BA problem
+- `sophus_opt` — Unified Optimizer (NLLS), inequality constraints (IPM, SQP), phase-1 feasibility, robust kernels, BA problem
 
 **Graphics:**
 - `sophus_renderer` — `wgpu`-based rendering

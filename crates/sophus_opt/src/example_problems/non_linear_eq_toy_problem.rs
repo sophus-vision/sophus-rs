@@ -10,7 +10,7 @@ use crate::{
         OptParams,
         costs::ExampleNonLinearCostTerm,
         eq_constraints::ExampleNonLinearEqConstraint,
-        optimize_nlls_with_eq_constraints,
+        optimize_nlls,
     },
     variables::{
         VarBuilder,
@@ -66,7 +66,7 @@ impl NonLinearEqToyProblem {
             ExampleNonLinearEqConstraint::residual(initial_x, EQ_CONSTRAINT_RHS).norm() > EPS_F64
         );
 
-        let refined_variables = optimize_nlls_with_eq_constraints(
+        let refined_variables = optimize_nlls(
             variables,
             alloc::vec![CostFn::new_boxed((), cost_terms.clone(),)],
             alloc::vec![EqConstraintFn::new_boxed((), eq_constraints,)],
