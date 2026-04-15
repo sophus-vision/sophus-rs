@@ -154,7 +154,6 @@ fn apply_contrib_to_sparse(
 
         for j in 0..=i {
             let free_col_idx = contrib.non_zero_free_indices[j];
-            let free_col_range = free_part_set.block_range(free_col_idx);
 
             // Lower-triangular ordering.
             let (actual_row, actual_col, idx_i, idx_j) = if free_row_idx.partition
@@ -178,7 +177,6 @@ fn apply_contrib_to_sparse(
                 0.0,
             );
             s_builder.add_lower_block(actual_row, actual_col, &schur_block.as_view());
-            let _ = free_col_range; // used via actual_col / rd / cd
         }
     }
 }
@@ -498,15 +496,15 @@ pub struct SchurFactor {
     /// Marg RHS: `g_m` (for back-substitution).
     g_marg: DVector<f64>,
     /// H_mm⁻¹ per marginalized block (in partition × block iteration order).
-    pub h_mm_inv_cache: alloc::vec::Vec<DMatrix<f64>>,
+    pub(crate) h_mm_inv_cache: alloc::vec::Vec<DMatrix<f64>>,
     /// H_mf rows: for each marg block, the non-zero `(free_idx, H_mf block)` pairs.
-    pub h_mf_rows: alloc::vec::Vec<alloc::vec::Vec<(PartitionBlockIndex, DMatrix<f64>)>>,
+    pub(crate) h_mf_rows: alloc::vec::Vec<alloc::vec::Vec<(PartitionBlockIndex, DMatrix<f64>)>>,
     /// Free-variable partition set (first `num_free_partitions` partitions).
-    pub free_part_set: PartitionSet,
+    pub(crate) free_part_set: PartitionSet,
     /// Full partition set (free + marg).
-    pub full_partitions: PartitionSet,
+    pub(crate) full_partitions: PartitionSet,
     /// Number of free partitions.
-    pub num_free_partitions: usize,
+    pub(crate) num_free_partitions: usize,
     /// Number of constraint scalars (`num_constraints = 0` when there are no equality
     /// constraints).
     num_constraints: usize,
@@ -1094,14 +1092,17 @@ mod tests {
             PartitionSpec {
                 block_count: 1,
                 block_dim: 2,
+                eliminate_last: false,
             },
             PartitionSpec {
                 block_count: 1,
                 block_dim: 2,
+                eliminate_last: false,
             },
             PartitionSpec {
                 block_count: 3,
                 block_dim: 2,
+                eliminate_last: false,
             },
         ]);
 
@@ -1158,18 +1159,22 @@ mod tests {
             PartitionSpec {
                 block_count: 1,
                 block_dim: 2,
+                eliminate_last: false,
             },
             PartitionSpec {
                 block_count: 1,
                 block_dim: 2,
+                eliminate_last: false,
             },
             PartitionSpec {
                 block_count: 2,
                 block_dim: 2,
+                eliminate_last: false,
             },
             PartitionSpec {
                 block_count: 1,
                 block_dim: 1,
+                eliminate_last: false,
             },
         ]);
 
@@ -1217,14 +1222,17 @@ mod tests {
             PartitionSpec {
                 block_count: 1,
                 block_dim: 2,
+                eliminate_last: false,
             },
             PartitionSpec {
                 block_count: 1,
                 block_dim: 2,
+                eliminate_last: false,
             },
             PartitionSpec {
                 block_count: 3,
                 block_dim: 2,
+                eliminate_last: false,
             },
         ]);
 

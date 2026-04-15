@@ -26,7 +26,7 @@ use crate::{
         EvaluatedEqConstraint,
         OptParams,
         OptimizationSolution,
-        optimize_nlls_with_eq_constraints,
+        optimize_nlls,
     },
     prelude::*,
     robust_kernel,
@@ -430,7 +430,7 @@ impl InverseDepthProblem {
         } else {
             self.build_variables()
         };
-        optimize_nlls_with_eq_constraints(
+        optimize_nlls(
             vars,
             alloc::vec![self.build_cost()],
             alloc::vec![self.build_eq_constraint()],

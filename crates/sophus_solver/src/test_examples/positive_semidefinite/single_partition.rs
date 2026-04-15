@@ -12,6 +12,7 @@ use crate::{
 pub fn create_single_partition_linear_system(solver: &LinearSolverEnum) -> LinearSystem {
     use nalgebra as na;
     let partitions = PartitionSet::new(vec![PartitionSpec {
+        eliminate_last: false,
         block_count: 4,
         block_dim: 2,
     }]);

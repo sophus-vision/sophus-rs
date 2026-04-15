@@ -2,6 +2,36 @@ use snafu::Snafu;
 
 use crate::matrix::PartitionBlockIndex;
 
+/// Definiteness classification of a matrix, determined during LDLᵀ factorization.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Definiteness {
+    /// All pivots positive — positive definite.
+    PositiveDefinite,
+    /// All pivots non-negative, at least one zero — positive semi-definite (rank-deficient).
+    PositiveSemiDefinite,
+    /// At least one negative pivot — indefinite (e.g. KKT system).
+    Indefinite,
+}
+
+/// Result of LDLᵀ factorization: rank and definiteness.
+#[derive(Debug, Clone, Copy)]
+pub struct LdltResult {
+    /// Number of non-zero pivots.
+    pub rank: usize,
+    /// Definiteness classification.
+    pub definiteness: Definiteness,
+    /// Pivot condition: `min(|d[j]|) / max(|d[j]|)` over non-zero pivots.
+    ///
+    /// Values near 1.0 indicate well-conditioned; values near `f64::EPSILON` (~1e-16)
+    /// indicate loss of precision. A value of 0.0 means all pivots were zero (rank 0).
+    pub pivot_condition: f64,
+    /// True if Bunch-Kaufman fallback was used for any diagonal block.
+    ///
+    /// BK fallback activates when standard LDLᵀ encounters a near-zero pivot
+    /// in an indefinite block (pivot_condition too low for stable factorization).
+    pub used_bk_fallback: bool,
+}
+
 /// Linear solver error.
 #[derive(Snafu, Debug, Clone)]
 #[snafu(visibility(pub(crate)))]
@@ -55,7 +85,7 @@ pub enum LinearSolverError {
         source: LdltDecompositionError,
     },
 
-    /// Sparse LDLᵀ error
+    /// Block-sparse LDLᵀ error
     #[snafu(display("block-sparse LDLᵀ: {}", source))]
     BlockSparseLdltError {
         /// source
@@ -101,15 +131,6 @@ pub enum LdltDecompositionError {
     /// Pivot `d[j]` is not finite.
     #[snafu(display("Non-finite pivot d[{}] = {}", j, d_jj))]
     NonFinitePivot {
-        /// index
-        j: usize,
-        /// pivot value `d[j]`
-        d_jj: f64,
-    },
-
-    /// Pivot `d[j]` is negative.
-    #[snafu(display("negative pivot d[{}] = {}", j, d_jj))]
-    NegativeFinitePivot {
         /// index
         j: usize,
         /// pivot value `d[j]`

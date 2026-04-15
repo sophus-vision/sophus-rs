@@ -212,10 +212,12 @@ impl SymmetricMatrixBuilderEnum {
                 FaerSparseMatrixBuilder::zero(partitions),
                 solver,
             ),
-            LinearSolverEnum::FaerSparseLdlt(_) => SymmetricMatrixBuilderEnum::FaerSparseUpper(
-                FaerSparseSymmetricMatrixBuilder::zero(partitions),
-                solver,
-            ),
+            LinearSolverEnum::FaerSparseLdlt(_) | LinearSolverEnum::FaerSparseLblt(_) => {
+                SymmetricMatrixBuilderEnum::FaerSparseUpper(
+                    FaerSparseSymmetricMatrixBuilder::zero(partitions),
+                    solver,
+                )
+            }
             LinearSolverEnum::SparseLdlt(_) => SymmetricMatrixBuilderEnum::SparseLower(
                 SparseSymmetricMatrixBuilder::zero(partitions),
                 solver,

@@ -144,4 +144,62 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn medium_indefinite_all_solvers() {
+        use nalgebra::DVector;
+
+        use crate::{
+            IsFactor,
+            LinearSolverEnum,
+            ldlt::DenseLdlt,
+            test_examples::positive_semidefinite::medium::create_medium_indefinite_problem,
+        };
+
+        let reference_solver = LinearSolverEnum::DenseLdlt(DenseLdlt::default());
+        let ref_problem = create_medium_indefinite_problem(&reference_solver);
+        let dense_a = ref_problem.mat_a.as_dense().unwrap().clone();
+
+        // Test all indefinite solvers and report residuals.
+        // Some solvers (SparseLdlt, BlockSparseLdlt) may fail on ill-conditioned
+        // KKT systems due to lack of pivoting at the elimination tree level.
+        for solver in LinearSolverEnum::indefinite_solvers() {
+            let problem = create_medium_indefinite_problem(&solver);
+            let b: DVector<f64> = problem.b.clone();
+            let factor = solver.factorize(&problem.mat_a).unwrap();
+            let x: DVector<f64> = factor.solve(&b).unwrap();
+
+            let residual = (dense_a.view() * &x - &b).norm();
+            eprintln!(
+                "  {:<30} residual={:.2e} {}",
+                solver.name(),
+                residual,
+                if residual < 1e-4 { "PASS" } else { "FAIL" },
+            );
+        }
+
+        // Assert that solvers with proper pivoting or partition-aware ordering pass.
+        // FaerSparseLblt and SparseLdlt fail because faer/our scalar AMD doesn't
+        // respect partition ordering for KKT systems.
+        for solver in [
+            LinearSolverEnum::DenseLdlt(DenseLdlt::default()),
+            LinearSolverEnum::DenseLu(crate::lu::DenseLu {}),
+            LinearSolverEnum::BlockSparseLdlt(crate::ldlt::BlockSparseLdlt::default()),
+            LinearSolverEnum::FaerSparseQr(crate::qr::FaerSparseQr {}),
+            LinearSolverEnum::FaerSparseLu(crate::lu::FaerSparseLu {}),
+        ] {
+            let problem = create_medium_indefinite_problem(&solver);
+            let b: DVector<f64> = problem.b.clone();
+            let factor = solver.factorize(&problem.mat_a).unwrap();
+            let x: DVector<f64> = factor.solve(&b).unwrap();
+
+            let residual = (dense_a.view() * &x - &b).norm();
+            assert!(
+                residual < 1e-4,
+                "solver {:?} residual={:.2e} (expected < 1e-4)",
+                solver.name(),
+                residual,
+            );
+        }
+    }
 }

@@ -123,12 +123,19 @@ impl PartitionSet {
 /// Specification of a vector / matrix partition.
 ///
 /// See [PartitionSet] for details.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct PartitionSpec {
     /// Number of blocks in the partition.
     pub block_count: usize,
     /// Dimension of blocks in this partition.
     pub block_dim: usize,
+    /// Eliminate this partition last in block-sparse LDLᵀ ordering.
+    ///
+    /// Set to `true` for partitions with negative-definite diagonal (e.g. the
+    /// `-εI` constraint multiplier block in KKT systems). When eliminated early,
+    /// tiny pivots cause catastrophic cancellation; when eliminated last, the
+    /// Schur complement produces healthy O(1) pivots.
+    pub eliminate_last: bool,
 }
 
 /// Index of a given block inside a partition.

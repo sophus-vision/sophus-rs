@@ -11,7 +11,7 @@ use crate::{
         OptParams,
         costs::Quadratic1CostTerm,
         eq_constraints::ExampleLinearEqConstraint,
-        optimize_nlls_with_eq_constraints,
+        optimize_nlls,
     },
     variables::{
         VarBuilder,
@@ -79,7 +79,7 @@ impl LinearEqToyProblem {
                 > EPS_F64
         );
 
-        let solution = optimize_nlls_with_eq_constraints(
+        let solution = optimize_nlls(
             variables,
             alloc::vec![CostFn::new_boxed((), cost_terms.clone(),)],
             alloc::vec![EqConstraintFn::new_boxed((), eq_constraints,)],
