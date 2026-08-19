@@ -218,7 +218,10 @@ impl OrbitalInteraction {
 
             *active_view = self.view_name.clone();
 
-            let pointer = response.interact_pointer_pos().unwrap();
+            let Some(pointer) = response.interact_pointer_pos() else {
+                self.maybe_pointer_state = None;
+                return;
+            };
 
             let uv_viewport = egui::Pos2::new(
                 (pointer - response.rect.min)[0],
@@ -247,7 +250,9 @@ impl OrbitalInteraction {
                     && response.ctx.input(|i| i.modifiers.shift)))
         {
             // rotate about scene focus
-            let scene_focus = self.maybe_scene_focus.unwrap();
+            let Some(scene_focus) = self.maybe_scene_focus else {
+                return;
+            };
             let pixel = scene_focus.uv_in_virtual_camera;
             let depth = scene_focus.metric_depth(&self.clipping_planes);
             let delta =
@@ -261,10 +266,18 @@ impl OrbitalInteraction {
         } else if response.dragged_by(egui::PointerButton::Primary) {
             // translate scene
 
-            let uv_viewport = response.interact_pointer_pos().unwrap() - response.rect.min;
+            let Some(pointer) = response.interact_pointer_pos() else {
+                return;
+            };
+            let uv_viewport = pointer - response.rect.min;
             let current_pixel = scales.apply(uv_viewport.to_pos2()).cast::<f32>();
-            let scene_focus = self.maybe_scene_focus.unwrap();
-            let start_pixel = self.maybe_pointer_state.unwrap().start_uv_virtual_camera;
+            let Some(scene_focus) = self.maybe_scene_focus else {
+                return;
+            };
+            let Some(pointer_state) = self.maybe_pointer_state else {
+                return;
+            };
+            let start_pixel = pointer_state.start_uv_virtual_camera;
             let depth = scene_focus.metric_depth(&self.clipping_planes);
             let p0 = cam.cam_unproj_with_z(&start_pixel, depth);
             let p1 = cam.cam_unproj_with_z(
