@@ -149,9 +149,18 @@ fn distort_pixel_from_faces(
         rgb = mix(rgb, frustum_tint(sampled), TINT_STRENGTH);
     }
 
+    // Traced primitives are not part of any intermediate: they are intersected with this
+    // pixel's own ray, and composited by distance against whatever was rasterized.
+    let traced_pixel = composite_traced(
+        rgb,
+        inverse_distance,
+        direction,
+        neighbouring_rays(uv_distorted, image_size, view_port_size));
+
     textureStore(inverse_depth_texture, view_port_coords_distorted,
-                 vec4<f32>(inverse_distance, 0.0, 0.0, 0.0));
-    textureStore(output_texture, view_port_coords_distorted, vec4<f32>(rgb, 1.0));
+                 vec4<f32>(traced_pixel.inverse_distance, 0.0, 0.0, 0.0));
+    textureStore(output_texture, view_port_coords_distorted,
+                 vec4<f32>(traced_pixel.rgb, 1.0));
 }
 
  fn distort_pixel(
@@ -177,7 +186,9 @@ fn distort_pixel_from_faces(
     let view_port_coords_undistorted = (uv_undistorted + 0.5) * vec2<f32>(view_port_size)
         / vec2<f32>(image_size) - 0.5;
 
-    // Outside the rendered scene texture there is nothing of the plane to sample.
+    // Outside the rendered scene texture there is nothing of the plane to sample - but a traced
+    // primitive is not part of the plane, so this goes on to the compositing below rather than
+    // storing the background and returning.
     let outside = view_port_coords_undistorted.x < 0.0
         || view_port_coords_undistorted.y < 0.0
         || view_port_coords_undistorted.x > f32(view_port_size.x) - 1.0
@@ -230,10 +241,18 @@ fn distort_pixel_from_faces(
         rgb = mix(rgb, SINGLE_PLANE_TINT, TINT_STRENGTH);
     }
 
+    let direction = normalize(ray);
+    let traced_pixel = composite_traced(
+        rgb,
+        inverse_distance,
+        direction,
+        neighbouring_rays(uv_distorted, image_size, view_port_size));
+
     textureStore(inverse_depth_texture, view_port_coords_distorted,
-                 vec4<f32>(inverse_distance, 0.0, 0.0, 0.0));
+                 vec4<f32>(traced_pixel.inverse_distance, 0.0, 0.0, 0.0));
     // Keep the output fully opaque
-    textureStore(output_texture, view_port_coords_distorted, vec4<f32>(rgb, 1.0));
+    textureStore(output_texture, view_port_coords_distorted,
+                 vec4<f32>(traced_pixel.rgb, 1.0));
 }
 
 @compute @workgroup_size(16, 16)

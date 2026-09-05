@@ -448,11 +448,11 @@ impl CorridorNavigationWidget {
             vec![named_line3("trajectory", traj_segments)],
         ));
 
-        let pose_lines = axes3(&init_poses).scale(0.3).line_width(1.5).build();
-        packets.push(append_to_scene_packet(
-            SCENE_LABEL,
-            vec![named_line3("poses", pose_lines)],
-        ));
+        let pose_axes = axes3(&init_poses)
+            .scale(0.3)
+            .shaft_radius(0.02)
+            .build("poses");
+        packets.push(append_to_scene_packet(SCENE_LABEL, pose_axes));
 
         let _ = self.message_send.send(packets);
 
@@ -478,14 +478,11 @@ impl CorridorNavigationWidget {
 
     fn send_trajectory_update(&self, poses: &[Isometry3F64]) {
         let traj_segments = self.build_opt_segments(poses);
-        let pose_lines = axes3(poses).scale(0.3).line_width(1.5).build();
-        let _ = self.message_send.send(vec![append_to_scene_packet(
-            SCENE_LABEL,
-            vec![
-                named_line3("trajectory", traj_segments),
-                named_line3("poses", pose_lines),
-            ],
-        )]);
+        let mut renderables = vec![named_line3("trajectory", traj_segments)];
+        renderables.extend(axes3(poses).scale(0.3).shaft_radius(0.02).build("poses"));
+        let _ = self
+            .message_send
+            .send(vec![append_to_scene_packet(SCENE_LABEL, renderables)]);
     }
 
     fn build_segments(

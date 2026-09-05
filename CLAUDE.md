@@ -82,13 +82,28 @@ wide for a plane - and a compute pass then **warps** that into the distorted ima
 model describes. `Intermediate::choose` picks between the two, and is the only place that decision
 is made.
 
-One convention worth knowing before touching any of it:
+**Traced primitives** are not rasterized at all. The warp already computes the exact ray of every
+output pixel, so ellipsoids, planes, capsules and cones are intersected with it directly
+(`shaders/traced.wgsl`) and composited against the rasterized scene by distance. They are therefore
+exact under the real camera model - no intermediate, no resampling, no upper bound on the field of
+view - and are how a sphere, a disk, a ground plane, an arrow or a set of axes is drawn. Constructors
+such as `make_sphere3`, `make_arrow3` and `make_axes_arrows3` build on them, as does `axes3`,
+which draws a whole field of poses as one cloud of each primitive rather than an entity per pose.
+
+Three conventions worth knowing before touching any of it:
 
 - **The depth buffer holds inverse *distance* along the ray**, not `z` along the optical axis: `z`
   is degenerate at 90° off axis, where a 180° camera has to work. Zero means nothing there.
   `InverseDistanceImage::metric_z` converts for anything wanting the rgb-d convention. The name
   "inverse depth" is kept for the *parameterisation* - a bearing and a range - which is what
   `sophus_geo` and the demos of that name mean by it.
+- **Discriminants cancel.** A quadratic's discriminant written the textbook way subtracts two large
+  numbers to reach a small one, and a small primitive far away then vanishes outright. Every
+  intersection here is written to avoid that, usually via a cross product - see the comments.
+- **There are no derivatives in the compute pass.** Anything needing the size of a pixel -
+  silhouette antialiasing, the ground's pattern - takes it from the rays of the neighbouring
+  pixels, and needs *both* neighbours: a surface raking away moves far further down the image than
+  across it.
 
 ## Key Design Patterns
 

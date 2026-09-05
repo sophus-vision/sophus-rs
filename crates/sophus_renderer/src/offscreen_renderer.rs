@@ -31,6 +31,7 @@ use crate::{
         Point3dEntity,
         SceneRenderer,
         TexturedMeshEntity,
+        TracedPrimitives,
     },
     textures::{
         FaceTextures,
@@ -60,6 +61,8 @@ pub struct OffscreenRenderer {
     textures: Textures,
     maybe_background_image: Option<wgpu::Texture>,
     uniforms: Arc<VertexShaderUniformBuffers>,
+    /// primitives which are traced against each pixel's ray, rather than rasterized
+    traced: TracedPrimitives,
 }
 
 struct RenderParams {
@@ -167,6 +170,7 @@ impl OffscreenRenderer {
         });
         let textures = Textures::new(render_context, &camera_properties.intrinsics.image_size());
 
+        let traced = TracedPrimitives::new(render_context);
         let uniforms = Arc::new(VertexShaderUniformBuffers::new(
             render_context,
             camera_properties,
@@ -174,7 +178,8 @@ impl OffscreenRenderer {
 
         Self {
             scene: SceneRenderer::new(render_context, depth_stencil.clone(), uniforms.clone()),
-            distortion: DistortionRenderer::new(render_context, uniforms.clone()),
+            distortion: DistortionRenderer::new(render_context, uniforms.clone(), &traced),
+            traced,
             pixel: PixelRenderer::new(render_context, uniforms.clone()),
             textures,
             camera_properties: camera_properties.clone(),
@@ -202,6 +207,7 @@ impl OffscreenRenderer {
     pub fn clear_renderables(&mut self) {
         self.scene.mesh_renderer.mesh_table.clear();
         self.scene.textured_mesh_renderer.mesh_table.clear();
+        self.traced.clear();
         self.pixel.line_renderer.lines_table.clear();
         self.pixel.point_renderer.points_table.clear();
         self.scene.line_renderer.line_table.clear();
@@ -314,6 +320,18 @@ impl OffscreenRenderer {
                         Point3dEntity::new(&self.render_context, &points3),
                     );
                 }
+                SceneRenderable::Ellipsoid(ellipsoids) => {
+                    self.traced.insert(&ellipsoids);
+                }
+                SceneRenderable::Planar(planars) => {
+                    self.traced.insert_planars(&planars);
+                }
+                SceneRenderable::Capsule(capsules) => {
+                    self.traced.insert_capsules(&capsules);
+                }
+                SceneRenderable::Cone(cones) => {
+                    self.traced.insert_cones(&cones);
+                }
                 SceneRenderable::Mesh3(mesh) => {
                     self.scene.mesh_renderer.mesh_table.insert(
                         mesh.name.clone(),
@@ -355,6 +373,12 @@ impl OffscreenRenderer {
         let light_in_world = (self.scene.world_from_scene * params.scene_from_camera)
             .rotation()
             .transform(LIGHT_IN_CAMERA);
+        self.traced.update(
+            &self.render_context,
+            &(self.scene.world_from_scene * params.scene_from_camera),
+            LIGHT_IN_CAMERA,
+        );
+
         // One plane, or several frusta for a field of view no plane holds.
         let style = DrawStyle {
             debug_frustum_planes: params.debug_frustum_planes,
@@ -413,6 +437,7 @@ impl OffscreenRenderer {
                     faces.resolve_face_depth(&mut command_encoder, frustum.index() as u32);
                 }
                 self.distortion.run_faces(
+                    &self.traced,
                     &self.render_context,
                     &mut command_encoder,
                     &self.textures.rgbd,
@@ -433,6 +458,7 @@ impl OffscreenRenderer {
                     params.backface_culling,
                 );
                 self.distortion.run(
+                    &self.traced,
                     &self.render_context,
                     &mut command_encoder,
                     &self.textures.rgbd,

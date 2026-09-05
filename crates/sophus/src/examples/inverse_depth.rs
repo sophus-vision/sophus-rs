@@ -321,11 +321,15 @@ impl InverseDepthWidget {
             .iter()
             .map(embed_pose_2d_to_3d)
             .collect();
-        let cam_lines = axes3(&gt_poses_3d).scale(0.5).line_width(1.0).build();
-        packets.push(append_to_scene_packet(
-            SCENE_LABEL,
-            vec![named_line3("cameras_gt", cam_lines)],
-        ));
+        // an outline with green shafts against the solid, red-shafted estimate below; the tips
+        // stay red, green and blue in both, since they are what says which axis is which
+        let gt_cams = axes3(&gt_poses_3d)
+            .scale(0.5)
+            .shaft_radius(0.03)
+            .shaft_color(Color::green())
+            .wireframe(true)
+            .build("cameras_gt");
+        packets.push(append_to_scene_packet(SCENE_LABEL, gt_cams));
 
         // Ground truth points (green) — 2D (x,z) embedded into 3D (x, 0, z)
         let gt_pts: Vec<[f32; 3]> = self
@@ -408,10 +412,15 @@ impl InverseDepthWidget {
 
         let mut renderables = vec![make_point3("pts_est", &est_pts, &Color::red(), 2.0)];
 
-        // Estimated camera poses (yellow axes, embedded into 3D)
+        // Estimated camera poses, shafts red like the points they see
         let poses_3d: Vec<Isometry3F64> = poses.iter().map(embed_pose_2d_to_3d).collect();
-        let cam_lines = axes3(&poses_3d).scale(0.3).line_width(1.0).build();
-        renderables.push(named_line3("cameras_est", cam_lines));
+        renderables.extend(
+            axes3(&poses_3d)
+                .scale(0.3)
+                .shaft_radius(0.02)
+                .shaft_color(Color::red())
+                .build("cameras_est"),
+        );
 
         // Covariance visualization
         if self.show_covariance

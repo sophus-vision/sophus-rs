@@ -40,7 +40,6 @@ use sophus_renderer::{
         ImageFrame,
         axes3,
         make_point3,
-        named_line3,
     },
 };
 use sophus_sensor::EnhancedUnifiedCameraF64;
@@ -406,14 +405,16 @@ impl BundleAdjustmentWidget {
         };
         let mut packets = vec![create_scene_packet(SCENE_LABEL, viewer_camera, false)];
 
-        let true_cam_lines = axes3(ba.true_world_from_cameras.as_slice())
+        // The truth is an outline with green shafts, the estimate is solid with orange ones -
+        // the same green and orange the point clouds below use. Both distinctions are carried by
+        // the shafts, so the tips stay red, green and blue and keep saying which axis is which.
+        let true_cams = axes3(ba.true_world_from_cameras.as_slice())
             .scale(0.35)
-            .line_width(2.0)
-            .build();
-        packets.push(append_to_scene_packet(
-            SCENE_LABEL,
-            vec![named_line3("cams_true", true_cam_lines)],
-        ));
+            .shaft_radius(0.02)
+            .shaft_color(Color::green())
+            .wireframe(true)
+            .build("cams_true");
+        packets.push(append_to_scene_packet(SCENE_LABEL, true_cams));
 
         let true_pts: Vec<[f32; 3]> = ba
             .true_points_in_world
@@ -425,14 +426,12 @@ impl BundleAdjustmentWidget {
             vec![make_point3("pts_true", &true_pts, &Color::green(), 6.0)],
         ));
 
-        let init_cam_lines = axes3(ba.world_from_cameras.as_slice())
+        let init_cams = axes3(ba.world_from_cameras.as_slice())
             .scale(0.35)
-            .line_width(2.0)
-            .build();
-        packets.push(append_to_scene_packet(
-            SCENE_LABEL,
-            vec![named_line3("cams_current", init_cam_lines)],
-        ));
+            .shaft_radius(0.02)
+            .shaft_color(Color::orange())
+            .build("cams_current");
+        packets.push(append_to_scene_packet(SCENE_LABEL, init_cams));
 
         let init_pts: Vec<[f32; 3]> = ba
             .points_in_world
@@ -643,19 +642,20 @@ impl BundleAdjustmentWidget {
         let poses = vars.get_members::<Isometry3F64>("poses");
         let points = vars.get_members::<VecF64<3>>("points");
 
-        let cam_lines = axes3(&poses).scale(0.35).line_width(3.5).build();
+        let mut renderables = axes3(&poses)
+            .scale(0.35)
+            .shaft_radius(0.02)
+            .shaft_color(Color::orange())
+            .build("cams_current");
         let pts: Vec<[f32; 3]> = points
             .iter()
             .map(|p| [p[0] as f32, p[1] as f32, p[2] as f32])
             .collect();
+        renderables.push(make_point3("pts_current", &pts, &Color::orange(), 6.0));
 
-        let _ = self.message_send.send(vec![append_to_scene_packet(
-            SCENE_LABEL,
-            vec![
-                named_line3("cams_current", cam_lines),
-                make_point3("pts_current", &pts, &Color::orange(), 6.0),
-            ],
-        )]);
+        let _ = self
+            .message_send
+            .send(vec![append_to_scene_packet(SCENE_LABEL, renderables)]);
     }
 
     fn send_reproj_plot(&self, rms_px: f64) {

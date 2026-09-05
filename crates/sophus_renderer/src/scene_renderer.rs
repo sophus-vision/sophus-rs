@@ -3,6 +3,7 @@ mod line;
 mod mesh;
 mod point;
 mod textured_mesh;
+mod traced;
 
 pub use distortion::*;
 use eframe::wgpu;
@@ -12,6 +13,7 @@ pub use point::*;
 use sophus_autodiff::linalg::VecF64;
 use sophus_lie::Isometry3F64;
 pub use textured_mesh::*;
+pub use traced::*;
 use wgpu::DepthStencilState;
 
 use crate::{

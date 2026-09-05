@@ -8,6 +8,7 @@ use wgpu::{
 use crate::{
     RenderContext,
     prelude::*,
+    scene_renderer::TracedPrimitives,
     textures::{
         DepthTextures,
         RgbdTexture,
@@ -238,7 +239,11 @@ impl DistortionRenderer {
     }
 
     /// Create a new scene line renderer
-    pub fn new(render_context: &RenderContext, uniforms: Arc<VertexShaderUniformBuffers>) -> Self {
+    pub fn new(
+        render_context: &RenderContext,
+        uniforms: Arc<VertexShaderUniformBuffers>,
+        traced: &TracedPrimitives,
+    ) -> Self {
         let device = &render_context.wgpu_device;
 
         // one module, two entry points
@@ -246,8 +251,9 @@ impl DistortionRenderer {
             label: Some("distortion shader"),
             source: wgpu::ShaderSource::Wgsl(
                 format!(
-                    "{} {}",
+                    "{} {} {}",
                     include_str!("../shaders/utils.wgsl"),
+                    include_str!("../shaders/traced.wgsl"),
                     include_str!("../shaders/distortion.wgsl")
                 )
                 .into(),
@@ -262,6 +268,7 @@ impl DistortionRenderer {
                 bind_group_layouts: &[
                     &uniforms.compute_bind_group_layout,
                     &texture_bind_group_layout,
+                    &traced.bind_group_layout,
                 ],
                 push_constant_ranges: &[],
             });
@@ -284,7 +291,11 @@ impl DistortionRenderer {
             let layout = Self::make_face_bind_group_layout(render_context, background);
             let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some(&format!("`{entry_point}` pipeline layout")),
-                bind_group_layouts: &[&uniforms.compute_bind_group_layout, &layout],
+                bind_group_layouts: &[
+                    &uniforms.compute_bind_group_layout,
+                    &layout,
+                    &traced.bind_group_layout,
+                ],
                 push_constant_ranges: &[],
             });
             let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -324,6 +335,7 @@ impl DistortionRenderer {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn run_faces(
         &self,
+        traced: &TracedPrimitives,
         context: &RenderContext,
         command_encoder: &mut wgpu::CommandEncoder,
         rgba: &RgbdTexture,
@@ -386,6 +398,7 @@ impl DistortionRenderer {
         compute_pass.set_pipeline(pipeline);
         compute_pass.set_bind_group(0, &self.uniforms.compute_bind_group, &[0]);
         compute_pass.set_bind_group(1, &bind_group, &[]);
+        compute_pass.set_bind_group(2, &traced.bind_group, &[]);
         compute_pass.dispatch_workgroups(
             (view_port_size.width as u32).div_ceil(WORKGROUP_SIZE),
             (view_port_size.height as u32).div_ceil(WORKGROUP_SIZE),
@@ -396,6 +409,7 @@ impl DistortionRenderer {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn run(
         &mut self,
+        traced: &TracedPrimitives,
         context: &RenderContext,
         command_encoder: &mut wgpu::CommandEncoder,
         rgba: &RgbdTexture,
@@ -421,6 +435,7 @@ impl DistortionRenderer {
         compute_pass.set_pipeline(pipeline);
         compute_pass.set_bind_group(0, &self.uniforms.compute_bind_group, &[0]);
         compute_pass.set_bind_group(1, &bind_group, &[]);
+        compute_pass.set_bind_group(2, &traced.bind_group, &[]);
         compute_pass.dispatch_workgroups(
             (view_port_size.width as u32).div_ceil(WORKGROUP_SIZE),
             (view_port_size.height as u32).div_ceil(WORKGROUP_SIZE),

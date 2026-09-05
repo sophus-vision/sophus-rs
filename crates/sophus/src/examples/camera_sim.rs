@@ -62,6 +62,8 @@ pub async fn run_offscreen() {
     let color_mapped_depth = result.inverse_distance_image.color_mapped();
     save_as_png(&color_mapped_depth.image_view(), "color_mapped_depth.png").unwrap();
 
+    // a depth camera emits the distance along the optical axis, which is derived from the
+    // inverse distance the renderer produces
     save_as_tiff(
         &result
             .inverse_distance_image
