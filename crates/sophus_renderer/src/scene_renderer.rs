@@ -1,15 +1,11 @@
 mod distortion;
-mod line;
 mod mesh;
-mod point;
 mod textured_mesh;
 mod traced;
 
 pub use distortion::*;
 use eframe::wgpu;
-pub use line::*;
 pub use mesh::*;
-pub use point::*;
 use sophus_autodiff::linalg::VecF64;
 use sophus_lie::Isometry3F64;
 pub use textured_mesh::*;
@@ -23,10 +19,7 @@ use crate::{
         TargetTexture,
     },
     prelude::*,
-    scene_renderer::{
-        mesh::MeshRenderer,
-        point::ScenePointRenderer,
-    },
+    scene_renderer::mesh::MeshRenderer,
     textures::{
         DepthTextures,
         RgbdTexture,
@@ -63,9 +56,7 @@ pub struct SceneRenderer {
     /// Textured mesh renderer
     pub textured_mesh_renderer: TexturedMeshRenderer,
     /// Point renderer
-    pub point_renderer: ScenePointRenderer,
     /// Line renderer
-    pub line_renderer: line::SceneLineRenderer,
     /// World from scene
     pub world_from_scene: Isometry3F64,
 }
@@ -89,8 +80,6 @@ impl SceneRenderer {
         Self {
             uniforms,
             mesh_renderer: MeshRenderer::new(render_context, &scene_pipeline_builder),
-            line_renderer: line::SceneLineRenderer::new(render_context, &scene_pipeline_builder),
-            point_renderer: ScenePointRenderer::new(render_context, &scene_pipeline_builder),
             textured_mesh_renderer: TexturedMeshRenderer::new(
                 render_context,
                 &scene_pipeline_builder,
@@ -181,20 +170,6 @@ impl SceneRenderer {
             &mut render_pass,
             entity_slot,
             backface_culling,
-        );
-        self.point_renderer.paint(
-            context,
-            &view,
-            &self.uniforms,
-            &mut render_pass,
-            entity_slot,
-        );
-        self.line_renderer.paint(
-            context,
-            &view,
-            &self.uniforms,
-            &mut render_pass,
-            entity_slot,
         );
         self.textured_mesh_renderer.paint(
             context,

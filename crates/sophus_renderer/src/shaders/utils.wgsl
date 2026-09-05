@@ -210,6 +210,19 @@ fn shade(normal: vec3<f32>, light_direction: vec3<f32>, rgb: vec3<f32>) -> vec3<
     return rgb * (SHADING_AMBIENT + (1.0 - SHADING_AMBIENT) * lambert);
 }
 
+// Whether the scene already put something nearer than this at the pixel being drawn.
+//
+// The distortion pass leaves the inverse distance along the ray of every pixel behind it, so anything
+// drawn over the finished image can be occluded by the scene without being part of it. Zero means
+// the scene left nothing there, and nothing never occludes.
+//
+// The margin lets a thing sitting exactly on a surface - a point marking a landmark on it, say -
+// stay visible, where an exact test would leave it flickering against its own footing.
+fn occluded(inverse_depth_texture: texture_2d<f32>, at: vec2<f32>, inverse_distance: f32) -> bool {
+    let scene = textureLoad(inverse_depth_texture, vec2<i32>(at), 0).r;
+    return scene > inverse_distance * 1.02;
+}
+
 // Width of a wireframe line, in view-port pixels. Two rather than one: a hairline reads as a
 // smudge against a busy scene, and a traced primitive drawn as edges has only its silhouette to
 // show, so what little it draws has to carry.

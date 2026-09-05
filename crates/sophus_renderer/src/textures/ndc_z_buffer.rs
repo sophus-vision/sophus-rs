@@ -13,6 +13,14 @@ pub(crate) struct NdcZBuffer {
 
     pub(crate) final_texture: wgpu::Texture,
     pub(crate) final_texture_view: wgpu::TextureView,
+
+    /// A copy of the above, taken before anything is drawn over the finished image.
+    ///
+    /// What is drawn there has to know what the scene left behind, to be occluded by it, and to
+    /// leave its own depth behind in turn, to be picked out of later. A pass cannot read the
+    /// texture it is writing, so it reads this and writes that.
+    pub(crate) read_copy_texture: wgpu::Texture,
+    pub(crate) read_copy_texture_view: wgpu::TextureView,
 }
 
 impl NdcZBuffer {
@@ -53,11 +61,24 @@ impl NdcZBuffer {
         };
         let final_texture = render_state.wgpu_device.create_texture(&desc);
         let final_texture_view = final_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        let read_copy_texture = render_state
+            .wgpu_device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("depth read copy texture"),
+                usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+                ..desc
+            });
+        let read_copy_texture_view =
+            read_copy_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
         NdcZBuffer {
             _multisample_texture: multisample_texture,
             multisample_texture_view,
             final_texture,
             final_texture_view,
+            read_copy_texture,
+            read_copy_texture_view,
         }
     }
 }

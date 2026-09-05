@@ -76,11 +76,12 @@ cargo run --release --features std --bin demo
 
 ## Rendering
 
-A frame is drawn in two stages. The scene is **rasterized** through an undistorted *intermediate*
-- one plane fitted to the visible region, or five 90° frustum faces when the field of view is too
-wide for a plane - and a compute pass then **warps** that into the distorted image the camera
-model describes. `Intermediate::choose` picks between the two, and is the only place that decision
-is made.
+A frame is drawn in three stages. The scene is **rasterized** through an undistorted
+*intermediate* - one plane fitted to the visible region, or five 90° frustum faces when the field
+of view is too wide for a plane - a compute pass then **warps** that into the distorted image the
+camera model describes, and a last pass draws over the finished image what is measured in pixels
+rather than in metres. `Intermediate::choose` picks between plane and frusta, and is the only
+place that decision is made.
 
 **Traced primitives** are not rasterized at all. The warp already computes the exact ray of every
 output pixel, so ellipsoids, planes, capsules and cones are intersected with it directly
@@ -89,6 +90,13 @@ exact under the real camera model - no intermediate, no resampling, no upper bou
 view - and are how a sphere, a disk, a ground plane, an arrow or a set of axes is drawn. Constructors
 such as `make_sphere3`, `make_arrow3` and `make_axes_arrows3` build on them, as does `axes3`,
 which draws a whole field of poses as one cloud of each primitive rather than an entity per pose.
+
+**Lines and points are the exception**: their width is in *view-port pixels*, so they are drawn in
+the last pass, over the warped image (`pixel_renderer/scene_overlay.rs`), where a pixel is a pixel
+of the image rather than of the intermediate. A straight segment is a curve there, so it is drawn
+as a strip whose joints are each projected through the camera model. They read the inverse
+distance the warp left behind to be occluded by the scene, and write their own into it, so that
+what is under the pointer still has a distance in a scene which is nothing but a point cloud.
 
 Three conventions worth knowing before touching any of it:
 

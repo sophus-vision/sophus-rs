@@ -1,6 +1,7 @@
 mod pixel_ellipse;
 mod pixel_line;
 mod pixel_point;
+mod scene_overlay;
 
 use eframe::wgpu;
 pub use pixel_ellipse::*;
@@ -21,14 +22,19 @@ use crate::{
         pixel_ellipse::ellipse_vertex,
         pixel_line::PixelLineRenderer,
         pixel_point::PixelPointRenderer,
+        scene_overlay::SceneOverlayRenderer,
     },
     prelude::*,
     renderables::{
         Color,
         Ellipse2,
     },
+    textures::DepthTextures,
     types::ScenePivotMarker,
-    uniform_buffers::VertexShaderUniformBuffers,
+    uniform_buffers::{
+        OVERLAY_POSE_SLOT,
+        VertexShaderUniformBuffers,
+    },
 };
 
 /// How big the dot at the pivot is, in image pixels, and how far the grey behind it stands out.
@@ -40,6 +46,8 @@ pub struct PixelRenderer {
     pub(crate) line_renderer: PixelLineRenderer,
     pub(crate) point_renderer: PixelPointRenderer,
     pub(crate) ellipse_renderer: PixelEllipseRenderer,
+    /// the scene's own lines and points, which are drawn here rather than into the intermediate
+    pub(crate) scene_overlay: SceneOverlayRenderer,
     pub(crate) pixel_pipeline_builder: PipelineBuilder,
 }
 
@@ -58,6 +66,7 @@ impl PixelRenderer {
             line_renderer: PixelLineRenderer::new(render_context, &pixel_pipeline_builder),
             point_renderer: PixelPointRenderer::new(render_context, &pixel_pipeline_builder),
             ellipse_renderer: PixelEllipseRenderer::new(render_context, &pixel_pipeline_builder),
+            scene_overlay: SceneOverlayRenderer::new(render_context, &pixel_pipeline_builder),
             pixel_pipeline_builder,
         }
     }
@@ -107,9 +116,76 @@ impl PixelRenderer {
 
     pub(crate) fn paint<'rp>(
         &'rp self,
+        render_context: &RenderContext,
         command_encoder: &'rp mut wgpu::CommandEncoder,
         texture_view: &'rp wgpu::TextureView,
+        depth: &DepthTextures,
     ) {
+        // The scene's own lines and points, in a pass of their own: they write the scene's
+        // inverse distance as well as the colour, which the 2d renderables over them do not.
+        //
+        // A pass cannot read the texture it writes, so the depth is copied first and the copy is
+        // what they are occluded against. Both only when there is something to draw.
+        let scene_depth = &depth.main_render_ndc_z_texture;
+        if !self.scene_overlay.is_empty() {
+            command_encoder.copy_texture_to_texture(
+                scene_depth.final_texture.as_image_copy(),
+                scene_depth.read_copy_texture.as_image_copy(),
+                scene_depth.final_texture.size(),
+            );
+            let depth_bind_group =
+                render_context
+                    .wgpu_device
+                    .create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("scene overlay depth bind group"),
+                        layout: &self.scene_overlay.depth_bind_group_layout,
+                        entries: &[wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: wgpu::BindingResource::TextureView(
+                                &scene_depth.read_copy_texture_view,
+                            ),
+                        }],
+                    });
+
+            let mut overlay_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("scene overlay pass"),
+                color_attachments: &[
+                    Some(wgpu::RenderPassColorAttachment {
+                        view: texture_view,
+                        resolve_target: None,
+                        depth_slice: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        },
+                    }),
+                    Some(wgpu::RenderPassColorAttachment {
+                        view: &scene_depth.final_texture_view,
+                        resolve_target: None,
+                        depth_slice: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        },
+                    }),
+                ],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+
+            // They are held in world coordinates, so they are drawn from the slot which holds the
+            // camera's own pose rather than any entity's.
+            let uniforms = &self.pixel_pipeline_builder.uniforms;
+            overlay_pass.set_bind_group(
+                0,
+                &uniforms.render_bind_group,
+                &[OVERLAY_POSE_SLOT * uniforms.camera_from_entity_pose_buffer.slot_stride as u32],
+            );
+            overlay_pass.set_bind_group(1, &depth_bind_group, &[]);
+            self.scene_overlay.paint(&mut overlay_pass);
+        }
+
         let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {

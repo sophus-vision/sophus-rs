@@ -249,6 +249,27 @@ impl PipelineBuilder {
         self.create_with_bind_group_layouts::<Vertex>(name, shader, cull_mode, &[])
     }
 
+    /// Like [Self::create_with_bind_group_layouts], but writing the scene's inverse distance as a
+    /// second target alongside the colour.
+    ///
+    /// For what is drawn over the finished image and still belongs to the scene: it has to leave
+    /// its depth behind, or the point under the pointer has no distance and nothing can be picked
+    /// off it. `r32float` cannot be blended, so a fragment either writes its depth or discards.
+    pub(crate) fn create_writing_inverse_depth<Vertex: IsVertex>(
+        &self,
+        name: String,
+        shader: &wgpu::ShaderModule,
+        extra_bind_group_layouts: &[&wgpu::BindGroupLayout],
+    ) -> wgpu::RenderPipeline {
+        self.create_inner::<Vertex>(
+            name,
+            shader,
+            None,
+            extra_bind_group_layouts,
+            Some(wgpu::TextureFormat::R32Float),
+        )
+    }
+
     /// Like [Self::create], but with additional bind group layouts bound after the uniforms -
     /// used by pipelines with per-entity resources, such as the textured mesh renderer.
     pub(crate) fn create_with_bind_group_layouts<Vertex: IsVertex>(
@@ -257,6 +278,17 @@ impl PipelineBuilder {
         shader: &wgpu::ShaderModule,
         cull_mode: Option<wgpu::Face>,
         extra_bind_group_layouts: &[&wgpu::BindGroupLayout],
+    ) -> wgpu::RenderPipeline {
+        self.create_inner::<Vertex>(name, shader, cull_mode, extra_bind_group_layouts, None)
+    }
+
+    fn create_inner<Vertex: IsVertex>(
+        &self,
+        name: String,
+        shader: &wgpu::ShaderModule,
+        cull_mode: Option<wgpu::Face>,
+        extra_bind_group_layouts: &[&wgpu::BindGroupLayout],
+        inverse_depth_target: Option<wgpu::TextureFormat>,
     ) -> wgpu::RenderPipeline {
         let device = self.context.wgpu_device.clone();
 
@@ -271,6 +303,29 @@ impl PipelineBuilder {
             bind_group_layouts: &bind_group_layouts,
             push_constant_ranges: &[],
         });
+
+        let mut targets = vec![Some(wgpu::ColorTargetState {
+            format: self.rgba_target.rgba_output_format,
+            blend: match self.pipeline_type {
+                // 2d renderables are drawn on top of the finished image. Without blending, a
+                // color with alpha < 1 would be written straight into the target's alpha channel
+                // and punch a hole into the view instead of being composited onto the image.
+                PipelineType::Pixel => Some(wgpu::BlendState::ALPHA_BLENDING),
+                // The scene is rendered into its own texture whose alpha channel *is* the opacity
+                // mask which the distortion pass blends with the background
+                // (`mix(background, foreground, foreground.a)`), so it must be written through
+                // unmodified here.
+                PipelineType::Scene => None,
+            },
+            write_mask: wgpu::ColorWrites::ALL,
+        })];
+        if let Some(format) = inverse_depth_target {
+            targets.push(Some(wgpu::ColorTargetState {
+                format,
+                blend: None,
+                write_mask: wgpu::ColorWrites::RED,
+            }));
+        }
 
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             cache: None,
@@ -289,22 +344,7 @@ impl PipelineBuilder {
             fragment: Some(wgpu::FragmentState {
                 module: shader,
                 entry_point: Some("fs_main"),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: self.rgba_target.rgba_output_format,
-                    blend: match self.pipeline_type {
-                        // 2d renderables are drawn on top of the finished image. Without
-                        // blending, a color with alpha < 1 would be written straight into the
-                        // target's alpha channel and punch a hole into the view instead of
-                        // being composited onto the image.
-                        PipelineType::Pixel => Some(wgpu::BlendState::ALPHA_BLENDING),
-                        // The scene is rendered into its own texture whose alpha channel *is*
-                        // the opacity mask which the distortion pass blends with the background
-                        // (`mix(background, foreground, foreground.a)`), so it must be written
-                        // through unmodified here.
-                        PipelineType::Scene => None,
-                    },
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
+                targets: &targets,
                 compilation_options: Default::default(),
             }),
             primitive: wgpu::PrimitiveState {

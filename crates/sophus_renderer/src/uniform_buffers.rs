@@ -75,6 +75,13 @@ pub(crate) struct CameraPropertiesUniform {
 /// Maximum number of scene entities per view whose pose fits into the pose uniform buffer.
 pub(crate) const MAX_SCENE_ENTITIES: u32 = 1024;
 
+/// The pose slot the overlays are drawn from.
+///
+/// The scene's entities take slots from zero upwards, and what they hold is the pose the
+/// *intermediate* is rendered from - for a frustum face, that is not the camera. Anything drawn
+/// over the finished image needs the camera's own pose, so the last slot is kept for it.
+pub(crate) const OVERLAY_POSE_SLOT: u32 = MAX_SCENE_ENTITIES - 1;
+
 pub(crate) struct CameraFromEntityPoseUniform {
     pub(crate) camera_from_entity_buffer: wgpu::Buffer,
     /// Distance between two pose slots - a multiple of the device's uniform offset alignment.

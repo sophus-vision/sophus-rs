@@ -26,9 +26,7 @@ use crate::{
     scene_renderer::{
         DistortionRenderer,
         LIGHT_IN_CAMERA,
-        Line3dEntity,
         Mesh3dEntity,
-        Point3dEntity,
         SceneRenderer,
         TexturedMeshEntity,
         TracedPrimitives,
@@ -44,6 +42,7 @@ use crate::{
     },
     uniform_buffers::{
         DrawStyle,
+        OVERLAY_POSE_SLOT,
         VertexShaderUniformBuffers,
     },
 };
@@ -210,9 +209,9 @@ impl OffscreenRenderer {
         self.traced.clear();
         self.pixel.line_renderer.lines_table.clear();
         self.pixel.point_renderer.points_table.clear();
-        self.scene.line_renderer.line_table.clear();
-        self.scene.point_renderer.point_table.clear();
         self.pixel.ellipse_renderer.ellipses_table.clear();
+        self.pixel.scene_overlay.lines.clear();
+        self.pixel.scene_overlay.points.clear();
     }
 
     /// reset 2d frame
@@ -308,17 +307,18 @@ impl OffscreenRenderer {
     pub fn update_scene(&mut self, renderables: Vec<SceneRenderable>) {
         for m in renderables {
             match m {
+                // A line and a point have a width in pixels rather than a size in the scene, so
+                // they are drawn over the finished image rather than into the intermediate - see
+                // `SceneOverlayRenderer`.
                 SceneRenderable::Line(lines3) => {
-                    self.scene.line_renderer.line_table.insert(
-                        lines3.name.clone(),
-                        Line3dEntity::new(&self.render_context, &lines3),
-                    );
+                    self.pixel
+                        .scene_overlay
+                        .insert_lines(&self.render_context, &lines3);
                 }
                 SceneRenderable::Point(points3) => {
-                    self.scene.point_renderer.point_table.insert(
-                        points3.name.clone(),
-                        Point3dEntity::new(&self.render_context, &points3),
-                    );
+                    self.pixel
+                        .scene_overlay
+                        .insert_points(&self.render_context, &points3);
                 }
                 SceneRenderable::Ellipsoid(ellipsoids) => {
                     self.traced.insert(&ellipsoids);
@@ -474,8 +474,26 @@ impl OffscreenRenderer {
         self.pixel
             .show_interaction_marker(&self.render_context, &params.maybe_marker);
 
-        self.pixel
-            .paint(&mut command_encoder, &self.textures.rgbd.final_texture_view);
+        // The scene's lines and points are drawn over the finished image, from the camera's own
+        // pose - not the intermediate's, which for a frustum face is a different camera - so that
+        // slot is filled in before the pass which reads it.
+        self.uniforms
+            .camera_from_entity_pose_buffer
+            .update_given_camera_and_entity(
+                &self.render_context.wgpu_queue,
+                OVERLAY_POSE_SLOT,
+                &(self.scene.world_from_scene * params.scene_from_camera),
+                &Isometry3F64::identity(),
+                light_in_world,
+                false,
+            );
+
+        self.pixel.paint(
+            &self.render_context,
+            &mut command_encoder,
+            &self.textures.rgbd.final_texture_view,
+            &self.textures.depth,
+        );
 
         self.render_context
             .wgpu_queue
