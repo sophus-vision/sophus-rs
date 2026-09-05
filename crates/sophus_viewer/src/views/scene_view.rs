@@ -10,6 +10,7 @@ use sophus_renderer::{
     HasAspectRatio,
     OffscreenRenderer,
     RenderContext,
+    ScenePivotMarker,
     camera::RenderIntrinsics,
     textures::download_depth,
 };
@@ -75,6 +76,15 @@ pub(crate) struct SceneView {
 }
 
 impl SceneView {
+    /// The pivot marker, told whether this view can be turned across the screen - which a view
+    /// locked to the bird's eye orientation cannot.
+    fn pivot_marker(&self) -> Option<ScenePivotMarker> {
+        self.interaction.marker().map(|marker| ScenePivotMarker {
+            can_orbit: !self.locked_to_birds_eye_orientation,
+            ..marker
+        })
+    }
+
     fn create(
         views: &mut LinkedHashMap<String, View>,
         view_label: &str,
@@ -173,11 +183,14 @@ impl SceneView {
     ) -> Option<ResponseStruct> {
         let view_port_size = placement.viewport_size();
 
+        // taken before the renderer is borrowed, since it reads the view as well as the
+        // interaction
+        let pivot_marker = self.pivot_marker();
         let render_result = self
             .renderer
             .render_params(&view_port_size, &self.interaction.scene_from_camera())
             .zoom(self.interaction.zoom2d())
-            .interaction(self.interaction.marker())
+            .interaction(pivot_marker)
             .backface_culling(params.backface_culling)
             .wireframe(params.wireframe)
             .debug_frustum_planes(params.view_mode == ViewMode::FrustumPlanes)
@@ -271,11 +284,14 @@ impl SceneView {
         }
 
         if self.final_render_result_promise.is_none() {
+            // taken before the renderer is borrowed, since it reads the view as well as the
+            // interaction
+            let pivot_marker = self.pivot_marker();
             let render_result = self
                 .renderer
                 .render_params(&view_port_size, &self.interaction.scene_from_camera())
                 .zoom(self.interaction.zoom2d())
-                .interaction(self.interaction.marker())
+                .interaction(pivot_marker)
                 .backface_culling(params.backface_culling)
                 .wireframe(params.wireframe)
                 .debug_frustum_planes(params.view_mode == ViewMode::FrustumPlanes)

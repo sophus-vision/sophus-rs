@@ -14,6 +14,7 @@ use sophus_lie::{
     Rotation3,
 };
 use sophus_renderer::{
+    PivotGesture,
     TranslationAndScaling,
     camera::{
         ClippingPlanesF64,
@@ -51,6 +52,8 @@ pub struct OrbitalInteraction {
     initial_scene_from_camera: Isometry3F64,
     /// when a drag last moved the camera, in seconds of egui's clock
     last_moved_at: f64,
+    /// what the interaction is doing right now, if anything
+    pub(crate) maybe_gesture: Option<PivotGesture>,
 }
 
 impl OrbitalInteraction {
@@ -68,6 +71,7 @@ impl OrbitalInteraction {
             scene_from_camera,
             initial_scene_from_camera: scene_from_camera,
             last_moved_at: f64::NEG_INFINITY,
+            maybe_gesture: None,
         }
     }
 
@@ -147,6 +151,9 @@ impl OrbitalInteraction {
         // focus marker with it.
         if is_scroll_zero {
             self.maybe_scroll_state = None;
+            if self.maybe_pointer_state.is_none() {
+                self.maybe_gesture = None;
+            }
         }
 
         let last_pointer_pos = response.ctx.input(|i| i.pointer.latest_pos());
@@ -188,6 +195,8 @@ impl OrbitalInteraction {
         let pivot_in_camera = pivot.point_in_camera(cam);
 
         if smooth_scroll_delta.y != 0.0 {
+            self.maybe_gesture = Some(PivotGesture::Zoom);
+
             let scene_from_camera = self.scene_from_camera;
             let camera_in_scene = scene_from_camera.translation();
             let zoom: f64 = (0.002 * smooth_scroll_delta.y) as f64;
@@ -212,6 +221,7 @@ impl OrbitalInteraction {
         }
 
         if smooth_scroll_delta.x != 0.0 {
+            self.maybe_gesture = Some(PivotGesture::Roll);
             let delta_z: f64 = (smooth_scroll_delta.x) as f64;
             let delta = 0.002 * VecF64::<6>::new(0.0, 0.0, delta_z, 0.0, 0.0, 0.0);
             let camera_from_scene_point = Isometry3::from_translation(pivot_in_camera);
@@ -302,6 +312,7 @@ impl OrbitalInteraction {
         } else if response.drag_stopped() {
             // A drag event finished
             self.maybe_pointer_state = None;
+            self.maybe_gesture = None;
         };
 
         if !locked_to_birds_eye_orientation
@@ -315,6 +326,7 @@ impl OrbitalInteraction {
             };
             let delta =
                 0.01 * VecF64::<6>::new(-delta_y as f64, delta_x as f64, 0.0, 0.0, 0.0, 0.0);
+            self.maybe_gesture = Some(PivotGesture::Orbit);
             let camera_from_scene_point = Isometry3::from_translation(pivot.point_in_camera(cam));
             self.scene_from_camera = self.scene_from_camera
                 * camera_from_scene_point
@@ -335,6 +347,7 @@ impl OrbitalInteraction {
             let Some(pointer_state) = self.maybe_pointer_state else {
                 return;
             };
+            self.maybe_gesture = Some(PivotGesture::Pan);
             let start_pixel = pointer_state.start_uv_virtual_camera;
             // both ends of the drag at the distance of the pivot, so that the scene keeps up
             // with the pointer at the depth being dragged

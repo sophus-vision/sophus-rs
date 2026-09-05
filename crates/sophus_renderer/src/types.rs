@@ -143,6 +143,33 @@ pub struct ScenePivotMarker {
     pub v: f32,
     /// metric distance along the ray through (u, v)
     pub distance: f32,
+    /// what the interaction is doing, which is what the marker is drawn as
+    pub gesture: PivotGesture,
+    /// Whether turning the view about the axes across the screen is possible here at all.
+    ///
+    /// A view locked to the bird's eye orientation only ever looks straight down, so it is not -
+    /// and the two rings which stand for it are left out rather than drawn greyed for a gesture
+    /// which will never come.
+    pub can_orbit: bool,
+}
+
+/// What an interaction is doing to the view, which decides which part of its pivot is lit.
+///
+/// Every one of them works in the camera's *current* frame - a drag turns the view about the
+/// camera's x and y, a sideways scroll about its z, a drag slides along its x and y, a scroll in
+/// and out along its z - so the marker is drawn on those axes, worked out afresh each frame. It is
+/// the frame the gesture acts in, not a thing in the scene, so it neither turns with the view nor
+/// snaps back.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PivotGesture {
+    /// Turning the view about the two axes across the screen.
+    Orbit,
+    /// Turning it about the axis into the screen.
+    Roll,
+    /// Sliding the view across the screen.
+    Pan,
+    /// Moving it in and out, along the ray to the pivot.
+    Zoom,
 }
 
 /// multisample count

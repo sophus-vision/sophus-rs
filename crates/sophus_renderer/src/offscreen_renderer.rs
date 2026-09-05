@@ -471,8 +471,11 @@ impl OffscreenRenderer {
 
         // Note: the marker state has to be set before `paint`, which records the draw calls
         // based on it - otherwise the marker would appear and disappear one frame late.
-        self.pixel
-            .show_interaction_marker(&self.render_context, &params.maybe_marker);
+        self.pixel.show_interaction_marker(
+            &self.render_context,
+            &params.maybe_marker,
+            &self.camera_properties.intrinsics,
+        );
 
         // The scene's lines and points are drawn over the finished image, from the camera's own
         // pose - not the intermediate's, which for a frustum face is a different camera - so that

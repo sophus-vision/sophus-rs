@@ -32,7 +32,9 @@ use sophus_lie::{
 };
 use sophus_renderer::{
     OffscreenRenderer,
+    PivotGesture,
     RenderContext,
+    ScenePivotMarker,
     TranslationAndScaling,
     camera::RenderCameraProperties,
     renderables::{
@@ -410,6 +412,112 @@ fn a_cylinder_ends_where_its_segment_does() {
         "the capsule reaches {capsule} px across and the cylinder {cylinder} - the ends are not \
          being cut"
     );
+}
+
+/// The pivot of an interaction is drawn as what that interaction does: a ring along each way a
+/// drag turns the view, or a bar along each way it slides the view.
+///
+/// Every gesture works in the camera's own frame, so the glyph is too - a turn about the axis a
+/// vertical drag works on shows as an upright ring, and a slide along the axis a horizontal drag
+/// works on as a level bar. That is the difference this checks: same colours, different shapes,
+/// according to what the pointer is about to do.
+#[test]
+fn the_interaction_pivot_is_drawn_as_what_the_gesture_does() {
+    let Some((_context, mut renderer)) = renderer(pinhole()) else {
+        eprintln!("skipping: no GPU available");
+        return;
+    };
+    renderer.update_scene(vec![]);
+
+    let (u, v) = (120.0f32, 140.0f32);
+    let is_red = |c: [u8; 4]| c[0] > 170 && c[1] < 120 && c[2] < 120;
+    let is_green = |c: [u8; 4]| c[1] > 130 && c[0] < 120 && c[2] < 120;
+    let is_blue = |c: [u8; 4]| c[2] > 170 && c[0] < 120 && c[1] < 150;
+
+    let mut glyph = |gesture: PivotGesture| {
+        renderer
+            .render_params(&ImageSize::new(W, H), &Isometry3F64::identity())
+            .interaction(Some(ScenePivotMarker {
+                color: Color::black(1.0),
+                u,
+                v,
+                distance: 3.0,
+                gesture,
+                can_orbit: true,
+            }))
+            .download_rgba(true)
+            .render()
+            .rgba_image
+            .expect("`download_rgba` was requested")
+    };
+
+    // the extent of what is drawn in a colour, as (width, height) in pixels
+    let extent = |image: &ArcImage4U8, pick: &dyn Fn([u8; 4]) -> bool| {
+        let mut bounds: Option<(usize, usize, usize, usize)> = None;
+        for y in 0..H {
+            for x in 0..W {
+                let p = image.pixel(x, y);
+                if pick([p[0], p[1], p[2], p[3]]) {
+                    bounds = Some(match bounds {
+                        None => (x, y, x, y),
+                        Some((x0, y0, x1, y1)) => (x0.min(x), y0.min(y), x1.max(x), y1.max(y)),
+                    });
+                }
+            }
+        }
+        bounds.map(|(x0, y0, x1, y1)| (x1 - x0 + 1, y1 - y0 + 1))
+    };
+
+    let orbit = glyph(PivotGesture::Orbit);
+    let (red_w, red_h) = extent(&orbit, &is_red).expect("orbiting turns about the red axis");
+    let (green_w, green_h) = extent(&orbit, &is_green).expect("and about the green one");
+    assert!(
+        red_h > 2 * red_w,
+        "the ring a vertical drag turns along is {red_w} by {red_h} - it should stand upright, \
+         since its circle holds the direction the camera looks"
+    );
+    assert!(
+        green_w > 2 * green_h,
+        "the ring a horizontal drag turns along is {green_w} by {green_h} - it should lie flat"
+    );
+    assert!(
+        extent(&orbit, &is_blue).is_none(),
+        "orbiting does not turn the view about the axis into the screen, so nothing blue is drawn"
+    );
+
+    let roll = glyph(PivotGesture::Roll);
+    let (blue_w, blue_h) = extent(&roll, &is_blue).expect("rolling turns about the blue axis");
+    assert!(
+        blue_w > 30 && blue_h > 30,
+        "the ring rolling turns along faces the camera, so it is a circle, not the {blue_w} by \
+         {blue_h} it comes out as"
+    );
+
+    let pan = glyph(PivotGesture::Pan);
+    let (bar_w, bar_h) = extent(&pan, &is_red).expect("panning slides along the red axis");
+    assert!(
+        bar_w > 2 * bar_h,
+        "the bar panning slides along is {bar_w} by {bar_h} - a bar along the axis a horizontal \
+         drag slides on lies flat, and is not a ring"
+    );
+
+    // and all of it sits on the pivot
+    for (name, image, pick) in [
+        (
+            "the orbit rings",
+            &orbit,
+            &is_red as &dyn Fn([u8; 4]) -> bool,
+        ),
+        ("the roll ring", &roll, &is_blue),
+        ("the pan bars", &pan, &is_green),
+    ] {
+        let (center, _) = centroid(image, pick).expect("just drawn");
+        let offset = (center - VecF64::<2>::new(u as f64, v as f64)).norm();
+        assert!(
+            offset < 6.0,
+            "{name} sit {offset:.1} px from the pivot, which is at ({u}, {v})"
+        );
+    }
 }
 
 /// Under 2d zoom, the background image, the 2d pixel renderables and the 3d scene renderables

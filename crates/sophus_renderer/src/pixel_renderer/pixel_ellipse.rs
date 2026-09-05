@@ -45,9 +45,9 @@ pub(crate) fn ellipse_vertex(ellipse: &Ellipse2) -> Option<EllipseVertex2> {
     })
 }
 
-/// How many ellipses the interaction pivot is drawn from: the dot, and the ring of grey behind
-/// it.
-pub(crate) const PIVOT_ELLIPSES: usize = 2;
+/// How many ellipses the interaction pivot is drawn from: a ring about each axis, a bar along
+/// each, and the dot at the middle - each with a shape of grey behind it.
+pub(crate) const PIVOT_ELLIPSES: usize = 14;
 
 pub(crate) struct Ellipse2dEntity {
     pub(crate) instance_count: u32,

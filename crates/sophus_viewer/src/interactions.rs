@@ -9,6 +9,7 @@ use sophus_image::{
 };
 use sophus_lie::Isometry3F64;
 use sophus_renderer::{
+    PivotGesture,
     ScenePivotMarker,
     TranslationAndScaling,
     camera::RenderIntrinsics,
@@ -176,6 +177,16 @@ impl InteractionEnum {
                     u: pivot.pixel[0] as f32,
                     v: pivot.pixel[1] as f32,
                     distance: pivot.distance as f32,
+                    gesture: match self {
+                        InteractionEnum::Orbital(orbit) => {
+                            orbit.maybe_gesture.unwrap_or(PivotGesture::Orbit)
+                        }
+                        // an image view is dragged about, never turned
+                        _ => PivotGesture::Pan,
+                    },
+                    // whether this view can be orbited at all is a property of the view rather
+                    // than of the interaction, so the view fills it in
+                    can_orbit: true,
                 })
             }
             false => None,
