@@ -10,10 +10,16 @@ use crate::{
     },
     prelude::*,
     renderables::TriangleMesh3,
-    uniform_buffers::VertexShaderUniformBuffers,
+    scene_renderer::SceneView,
+    uniform_buffers::{
+        MAX_SCENE_ENTITIES,
+        VertexShaderUniformBuffers,
+    },
 };
 
 pub(crate) struct Mesh3dEntity {
+    /// drawn as edges, whatever the view says
+    pub(crate) wireframe: bool,
     pub(crate) vertex_data: Vec<MeshVertex3>,
     pub(crate) vertex_buffer: wgpu::Buffer,
     pub(crate) world_from_entity: Isometry3F64,
@@ -55,6 +61,7 @@ impl Mesh3dEntity {
                 });
 
         Self {
+            wireframe: mesh.wireframe,
             vertex_data,
             vertex_buffer,
             world_from_entity: mesh.world_from_entity,
@@ -95,19 +102,20 @@ impl MeshRenderer {
             pipeline_without_culling: scene_pipelines.create::<MeshVertex3>(
                 "mesh".to_string(),
                 &shader,
-                Some(wgpu::Face::Back),
+                None,
             ),
             mesh_table: BTreeMap::new(),
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn paint<'rp>(
         &'rp self,
         render_context: &RenderContext,
-        scene_from_camera: &Isometry3F64,
-        world_from_scene: &Isometry3F64,
+        view: &SceneView,
         uniforms: &'rp VertexShaderUniformBuffers,
         render_pass: &mut wgpu::RenderPass<'rp>,
+        entity_slot: &mut u32,
         backface_culling: bool,
     ) {
         let pipeline = if backface_culling {
@@ -118,13 +126,23 @@ impl MeshRenderer {
         render_pass.set_pipeline(pipeline);
 
         for mesh in self.mesh_table.values() {
-            uniforms
+            if *entity_slot >= MAX_SCENE_ENTITIES {
+                log::warn!("more than {MAX_SCENE_ENTITIES} scene entities - skipping the rest");
+                break;
+            }
+            let pose_offset = uniforms
                 .camera_from_entity_pose_buffer
                 .update_given_camera_and_entity(
                     &render_context.wgpu_queue,
-                    &(world_from_scene * scene_from_camera),
+                    *entity_slot,
+                    &view.world_from_camera,
                     &mesh.world_from_entity,
+                    view.light_in_world,
+                    mesh.wireframe,
                 );
+            *entity_slot += 1;
+
+            render_pass.set_bind_group(0, &uniforms.render_bind_group, &[pose_offset]);
             render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             render_pass.draw(0..mesh.vertex_data.len() as u32, 0..1);
         }

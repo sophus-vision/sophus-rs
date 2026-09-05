@@ -10,10 +10,14 @@ use crate::{
     },
     prelude::*,
     renderables::PointCloud3,
-    uniform_buffers::VertexShaderUniformBuffers,
+    scene_renderer::SceneView,
+    uniform_buffers::{
+        MAX_SCENE_ENTITIES,
+        VertexShaderUniformBuffers,
+    },
 };
 pub(crate) struct Point3dEntity {
-    pub(crate) vertex_data: Vec<PointVertex3>,
+    pub(crate) instance_count: u32,
     pub(crate) vertex_buffer: wgpu::Buffer,
     pub(crate) world_from_entity: Isometry3F64,
 }
@@ -28,9 +32,7 @@ impl Point3dEntity {
                 _color: [point.color.r, point.color.g, point.color.b, point.color.a],
                 _point_size: point.point_size,
             };
-            for _i in 0..6 {
-                vertex_data.push(v);
-            }
+            vertex_data.push(v);
         }
 
         let vertex_buffer =
@@ -43,7 +45,7 @@ impl Point3dEntity {
                 });
 
         Self {
-            vertex_data,
+            instance_count: vertex_data.len() as u32,
             vertex_buffer,
             world_from_entity: points.world_from_entity,
         }
@@ -82,24 +84,34 @@ impl ScenePointRenderer {
     pub(crate) fn paint<'rp>(
         &'rp self,
         render_context: &RenderContext,
-        scene_from_camera: &Isometry3F64,
-        world_from_scene: &Isometry3F64,
+        view: &SceneView,
         buffers: &'rp VertexShaderUniformBuffers,
         render_pass: &mut wgpu::RenderPass<'rp>,
+        entity_slot: &mut u32,
     ) {
         render_pass.set_pipeline(&self.pipeline);
-        render_pass.set_bind_group(0, &buffers.render_bind_group, &[]);
 
         for point in self.point_table.values() {
-            buffers
+            if *entity_slot >= MAX_SCENE_ENTITIES {
+                log::warn!("more than {MAX_SCENE_ENTITIES} scene entities - skipping the rest");
+                break;
+            }
+            let pose_offset = buffers
                 .camera_from_entity_pose_buffer
                 .update_given_camera_and_entity(
                     &render_context.wgpu_queue,
-                    &(world_from_scene * scene_from_camera),
+                    *entity_slot,
+                    &view.world_from_camera,
                     &point.world_from_entity,
+                    view.light_in_world,
+                    // a line and a point are already edges
+                    false,
                 );
+            *entity_slot += 1;
+
+            render_pass.set_bind_group(0, &buffers.render_bind_group, &[pose_offset]);
             render_pass.set_vertex_buffer(0, point.vertex_buffer.slice(..));
-            render_pass.draw(0..point.vertex_data.len() as u32, 0..1);
+            render_pass.draw(0..6, 0..point.instance_count);
         }
     }
 }

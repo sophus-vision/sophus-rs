@@ -40,9 +40,11 @@ impl VisualDepthTexture {
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                // matches the color path, which is `Rgba8Unorm` - an sRGB format here would
+                // gamma-decode the depth color map but not the rendered image
+                format: wgpu::TextureFormat::Rgba8Unorm,
                 usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
-                view_formats: &[wgpu::TextureFormat::Rgba8UnormSrgb],
+                view_formats: &[],
             });
 
         let visual_texture_view =

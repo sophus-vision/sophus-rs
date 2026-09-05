@@ -11,7 +11,7 @@ use crate::{
     renderables::LineSegments2,
 };
 pub(crate) struct Line2dEntity {
-    pub(crate) vertex_data: Vec<LineVertex2>,
+    pub(crate) instance_count: u32,
     pub(crate) vertex_buffer: wgpu::Buffer,
 }
 
@@ -24,24 +24,13 @@ impl Line2dEntity {
             let d = (p0 - p1).normalize();
             let normal = [d[1], -d[0]];
 
-            let v0 = LineVertex2 {
-                _pos: [p0[0], p0[1]],
+            vertex_data.push(LineVertex2 {
+                _p0: [p0[0], p0[1]],
+                _p1: [p1[0], p1[1]],
                 _normal: normal,
                 _color: [line.color.r, line.color.g, line.color.b, line.color.a],
                 _line_width: line.line_width,
-            };
-            let v1 = LineVertex2 {
-                _pos: [p1[0], p1[1]],
-                _normal: normal,
-                _color: [line.color.r, line.color.g, line.color.b, line.color.a],
-                _line_width: line.line_width,
-            };
-            vertex_data.push(v0);
-            vertex_data.push(v0);
-            vertex_data.push(v1);
-            vertex_data.push(v0);
-            vertex_data.push(v1);
-            vertex_data.push(v1);
+            });
         }
 
         let vertex_buffer =
@@ -54,7 +43,7 @@ impl Line2dEntity {
                 });
 
         Self {
-            vertex_data,
+            instance_count: vertex_data.len() as u32,
             vertex_buffer,
         }
     }
@@ -91,9 +80,9 @@ impl PixelLineRenderer {
 
     pub(crate) fn paint<'rp>(&'rp self, render_pass: &mut wgpu::RenderPass<'rp>) {
         render_pass.set_pipeline(&self.pipeline);
-        for (_name, line) in self.lines_table.iter() {
+        for line in self.lines_table.values() {
             render_pass.set_vertex_buffer(0, line.vertex_buffer.slice(..));
-            render_pass.draw(0..line.vertex_data.len() as u32, 0..1);
+            render_pass.draw(0..6, 0..line.instance_count);
         }
     }
 }

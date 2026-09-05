@@ -4,6 +4,7 @@ use core::{
 };
 
 use sophus_autodiff::params::IsParamsImpl;
+use sophus_geo::UnitVector3;
 use sophus_image::ImageSize;
 
 use crate::{
@@ -43,6 +44,28 @@ pub trait IsCameraDistortionImpl<
     where
         PA: Borrow<S::Vector<PARAMS>>,
         PO: Borrow<S::Vector<2>>;
+
+    /// Unprojection - maps a distorted pixel to the direction it observes.
+    ///
+    /// Unlike [Self::undistort], this remains well defined at and beyond 90 degrees off axis,
+    /// where the observed ray is parallel to - or behind - the z = 1 plane and therefore has no
+    /// point on it. A model whose field of view can reach that far, such as the enhanced unified
+    /// one, should override this; the default is only correct below 180 degrees.
+    fn undistort_to_unit_vector<PA, PO>(
+        params: PA,
+        distorted_point: PO,
+    ) -> UnitVector3<S, BATCH, DM, DN>
+    where
+        PA: Borrow<S::Vector<PARAMS>>,
+        PO: Borrow<S::Vector<2>>,
+    {
+        let point_in_z1_plane = Self::undistort(params, distorted_point);
+        UnitVector3::from_vector_and_normalize(&S::Vector::<3>::from_array([
+            point_in_z1_plane.elem(0),
+            point_in_z1_plane.elem(1),
+            S::ones(),
+        ]))
+    }
 
     /// Derivative of the distortion w.r.t. the point in the camera z=1 plane
     fn dx_distort_x<PA, PO>(params: PA, proj_point_in_camera_z1_plane: PO) -> S::Matrix<2, 2>
@@ -110,6 +133,10 @@ pub trait IsCamera<
         P: Borrow<S::Vector<3>>;
     /// Unprojects a pixel in the image to a 3D point in the camera frame
     fn cam_unproj_with_z<P>(&self, pixel: P, z: S) -> S::Vector<3>
+    where
+        P: Borrow<S::Vector<2>>;
+    /// Unprojects a pixel to the unit-length direction it observes
+    fn cam_unproj_to_unit_vector<P>(&self, pixel: P) -> UnitVector3<S, BATCH, DM, DN>
     where
         P: Borrow<S::Vector<2>>;
     /// Distortion - maps a point in the camera z=1 plane to a distorted point

@@ -44,11 +44,12 @@ pub(crate) trait IsVertex {
     fn attr() -> Vec<wgpu::VertexAttribute>;
 }
 
-/// 2d line vertex
+/// 2d line vertex - one per segment, expanded into a quad by the vertex shader
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub struct LineVertex2 {
-    pub(crate) _pos: [f32; 2],
+    pub(crate) _p0: [f32; 2],
+    pub(crate) _p1: [f32; 2],
     pub(crate) _color: [f32; 4],
     pub(crate) _normal: [f32; 2],
     pub(crate) _line_width: f32,
@@ -59,13 +60,19 @@ impl IsVertex for LineVertex2 {
         core::mem::size_of::<LineVertex2>() as wgpu::BufferAddress
     }
 
+    fn step_mode() -> wgpu::VertexStepMode {
+        wgpu::VertexStepMode::Instance
+    }
+
     fn attr() -> Vec<wgpu::VertexAttribute> {
-        wgpu::vertex_attr_array![0 => Float32x2, 1=>Float32x4, 2 => Float32x2, 3 => Float32]
-            .to_vec()
+        wgpu::vertex_attr_array![
+            0 => Float32x2, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32
+        ]
+        .to_vec()
     }
 }
 
-/// 2d point vertex
+/// 2d point vertex - one per point, expanded into a quad by the vertex shader
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub struct PointVertex2 {
@@ -77,6 +84,10 @@ pub struct PointVertex2 {
 impl IsVertex for PointVertex2 {
     fn array_stride() -> wgpu::BufferAddress {
         core::mem::size_of::<PointVertex2>() as wgpu::BufferAddress
+    }
+
+    fn step_mode() -> wgpu::VertexStepMode {
+        wgpu::VertexStepMode::Instance
     }
 
     fn attr() -> Vec<wgpu::VertexAttribute> {
@@ -102,7 +113,7 @@ impl IsVertex for MeshVertex3 {
     }
 }
 
-/// 3d line vertex
+/// 3d line vertex - one per segment, expanded into a quad by the vertex shader
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub(crate) struct LineVertex3 {
@@ -117,13 +128,17 @@ impl IsVertex for LineVertex3 {
         core::mem::size_of::<LineVertex3>() as wgpu::BufferAddress
     }
 
+    fn step_mode() -> wgpu::VertexStepMode {
+        wgpu::VertexStepMode::Instance
+    }
+
     fn attr() -> Vec<wgpu::VertexAttribute> {
         wgpu::vertex_attr_array![0 => Float32x3, 1=>Float32x3, 2 => Float32x4, 3 => Float32]
             .to_vec()
     }
 }
 
-/// 3d point vertex
+/// 3d point vertex - one per point, expanded into a quad by the vertex shader
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub(crate) struct PointVertex3 {
@@ -137,6 +152,10 @@ impl IsVertex for PointVertex3 {
         core::mem::size_of::<PointVertex3>() as wgpu::BufferAddress
     }
 
+    fn step_mode() -> wgpu::VertexStepMode {
+        wgpu::VertexStepMode::Instance
+    }
+
     fn attr() -> Vec<wgpu::VertexAttribute> {
         wgpu::vertex_attr_array![0 => Float32x3, 1=>Float32, 2 => Float32x4].to_vec()
     }
@@ -146,6 +165,7 @@ impl IsVertex for PointVertex3 {
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub(crate) struct TexturedMeshVertex3 {
     pub(crate) _pos: [f32; 3],
+    pub(crate) _normal: [f32; 3],
     pub(crate) _tex: [f32; 2],
 }
 
@@ -155,7 +175,7 @@ impl IsVertex for TexturedMeshVertex3 {
     }
 
     fn attr() -> Vec<wgpu::VertexAttribute> {
-        wgpu::vertex_attr_array![0 => Float32x3, 1=>Float32x2].to_vec()
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2].to_vec()
     }
 }
 
@@ -195,14 +215,29 @@ impl PipelineBuilder {
         shader: &wgpu::ShaderModule,
         cull_mode: Option<wgpu::Face>,
     ) -> wgpu::RenderPipeline {
+        self.create_with_bind_group_layouts::<Vertex>(name, shader, cull_mode, &[])
+    }
+
+    /// Like [Self::create], but with additional bind group layouts bound after the uniforms -
+    /// used by pipelines with per-entity resources, such as the textured mesh renderer.
+    pub(crate) fn create_with_bind_group_layouts<Vertex: IsVertex>(
+        &self,
+        name: String,
+        shader: &wgpu::ShaderModule,
+        cull_mode: Option<wgpu::Face>,
+        extra_bind_group_layouts: &[&wgpu::BindGroupLayout],
+    ) -> wgpu::RenderPipeline {
         let device = self.context.wgpu_device.clone();
+
+        let mut bind_group_layouts = vec![&self.uniforms.render_bind_group_layout];
+        bind_group_layouts.extend_from_slice(extra_bind_group_layouts);
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some(&format!(
                 "`{}` `{:?}` pipeline layout",
                 name, self.pipeline_type
             )),
-            bind_group_layouts: &[&self.uniforms.render_bind_group_layout],
+            bind_group_layouts: &bind_group_layouts,
             push_constant_ranges: &[],
         });
 
@@ -223,7 +258,22 @@ impl PipelineBuilder {
             fragment: Some(wgpu::FragmentState {
                 module: shader,
                 entry_point: Some("fs_main"),
-                targets: &[Some(self.rgba_target.rgba_output_format.into())],
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: self.rgba_target.rgba_output_format,
+                    blend: match self.pipeline_type {
+                        // 2d renderables are drawn on top of the finished image. Without
+                        // blending, a color with alpha < 1 would be written straight into the
+                        // target's alpha channel and punch a hole into the view instead of
+                        // being composited onto the image.
+                        PipelineType::Pixel => Some(wgpu::BlendState::ALPHA_BLENDING),
+                        // The scene is rendered into its own texture whose alpha channel *is*
+                        // the opacity mask which the distortion pass blends with the background
+                        // (`mix(background, foreground, foreground.a)`), so it must be written
+                        // through unmodified here.
+                        PipelineType::Scene => None,
+                    },
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
                 compilation_options: Default::default(),
             }),
             primitive: wgpu::PrimitiveState {

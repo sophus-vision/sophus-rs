@@ -6,10 +6,12 @@ use sophus_lie::{
 };
 
 mod clipping_planes;
+mod frusta;
 mod intrinsics;
 mod properties;
 
 pub use clipping_planes::*;
+pub use frusta::*;
 pub use intrinsics::*;
 pub use properties::*;
 

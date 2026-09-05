@@ -68,11 +68,19 @@ impl ImageView {
         if let Some(frame) = packet.frame {
             let new_camera_properties = frame.camera_properties().clone();
 
-            // We got a new frame, hence we need to clear all renderables and then add the
-            // intrinsics and background image if present. The easiest and most error-proof way to
-            // do this is to create a new SceneRenderer and PixelRenderer and replace the old ones.
-            view.renderer = OffscreenRenderer::new(context, &new_camera_properties);
-
+            // A new frame clears all renderables. Only the image size forces the renderer to be
+            // rebuilt - it determines the size of every texture - while the intrinsics, the
+            // clipping planes and the background image are simply updated in place. Rebuilding
+            // unconditionally recompiles every pipeline, which costs far more than rendering the
+            // frame does.
+            if view.renderer.intrinsics().image_size()
+                != new_camera_properties.intrinsics.image_size()
+            {
+                view.renderer = OffscreenRenderer::new(context, &new_camera_properties);
+            } else {
+                view.renderer.clear_renderables();
+            }
+            view.renderer.camera_properties.clipping_planes = new_camera_properties.clipping_planes;
             view.renderer
                 .reset_2d_frame(&new_camera_properties.intrinsics, frame.maybe_image());
         }

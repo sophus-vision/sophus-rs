@@ -59,11 +59,14 @@ pub async fn run_offscreen() {
 
     save_as_png(&result.rgba_image.image_view(), "rgba.png").unwrap();
 
-    let color_mapped_depth = result.depth_image.color_mapped();
+    let color_mapped_depth = result.inverse_distance_image.color_mapped();
     save_as_png(&color_mapped_depth.image_view(), "color_mapped_depth.png").unwrap();
 
     save_as_tiff(
-        &result.depth_image.metric_depth().image_view(),
+        &result
+            .inverse_distance_image
+            .metric_z(&sim.intrinsics())
+            .image_view(),
         "depth.tiff",
     )
     .unwrap();

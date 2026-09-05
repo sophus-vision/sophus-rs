@@ -10,11 +10,15 @@ use crate::{
     },
     prelude::*,
     renderables::LineSegments3,
-    uniform_buffers::VertexShaderUniformBuffers,
+    scene_renderer::SceneView,
+    uniform_buffers::{
+        MAX_SCENE_ENTITIES,
+        VertexShaderUniformBuffers,
+    },
 };
 
 pub(crate) struct Line3dEntity {
-    pub(crate) vertex_data: Vec<LineVertex3>,
+    pub(crate) instance_count: u32,
     pub(crate) vertex_buffer: wgpu::Buffer,
     pub(crate) world_from_entity: Isometry3F64,
 }
@@ -33,18 +37,7 @@ impl Line3dEntity {
                 _color: [line.color.r, line.color.g, line.color.b, line.color.a],
                 _line_width: line.line_width,
             };
-            let v1 = LineVertex3 {
-                _p0: [p0[0], p0[1], p0[2]],
-                _p1: [p1[0], p1[1], p1[2]],
-                _color: [line.color.r, line.color.g, line.color.b, line.color.a],
-                _line_width: line.line_width,
-            };
             vertex_data.push(v0);
-            vertex_data.push(v0);
-            vertex_data.push(v1);
-            vertex_data.push(v0);
-            vertex_data.push(v1);
-            vertex_data.push(v1);
         }
 
         let vertex_buffer =
@@ -57,7 +50,7 @@ impl Line3dEntity {
                 });
 
         Self {
-            vertex_data,
+            instance_count: vertex_data.len() as u32,
             vertex_buffer,
             world_from_entity: lines.world_from_entity,
         }
@@ -97,23 +90,34 @@ impl SceneLineRenderer {
     pub(crate) fn paint<'rp>(
         &'rp self,
         render_context: &RenderContext,
-        scene_from_camera: &Isometry3F64,
-        world_from_scene: &Isometry3F64,
+        view: &SceneView,
         uniforms: &'rp VertexShaderUniformBuffers,
         render_pass: &mut wgpu::RenderPass<'rp>,
+        entity_slot: &mut u32,
     ) {
         render_pass.set_pipeline(&self.pipeline);
 
         for line in self.line_table.values() {
-            uniforms
+            if *entity_slot >= MAX_SCENE_ENTITIES {
+                log::warn!("more than {MAX_SCENE_ENTITIES} scene entities - skipping the rest");
+                break;
+            }
+            let pose_offset = uniforms
                 .camera_from_entity_pose_buffer
                 .update_given_camera_and_entity(
                     &render_context.wgpu_queue,
-                    &(world_from_scene * scene_from_camera),
+                    *entity_slot,
+                    &view.world_from_camera,
                     &line.world_from_entity,
+                    view.light_in_world,
+                    // a line and a point are already edges
+                    false,
                 );
+            *entity_slot += 1;
+
+            render_pass.set_bind_group(0, &uniforms.render_bind_group, &[pose_offset]);
             render_pass.set_vertex_buffer(0, line.vertex_buffer.slice(..));
-            render_pass.draw(0..line.vertex_data.len() as u32, 0..1);
+            render_pass.draw(0..6, 0..line.instance_count);
         }
     }
 }

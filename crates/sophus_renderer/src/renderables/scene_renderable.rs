@@ -2,6 +2,7 @@ mod axes;
 
 pub use axes::*;
 use sophus_autodiff::linalg::SVec;
+use sophus_image::ArcImage4U8;
 use sophus_lie::{
     Isometry3,
     Isometry3F64,
@@ -24,15 +25,32 @@ pub enum SceneRenderable {
     Point(PointCloud3),
     /// 3D mesh
     Mesh3(TriangleMesh3),
+    /// 3D texture-mapped mesh
+    TexturedMesh3(TexturedTriangleMesh3),
 }
 
 impl SceneRenderable {
+    /// Draw this entity as edges rather than as surfaces.
+    ///
+    /// Per entity, so that one thing can be opened up while the rest of the scene stays solid -
+    /// the view's own wireframe toggle turns everything on at once, and either of the two is
+    /// enough. Lines and points have no surface to open up, so they are unaffected.
+    pub fn wireframe(mut self, wireframe: bool) -> Self {
+        match &mut self {
+            SceneRenderable::Mesh3(mesh) => mesh.wireframe = wireframe,
+            SceneRenderable::TexturedMesh3(mesh) => mesh.wireframe = wireframe,
+            SceneRenderable::Line(_) | SceneRenderable::Point(_) => {}
+        }
+        self
+    }
+
     /// Get scene from entity
     pub fn world_from_entity(&self) -> Isometry3F64 {
         match self {
             SceneRenderable::Line(lines) => lines.world_from_entity,
             SceneRenderable::Point(points) => points.world_from_entity,
             SceneRenderable::Mesh3(mesh) => mesh.world_from_entity,
+            SceneRenderable::TexturedMesh3(mesh) => mesh.world_from_entity,
         }
     }
 }
@@ -87,6 +105,7 @@ pub fn named_mesh3_at(
         name: name.to_string(),
         triangles: mesh.triangles,
         world_from_entity,
+        wireframe: false,
     };
 
     SceneRenderable::Mesh3(mesh)
@@ -97,7 +116,13 @@ pub fn named_mesh3(name: impl ToString, mesh: TriangleMesh3) -> SceneRenderable 
     named_mesh3_at(name, mesh, Isometry3::identity())
 }
 
-/// make 3d points at a given pose
+/// The three principal rings of each ellipsoid: outlines of where it meets its own xy, yz and zx
+/// planes, in lines of `line_width` view-port pixels.
+///
+/// A field of solid ellipsoids is an opaque mass which hides the scene and each other, which is
+/// no way to look at a set of covariances. Rings show the same shape and leave everything behind
+/// them visible. The alternative is a shell - the same ellipsoid with an alpha below one - which
+/// keeps the surface but tints whatever is behind it.
 pub fn make_point3_at(
     name: impl ToString,
     arr: &[impl HasToVec3F32],
@@ -177,6 +202,7 @@ pub fn make_mesh3_at(
         name: name.to_string(),
         triangles: vec![],
         world_from_entity,
+        wireframe: false,
     };
 
     for (trig, color) in arr {
@@ -202,12 +228,15 @@ pub fn make_mesh3(name: impl ToString, arr: &[([impl HasToVec3F32; 3], Color)]) 
 pub fn make_textured_mesh3_at(
     name: impl ToString,
     arr: &[[(impl HasToVec3F32, impl HasToVec2F32); 3]],
+    texture: ArcImage4U8,
     world_from_entity: Isometry3F64,
-) -> TexturedTriangleMesh3 {
+) -> SceneRenderable {
     let mut mesh = TexturedTriangleMesh3 {
         name: name.to_string(),
         triangles: vec![],
+        texture,
         world_from_entity,
+        wireframe: false,
     };
 
     for trig in arr {
@@ -221,15 +250,16 @@ pub fn make_textured_mesh3_at(
         });
     }
 
-    mesh
+    SceneRenderable::TexturedMesh3(mesh)
 }
 
 /// make 3d textured mesh
 pub fn make_textured_mesh3(
     name: impl ToString,
     arr: &[[(impl HasToVec3F32, impl HasToVec2F32); 3]],
-) -> TexturedTriangleMesh3 {
-    make_textured_mesh3_at(name, arr, Isometry3::identity())
+    texture: ArcImage4U8,
+) -> SceneRenderable {
+    make_textured_mesh3_at(name, arr, texture, Isometry3::identity())
 }
 
 /// 3D line
@@ -256,7 +286,11 @@ pub struct Point3 {
     pub point_size: f32,
 }
 
-/// 3D triangle
+/// An ellipsoid of the scene.
+///
+/// Ellipsoids are traced rather than rasterized - intersected with the ray through each pixel -
+/// so they are as round as the shape says at any distance and under any distortion, rather than
+/// as round as the triangles spent on them. A sphere is one of these, see [Ellipsoid3::sphere].
 #[derive(Clone, Debug)]
 pub struct Triangle3 {
     /// Vertex 0
@@ -339,7 +373,11 @@ pub struct PointCloud3 {
     pub world_from_entity: Isometry3F64,
 }
 
-/// 3D lines
+/// A capsule: every point within `radius` of the segment from `from` to `to`.
+///
+/// The shape to reach for when something needs thickness in the scene rather than on the screen -
+/// a link of a kinematic chain, the shaft of an arrow, a line which should stay round as the
+/// camera comes close. Its hemispherical ends mean two of them meeting at a joint show no seam.
 #[derive(Clone, Debug)]
 pub struct LineSegments3 {
     /// Name of the entity
@@ -357,6 +395,9 @@ pub struct TriangleMesh3 {
     pub name: String,
     /// List of triangles
     pub triangles: Vec<Triangle3>,
+    /// Draw this entity as edges rather than as surfaces, whatever the rest of the scene does.
+    /// The view has a wireframe toggle of its own, and either of the two turns this on.
+    pub wireframe: bool,
     /// world-anchored pose of the entity
     pub world_from_entity: Isometry3F64,
 }
@@ -368,6 +409,11 @@ pub struct TexturedTriangleMesh3 {
     pub name: String,
     /// List of textured triangles
     pub triangles: Vec<TexturedTriangle3>,
+    /// Texture the triangles are mapped to
+    pub texture: ArcImage4U8,
+    /// Draw this entity as edges rather than as surfaces, whatever the rest of the scene does.
+    /// The view has a wireframe toggle of its own, and either of the two turns this on.
+    pub wireframe: bool,
     /// world-anchored pose of the entity
     pub world_from_entity: Isometry3F64,
 }

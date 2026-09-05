@@ -1,6 +1,7 @@
 use core::borrow::Borrow;
 
 use sophus_autodiff::manifold::IsVariable;
+use sophus_geo::UnitVector3;
 use sophus_image::ImageSize;
 
 use crate::{
@@ -158,6 +159,21 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
             PerspectiveCameraEnum::KannalaBrandt(camera) => camera.cam_unproj_with_z(pixel, z),
             PerspectiveCameraEnum::BrownConrady(camera) => camera.cam_unproj_with_z(pixel, z),
             PerspectiveCameraEnum::EnhancedUnified(camera) => camera.cam_unproj_with_z(pixel, z),
+        }
+    }
+
+    fn cam_unproj_to_unit_vector<P>(&self, pixel: P) -> UnitVector3<S, BATCH, DM, DN>
+    where
+        P: Borrow<S::Vector<2>>,
+    {
+        let pixel = pixel.borrow();
+        match self {
+            PerspectiveCameraEnum::Pinhole(camera) => camera.cam_unproj_to_unit_vector(pixel),
+            PerspectiveCameraEnum::KannalaBrandt(camera) => camera.cam_unproj_to_unit_vector(pixel),
+            PerspectiveCameraEnum::BrownConrady(camera) => camera.cam_unproj_to_unit_vector(pixel),
+            PerspectiveCameraEnum::EnhancedUnified(camera) => {
+                camera.cam_unproj_to_unit_vector(pixel)
+            }
         }
     }
 

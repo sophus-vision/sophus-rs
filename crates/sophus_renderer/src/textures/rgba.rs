@@ -94,10 +94,9 @@ impl RgbdTexture {
                     sample_count: SOPHUS_RENDER_MULTISAMPLE_COUNT,
                     dimension: wgpu::TextureDimension::D2,
                     format: wgpu::TextureFormat::Rgba8Unorm,
-                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                        | wgpu::TextureUsages::COPY_SRC
-                        | wgpu::TextureUsages::TEXTURE_BINDING,
-                    view_formats: &[wgpu::TextureFormat::Rgba8UnormSrgb],
+                    // only ever a render attachment which is resolved into `resolved_texture`
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                    view_formats: &[],
                 });
 
         let multisample_texture_view =
@@ -116,10 +115,10 @@ impl RgbdTexture {
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format: wgpu::TextureFormat::Rgba8Unorm,
+                // resolve target of the scene pass, and input of the distortion pass
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                    | wgpu::TextureUsages::COPY_SRC
                     | wgpu::TextureUsages::TEXTURE_BINDING,
-                view_formats: &[wgpu::TextureFormat::Rgba8UnormSrgb],
+                view_formats: &[],
             });
 
         let resolved_texture_view =
@@ -142,7 +141,7 @@ impl RgbdTexture {
                     | wgpu::TextureUsages::COPY_SRC
                     | wgpu::TextureUsages::TEXTURE_BINDING
                     | wgpu::TextureUsages::STORAGE_BINDING,
-                view_formats: &[wgpu::TextureFormat::Rgba8UnormSrgb],
+                view_formats: &[],
             });
 
         let final_texture_view = final_texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -210,29 +209,34 @@ impl RgbdTexture {
 
         context.wgpu_queue.submit(Some(command_encoder.finish()));
 
-        #[allow(unused_assignments)]
-        let rgba_image;
-        {
-            // Wait for buffer to be mapped and retrieve data
-            let buffer_slice = buffer.slice(..);
-            buffer_slice.map_async(wgpu::MapMode::Read, move |_result| {});
-            context
-                .wgpu_device
-                .poll(wgpu::PollType::wait_indefinitely())
-                .unwrap();
+        // Wait for the buffer to be mapped, and retrieve the data.
+        let buffer_slice = buffer.slice(..);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            let _ = sender.send(result);
+        });
+        context
+            .wgpu_device
+            .poll(wgpu::PollType::wait_indefinitely())
+            .unwrap();
+        // `poll` returns once the callback has run, so this does not block further.
+        receiver
+            .recv()
+            .expect("the map_async callback was not invoked")
+            .expect("failed to map the rgba staging buffer");
 
-            let data = buffer_slice.get_mapped_range();
-
-            let view = ImageView4U8::from_stride_and_slice(
-                ImageSize {
-                    width: w as usize,
-                    height: h as usize,
-                },
-                (bytes_per_row / Self::BYTES_PER_PIXEL_U8) as usize,
-                bytemuck::cast_slice(&data[..]),
-            );
-            rgba_image = ArcImage4U8::make_copy_from(&view);
-        }
+        let data = buffer_slice.get_mapped_range();
+        let view = ImageView4U8::from_stride_and_slice(
+            ImageSize {
+                width: w as usize,
+                height: h as usize,
+            },
+            (bytes_per_row / Self::BYTES_PER_PIXEL_U8) as usize,
+            bytemuck::cast_slice(&data[..]),
+        );
+        let rgba_image = ArcImage4U8::make_copy_from(&view);
+        drop(data);
+        buffer.unmap();
 
         rgba_image
     }

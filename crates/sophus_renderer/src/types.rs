@@ -8,7 +8,7 @@ use sophus_image::ArcImage4U8;
 use crate::{
     offscreen_renderer::OffscreenRenderer,
     renderables::Color,
-    textures::DepthImage,
+    textures::InverseDistanceImage,
 };
 
 /// The intermediate render result.
@@ -46,8 +46,8 @@ pub struct FinalRenderResult {
     /// depth egui texture id
     pub depth_egui_tex_id: egui::TextureId,
 
-    /// depth image - on the CPU
-    pub depth_image: DepthImage,
+    /// inverse distance image - on the CPU
+    pub inverse_distance_image: InverseDistanceImage,
 }
 
 /// aspect ratio
@@ -112,18 +112,37 @@ impl TranslationAndScaling {
             xy[1] * self.scaling[1] + self.translation[1],
         )
     }
+
+    /// apply the inverse of translation and scaling
+    pub fn apply_inverse(&self, xy: VecF64<2>) -> VecF64<2> {
+        VecF64::<2>::new(
+            (xy[0] - self.translation[0]) / self.scaling[0],
+            (xy[1] - self.translation[1]) / self.scaling[1],
+        )
+    }
+
+    /// inverse
+    pub fn inverse(&self) -> Self {
+        TranslationAndScaling {
+            translation: VecF64::<2>::new(
+                -self.translation[0] / self.scaling[0],
+                -self.translation[1] / self.scaling[1],
+            ),
+            scaling: VecF64::<2>::new(1.0 / self.scaling[0], 1.0 / self.scaling[1]),
+        }
+    }
 }
 
-/// focus point to overlay
-pub struct SceneFocusMarker {
+/// The point an interaction turns about, to overlay.
+pub struct ScenePivotMarker {
     /// color
     pub color: Color,
-    /// u viewport pixel
+    /// u image pixel
     pub u: f32,
-    /// v viewport pixel
+    /// v image pixel
     pub v: f32,
-    /// ndc_z
-    pub ndc_z: f32,
+    /// metric distance along the ray through (u, v)
+    pub distance: f32,
 }
 
 /// multisample count

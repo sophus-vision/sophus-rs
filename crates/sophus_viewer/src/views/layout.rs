@@ -8,13 +8,16 @@ pub struct WindowPlacement {
     pub view_label: String,
     /// The rectangle representing the position and size of the window.
     pub rect: egui::Rect,
+    /// The size of the rendered image inside the window, i.e. [Self::rect] without the border
+    /// and the (optional) title bar.
+    pub content_size: egui::Vec2,
 }
 
 impl WindowPlacement {
     pub(crate) fn viewport_size(&self) -> ImageSize {
         ImageSize {
-            width: self.rect.width().ceil() as usize,
-            height: self.rect.height().ceil() as usize,
+            width: self.content_size.x.ceil() as usize,
+            height: self.content_size.y.ceil() as usize,
         }
     }
 }
@@ -80,6 +83,7 @@ impl WindowArea {
                     egui::Pos2::new(x_offset, y_offset),
                     egui::Vec2::new(w + Self::BORDER, h + Self::BORDER + bar_size),
                 ),
+                content_size: egui::Vec2::new(w, h),
             });
 
             x_offset += w + Self::BORDER;
@@ -160,7 +164,7 @@ pub(crate) fn show_image(
             .show(ctx, |ui| {
                 ui.add(
                     egui::Image::new(egui::load::SizedTexture {
-                        size: placement.rect.size(),
+                        size: placement.content_size,
                         id: egui_texture,
                     })
                     .shrink_to_fit()
@@ -172,11 +176,6 @@ pub(crate) fn show_image(
             .inner
             .unwrap()
     } else {
-        let bar_size = if show_title_bars {
-            WindowArea::BAR_SIZE
-        } else {
-            0.0
-        };
         egui::Window::new(placement.view_label.clone())
             .title_bar(show_title_bars)
             .open(&mut enabled)
@@ -189,15 +188,12 @@ pub(crate) fn show_image(
             .show(ctx, |ui| {
                 ui.add(
                     egui::Image::new(egui::load::SizedTexture {
-                        size: placement.rect.size(),
+                        size: placement.content_size,
                         id: egui_texture,
                     })
                     .maintain_aspect_ratio(false)
                     .sense(egui::Sense::click_and_drag())
-                    .fit_to_exact_size(egui::Vec2::new(
-                        placement.rect.width() - WindowArea::BORDER,
-                        placement.rect.height() - WindowArea::BORDER - bar_size,
-                    )),
+                    .fit_to_exact_size(placement.content_size),
                 )
             })
             .unwrap()

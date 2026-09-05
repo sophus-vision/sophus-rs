@@ -1,6 +1,5 @@
 use eframe::egui;
 use sophus_autodiff::linalg::VecF64;
-use sophus_image::ImageSize;
 use sophus_lie::{
     Isometry3,
     Isometry3F64,
@@ -12,7 +11,7 @@ use sophus_renderer::{
 
 use crate::{
     interactions::{
-        SceneFocus,
+        ScenePivot,
         ViewportScale,
     },
     prelude::*,
@@ -26,7 +25,7 @@ pub(crate) struct InplaneScrollState {}
 pub struct InplaneInteraction {
     pub(crate) view_name: String,
     pub(crate) maybe_scroll_state: Option<InplaneScrollState>,
-    pub(crate) maybe_scene_focus: Option<SceneFocus>,
+    pub(crate) maybe_pivot: Option<ScenePivot>,
     pub(crate) zoom2d: TranslationAndScaling,
 }
 
@@ -35,7 +34,7 @@ impl InplaneInteraction {
         InplaneInteraction {
             view_name: view_name.to_string(),
             maybe_scroll_state: None,
-            maybe_scene_focus: None,
+            maybe_pivot: None,
             zoom2d: TranslationAndScaling::identity(),
         }
     }
@@ -49,26 +48,17 @@ impl InplaneInteraction {
         cam: &RenderIntrinsics,
         response: &egui::Response,
         scales: &ViewportScale,
-        view_port_size: ImageSize,
     ) {
-        let last_pointer_pos = response.ctx.input(|i| i.pointer.latest_pos());
-        if last_pointer_pos.is_none() {
+        let Some(last_pointer_pos) = response.ctx.input(|i| i.pointer.latest_pos()) else {
+            return;
+        };
+        if !response.rect.contains(last_pointer_pos) {
             return;
         }
-
-        let last_pointer_pos = last_pointer_pos.unwrap();
         let uv_view_port = egui::Pos2::new(
             (last_pointer_pos - response.rect.min)[0],
             (last_pointer_pos - response.rect.min)[1],
         );
-
-        if uv_view_port.x < 0.0
-            || uv_view_port.y < 0.0
-            || uv_view_port.x >= view_port_size.width as f32
-            || uv_view_port.y >= view_port_size.height as f32
-        {
-            return;
-        }
 
         let smooth_scroll_delta = response.ctx.input(|i| i.smooth_scroll_delta);
 
@@ -90,9 +80,12 @@ impl InplaneInteraction {
 
             let uv_in_virtual_camera = zoom2d.apply(scales.apply(uv_view_port));
 
-            self.maybe_scene_focus = Some(SceneFocus {
-                ndc_z: 0.5,
-                uv_in_virtual_camera,
+            // The pivot marker is a 2d renderable given in image coordinates, hence it sticks to
+            // the image point under the pointer. An image view has no scene behind it, so there
+            // is no distance to that point - only the pixel matters.
+            self.maybe_pivot = Some(ScenePivot {
+                pixel: uv_in_virtual_camera,
+                distance: f64::INFINITY,
             });
 
             let zoomed_width = (zoomed_width * (smooth_scroll_delta.y * 0.001).exp())
@@ -126,8 +119,7 @@ impl InplaneInteraction {
         cam: &RenderIntrinsics,
         response: &egui::Response,
         scales: &ViewportScale,
-        view_port_size: ImageSize,
     ) {
-        self.process_scrolls(active_view, cam, response, scales, view_port_size);
+        self.process_scrolls(active_view, cam, response, scales);
     }
 }

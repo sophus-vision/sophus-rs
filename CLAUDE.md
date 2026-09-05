@@ -23,6 +23,7 @@ just doc            # cargo +nightly doc --no-deps --all-features + doctests
 just solver-bench          # sparse solver benchmarks
 just ba-bench              # bundle adjustment benchmark (standard vs Schur)
 just kb-projection-bench   # KB projection SIMD benchmark (requires nightly)
+just render-bench          # offscreen rendering benchmark (needs a GPU)
 
 # SIMD (requires nightly)
 just build-simd     # cargo +nightly build --release --all-targets --features simd
@@ -33,6 +34,10 @@ To run a single test:
 ```sh
 cargo test --release --features std <test_name> -- --nocapture
 ```
+
+`crates/sophus_renderer/tests/offscreen_regression.rs` renders small scenes head-lessly and
+asserts on the resulting pixels. Those tests skip themselves, with a message, when the host has no
+GPU — so a green run there does not by itself mean they executed.
 
 To run the interactive demo app (bundle adjustment, optimization visualizations):
 ```sh
@@ -62,12 +67,28 @@ cargo run --release --features std --bin demo
 - `sophus_opt` — Unified Optimizer (NLLS), inequality constraints (IPM, SQP), phase-1 feasibility, robust kernels, BA problem
 
 **Graphics:**
-- `sophus_renderer` — `wgpu`-based rendering
+- `sophus_renderer` — `wgpu`-based rendering; see **Rendering** below
 - `sophus_viewer` — Interactive viewer with `egui` + `wgpu`
 - `sophus_sim` — Camera simulator
 
 **Umbrella:**
 - `sophus` — Re-exports all sub-crates; use `sophus::prelude::*` for traits
+
+## Rendering
+
+A frame is drawn in two stages. The scene is **rasterized** through an undistorted *intermediate*
+- one plane fitted to the visible region, or five 90° frustum faces when the field of view is too
+wide for a plane - and a compute pass then **warps** that into the distorted image the camera
+model describes. `Intermediate::choose` picks between the two, and is the only place that decision
+is made.
+
+One convention worth knowing before touching any of it:
+
+- **The depth buffer holds inverse *distance* along the ray**, not `z` along the optical axis: `z`
+  is degenerate at 90° off axis, where a 180° camera has to work. Zero means nothing there.
+  `InverseDistanceImage::metric_z` converts for anything wanting the rgb-d convention. The name
+  "inverse depth" is kept for the *parameterisation* - a bearing and a range - which is what
+  `sophus_geo` and the demos of that name mean by it.
 
 ## Key Design Patterns
 

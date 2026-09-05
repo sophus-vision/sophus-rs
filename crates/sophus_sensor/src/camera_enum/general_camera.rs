@@ -1,5 +1,6 @@
 use core::borrow::Borrow;
 
+use sophus_geo::UnitVector3;
 use sophus_image::ImageSize;
 
 use crate::{
@@ -86,6 +87,17 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         match self {
             GeneralCameraEnum::Perspective(camera) => camera.cam_unproj_with_z(pixel, z),
             GeneralCameraEnum::Orthographic(camera) => camera.cam_unproj_with_z(pixel, z),
+        }
+    }
+
+    fn cam_unproj_to_unit_vector<P>(&self, pixel: P) -> UnitVector3<S, BATCH, DM, DN>
+    where
+        P: Borrow<S::Vector<2>>,
+    {
+        let pixel = pixel.borrow();
+        match self {
+            GeneralCameraEnum::Perspective(camera) => camera.cam_unproj_to_unit_vector(pixel),
+            GeneralCameraEnum::Orthographic(camera) => camera.cam_unproj_to_unit_vector(pixel),
         }
     }
 

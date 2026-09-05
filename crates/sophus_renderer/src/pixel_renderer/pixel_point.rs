@@ -15,7 +15,7 @@ use crate::{
 };
 
 pub(crate) struct Point2dEntity {
-    pub(crate) vertex_data: Vec<PointVertex2>,
+    pub(crate) instance_count: u32,
     pub(crate) vertex_buffer: wgpu::Buffer,
 }
 
@@ -29,9 +29,7 @@ impl Point2dEntity {
                 _color: [point.color.r, point.color.g, point.color.b, point.color.a],
                 _point_size: point.point_size,
             };
-            for _i in 0..6 {
-                vertex_data.push(v);
-            }
+            vertex_data.push(v);
         }
 
         let vertex_buffer =
@@ -44,7 +42,7 @@ impl Point2dEntity {
                 });
 
         Self {
-            vertex_data,
+            instance_count: vertex_data.len() as u32,
             vertex_buffer,
         }
     }
@@ -54,6 +52,8 @@ impl Point2dEntity {
 pub struct PixelPointRenderer {
     pub(crate) pipeline: wgpu::RenderPipeline,
     pub(crate) points_table: BTreeMap<String, Point2dEntity>,
+    /// The point an interaction turns about - written every frame it is shown, rather than being
+    /// an entity of the scene.
     pub(crate) show_interaction_marker: Mutex<bool>,
     pub(crate) interaction_vertex_buffer: wgpu::Buffer,
 }
@@ -75,19 +75,14 @@ impl PixelPointRenderer {
             ),
         });
 
-        let mut interaction_vertices = vec![];
-        for _i in 0..6 {
-            interaction_vertices.push(PointVertex2 {
-                _pos: [0.0, 0.0],
-                _color: [1.0, 0.0, 0.0, 1.0],
-                _point_size: 5.0,
-            });
-        }
-
         let interaction_vertex_buffer =
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("interaction vertex buffer"),
-                contents: bytemuck::cast_slice(&interaction_vertices),
+                contents: bytemuck::cast_slice(&[PointVertex2 {
+                    _pos: [0.0, 0.0],
+                    _color: [1.0, 0.0, 0.0, 1.0],
+                    _point_size: 5.0,
+                }]),
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             });
 
@@ -97,22 +92,20 @@ impl PixelPointRenderer {
                 &point_shader,
                 None,
             ),
-            interaction_vertex_buffer,
-            show_interaction_marker: Mutex::new(false),
             points_table: BTreeMap::new(),
+            show_interaction_marker: Mutex::new(false),
+            interaction_vertex_buffer,
         }
     }
 
     pub(crate) fn paint<'rp>(&'rp self, render_pass: &mut wgpu::RenderPass<'rp>) {
         render_pass.set_pipeline(&self.pipeline);
-        for (_name, point) in self.points_table.iter() {
+        for point in self.points_table.values() {
             render_pass.set_vertex_buffer(0, point.vertex_buffer.slice(..));
-            render_pass.draw(0..point.vertex_data.len() as u32, 0..1);
+            render_pass.draw(0..6, 0..point.instance_count);
         }
 
-        let show_interaction_marker = self.show_interaction_marker.lock();
-
-        if *show_interaction_marker {
+        if *self.show_interaction_marker.lock() {
             render_pass.set_vertex_buffer(0, self.interaction_vertex_buffer.slice(..));
             render_pass.draw(0..6, 0..1);
         }

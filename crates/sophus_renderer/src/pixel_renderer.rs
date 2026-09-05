@@ -17,9 +17,12 @@ use crate::{
         pixel_point::PixelPointRenderer,
     },
     prelude::*,
-    types::SceneFocusMarker,
+    types::ScenePivotMarker,
     uniform_buffers::VertexShaderUniformBuffers,
 };
+
+/// How big the dot at the pivot is, in view-port pixels.
+const PIVOT_SIZE_PIXELS: f32 = 5.0;
 
 /// Renderer for pixel data
 pub struct PixelRenderer {
@@ -46,34 +49,33 @@ impl PixelRenderer {
         }
     }
 
+    /// The pivot an interaction turns about, drawn as a dot in the colour the marker arrives
+    /// with - how far away the point is, mapped the way the depth view maps it.
     pub(crate) fn show_interaction_marker(
         &self,
         context: &RenderContext,
-        marker: &Option<SceneFocusMarker>,
+        marker: &Option<ScenePivotMarker>,
     ) {
-        *self.point_renderer.show_interaction_marker.lock() = match marker {
-            Some(marker) => {
-                let mut vertex_data = vec![];
-
-                let depth_color = marker.color;
-
-                for _i in 0..6 {
-                    vertex_data.push(PointVertex2 {
-                        _pos: [marker.u, marker.v],
-                        _color: [depth_color.r, depth_color.g, depth_color.b, depth_color.a],
-                        _point_size: 5.0,
-                    });
-                }
-                context.wgpu_queue.write_buffer(
-                    &self.point_renderer.interaction_vertex_buffer,
-                    0,
-                    bytemuck::cast_slice(&vertex_data),
-                );
-
-                true
-            }
-            None => false,
+        let Some(marker) = marker else {
+            *self.point_renderer.show_interaction_marker.lock() = false;
+            return;
         };
+
+        context.wgpu_queue.write_buffer(
+            &self.point_renderer.interaction_vertex_buffer,
+            0,
+            bytemuck::cast_slice(&[PointVertex2 {
+                _pos: [marker.u, marker.v],
+                _color: [
+                    marker.color.r,
+                    marker.color.g,
+                    marker.color.b,
+                    marker.color.a,
+                ],
+                _point_size: PIVOT_SIZE_PIXELS,
+            }]),
+        );
+        *self.point_renderer.show_interaction_marker.lock() = true;
     }
 
     pub(crate) fn paint<'rp>(
@@ -96,10 +98,11 @@ impl PixelRenderer {
             occlusion_query_set: None,
             timestamp_writes: None,
         });
+        // 2d renderables have no entity pose; bind the first (identity) pose slot
         render_pass.set_bind_group(
             0,
             &self.pixel_pipeline_builder.uniforms.render_bind_group,
-            &[],
+            &[0],
         );
 
         self.line_renderer.paint(&mut render_pass);

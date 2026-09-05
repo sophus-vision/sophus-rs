@@ -1,7 +1,5 @@
 @group(0) @binding(0)
 var<uniform> camera: CameraProperties;
-@group(0) @binding(1)
-var<uniform> zoom: Zoom2d;
 @group(0) @binding(2)
 var<uniform> pinhole: PinholeModel;
 @group(0) @binding(3)
@@ -22,8 +20,8 @@ fn vs_main(
      @location(3) line_width: f32,
      @builtin(vertex_index) idx: u32)-> VertexOut
 {
-    let projection0 = project_point(p0, view_uniform, pinhole, camera, zoom);
-    let projection1 = project_point(p1, view_uniform, pinhole, camera, zoom);
+    let projection0 = project_point(p0, view_uniform, pinhole, camera);
+    let projection1 = project_point(p1, view_uniform, pinhole, camera);
     let depth0 = projection0.z;
     let depth1 = projection1.z;
     let uv0 = projection0.uv_undistorted;
@@ -57,12 +55,16 @@ fn vs_main(
     }
 
     var out: VertexOut;
-    out.position = pixel_and_z_to_clip(uv, z, camera, zoom);
+    out.position = pixel_and_z_to_clip(uv, z, camera, pinhole);
     out.rgba = color;
     return out;
 }
 
+// Note: the scene is rendered into a texture which the distortion pass composites over the
+// background image, so the color has to be *premultiplied* by alpha. Multisample resolve
+// averages covered samples with the transparent clear color, which yields premultiplied
+// coverage - compositing that as if it were straight alpha darkens every antialiased edge.
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    return in.rgba;
+    return vec4<f32>(in.rgba.rgb * in.rgba.a, in.rgba.a);
 }

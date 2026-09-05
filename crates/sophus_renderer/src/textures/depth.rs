@@ -13,7 +13,7 @@ use crate::{
     camera::ClippingPlanesF32,
     prelude::*,
     textures::{
-        depth_image::DepthImage,
+        inverse_distance_image::InverseDistanceImage,
         ndc_z_buffer::NdcZBuffer,
         visual_depth::VisualDepthTexture,
     },
@@ -116,7 +116,7 @@ pub async fn download_depth(
 
     // Here we await until the image is downloaded.
     rx.receive().await.unwrap().unwrap();
-    let depth_image;
+    let inverse_distance_image;
 
     #[allow(unused_assignments)]
     {
@@ -129,13 +129,13 @@ pub async fn download_depth(
             (bytes_per_row / DepthTextures::BYTES_PER_PIXEL) as usize,
             bytemuck::cast_slice(&data[..]),
         );
-        depth_image = ArcImageF32::make_copy_from(&view);
+        inverse_distance_image = ArcImageF32::make_copy_from(&view);
     }
     render_result.depth_staging_buffer.unmap();
-    let depth_image = DepthImage::new(depth_image, clipping_planes);
+    let inverse_distance_image = InverseDistanceImage::new(inverse_distance_image, clipping_planes);
 
     if show_depth {
-        let image_rgba = depth_image.color_mapped();
+        let image_rgba = inverse_distance_image.color_mapped();
 
         context.wgpu_queue.write_texture(
             wgpu::TexelCopyTextureInfo {
@@ -158,6 +158,6 @@ pub async fn download_depth(
         rgba_image: render_result.rgba_image.clone(),
         rgba_egui_tex_id: render_result.rgba_egui_tex_id,
         depth_egui_tex_id: render_result.depth_egui_tex_id,
-        depth_image,
+        inverse_distance_image,
     }
 }

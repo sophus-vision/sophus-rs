@@ -8,6 +8,7 @@ use sophus_lie::Isometry3F64;
 use crate::{
     RenderContext,
     camera::{
+        Intermediate,
         RenderCameraProperties,
         RenderIntrinsics,
     },
@@ -23,18 +24,26 @@ use crate::{
     },
     scene_renderer::{
         DistortionRenderer,
+        LIGHT_IN_CAMERA,
         Line3dEntity,
         Mesh3dEntity,
         Point3dEntity,
         SceneRenderer,
+        TexturedMeshEntity,
     },
-    textures::Textures,
+    textures::{
+        FaceTextures,
+        Textures,
+    },
     types::{
         RenderResult,
-        SceneFocusMarker,
+        ScenePivotMarker,
         TranslationAndScaling,
     },
-    uniform_buffers::VertexShaderUniformBuffers,
+    uniform_buffers::{
+        DrawStyle,
+        VertexShaderUniformBuffers,
+    },
 };
 
 /// Offscreen renderer
@@ -56,10 +65,11 @@ struct RenderParams {
     view_port_size: ImageSize,
     zoom: TranslationAndScaling,
     scene_from_camera: Isometry3F64,
-    maybe_marker: Option<SceneFocusMarker>,
-    compute_depth_texture: bool,
+    maybe_marker: Option<ScenePivotMarker>,
     backface_culling: bool,
     download_rgba: bool,
+    debug_frustum_planes: bool,
+    wireframe: bool,
 }
 
 /// Render builder
@@ -81,9 +91,10 @@ impl<'a> RenderBuilder<'a> {
                 zoom: TranslationAndScaling::identity(),
                 scene_from_camera,
                 maybe_marker: None,
-                compute_depth_texture: false,
                 backface_culling: false,
                 download_rgba: false,
+                debug_frustum_planes: false,
+                wireframe: false,
             },
             offscreen_renderer,
         }
@@ -96,20 +107,30 @@ impl<'a> RenderBuilder<'a> {
     }
 
     /// set interaction
-    pub fn interaction(mut self, marker: Option<SceneFocusMarker>) -> Self {
+    pub fn interaction(mut self, marker: Option<ScenePivotMarker>) -> Self {
         self.params.maybe_marker = marker;
-        self
-    }
-
-    /// set compute depth texture
-    pub fn compute_depth_texture(mut self, compute_depth_texture: bool) -> Self {
-        self.params.compute_depth_texture = compute_depth_texture;
         self
     }
 
     /// set backface culling
     pub fn backface_culling(mut self, backface_culling: bool) -> Self {
         self.params.backface_culling = backface_culling;
+        self
+    }
+
+    /// Tint the image by which frustum each pixel came from - a debug view of the intermediate
+    /// the scene was rendered into. A view which fits on a single plane gets one flat tint.
+    pub fn debug_frustum_planes(mut self, debug_frustum_planes: bool) -> Self {
+        self.params.debug_frustum_planes = debug_frustum_planes;
+        self
+    }
+
+    /// Draw everything as edges rather than as surfaces.
+    ///
+    /// A rasterized surface is drawn as the edges of its triangles, and a traced one as its
+    /// silhouette - which is the outline of the shape itself, not of any tessellation of it.
+    pub fn wireframe(mut self, wireframe: bool) -> Self {
+        self.params.wireframe = wireframe;
         self
     }
 
@@ -172,6 +193,20 @@ impl OffscreenRenderer {
         self.camera_properties.clone()
     }
 
+    /// Removes all renderables, but keeps the pipelines, textures and bind groups.
+    ///
+    /// This is what a view wants when a new frame arrives: recreating the whole renderer instead
+    /// rebuilds every pipeline and texture, which costs orders of magnitude more than rendering
+    /// the frame does.
+    pub fn clear_renderables(&mut self) {
+        self.scene.mesh_renderer.mesh_table.clear();
+        self.scene.textured_mesh_renderer.mesh_table.clear();
+        self.pixel.line_renderer.lines_table.clear();
+        self.pixel.point_renderer.points_table.clear();
+        self.scene.line_renderer.line_table.clear();
+        self.scene.point_renderer.point_table.clear();
+    }
+
     /// reset 2d frame
     pub fn reset_2d_frame(
         &mut self,
@@ -187,16 +222,25 @@ impl OffscreenRenderer {
                 height: image.image_size().height as u32,
                 depth_or_array_layers: 1,
             };
-            let texture = device.create_texture(&wgpu::TextureDescriptor {
-                size: texture_size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8Unorm,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                label: Some("dist_texture"),
-                view_formats: &[],
-            });
+            // A streaming view hands us a new image of the same size every frame, so reuse the
+            // texture rather than allocating a new one each time.
+            let reusable = self
+                .maybe_background_image
+                .as_ref()
+                .is_some_and(|texture| texture.size() == texture_size);
+            let texture = match reusable {
+                true => self.maybe_background_image.take().unwrap(),
+                false => device.create_texture(&wgpu::TextureDescriptor {
+                    size: texture_size,
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::Rgba8Unorm,
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                    label: Some("background image"),
+                    view_formats: &[],
+                }),
+            };
 
             self.render_context.wgpu_queue.write_texture(
                 wgpu::TexelCopyTextureInfo {
@@ -214,8 +258,14 @@ impl OffscreenRenderer {
                 texture.size(),
             );
 
+            if !reusable {
+                self.distortion.invalidate_bind_group();
+            }
             self.maybe_background_image = Some(texture);
         } else {
+            if self.maybe_background_image.is_some() {
+                self.distortion.invalidate_bind_group();
+            }
             self.maybe_background_image = None;
         }
     }
@@ -262,6 +312,15 @@ impl OffscreenRenderer {
                         Mesh3dEntity::new(&self.render_context, &mesh),
                     );
                 }
+                SceneRenderable::TexturedMesh3(mesh) => {
+                    let renderer = &mut self.scene.textured_mesh_renderer;
+                    let entity = TexturedMeshEntity::new(
+                        &self.render_context,
+                        &renderer.texture_bind_group_layout,
+                        &mesh,
+                    );
+                    renderer.mesh_table.insert(mesh.name.clone(), entity);
+                }
             }
         }
     }
@@ -278,56 +337,112 @@ impl OffscreenRenderer {
     fn render_impl(&mut self, params: &RenderParams) -> RenderResult {
         if self.textures.view_port_size != params.view_port_size {
             self.textures = Textures::new(&self.render_context, &params.view_port_size);
+            self.distortion.invalidate_bind_group();
         }
 
-        self.uniforms.update(
-            &self.render_context,
-            params.zoom,
-            &self.camera_properties,
-            params.view_port_size,
-        );
+        // The light rides the camera, a little up and to the side of the optical axis: a light
+        // exactly on the axis makes the shading term depend only on the angle between the normal
+        // and the view direction, so a sphere comes out radially symmetric - a flat disc with a
+        // vignette rather than a ball, with no terminator anywhere.
+        let light_in_world = (self.scene.world_from_scene * params.scene_from_camera)
+            .rotation()
+            .transform(LIGHT_IN_CAMERA);
+        // One plane, or several frusta for a field of view no plane holds.
+        let style = DrawStyle {
+            debug_frustum_planes: params.debug_frustum_planes,
+            wireframe: params.wireframe,
+        };
+        let intermediate = Intermediate::choose(&self.camera_properties.intrinsics, params.zoom);
+        let face_size = FaceTextures::face_size_for(params.view_port_size);
+        match &intermediate {
+            Intermediate::Plane(plane) => self.uniforms.update(
+                &self.render_context,
+                params.zoom,
+                &self.camera_properties,
+                params.view_port_size,
+                style,
+                *plane,
+            ),
+            Intermediate::Frusta(frusta) => {
+                self.textures.ensure_faces(&self.render_context, face_size);
+                self.uniforms.update_for_faces(
+                    &self.render_context,
+                    params.zoom,
+                    &self.camera_properties,
+                    params.view_port_size,
+                    frusta,
+                    style,
+                );
+            }
+        }
 
         let mut command_encoder = self
             .render_context
             .wgpu_device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
-        self.scene.paint(
-            &self.render_context,
-            &params.scene_from_camera,
-            &mut command_encoder,
-            &self.textures.rgbd,
-            &self.textures.depth,
-            params.backface_culling,
-        );
+        // All passes go into a single command buffer: wgpu inserts the barriers between them, and
+        // one submission per frame avoids the per-submit overhead of several.
+        match &intermediate {
+            Intermediate::Frusta(frusta) => {
+                let faces = self.textures.faces.as_ref().expect("just ensured to exist");
+                let (multisample_view, resolve_view, depth_view) = faces.face_attachments();
+                // one pose slot per entity *per face*, so the cursor runs across all of them
+                let mut entity_slot = 0;
+                for frustum in frusta {
+                    self.scene.paint_into(
+                        &self.render_context,
+                        &frustum.world_from_face(&params.scene_from_camera),
+                        light_in_world,
+                        &mut command_encoder,
+                        multisample_view,
+                        resolve_view,
+                        depth_view,
+                        &mut entity_slot,
+                        params.backface_culling,
+                    );
+                    faces.copy_face_into_atlas(&mut command_encoder, frustum.index() as u32);
+                    faces.resolve_face_depth(&mut command_encoder, frustum.index() as u32);
+                }
+                self.distortion.run_faces(
+                    &self.render_context,
+                    &mut command_encoder,
+                    &self.textures.rgbd,
+                    &self.textures.depth,
+                    faces,
+                    &self.maybe_background_image,
+                    &params.view_port_size,
+                );
+            }
+            Intermediate::Plane(_) => {
+                self.scene.paint(
+                    &self.render_context,
+                    &params.scene_from_camera,
+                    light_in_world,
+                    &mut command_encoder,
+                    &self.textures.rgbd,
+                    &self.textures.depth,
+                    params.backface_culling,
+                );
+                self.distortion.run(
+                    &self.render_context,
+                    &mut command_encoder,
+                    &self.textures.rgbd,
+                    &self.textures.depth,
+                    &self.maybe_background_image,
+                    &params.view_port_size,
+                );
+            }
+        }
 
-        self.render_context
-            .wgpu_queue
-            .submit(Some(command_encoder.finish()));
-
-        let command_encoder = self
-            .render_context
-            .wgpu_device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-        self.distortion.run(
-            &self.render_context,
-            command_encoder,
-            &self.textures.rgbd,
-            &self.textures.depth,
-            &self.maybe_background_image,
-            &params.view_port_size,
-        );
-
-        let mut command_encoder = self
-            .render_context
-            .wgpu_device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        // Note: the marker state has to be set before `paint`, which records the draw calls
+        // based on it - otherwise the marker would appear and disappear one frame late.
+        self.pixel
+            .show_interaction_marker(&self.render_context, &params.maybe_marker);
 
         self.pixel
             .paint(&mut command_encoder, &self.textures.rgbd.final_texture_view);
 
-        self.pixel
-            .show_interaction_marker(&self.render_context, &params.maybe_marker);
         self.render_context
             .wgpu_queue
             .submit(core::iter::once(command_encoder.finish()));
