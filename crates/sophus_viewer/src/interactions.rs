@@ -112,7 +112,9 @@ impl InteractionEnum {
             InteractionEnum::Orbital(orbital) => {
                 orbital.maybe_pointer_state.is_some() || orbital.maybe_scroll_state.is_some()
             }
-            InteractionEnum::InPlane(plane) => plane.maybe_scroll_state.is_some(),
+            InteractionEnum::InPlane(plane) => {
+                plane.maybe_pointer_state.is_some() || plane.maybe_scroll_state.is_some()
+            }
             InteractionEnum::No => false,
         }
     }

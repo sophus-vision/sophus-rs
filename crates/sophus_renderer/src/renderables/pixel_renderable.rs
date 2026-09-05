@@ -1,4 +1,7 @@
-use sophus_autodiff::linalg::SVec;
+use sophus_autodiff::linalg::{
+    MatF64,
+    SVec,
+};
 
 use crate::{
     prelude::*,
@@ -12,6 +15,8 @@ pub enum PixelRenderable {
     Line(LineSegments2),
     /// 2D point cloud
     Point(PointCloud2),
+    /// 2D ellipses
+    Ellipse(EllipseCloud2),
 }
 
 /// named line segments
@@ -122,6 +127,73 @@ pub struct Point2 {
     pub color: Color,
     /// Point size in pixels
     pub point_size: f32,
+}
+
+/// An ellipse of the image.
+///
+/// Unlike a point, whose size is in view-port pixels so that a marker stays the same size however
+/// the image is zoomed, an ellipse is a region *of the image* - the covariance of a reprojection,
+/// say - and grows with the zoom like the pixels it covers.
+#[derive(Clone, Debug)]
+pub struct Ellipse2 {
+    /// centre, in image pixels
+    pub center: SVec<f32, 2>,
+    /// The map taking the unit circle to this ellipse, in image pixels, so its columns are the
+    /// semi-axes. For a covariance, see [Ellipse2::from_covariance].
+    pub shape: MatF64<2, 2>,
+    /// Width of the outline in view-port pixels, or zero to fill the ellipse.
+    pub line_width: f32,
+    /// colour
+    pub color: Color,
+}
+
+impl Ellipse2 {
+    /// A circle of the given radius, in image pixels.
+    pub fn circle(center: SVec<f32, 2>, radius: f64, line_width: f32, color: Color) -> Self {
+        Ellipse2 {
+            center,
+            shape: MatF64::<2, 2>::identity() * radius,
+            line_width,
+            color,
+        }
+    }
+
+    /// The `k`-sigma ellipse of a covariance: the points within a Mahalanobis distance of `k`,
+    /// which is `{ c + k L u : |u| <= 1 }` for `sigma = L L^T`.
+    ///
+    /// Returns [None] when the covariance is not positive definite.
+    pub fn from_covariance(
+        center: SVec<f32, 2>,
+        covariance: MatF64<2, 2>,
+        k: f64,
+        line_width: f32,
+        color: Color,
+    ) -> Option<Self> {
+        let cholesky = covariance.cholesky()?;
+        Some(Ellipse2 {
+            center,
+            shape: cholesky.l() * k,
+            line_width,
+            color,
+        })
+    }
+}
+
+/// 2D ellipses
+#[derive(Clone, Debug)]
+pub struct EllipseCloud2 {
+    /// Name of the entity
+    pub name: String,
+    /// List of ellipses
+    pub ellipses: Vec<Ellipse2>,
+}
+
+/// named ellipses
+pub fn named_ellipse2(name: impl ToString, ellipses: Vec<Ellipse2>) -> PixelRenderable {
+    PixelRenderable::Ellipse(EllipseCloud2 {
+        name: name.to_string(),
+        ellipses,
+    })
 }
 
 /// 2D line segments

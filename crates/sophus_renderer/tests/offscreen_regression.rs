@@ -27,6 +27,7 @@ use sophus_lie::{
     IsAffineGroup,
     Isometry3,
     Isometry3F64,
+    Rotation2,
     Rotation3,
 };
 use sophus_renderer::{
@@ -36,6 +37,7 @@ use sophus_renderer::{
     camera::RenderCameraProperties,
     renderables::{
         Color,
+        Ellipse2,
         SceneRenderable,
         make_line2,
         make_mesh3,
@@ -45,6 +47,7 @@ use sophus_renderer::{
         make_point3_at,
         make_textured_mesh3,
         make_textured_mesh3_at,
+        named_ellipse2,
     },
     textures::download_depth,
 };
@@ -1504,6 +1507,112 @@ fn a_2d_point_is_round() {
     );
 }
 
+/// A 2d ellipse covers the area its shape says - `pi a b` - and the circle is the one whose shape
+/// is a scaled identity, so it agrees with the round point marker of the same radius.
+#[test]
+fn a_2d_ellipse_covers_the_area_of_its_shape() {
+    let Some((_context, mut renderer)) = renderer(pinhole()) else {
+        eprintln!("skipping: no GPU available");
+        return;
+    };
+
+    let shape: MatF64<2, 2> = Rotation2::<f64, 1, 0, 0>::exp(VecF64::<1>::new(0.6)).matrix()
+        * MatF64::<2, 2>::from_diagonal(&VecF64::<2>::new(40.0, 15.0));
+    renderer.update_pixels(vec![named_ellipse2(
+        "ellipse",
+        vec![Ellipse2 {
+            center: SVec::<f32, 2>::new(127.0, 127.0),
+            shape,
+            line_width: 0.0,
+            color: Color::red(),
+        }],
+    )]);
+    let image = render(&mut renderer, Isometry3F64::identity());
+
+    let (centre, drawn) = centroid(&image, is_red).expect("the ellipse is drawn");
+    let area = core::f64::consts::PI * 40.0 * 15.0;
+    assert!(
+        (drawn as f64 - area).abs() < 0.05 * area,
+        "an ellipse with semi-axes 40 and 15 covers {area:.0} pixels, but {drawn} are drawn"
+    );
+    assert!(
+        (centre - VecF64::<2>::new(127.0, 127.0)).norm() < 1.0,
+        "the ellipse is centred at {:?} rather than at its anchor",
+        centre.as_slice()
+    );
+
+    // rotated by the same angle, the extent along the major axis reaches 40 pixels from the centre
+    let major =
+        Rotation2::<f64, 1, 0, 0>::exp(VecF64::<1>::new(0.6)).matrix() * VecF64::<2>::new(1.0, 0.0);
+    for (name, at, inside) in [("just inside", 38.0, true), ("just outside", 42.0, false)] {
+        let probe = VecF64::<2>::new(127.0, 127.0) + major * at;
+        let p = image.pixel(probe[0].round() as usize, probe[1].round() as usize);
+        assert_eq!(
+            is_red([p[0], p[1], p[2], p[3]]),
+            inside,
+            "{name} the major axis, at {:?}, the ellipse reads {:?}",
+            probe.as_slice(),
+            [p[0], p[1], p[2]]
+        );
+    }
+}
+
+/// An ellipse is a region *of the image* - a reprojection covariance, say - so it grows with the
+/// 2d zoom, unlike a point marker, whose size is a view-port quantity and must not.
+#[test]
+fn a_2d_ellipse_grows_with_the_zoom() {
+    let Some((_context, mut renderer)) = renderer(pinhole()) else {
+        eprintln!("skipping: no GPU available");
+        return;
+    };
+
+    renderer.update_pixels(vec![
+        named_ellipse2(
+            "ellipse",
+            vec![Ellipse2::circle(
+                SVec::<f32, 2>::new(127.0, 127.0),
+                20.0,
+                0.0,
+                Color::red(),
+            )],
+        ),
+        // clear of the ellipse at both zooms, so neither hides the other
+        make_point2("point", &[[160.0f32, 160.0]], &Color::blue(), 20.0),
+    ]);
+
+    let mut area = |zoom: TranslationAndScaling, pick: fn([u8; 4]) -> bool| {
+        let image = renderer
+            .render_params(&ImageSize::new(W, H), &Isometry3F64::identity())
+            .zoom(zoom)
+            .download_rgba(true)
+            .render()
+            .rgba_image
+            .expect("`download_rgba` was requested");
+        centroid(&image, pick).map(|(_, count)| count).unwrap_or(0)
+    };
+
+    let unzoomed = area(TranslationAndScaling::identity(), is_red);
+    let zoom = TranslationAndScaling {
+        translation: VecF64::<2>::new(-127.0, -127.0),
+        scaling: VecF64::<2>::new(2.0, 2.0),
+    };
+    let zoomed = area(zoom, is_red);
+    assert!(
+        (zoomed as f64 - 4.0 * unzoomed as f64).abs() < 0.1 * 4.0 * unzoomed as f64,
+        "at twice the zoom the ellipse should cover four times the {unzoomed} pixels it did, but \
+         it covers {zoomed}"
+    );
+
+    // the point marker, drawn at the same place, keeps its size
+    let point_unzoomed = area(TranslationAndScaling::identity(), is_blue);
+    let point_zoomed = area(zoom, is_blue);
+    assert!(
+        (point_zoomed as f64 - point_unzoomed as f64).abs() < 0.1 * point_unzoomed as f64,
+        "the point marker covered {point_unzoomed} pixels and now covers {point_zoomed} - its \
+         size is a view-port quantity and must not follow the zoom"
+    );
+}
+
 /// Drawn as a wireframe, a surface shows its edges and nothing between them - so it covers far
 /// fewer pixels than the same thing solid, and what is behind it shows through the middle.
 #[test]
@@ -1684,5 +1793,70 @@ fn a_texture_is_filtered_where_it_recedes() {
         spread < 26.0,
         "far up the quad the texture varies by {spread:.1} of 255 - it is being sampled rather \
          than filtered, which is 31 against the 22 of a filtered one"
+    );
+}
+
+/// An ellipse is a region of the image and grows with the zoom, but its outline is a width in
+/// view-port pixels and must not: a hairline round a magnified region stays a hairline.
+///
+/// The two are easy to conflate, because the margin which decides the outline is worked out in
+/// image pixels while what it is compared against - the feather, the width - is in the pixels the
+/// view port shows one for one. At a zoom of one those are the same thing, so getting the
+/// conversion backwards costs nothing until somebody zooms in.
+#[test]
+fn an_ellipse_outline_holds_its_width_under_zoom() {
+    let Some((_context, mut renderer)) = renderer(pinhole()) else {
+        eprintln!("skipping: no GPU available");
+        return;
+    };
+    let centre = 128.0f32;
+    renderer.update_pixels(vec![named_ellipse2(
+        "ellipse",
+        vec![Ellipse2 {
+            center: SVec::<f32, 2>::new(centre, centre),
+            // anisotropic, so that a width which follows the shape rather than the screen shows
+            // up as a difference between the two axes
+            shape: MatF64::<2, 2>::new(25.0, 0.0, 0.0, 10.0),
+            line_width: 3.0,
+            color: Color::red(),
+        }],
+    )]);
+
+    // the opaque core of the band, crossed along the row and down the column through the centre
+    let mut band = |zoom: f64| {
+        let held = centre as f64 - centre as f64 * zoom;
+        let image = render_with(
+            &mut renderer,
+            Isometry3F64::identity(),
+            false,
+            TranslationAndScaling {
+                translation: VecF64::<2>::new(held, held),
+                scaling: VecF64::<2>::new(zoom, zoom),
+            },
+        );
+        let opaque = |u: usize, v: usize| {
+            let p = image.pixel(u, v);
+            p[0] > 150 && p[1] < 120
+        };
+        let across = (centre as usize..W)
+            .filter(|u| opaque(*u, centre as usize))
+            .count();
+        let down = (0..centre as usize)
+            .filter(|v| opaque(centre as usize, *v))
+            .count();
+        (across, down)
+    };
+
+    let (across, down) = band(1.0);
+    let (zoomed_across, zoomed_down) = band(3.0);
+    assert!(
+        across > 0 && down > 0,
+        "the outline is not drawn at all: {across} px across, {down} down"
+    );
+    assert_eq!(
+        (across, down),
+        (zoomed_across, zoomed_down),
+        "the outline is {across} by {down} px unzoomed and {zoomed_across} by {zoomed_down} at a \
+         zoom of three - it is being drawn in the pixels of the image rather than of the screen"
     );
 }

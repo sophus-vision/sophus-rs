@@ -13,6 +13,7 @@ use crate::{
         RenderIntrinsics,
     },
     pixel_renderer::{
+        Ellipse2dEntity,
         Line2dEntity,
         PixelRenderer,
         Point2dEntity,
@@ -205,6 +206,7 @@ impl OffscreenRenderer {
         self.pixel.point_renderer.points_table.clear();
         self.scene.line_renderer.line_table.clear();
         self.scene.point_renderer.point_table.clear();
+        self.pixel.ellipse_renderer.ellipses_table.clear();
     }
 
     /// reset 2d frame
@@ -284,6 +286,12 @@ impl OffscreenRenderer {
                     self.pixel.point_renderer.points_table.insert(
                         points.name.clone(),
                         Point2dEntity::new(&self.render_context, &points),
+                    );
+                }
+                PixelRenderable::Ellipse(ellipses) => {
+                    self.pixel.ellipse_renderer.ellipses_table.insert(
+                        ellipses.name.clone(),
+                        Ellipse2dEntity::new(&self.render_context, &ellipses),
                     );
                 }
             }

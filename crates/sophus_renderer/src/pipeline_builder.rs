@@ -81,6 +81,37 @@ pub struct PointVertex2 {
     pub(crate) _color: [f32; 4],
 }
 
+/// 2d ellipse vertex - one per ellipse, expanded into a quad by the vertex shader
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+pub(crate) struct EllipseVertex2 {
+    pub(crate) _center: [f32; 2],
+    /// half extents of the bounding box, in image pixels
+    pub(crate) _half_extent: [f32; 2],
+    /// the map taking the ellipse to the unit circle, row major
+    pub(crate) _to_unit_circle: [f32; 4],
+    pub(crate) _color: [f32; 4],
+    pub(crate) _line_width: f32,
+    pub(crate) _padding: [f32; 3],
+}
+
+impl IsVertex for EllipseVertex2 {
+    fn array_stride() -> wgpu::BufferAddress {
+        core::mem::size_of::<EllipseVertex2>() as wgpu::BufferAddress
+    }
+
+    fn step_mode() -> wgpu::VertexStepMode {
+        wgpu::VertexStepMode::Instance
+    }
+
+    fn attr() -> Vec<wgpu::VertexAttribute> {
+        wgpu::vertex_attr_array![
+            0 => Float32x2, 1 => Float32x2, 2 => Float32x4, 3 => Float32x4, 4 => Float32
+        ]
+        .to_vec()
+    }
+}
+
 impl IsVertex for PointVertex2 {
     fn array_stride() -> wgpu::BufferAddress {
         core::mem::size_of::<PointVertex2>() as wgpu::BufferAddress
