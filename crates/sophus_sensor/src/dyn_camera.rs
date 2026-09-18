@@ -1,5 +1,6 @@
 use core::borrow::Borrow;
 
+use sophus_geo::UnitVector3;
 use sophus_image::ImageSize;
 
 use crate::{
@@ -132,6 +133,17 @@ impl<
     /// Unprojects a pixel in the image to a 3D point in the camera frame
     pub fn cam_unproj_with_z(&self, pixel: S::Vector<2>, z: S) -> S::Vector<3> {
         self.camera_type.cam_unproj_with_z(pixel, z)
+    }
+
+    /// Unprojects a pixel to the unit-length direction it observes.
+    ///
+    /// Unlike [Self::cam_unproj_with_z], this remains well defined at and beyond 90 degrees off
+    /// axis, where the ray has no point on the z = 1 plane.
+    pub fn cam_unproj_to_unit_vector(
+        &self,
+        pixel: impl Borrow<S::Vector<2>>,
+    ) -> UnitVector3<S, BATCH, DM, DN> {
+        self.camera_type.cam_unproj_to_unit_vector(pixel.borrow())
     }
 
     /// Distortion - maps a point in the camera z=1 plane to a distorted point
@@ -368,4 +380,52 @@ fn dyn_camera_tests() {
             }
         }
     }
+}
+
+/// A pixel's ray stays well defined where its point on the z = 1 plane does not.
+///
+/// [DynCameraF64::cam_unproj_with_z] answers on the z = 1 plane, which exists only while the ray
+/// is in front of it. At 90 degrees off axis it does not, and the enhanced unified model reaches
+/// that far - so the answer degenerates into an ever larger number rather than an error.
+/// [DynCameraF64::cam_unproj_to_unit_vector] answers with the direction instead.
+#[test]
+fn unprojection_to_a_unit_vector_survives_a_wide_field_of_view() {
+    use sophus_autodiff::linalg::VecF64;
+
+    // 180 degrees across the diagonal of a 640 x 480 image: the corners are at 90 degrees
+    let camera = DynCameraF64::new_enhanced_unified(
+        VecF64::<6>::from_array([240.0, 240.0, 320.0, 240.0, 0.6, 1.0]),
+        ImageSize::new(640, 480),
+    );
+
+    // Away from the rim, the ray agrees with the z = 1 answer - it is the same ray, just not
+    // divided by its own z component.
+    for pixel in [
+        VecF64::<2>::new(320.0, 240.0),
+        VecF64::<2>::new(400.0, 300.0),
+        VecF64::<2>::new(180.0, 160.0),
+    ] {
+        let ray = camera.cam_unproj_to_unit_vector(pixel);
+        let on_z1 = camera.cam_unproj_with_z(pixel, 1.0);
+        approx::assert_abs_diff_eq!(ray.vector(), on_z1.normalized(), epsilon = 1e-9);
+        // and it projects back to the pixel it came from
+        approx::assert_abs_diff_eq!(camera.cam_proj(ray.vector()), pixel, epsilon = 1e-6);
+    }
+
+    // At the corner the ray is at 90 degrees: its z component is zero, so there is no z = 1
+    // point - `cam_unproj_with_z` has to return something enormous instead, while the direction
+    // is perfectly ordinary.
+    let corner = VecF64::<2>::new(640.0, 480.0);
+    let ray = camera.cam_unproj_to_unit_vector(corner);
+    approx::assert_abs_diff_eq!(ray.vector().norm(), 1.0, epsilon = 1e-9);
+    assert!(
+        ray.vector()[2].abs() < 1e-3,
+        "the corner ray should be perpendicular to the optical axis, got z = {}",
+        ray.vector()[2]
+    );
+    assert!(
+        camera.cam_unproj_with_z(corner, 1.0).norm() > 1e3,
+        "the z = 1 answer should have run away, it was {}",
+        camera.cam_unproj_with_z(corner, 1.0).norm()
+    );
 }

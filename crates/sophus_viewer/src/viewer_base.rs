@@ -14,7 +14,6 @@ use egui_plot::{
     VLine,
 };
 use linked_hash_map::LinkedHashMap;
-use sophus_autodiff::prelude::HasParams;
 use sophus_image::{
     ArcImageF32,
     ImageSize,
@@ -23,6 +22,7 @@ use sophus_lie::prelude::IsAffineGroup;
 use sophus_renderer::{
     HasAspectRatio,
     RenderContext,
+    camera::RenderIntrinsics,
 };
 
 use crate::{
@@ -46,6 +46,7 @@ use crate::{
         PlotView,
         SceneView,
         View,
+        ViewMode,
     },
 };
 
@@ -56,8 +57,9 @@ pub struct ViewerBase {
     context: RenderContext,
     views: LinkedHashMap<String, View>,
     message_recv: Receiver<Vec<Packet>>,
-    show_depth: bool,
+    view_mode: ViewMode,
     backface_culling: bool,
+    wireframe: bool,
     responses: BTreeMap<String, ResponseStruct>,
     active_view: String,
     active_view_info: Option<ActiveViewInfo>,
@@ -67,7 +69,7 @@ pub struct ViewerBase {
 
 pub(crate) struct ResponseStruct {
     pub(crate) ui_response: egui::Response,
-    pub(crate) z_image: Option<ArcImageF32>,
+    pub(crate) inverse_distance_image: Option<ArcImageF32>,
     pub(crate) scales: ViewportScale,
     pub(crate) view_port_size: ImageSize,
     pub(crate) view_disabled: bool,
@@ -86,8 +88,9 @@ impl ViewerBase {
             context: render_state.clone(),
             views: LinkedHashMap::new(),
             message_recv: config.message_recv,
-            show_depth: false,
-            backface_culling: false,
+            view_mode: ViewMode::default(),
+            backface_culling: true,
+            wireframe: false,
             responses: BTreeMap::new(),
             active_view_info: None,
             active_view: Default::default(),
@@ -108,7 +111,7 @@ impl ViewerBase {
             match view {
                 View::Scene(view) => {
                     if let Some(response) = self.responses.get(view_label) {
-                        if let Some(z_image) = &response.z_image {
+                        if let Some(inverse_distance_image) = &response.inverse_distance_image {
                             view.interaction.process_event(
                                 &mut self.active_view,
                                 &view.intrinsics(),
@@ -116,7 +119,7 @@ impl ViewerBase {
                                 &response.ui_response,
                                 &response.scales,
                                 response.view_port_size,
-                                Some(z_image.clone()),
+                                Some(inverse_distance_image.clone()),
                             );
                         }
                         view_port_size = response.view_port_size
@@ -124,17 +127,17 @@ impl ViewerBase {
                 }
                 View::Image(view) => {
                     if let Some(response) = self.responses.get(view_label) {
-                        if response.z_image.is_some() {
-                            view.interaction.process_event(
-                                &mut self.active_view,
-                                &view.intrinsics(),
-                                true,
-                                &response.ui_response,
-                                &response.scales,
-                                response.view_port_size,
-                                None,
-                            );
-                        }
+                        // Note: the in-plane interaction of an image view does not use a
+                        // z-buffer, so - unlike for a scene view - there is nothing to wait for.
+                        view.interaction.process_event(
+                            &mut self.active_view,
+                            &view.intrinsics(),
+                            true,
+                            &response.ui_response,
+                            &response.scales,
+                            response.view_port_size,
+                            None,
+                        );
                         view_port_size = response.view_port_size
                     }
                 }
@@ -147,10 +150,11 @@ impl ViewerBase {
                     scene_from_camera: view.interaction().scene_from_camera(),
                     camera_properties: Some(view.camera_propterties()),
                     // is_active, so marker is guaranteed to be Some
-                    scene_focus: view.interaction().marker().unwrap(),
+                    pivot: view.interaction().marker().unwrap(),
                     view_type: view.view_type(),
                     view_port_size,
                     locked_to_birds_eye_orientation: view.locked_to_birds_eye_orientation(),
+                    zoom2d: view.interaction().zoom2d(),
                 });
             }
         }
@@ -162,7 +166,32 @@ impl ViewerBase {
         ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
             egui::CollapsingHeader::new("Settings").show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    ui.checkbox(&mut self.show_depth, "show depth");
+                    // the view modes are alternatives to one another, so they share a combo box;
+                    // wireframe and back-face culling are independent of which is shown, and of
+                    // each other
+                    egui::ComboBox::from_id_salt("view mode")
+                        .selected_text(match self.view_mode {
+                            ViewMode::Color => "color",
+                            ViewMode::Depth => "depth",
+                            ViewMode::FrustumPlanes => "frustum planes",
+                        })
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.view_mode, ViewMode::Color, "color");
+                            ui.selectable_value(&mut self.view_mode, ViewMode::Depth, "depth");
+                            ui.selectable_value(
+                                &mut self.view_mode,
+                                ViewMode::FrustumPlanes,
+                                "frustum planes",
+                            )
+                            .on_hover_text(
+                                "tint each pixel by the frustum of the intermediate it was \
+                                 rendered into",
+                            );
+                        });
+                    ui.checkbox(&mut self.wireframe, "wireframe").on_hover_text(
+                        "draw the whole scene as edges - each renderable can also be a \
+                             wireframe on its own",
+                    );
                     ui.checkbox(&mut self.backface_culling, "backface culling");
                 });
             });
@@ -187,6 +216,11 @@ impl ViewerBase {
                 ui.label("mouse: shift + scroll-wheel");
                 ui.label("touchpad: two finger horizontal scroll");
                 ui.label("");
+                ui.label("RESET THE VIEW");
+                ui.label("mouse: double click");
+                ui.label("image views: back to the whole image");
+                ui.label("scene views: back to the starting camera");
+                ui.label("");
                 ui.label("* Disabled if locked to birds-eye orientation.");
                 ui.label("** Does not work on all touchpads.");
             });
@@ -210,9 +244,30 @@ impl ViewerBase {
             Some(view_info) => {
                 if let Some(camera_properties) = view_info.camera_properties.as_ref() {
                     ui.horizontal_wrapped(|ui| {
+                        // The pivot is the point an interaction turns about: a pixel, and how far
+                        // away along the ray through it. An image view has no scene behind it,
+                        // hence no distance to show.
+                        //
+                        // Given as inverse distance first, which is what the buffer behind it
+                        // holds and the unit a point too far away to have a useful distance is
+                        // parameterised in, with the metres it comes to beside it.
+                        let pivot = match view_info.pivot.distance.is_finite() {
+                            true => format!(
+                                "pivot: ({:0.1}, {:0.1}) at {:0.4} 1/m ({:0.3} m)",
+                                view_info.pivot.u,
+                                view_info.pivot.v,
+                                1.0 / (view_info.pivot.distance as f64).max(1e-9),
+                                view_info.pivot.distance,
+                            ),
+                            false => {
+                                format!(
+                                    "pivot: ({:0.1}, {:0.1})",
+                                    view_info.pivot.u, view_info.pivot.v
+                                )
+                            }
+                        };
                         ui.label(format!(
-                            "{}: {}, view-port: {} x {}, image: {} x {}, clip: [{}, {}], \
-                            focus uv: {:0.1} {:0.1}, ndc-z: {:0.3}, metric-z: {:0.3}",
+                            "{}: {}, view-port: {} x {}, image: {} x {}, clip: [{}, {}], {pivot}",
                             view_info.view_type,
                             view_info.active_view,
                             view_info.view_port_size.width,
@@ -221,29 +276,110 @@ impl ViewerBase {
                             camera_properties.intrinsics.image_size().height,
                             camera_properties.clipping_planes.near,
                             camera_properties.clipping_planes.far,
-                            view_info.scene_focus.u,
-                            view_info.scene_focus.v,
-                            view_info.scene_focus.ndc_z,
-                            camera_properties
-                                .clipping_planes
-                                .metric_z_from_ndc_z(view_info.scene_focus.ndc_z as f64),
                         ));
 
-                        let scene_from_camera_orientation = view_info.scene_from_camera.rotation();
-                        let scene_from_camera_quaternion = scene_from_camera_orientation.params();
+                        // An image view is always seen from the identity pose, so the camera
+                        // pose says nothing - what moves is the 2d zoom and pan.
+                        if view_info.view_type == "Image" {
+                            let zoom = view_info.zoom2d;
+                            ui.label(format!(
+                                "ZOOM: {:0.2}x, pan: ({:0.1}, {:0.1}) image px",
+                                zoom.scaling[0],
+                                -zoom.translation[0] / zoom.scaling[0],
+                                -zoom.translation[1] / zoom.scaling[1],
+                            ));
+                        } else {
+                            // the rotation as a rotation vector - the log of the rotation -
+                            // which reads as an axis scaled by the angle in radians, rather
+                            // than as four quaternion components
+                            let rotation_vector = view_info.scene_from_camera.rotation().log();
 
-                        ui.label(format!(
-                            "CAMERA position: ({:0.3}, {:0.3}, {:0.3}), quaternion: {:0.4}, \
-                            ({:0.4}, {:0.4}, {:0.4}), bird's eye view: {}",
-                            view_info.scene_from_camera.translation()[0],
-                            view_info.scene_from_camera.translation()[1],
-                            view_info.scene_from_camera.translation()[2],
-                            scene_from_camera_quaternion[0],
-                            scene_from_camera_quaternion[1],
-                            scene_from_camera_quaternion[2],
-                            scene_from_camera_quaternion[3],
-                            view_info.locked_to_birds_eye_orientation
-                        ));
+                            ui.label(format!(
+                                "CAMERA position: ({:0.3}, {:0.3}, {:0.3}), rotation-vector: \
+                                ({:0.4}, {:0.4}, {:0.4})",
+                                view_info.scene_from_camera.translation()[0],
+                                view_info.scene_from_camera.translation()[1],
+                                view_info.scene_from_camera.translation()[2],
+                                rotation_vector[0],
+                                rotation_vector[1],
+                                rotation_vector[2],
+                            ));
+
+                            // A view locked to the bird's eye orientation cannot be rotated,
+                            // which is a property of the view rather than of the packet which
+                            // created it - so it is toggled here, on whichever view is active.
+                            let mut locked = view_info.locked_to_birds_eye_orientation;
+                            if ui
+                                .checkbox(&mut locked, "bird's eye")
+                                .on_hover_text(
+                                    "lock this view to the bird's eye orientation - unlock it to \
+                                     orbit",
+                                )
+                                .changed()
+                                && let Some(View::Scene(scene_view)) =
+                                    self.views.get_mut(&view_info.active_view)
+                            {
+                                scene_view.locked_to_birds_eye_orientation = locked;
+                                // Locking is what the flag says, but turning the view to look
+                                // down is what is being asked for: the lock alone leaves a view
+                                // pointing wherever it already was, and unable to be turned.
+                                if locked {
+                                    scene_view.interaction.look_straight_down();
+                                }
+                            }
+
+                            // The displayed pose is rounded, which is not enough to reproduce a
+                            // view - so hand out the full precision, as something which can be
+                            // pasted straight into code.
+                            if ui
+                                .button("COPY CAMERA")
+                                .on_hover_text("copy `scene_from_camera` to the clipboard, as Rust")
+                                .clicked()
+                            {
+                                let translation = view_info.scene_from_camera.translation();
+                                let image_size = camera_properties.intrinsics.image_size();
+                                let intrinsics = match &camera_properties.intrinsics {
+                                    RenderIntrinsics::Pinhole(pinhole) => format!(
+                                        "DynCameraF64::new_pinhole(\n        \
+                                         VecF64::from_array({:?}),\n        \
+                                         ImageSize::new({}, {}),\n    )",
+                                        pinhole.params().as_slice(),
+                                        image_size.width,
+                                        image_size.height,
+                                    ),
+                                    RenderIntrinsics::UnifiedExtended(unified) => format!(
+                                        "DynCameraF64::new_enhanced_unified(\n        \
+                                         VecF64::from_array({:?}),\n        \
+                                         ImageSize::new({}, {}),\n    )",
+                                        unified.params().as_slice(),
+                                        image_size.width,
+                                        image_size.height,
+                                    ),
+                                };
+                                ui.ctx().copy_text(format!(
+                                    "// {}\n\
+                                     // pivot: {:0.4} 1/m ({:0.3} m)\n\
+                                     let camera = {intrinsics};\n\
+                                     let clipping_planes = ClippingPlanes {{\n    \
+                                     near: {:?},\n    far: {:?},\n}};\n\
+                                     let scene_from_camera = \
+                                     Isometry3::from_rotation_and_translation(\n    \
+                                     Rotation3::exp(VecF64::<3>::new({:?}, {:?}, {:?})),\n    \
+                                     VecF64::<3>::new({:?}, {:?}, {:?}),\n);",
+                                    view_info.active_view,
+                                    1.0 / (view_info.pivot.distance as f64).max(1e-9),
+                                    view_info.pivot.distance,
+                                    camera_properties.clipping_planes.near,
+                                    camera_properties.clipping_planes.far,
+                                    rotation_vector[0],
+                                    rotation_vector[1],
+                                    rotation_vector[2],
+                                    translation[0],
+                                    translation[1],
+                                    translation[2],
+                                ));
+                            }
+                        }
                     });
                 } else {
                     ui.label(format!(
@@ -293,8 +429,9 @@ impl ViewerBase {
                                 self.context.clone(),
                                 placement,
                                 WindowParams {
-                                    show_depth: self.show_depth,
+                                    view_mode: self.view_mode,
                                     backface_culling: self.backface_culling,
+                                    wireframe: self.wireframe,
                                     floating_windows: self.floating_windows,
                                     show_title_bars: self.show_title_bars,
                                 },
@@ -320,6 +457,7 @@ impl ViewerBase {
                                 .zoom(view.interaction.zoom2d())
                                 .interaction(view.interaction.marker())
                                 .backface_culling(self.backface_culling)
+                                .wireframe(self.wireframe)
                                 .render();
 
                             let (ui_response, view_disabled) = show_image(
@@ -337,12 +475,12 @@ impl ViewerBase {
                             self.responses.insert(
                                 placement.view_label.clone(),
                                 ResponseStruct {
-                                    ui_response,
-                                    scales: ViewportScale::from_image_size_and_viewport_size(
+                                    scales: ViewportScale::from_image_size_and_viewport_rect(
                                         view.intrinsics().image_size(),
-                                        placement,
+                                        ui_response.rect,
                                     ),
-                                    z_image: None,
+                                    ui_response,
+                                    inverse_distance_image: None,
                                     view_port_size,
                                     view_disabled,
                                 },
@@ -501,18 +639,10 @@ impl ViewerBase {
         };
 
         // shared plot builder with optional size for the non-floating window
-        let bar_size = if show_title_bars {
-            WindowArea::BAR_SIZE
-        } else {
-            0.0
-        };
         let plot_size = if floating_windows {
             None
         } else {
-            Some((
-                placement.rect.width() - WindowArea::BORDER,
-                placement.rect.height() - WindowArea::BORDER - bar_size,
-            ))
+            Some((placement.content_size.x, placement.content_size.y))
         };
 
         // single window path with conditional tweaks

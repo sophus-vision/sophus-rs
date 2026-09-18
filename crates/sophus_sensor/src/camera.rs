@@ -1,5 +1,6 @@
 use core::borrow::Borrow;
 
+use sophus_geo::UnitVector3;
 use sophus_image::ImageSize;
 
 use super::traits::IsCameraDistortionImpl;
@@ -104,6 +105,17 @@ impl<
         Q: Borrow<S::Vector<2>>,
     {
         self.cam_unproj_with_z(point_in_camera, S::ones())
+    }
+
+    /// Unprojects a pixel to the unit-length direction it observes.
+    ///
+    /// Unlike [Self::cam_unproj], this remains well defined at and beyond 90 degrees off axis,
+    /// where the ray has no point on the z = 1 plane.
+    pub fn cam_unproj_to_unit_vector<Q>(&self, pixel: Q) -> UnitVector3<S, BATCH, DM, DN>
+    where
+        Q: Borrow<S::Vector<2>>,
+    {
+        Distort::undistort_to_unit_vector(self.params, pixel)
     }
 
     /// Unprojects a pixel in the image to a 3D point in the camera frame

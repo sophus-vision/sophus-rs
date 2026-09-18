@@ -26,10 +26,10 @@ use crate::examples::{
 
 #[derive(PartialEq)]
 enum Demo {
+    Viewer,
     BundleAdjustment,
     ConstrainedOpt,
     OpticsSim,
-    Viewer,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -120,10 +120,10 @@ impl eframe::App for DemoApp {
                 ui.heading("sophus-rs demo");
 
                 let examples = [
+                    (Demo::Viewer, "viewer"),
                     (Demo::BundleAdjustment, "bundle adjustment"),
                     (Demo::ConstrainedOpt, "constrained opt"),
                     (Demo::OpticsSim, "optics sim"),
-                    (Demo::Viewer, "viewer"),
                 ];
 
                 for (example, label) in examples {
@@ -152,7 +152,7 @@ impl eframe::App for DemoApp {
                     ui.selectable_value(
                         &mut self.ba_sub,
                         BundleAdjustmentSub::InverseDepthCovariance,
-                        "inverse depth covariance",
+                        "inverse distance covariance",
                     );
                     if self.ba_sub != prev {
                         sub_tab_switched = true;
@@ -301,7 +301,22 @@ impl eframe::App for DemoApp {
                                 .text("aperture radius"),
                         );
                     }
-                    ViewerEnum::Viewer(_) => {}
+                    ViewerEnum::Viewer(w) => {
+                        ui.separator();
+                        ui.label("distorted scene view");
+                        // 254 puts the image corner at exactly 90 degrees off axis - a 180
+                        // degree field of view, which is as wide as this is meant to go
+                        ui.add(
+                            Slider::new(&mut w.focal_length, 254.0..=700.0)
+                                .logarithmic(true)
+                                .text("focal length"),
+                        );
+                        let fov = w.field_of_view_degrees();
+                        ui.label(match fov.is_finite() {
+                            true => format!("field of view: {fov:.0} deg (diagonal)"),
+                            false => "field of view: outside the camera model".to_owned(),
+                        });
+                    }
                 }
             }
         });
@@ -341,7 +356,7 @@ impl DemoApp {
         Box::new(DemoApp {
             base: ViewerBase::new(render_state, ViewerBaseConfig { message_recv }),
             message_send: message_send.clone(),
-            selected_example: Demo::OpticsSim,
+            selected_example: Demo::Viewer,
             ba_sub: BundleAdjustmentSub::VarIntrinsics,
             constrained_sub: ConstrainedOptSub::ToyInequality,
             content: Some(ViewerEnum::Optics(Box::new(OpticsSimWidget::new(

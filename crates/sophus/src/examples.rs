@@ -9,7 +9,7 @@ pub mod circle_obstacle_demo;
 pub mod corridor_demo;
 /// Demo application with optics simulation, bundle adjustment, and 3D viewer.
 pub mod demo_app;
-/// Inverse depth estimation demo with covariance ellipsoid visualization.
+/// Inverse distance estimation demo with covariance ellipsoid visualization.
 pub mod inverse_depth;
 /// Shared optimization widget helpers.
 pub mod opt_widget;

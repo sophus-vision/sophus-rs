@@ -1,7 +1,8 @@
 use sophus_image::ImageSize;
 use sophus_lie::Isometry3F64;
 use sophus_renderer::{
-    SceneFocusMarker,
+    ScenePivotMarker,
+    TranslationAndScaling,
     camera::RenderCameraProperties,
 };
 
@@ -15,12 +16,14 @@ pub struct ActiveViewInfo {
     pub scene_from_camera: Isometry3F64,
     /// camere properties
     pub camera_properties: Option<RenderCameraProperties>,
-    /// scene focus
-    pub scene_focus: SceneFocusMarker,
+    /// the point interactions turn about
+    pub pivot: ScenePivotMarker,
     /// type
     pub view_type: String,
     /// view-port size
     pub view_port_size: ImageSize,
     /// xy-locked
     pub locked_to_birds_eye_orientation: bool,
+    /// 2d zoom and pan of the view
+    pub zoom2d: TranslationAndScaling,
 }

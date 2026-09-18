@@ -8,7 +8,7 @@ use sophus_image::ArcImage4U8;
 use crate::{
     offscreen_renderer::OffscreenRenderer,
     renderables::Color,
-    textures::DepthImage,
+    textures::InverseDistanceImage,
 };
 
 /// The intermediate render result.
@@ -46,8 +46,8 @@ pub struct FinalRenderResult {
     /// depth egui texture id
     pub depth_egui_tex_id: egui::TextureId,
 
-    /// depth image - on the CPU
-    pub depth_image: DepthImage,
+    /// inverse distance image - on the CPU
+    pub inverse_distance_image: InverseDistanceImage,
 }
 
 /// aspect ratio
@@ -112,18 +112,64 @@ impl TranslationAndScaling {
             xy[1] * self.scaling[1] + self.translation[1],
         )
     }
+
+    /// apply the inverse of translation and scaling
+    pub fn apply_inverse(&self, xy: VecF64<2>) -> VecF64<2> {
+        VecF64::<2>::new(
+            (xy[0] - self.translation[0]) / self.scaling[0],
+            (xy[1] - self.translation[1]) / self.scaling[1],
+        )
+    }
+
+    /// inverse
+    pub fn inverse(&self) -> Self {
+        TranslationAndScaling {
+            translation: VecF64::<2>::new(
+                -self.translation[0] / self.scaling[0],
+                -self.translation[1] / self.scaling[1],
+            ),
+            scaling: VecF64::<2>::new(1.0 / self.scaling[0], 1.0 / self.scaling[1]),
+        }
+    }
 }
 
-/// focus point to overlay
-pub struct SceneFocusMarker {
+/// The point an interaction turns about, to overlay.
+pub struct ScenePivotMarker {
     /// color
     pub color: Color,
-    /// u viewport pixel
+    /// u image pixel
     pub u: f32,
-    /// v viewport pixel
+    /// v image pixel
     pub v: f32,
-    /// ndc_z
-    pub ndc_z: f32,
+    /// metric distance along the ray through (u, v)
+    pub distance: f32,
+    /// what the interaction is doing, which is what the marker is drawn as
+    pub gesture: PivotGesture,
+    /// Whether turning the view about the axes across the screen is possible here at all.
+    ///
+    /// A view locked to the bird's eye orientation only ever looks straight down, so it is not -
+    /// and the two rings which stand for it are left out rather than drawn greyed for a gesture
+    /// which will never come.
+    pub can_orbit: bool,
+}
+
+/// What an interaction is doing to the view, which decides which part of its pivot is lit.
+///
+/// Every one of them works in the camera's *current* frame - a drag turns the view about the
+/// camera's x and y, a sideways scroll about its z, a drag slides along its x and y, a scroll in
+/// and out along its z - so the marker is drawn on those axes, worked out afresh each frame. It is
+/// the frame the gesture acts in, not a thing in the scene, so it neither turns with the view nor
+/// snaps back.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PivotGesture {
+    /// Turning the view about the two axes across the screen.
+    Orbit,
+    /// Turning it about the axis into the screen.
+    Roll,
+    /// Sliding the view across the screen.
+    Pan,
+    /// Moving it in and out, along the ray to the pivot.
+    Zoom,
 }
 
 /// multisample count

@@ -11,6 +11,7 @@ use sophus_autodiff::{
         IsVector,
     },
 };
+use sophus_geo::UnitVector3;
 
 use crate::{
     prelude::*,
@@ -113,6 +114,40 @@ impl<S: IsScalar<BATCH, DM, DN>, const BATCH: usize, const DM: usize, const DN: 
         let k = nominator / denominator;
 
         S::Vector::<2>::from_array([mx / k, my / k])
+    }
+
+    fn undistort_to_unit_vector<PA, PO>(
+        params: PA,
+        distorted_point: PO,
+    ) -> UnitVector3<S, BATCH, DM, DN>
+    where
+        PA: Borrow<S::Vector<6>>,
+        PO: Borrow<S::Vector<2>>,
+    {
+        let params = params.borrow();
+        let distorted_point = distorted_point.borrow();
+        let fx = params.elem(0);
+        let fy = params.elem(1);
+        let cx = params.elem(2);
+        let cy = params.elem(3);
+        let alpha = params.elem(4);
+        let beta = params.elem(5);
+
+        let mx = (distorted_point.elem(0) - cx) / fx;
+        let my = (distorted_point.elem(1) - cy) / fy;
+
+        let r2 = mx * mx + my * my;
+        let gamma = S::from_f64(1.0) - alpha;
+
+        let nominator = S::from_f64(1.0) - alpha * alpha * beta * r2;
+        let denominator = alpha * (S::from_f64(1.0) - (alpha - gamma) * beta * r2).sqrt() + gamma;
+
+        // `k` is the z component of the observed ray. [Self::undistort] divides it away to land
+        // on the z = 1 plane, which is exactly what cannot be done once it reaches zero - at 90
+        // degrees off axis - or goes negative, beyond it.
+        let k = nominator / denominator;
+
+        UnitVector3::from_vector_and_normalize(&S::Vector::<3>::from_array([mx, my, k]))
     }
     fn dx_distort_x<PA, PO>(params: PA, proj_point_in_camera_z1_plane: PO) -> S::Matrix<2, 2>
     where

@@ -33,11 +33,17 @@ camera-sim:
 demo:
     cargo run --bin demo --release --features std
 
+# note: trunk resolves the crate manifest relative to its working directory, and the workspace
+# root is a virtual manifest with no package - so run it from the crate itself
+[working-directory('crates/sophus')]
 wasm-demo:
-    trunk serve crates/sophus/index.html --release
+    trunk serve index.html --release
 
 solver-bench:
     cargo run --bin solver_bench --release
+
+render-bench:
+    cargo run --release --features std -p sophus_renderer --example render_bench
 
 ba-bench:
     cargo run --bin ba_bench --release -p sophus_opt

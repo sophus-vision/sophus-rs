@@ -5,10 +5,13 @@ use sophus_lie::Isometry3F64;
 use sophus_renderer::{
     OffscreenRenderer,
     RenderContext,
-    camera::RenderCameraProperties,
+    camera::{
+        RenderCameraProperties,
+        RenderIntrinsics,
+    },
     renderables::SceneRenderable,
     textures::{
-        DepthImage,
+        InverseDistanceImage,
         download_depth,
     },
 };
@@ -24,8 +27,8 @@ pub struct CameraSimulator {
 pub struct SimulatedImage {
     /// rgba
     pub rgba_image: ArcImage4U8,
-    /// depth
-    pub depth_image: DepthImage,
+    /// inverse distance - see [InverseDistanceImage::metric_z] for the rgb-d convention
+    pub inverse_distance_image: InverseDistanceImage,
 }
 
 impl CameraSimulator {
@@ -34,6 +37,11 @@ impl CameraSimulator {
         CameraSimulator {
             renderer: OffscreenRenderer::new(render_state, camera_properties),
         }
+    }
+
+    /// the camera being simulated
+    pub fn intrinsics(&self) -> RenderIntrinsics {
+        self.renderer.intrinsics()
     }
 
     /// update scene renderables
@@ -63,7 +71,7 @@ impl CameraSimulator {
         .await;
         SimulatedImage {
             rgba_image: render_result.rgba_image.unwrap(),
-            depth_image: render_result.depth_image,
+            inverse_distance_image: render_result.inverse_distance_image,
         }
     }
 }

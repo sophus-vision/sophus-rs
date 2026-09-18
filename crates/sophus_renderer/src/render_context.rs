@@ -47,7 +47,21 @@ impl RenderContext {
 
     /// Creates a new render context, include wgpu device, adapter and queue
     /// as well as egui_wgpu renderer.
+    ///
+    /// Panics if no GPU is available - see [Self::try_new].
     pub async fn new() -> Self {
+        Self::try_new()
+            .await
+            .expect("no GPU available: no wgpu backend enabled, or no suitable adapter found")
+    }
+
+    /// Like [Self::new], but returns `None` instead of panicking when no GPU is available -
+    /// either because no wgpu backend is compiled in, or because the machine has no suitable
+    /// adapter. Useful for tests and tools which should degrade gracefully on a head-less host.
+    pub async fn try_new() -> Option<Self> {
+        if wgpu::Instance::enabled_backend_features().is_empty() {
+            return None;
+        }
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
@@ -59,8 +73,8 @@ impl RenderContext {
                 force_fallback_adapter: false,
             })
             .await
-            .unwrap();
-        let (device, queue) = adapter.request_device(&Default::default()).await.unwrap();
+            .ok()?;
+        let (device, queue) = adapter.request_device(&Default::default()).await.ok()?;
 
         const DITHERING: bool = false;
 
@@ -75,12 +89,12 @@ impl RenderContext {
             },
         );
 
-        RenderContext {
+        Some(RenderContext {
             egui_wgpu_renderer: Arc::new(RwLock::new(renderer)),
             wgpu_device: device.into(),
             wgpu_queue: queue.into(),
             wgpu_adapter: adapter.into(),
-        }
+        })
     }
 
     /// Creates a render context from an eframe creation context.
